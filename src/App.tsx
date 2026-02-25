@@ -32,7 +32,43 @@ import {
   Globe,
   MessageSquare,
   Search
-} from 'lucide-react';
+} 
+  import { createClient } from '@supabase/supabase-js'
+
+// 1. Supabase 클라이언트 생성
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabase = createClient(supabaseUrl, supabaseKey)
+
+function App() {
+  // 2. 데이터 불러오기 테스트 (useEffect 사용)
+  const [data, setData] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchData() {
+      const { data: members, error } = await supabase
+        .from('테이블이름') // 실제 Supabase에 만든 테이블 이름을 적으세요!
+        .select('*')
+      
+      if (error) {
+        console.error('연결 에러:', error.message)
+      } else {
+        console.log('가져온 데이터:', members)
+        setData(members)
+      }
+    }
+    fetchData()
+  }, [])
+
+  return (
+    <div>
+      <h1>길드 홈페이지</h1>
+      {/* 데이터 출력 테스트 */}
+      <pre>{JSON.stringify(data, null, 2)}</pre>
+    </div>
+  )
+}
+  from 'lucide-react';
 
 // --- Types ---
 interface Post {
