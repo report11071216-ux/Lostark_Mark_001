@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
-// --- 1. Supabase 설정 (환경변수 사용) ---
+// --- 1. Supabase 설정 (환경변수 유지) ---
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -96,7 +96,7 @@ export default function App() {
   );
 }
 
-// --- [수정] 캘린더 컴포넌트 ---
+// --- 캘린더 컴포넌트 ---
 const RaidCalendar = ({ user }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [raids, setRaids] = useState<any[]>([]);
@@ -142,8 +142,8 @@ const RaidCalendar = ({ user }: any) => {
       </div>
 
       <div className="bg-[#0f0f0f] rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl">
-        <div className="grid grid-cols-7 bg-white/5 border-b border-white/5 text-[10px] font-black tracking-widest text-gray-600">
-          {['SUN','MON','TUE','WED','THU','FRI','SAT'].map(d => <div key={d} className="p-4 text-center">{d}</div>)}
+        <div className="grid grid-cols-7 bg-white/5 border-b border-white/5 text-[10px] font-black tracking-widest text-gray-600 text-center">
+          {['SUN','MON','TUE','WED','THU','FRI','SAT'].map(d => <div key={d} className="p-4">{d}</div>)}
         </div>
         <div className="grid grid-cols-7 gap-[1px] bg-white/5">
           {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={`empty-${i}`} className="bg-[#0a0a0a] min-h-[160px]" />)}
@@ -171,12 +171,15 @@ const RaidCalendar = ({ user }: any) => {
   );
 };
 
-// --- [수정] 레이드 생성 모달 (시간 입력 텍스트화 및 오류 방지) ---
+// --- [수정 완료] 레이드 생성 모달 (시간 텍스트화 및 성공 알림) ---
 const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
   const [form, setForm] = useState({ raid_name: '', difficulty: '노말', raid_time: '오후 8:00' });
   
   const save = async () => {
-    if(!form.raid_name) return alert("레이드 이름을 입력해주세요.");
+    if(!form.raid_name) {
+      alert("레이드 이름을 입력해주세요.");
+      return;
+    }
     
     const { error } = await supabase.from('raid_schedules').insert([
       { 
@@ -189,9 +192,9 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
     ]);
 
     if (error) {
-      console.error(error);
       alert("생성 실패: " + error.message);
     } else {
+      alert("레이드가 성공적으로 생성되었습니다!");
       onRefresh();
       onClose();
     }
@@ -199,13 +202,12 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-6">
-      <div className="bg-[#111] border border-white/10 p-10 rounded-[3rem] w-full max-w-sm shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-purple-600"></div>
-        <h3 className="text-2xl font-black text-purple-500 italic mb-8 tracking-tighter uppercase">NEW EXPEDITION // {date}</h3>
-        <div className="space-y-4">
+      <div className="bg-[#111] border border-white/10 p-10 rounded-[3rem] w-full max-w-sm shadow-2xl relative">
+        <h3 className="text-2xl font-black text-purple-500 italic mb-8 tracking-tighter uppercase underline decoration-purple-600/30 underline-offset-8">New Raid // {date}</h3>
+        <div className="space-y-4 text-left">
           <div className="space-y-1">
             <label className="text-[10px] font-black text-gray-500 ml-1 uppercase">Raid Name</label>
-            <input placeholder="예: 카멘 3관" className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm outline-none focus:border-purple-500" onChange={e => setForm({...form, raid_name: e.target.value})} />
+            <input placeholder="예: 카멘 3관" className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm outline-none focus:border-purple-500" value={form.raid_name} onChange={e => setForm({...form, raid_name: e.target.value})} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
@@ -217,12 +219,12 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-500 ml-1 uppercase">Time (Text)</label>
-              {/* 시간 입력을 텍스트로 변경 */}
-              <input type="text" placeholder="예: 오후 8시" className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm outline-none focus:border-purple-500 text-white" value={form.raid_time} onChange={e => setForm({...form, raid_time: e.target.value})} />
+              <label className="text-[10px] font-black text-gray-500 ml-1 uppercase">Time</label>
+              {/* 시간을 텍스트로 입력받습니다 */}
+              <input type="text" placeholder="오후 8:00" className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm outline-none focus:border-purple-500 text-white font-bold" value={form.raid_time} onChange={e => setForm({...form, raid_time: e.target.value})} />
             </div>
           </div>
-          <button onClick={save} className="w-full bg-purple-600 p-5 rounded-2xl font-black tracking-widest hover:bg-purple-500 transition-all mt-4 shadow-lg shadow-purple-600/20 active:scale-95 uppercase">Create Raid</button>
+          <button onClick={save} className="w-full bg-purple-600 p-5 rounded-2xl font-black tracking-widest hover:bg-purple-500 transition-all mt-4 shadow-lg shadow-purple-600/20 active:scale-95 uppercase">Confirm Raid</button>
           <button onClick={onClose} className="w-full text-gray-600 text-[10px] font-black py-2 tracking-widest hover:text-white uppercase">Cancel</button>
         </div>
       </div>
@@ -230,7 +232,7 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
   );
 };
 
-// --- [수정] Auth 컴포넌트 (로그인 성공 메시지 추가) ---
+// --- [수정 완료] Auth 컴포넌트 (로그인 성공 메시지 추가) ---
 const Auth = ({ mode, setMode }: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -247,7 +249,6 @@ const Auth = ({ mode, setMode }: any) => {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // 로그인 성공 알림 추가
         alert('로그인 성공! 환영합니다.');
       }
     } catch (err: any) { alert(err.message); }
@@ -262,20 +263,21 @@ const Auth = ({ mode, setMode }: any) => {
         <form onSubmit={handleAuth} className="space-y-4">
           <input type="email" placeholder="EMAIL ADDRESS" className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-bold" value={email} onChange={e => setEmail(e.target.value)} required />
           <input type="password" placeholder="PASSWORD" className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-bold" value={password} onChange={e => setPassword(e.target.value)} required />
-          {mode === 'signup' && <input type="text" placeholder="CHARACTER NICKNAME" className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-bold" value={nickname} onChange={e => setNickname(e.target.value)} required />}
+          {mode === 'signup' && <input type="text" placeholder="NICKNAME" className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-bold" value={nickname} onChange={e => setNickname(e.target.value)} required />}
           <button type="submit" className="w-full bg-purple-600 p-5 rounded-2xl font-black tracking-widest hover:bg-purple-700 transition-all shadow-lg shadow-purple-600/30 uppercase mt-4 active:scale-95">
             {mode === 'login' ? 'Sign In' : 'Sign Up'}
           </button>
         </form>
         <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="w-full text-[10px] font-black text-gray-500 mt-8 hover:text-white tracking-widest uppercase transition-all">
-          {mode === 'login' ? "Don't have an account? Create One" : "Already have an account? Login"}
+          {mode === 'login' ? "Don't have an account? Sign Up" : "Already have an account? Login"}
         </button>
       </div>
     </div>
   );
 };
 
-// --- 나머지 컴포넌트 (디자인 보존) ---
+// --- 나머지 컴포넌트 (원래 디자인 보존) ---
+
 const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
   const navItems = [
     { id: 'home', label: '홈', icon: Home },
@@ -313,7 +315,7 @@ const Hero = ({ settings }: any) => (
     <div className="relative z-10 text-center px-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
         <span className="inline-block px-4 py-1 rounded-full bg-purple-500/10 text-purple-400 text-[10px] font-black mb-4 border border-purple-500/20 tracking-widest uppercase italic">
-          Lost Ark Elite Guild
+          Lost Ark Guild System
         </span>
         <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-500 font-mono">
           {settings?.guild_name}
@@ -362,7 +364,7 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
           <button onClick={onClose} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-all"><X size={24}/></button>
         </div>
         <div className="grid md:grid-cols-2 gap-10">
-          <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar text-left">
             <h4 className="text-[10px] font-black text-gray-500 tracking-widest mb-4 uppercase italic">Participants ({parts.length}/8)</h4>
             {parts.map((p: any) => (
               <div key={p.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 flex justify-between items-center">
@@ -371,10 +373,10 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
               </div>
             ))}
           </div>
-          <div className="space-y-4">
+          <div className="space-y-4 text-left">
             <h4 className="text-[10px] font-black text-gray-500 tracking-widest mb-4 uppercase italic">Join Expedition</h4>
             <input placeholder="캐릭터명" className="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs outline-none focus:border-purple-500 font-bold" onChange={e => setF({...f, character_name: e.target.value})} />
-            <select className="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs outline-none font-bold" onChange={e => setF({...f, position: e.target.value})}>
+            <select className="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs outline-none font-bold text-gray-400" onChange={e => setF({...f, position: e.target.value})}>
               <option value="딜러">딜러</option><option value="서포터">서포터</option>
             </select>
             <input placeholder="아이템 레벨" className="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs outline-none focus:border-purple-500 font-bold" onChange={e => setF({...f, item_level: e.target.value})} />
