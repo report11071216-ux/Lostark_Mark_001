@@ -18,7 +18,7 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [contentView, setContentView] = useState('레이드'); // 메인 화면 뷰 선택
+  const [contentView, setContentView] = useState('레이드');
 
   const [posts, setPosts] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({
@@ -114,12 +114,127 @@ export default function App() {
   );
 }
 
+// --- [새 기능 통합] 메인 콘텐츠 뷰어 (실제 DB 연동 및 클릭 팝업) ---
+const MainContentViewer = ({ type }: { type: string }) => {
+  const [items, setItems] = useState<any[]>([]);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (type === '클래스') {
+        const { data } = await supabase.from('class_infos').select('*').order('sub_class');
+        setItems(data || []);
+      } else {
+        const { data } = await supabase.from('contents').select('*').eq('category', type).order('created_at', { ascending: false });
+        setItems(data || []);
+      }
+    };
+    fetchData();
+  }, [type]);
+
+  return (
+    <section className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 py-10">
+      {items.length === 0 && <div className="col-span-3 text-center text-gray-600 font-black italic py-10">등록된 콘텐츠가 없습니다.</div>}
+      {items.map(item => (
+        <motion.div 
+          whileHover={{ y: -10 }}
+          key={item.id} 
+          onClick={() => setSelectedItem(item)}
+          className="group relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-black aspect-[4/5] cursor-pointer"
+        >
+          <img src={item.image_url || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80'} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
+          <div className="absolute bottom-10 left-10 right-10">
+            <span className="text-[10px] font-black text-purple-500 uppercase tracking-[0.3em] mb-2 block italic">{type}</span>
+            <h3 className="text-3xl font-black italic mb-6 uppercase tracking-tighter leading-none">{item.name || item.sub_class}</h3>
+            <button className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest bg-white text-black px-8 py-4 rounded-full group-hover:bg-purple-600 group-hover:text-white transition-all">
+              View Details <ChevronRight size={14} />
+            </button>
+          </div>
+        </motion.div>
+      ))}
+      <AnimatePresence>
+        {selectedItem && <DetailPopup item={selectedItem} type={type} onClose={() => setSelectedItem(null)} />}
+      </AnimatePresence>
+    </section>
+  );
+};
+
+// --- [새 기능 통합] 상세 정보 팝업 (DetailPopup) ---
+const DetailPopup = ({ item, type, onClose }: any) => {
+  const [gate, setGate] = useState(1);
+  const [diff, setDiff] = useState('노말');
+  const [details, setDetails] = useState<any>(null);
+
+  useEffect(() => {
+    if (type !== '클래스') {
+      const fetchDetail = async () => {
+        const { data } = await supabase.from('content_details').select('*')
+          .eq('content_id', item.id)
+          .eq('difficulty', type === '레이드' ? diff : null)
+          .eq('gate_num', type === '레이드' ? gate : 0)
+          .maybeSingle();
+        setDetails(data);
+      };
+      fetchDetail();
+    }
+  }, [gate, diff, item, type]);
+
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left">
+      <div className="bg-[#111] border border-white/10 p-10 rounded-[3rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto relative shadow-2xl custom-scrollbar">
+        <button onClick={onClose} className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors"><X size={32}/></button>
+        <div className="flex flex-col md:flex-row gap-8 mb-10">
+          <img src={item.image_url || 'https://images.unsplash.com/photo-1542751371-adc38448a05e'} className="w-full md:w-48 h-48 object-cover rounded-3xl border border-white/10 shadow-2xl" />
+          <div className="flex flex-col justify-end">
+            <h2 className="text-5xl font-black italic uppercase text-purple-500 mb-2">{item.name || item.sub_class}</h2>
+            <p className="text-gray-500 font-bold uppercase tracking-widest italic">{type} Detailed Specification</p>
+          </div>
+        </div>
+        
+        {type === '레이드' && (
+          <div className="flex gap-4 mb-8">
+            <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5">
+              {[1,2,3,4].map(g=><button key={g} onClick={()=>setGate(g)} className={`px-6 py-2 rounded-lg font-black transition-all ${gate===g?'bg-purple-600 shadow-lg shadow-purple-600/20':'text-gray-500'}`}>{g}관문</button>)}
+            </div>
+            <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5">
+              {['노말','하드','나이트메어'].map(d=><button key={d} onClick={()=>setDiff(d)} className={`px-6 py-2 rounded-lg font-black text-xs transition-all ${diff===d?'bg-white text-black':'text-gray-500'}`}>{d}</button>)}
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {type === '클래스' ? (
+            <>
+              <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">직업 각인</label><div className="text-lg font-black">{item.engraving_job || '-'}</div></div>
+              <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-2"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">공용 각인</label><div className="text-lg font-black">{item.engraving_common?.join(', ') || '-'}</div></div>
+              <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-3"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">아크 패시브</label><div className="text-lg font-black">{item.ark_passive?.join(' / ') || '-'}</div></div>
+              <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-3"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">카운터 스킬</label><div className="text-lg font-black">{item.counter_skills?.join(', ') || '-'}</div></div>
+            </>
+          ) : (
+            details ? (
+              <>
+                <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">HP (체력)</label><div className="text-lg font-black text-white">{details.hp || '-'}</div></div>
+                <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">계열</label><div className="text-lg font-black text-white">{details.element_type || '-'}</div></div>
+                <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">속성</label><div className="text-lg font-black text-white">{details.attribute || '-'}</div></div>
+                <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-3"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">추천 딜러 카드</label><div className="text-lg font-black text-white">{details.dealer_cards || '-'}</div></div>
+                <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-3"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">추천 서포터 카드</label><div className="text-lg font-black text-white">{details.support_cards || '-'}</div></div>
+                <div className="p-6 bg-white/5 rounded-2xl border border-purple-500/20 md:col-span-3 shadow-[0_0_15px_rgba(168,85,247,0.1)]"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">클리어 골드</label><div className="text-2xl font-black text-yellow-400">{details.clear_gold?.toLocaleString() || '0'} G</div></div>
+              </>
+            ) : <div className="col-span-3 py-20 text-center text-gray-700 font-black italic uppercase tracking-widest">해당 관문/난이도의 데이터가 없습니다.</div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 // --- [관리자] 통합 설정 패널 ---
 const AdminPanel = () => {
   const [adminTab, setAdminTab] = useState('레이드');
 
   return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} className="max-w-6xl mx-auto p-8">
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} className="max-w-6xl mx-auto p-8 text-left">
       <div className="flex items-center gap-4 mb-10">
         <Settings className="text-purple-500" size={32} />
         <h2 className="text-4xl font-black italic uppercase tracking-tighter">Admin Console</h2>
@@ -146,57 +261,83 @@ const AdminPanel = () => {
   );
 };
 
-// --- [관리자] 레이드 & 가디언 에디터 ---
+// --- [새 기능 통합] 관리자 레이드 & 가디언 에디터 (이미지 URL 및 DB 저장 로직 추가) ---
 const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const [selectedGate, setSelectedGate] = useState(1);
   const [difficulty, setDifficulty] = useState('노말');
   const [form, setForm] = useState({
-    name: '', hp: '', element: '', attribute: '', d_card: '', s_card: '', gold: 0
+    name: '', image_url: '', hp: '', element: '', attribute: '', d_card: '', s_card: '', gold: 0
   });
+
+  const handleSave = async () => {
+    if (!form.name) return alert("Target Content Name을 입력해주세요.");
+    
+    // 1. 콘텐츠 메인 테이블(contents) 저장 (이름, 이미지 URL)
+    const category = isRaid ? '레이드' : '가디언 토벌';
+    const { data: contentData, error: cErr } = await supabase.from('contents')
+      .upsert({ name: form.name, category: category, image_url: form.image_url }, { onConflict: 'name' })
+      .select().single();
+      
+    if (cErr) return alert("콘텐츠 저장 실패: " + cErr.message);
+
+    // 2. 콘텐츠 상세 스펙(content_details) 저장
+    const { error: dErr } = await supabase.from('content_details')
+      .upsert({
+        content_id: contentData.id,
+        difficulty: isRaid ? difficulty : null,
+        gate_num: isRaid ? selectedGate : 0,
+        hp: form.hp,
+        element_type: form.element,
+        attribute: form.attribute,
+        dealer_cards: form.d_card,
+        support_cards: form.s_card,
+        clear_gold: form.gold
+      }, { onConflict: 'content_id, difficulty, gate_num' });
+
+    if (dErr) alert("상세 정보 저장 실패: " + dErr.message);
+    else alert(`[${form.name}] 정보가 성공적으로 업데이트되었습니다!`);
+  };
 
   return (
     <div className="space-y-8 text-left">
       <div className="grid grid-cols-2 gap-8">
-        <div className="space-y-4">
-          <label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Target Content Name</label>
-          <input 
-            placeholder={isRaid ? "예: 카제로스 - 에키드나" : "예: 에기르"} 
-            className="w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-purple-500 font-bold"
-            value={form.name} onChange={e => setForm({...form, name: e.target.value})}
-          />
-        </div>
-        {isRaid && (
-          <div className="space-y-4">
-            <label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Gate Selection</label>
-            <div className="flex gap-2">
-              {[1, 2, 3].map(g => (
-                <button key={g} onClick={() => setSelectedGate(g)} className={`flex-1 py-4 rounded-2xl font-black transition-all ${selectedGate === g ? 'bg-purple-600' : 'bg-black border border-white/10'}`}>{g} Gate</button>
-              ))}
-            </div>
-          </div>
-        )}
+        <AdminInput label="Target Content Name" placeholder={isRaid ? "예: 카제로스 - 에키드나" : "예: 에기르"} value={form.name} onChange={(v:any) => setForm({...form, name: v})} />
+        <AdminInput label="Image URL (배경용)" placeholder="https://..." value={form.image_url} onChange={(v:any) => setForm({...form, image_url: v})} />
       </div>
 
-      <div className="flex gap-4 p-1 bg-black rounded-2xl border border-white/5">
-        {['노말', '하드', '나이트메어'].map(d => (
-          <button key={d} onClick={() => setDifficulty(d)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${difficulty === d ? 'bg-white/10 text-white' : 'text-gray-600'}`}>{d}</button>
-        ))}
-      </div>
+      {isRaid && (
+        <div className="space-y-4">
+          <label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Gate Selection</label>
+          <div className="flex gap-2">
+            {[1, 2, 3, 4].map(g => (
+              <button key={g} onClick={() => setSelectedGate(g)} className={`flex-1 py-4 rounded-2xl font-black transition-all ${selectedGate === g ? 'bg-purple-600 shadow-lg' : 'bg-black border border-white/10 text-gray-500 hover:text-white'}`}>{g} Gate</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isRaid && (
+        <div className="flex gap-4 p-1 bg-black rounded-2xl border border-white/5">
+          {['노말', '하드', '나이트메어'].map(d => (
+            <button key={d} onClick={() => setDifficulty(d)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${difficulty === d ? 'bg-white/10 text-white' : 'text-gray-600'}`}>{d}</button>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <AdminInput label="HP (체력)" value={form.hp} onChange={v => setForm({...form, hp: v})} />
-        <AdminInput label="Element (계열)" value={form.element} onChange={v => setForm({...form, element: v})} />
-        <AdminInput label="Attribute (속성)" value={form.attribute} onChange={v => setForm({...form, attribute: v})} />
+        <AdminInput label="HP (체력)" value={form.hp} onChange={(v:any) => setForm({...form, hp: v})} />
+        <AdminInput label="Element (계열)" value={form.element} onChange={(v:any) => setForm({...form, element: v})} />
+        <AdminInput label="Attribute (속성)" value={form.attribute} onChange={(v:any) => setForm({...form, attribute: v})} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <AdminInput label="Dealer Card Set" value={form.d_card} onChange={v => setForm({...form, d_card: v})} />
-        <AdminInput label="Support Card Set" value={form.s_card} onChange={v => setForm({...form, s_card: v})} />
+        <AdminInput label="Dealer Card Set" value={form.d_card} onChange={(v:any) => setForm({...form, d_card: v})} />
+        <AdminInput label="Support Card Set" value={form.s_card} onChange={(v:any) => setForm({...form, s_card: v})} />
       </div>
 
-      <AdminInput label="Clear Gold (관문당)" type="number" value={form.gold} onChange={v => setForm({...form, gold: v})} />
+      <AdminInput label="Clear Gold (관문당)" type="number" value={form.gold} onChange={(v:any) => setForm({...form, gold: v})} />
 
-      <button className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-purple-500 transition-all">
+      <button onClick={handleSave} className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20">
         <Save size={20} /> Update Content Info
       </button>
     </div>
@@ -205,18 +346,34 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
 // --- [관리자] 클래스 에디터 ---
 const ClassContentEditor = () => {
+  const [form, setForm] = useState({ root: '', sub: '', eng_job: '', link: '' });
   const [commonEngravings, setCommonEngravings] = useState<string[]>([]);
   const [arkPassive, setArkPassive] = useState<string[]>([]);
   const [counters, setCounters] = useState<string[]>([]);
 
   const addField = (list: any, set: any, max: number) => { if(list.length < max) set([...list, ""]); };
+  const updateField = (list: any, set: any, index: number, val: string) => { const newList = [...list]; newList[index] = val; set(newList); };
+
+  const handleSave = async () => {
+    if(!form.sub) return alert("Sub Class(전직)을 입력하세요.");
+    const { error } = await supabase.from('class_infos').upsert({ 
+      root_class: form.root, sub_class: form.sub, engraving_job: form.eng_job, 
+      engraving_common: commonEngravings.filter(Boolean), 
+      ark_passive: arkPassive.filter(Boolean), 
+      counter_skills: counters.filter(Boolean), 
+      skill_code_link: form.link 
+    }, { onConflict: 'sub_class' });
+    
+    if (error) alert(error.message); else alert("클래스 정보가 저장되었습니다.");
+  };
 
   return (
     <div className="space-y-10 text-left">
       <div className="grid grid-cols-2 gap-6">
-        <AdminInput label="Root Class (뿌리)" placeholder="ex) 마법사" />
-        <AdminInput label="Sub Class (전직)" placeholder="ex) 소서리스" />
+        <AdminInput label="Root Class (뿌리)" placeholder="ex) 마법사" value={form.root} onChange={(v:any)=>setForm({...form, root:v})} />
+        <AdminInput label="Sub Class (전직)" placeholder="ex) 소서리스" value={form.sub} onChange={(v:any)=>setForm({...form, sub:v})} />
       </div>
+      <AdminInput label="Job Engraving (직업 각인)" value={form.eng_job} onChange={(v:any)=>setForm({...form, eng_job:v})} />
 
       <div className="space-y-6">
         <div className="flex justify-between items-center">
@@ -225,7 +382,7 @@ const ClassContentEditor = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {commonEngravings.map((val, i) => (
-            <input key={i} className="bg-black border border-white/10 p-4 rounded-xl text-xs" placeholder={`각인 ${i+1}`} />
+            <input key={i} value={val} onChange={(e) => updateField(commonEngravings, setCommonEngravings, i, e.target.value)} className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold outline-none focus:border-purple-500" placeholder={`각인 ${i+1}`} />
           ))}
         </div>
       </div>
@@ -237,7 +394,7 @@ const ClassContentEditor = () => {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {arkPassive.map((val, i) => (
-            <input key={i} className="bg-black border border-white/10 p-4 rounded-xl text-xs" placeholder={`그리드 ${i+1}`} />
+            <input key={i} value={val} onChange={(e) => updateField(arkPassive, setArkPassive, i, e.target.value)} className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold outline-none focus:border-purple-500" placeholder={`그리드 ${i+1}`} />
           ))}
         </div>
       </div>
@@ -249,14 +406,14 @@ const ClassContentEditor = () => {
         </div>
         <div className="grid grid-cols-3 gap-4">
           {counters.map((val, i) => (
-            <input key={i} className="bg-black border border-white/10 p-4 rounded-xl text-xs" placeholder={`카운터 ${i+1}`} />
+            <input key={i} value={val} onChange={(e) => updateField(counters, setCounters, i, e.target.value)} className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold outline-none focus:border-purple-500" placeholder={`카운터 ${i+1}`} />
           ))}
         </div>
       </div>
 
-      <AdminInput label="Skill Code Link" placeholder="https://..." />
+      <AdminInput label="Skill Code Link" placeholder="https://..." value={form.link} onChange={(v:any)=>setForm({...form, link:v})} />
       
-      <button className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+      <button onClick={handleSave} className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20">
         <Save size={20} /> Update Class Metadata
       </button>
     </div>
@@ -265,51 +422,20 @@ const ClassContentEditor = () => {
 
 // --- 공통 컴포넌트: 관리자용 인풋 ---
 const AdminInput = ({ label, value, onChange, placeholder, type="text" }: any) => (
-  <div className="space-y-3">
+  <div className="space-y-3 text-left">
     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
     <input 
       type={type}
       placeholder={placeholder}
-      className="w-full bg-black border border-white/10 p-4 rounded-2xl outline-none focus:border-purple-500 font-bold text-sm"
+      className="w-full bg-black border border-white/10 p-4 rounded-2xl outline-none focus:border-purple-500 font-bold text-sm text-white"
       value={value}
       onChange={e => onChange && onChange(e.target.value)}
     />
   </div>
 );
 
-// --- 메인 콘텐츠 뷰어 (홈 화면에서 탭별로 보여지는 카드들) ---
-const MainContentViewer = ({ type }: { type: string }) => {
-  // 실제 서비스 시에는 Supabase contents 테이블에서 category별로 가져옵니다.
-  const dummyItems = [
-    { id: 1, name: '카제로스 레이드 - 에키드나', img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80' },
-    { id: 2, name: '베히모스', img: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80' },
-    { id: 3, name: '카멘', img: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&q=80' },
-  ];
 
-  return (
-    <section className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 py-10">
-      {dummyItems.map(item => (
-        <motion.div 
-          whileHover={{ y: -10 }}
-          key={item.id} 
-          className="group relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-black aspect-[4/5] cursor-pointer"
-        >
-          <img src={item.img} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
-          <div className="absolute bottom-10 left-10 right-10">
-            <span className="text-[10px] font-black text-purple-500 uppercase tracking-[0.3em] mb-2 block italic">{type}</span>
-            <h3 className="text-3xl font-black italic mb-6 uppercase tracking-tighter leading-none">{item.name}</h3>
-            <button className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest bg-white text-black px-8 py-4 rounded-full group-hover:bg-purple-600 group-hover:text-white transition-all">
-              View Details <ChevronRight size={14} />
-            </button>
-          </div>
-        </motion.div>
-      ))}
-    </section>
-  );
-};
-
-// --- 기존 캘린더 컴포넌트 (동일) ---
+// --- 기존 캘린더 컴포넌트 (동일 보존) ---
 const RaidCalendar = ({ user }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [raids, setRaids] = useState<any[]>([]);
@@ -410,7 +536,6 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
 };
 
 // --- 나머지 디자인 조각들 ---
-
 const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
   const navItems = [
     { id: 'home', label: '홈' }, 
@@ -533,12 +658,12 @@ const PostBoard = ({ posts }: any) => (
   <motion.div initial={{opacity:0}} animate={{opacity:1}} className="max-w-5xl mx-auto p-12">
     <div className="flex items-center justify-between mb-12">
       <h2 className="text-4xl font-black italic uppercase tracking-tighter underline decoration-purple-600/30 underline-offset-8">Bulletin Board</h2>
-      <button className="bg-purple-600 px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest">Write Post</button>
+      <button className="bg-purple-600 px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-purple-500 transition-colors">Write Post</button>
     </div>
     {posts.length === 0 ? <p className="text-gray-600 font-black italic uppercase text-center py-20 tracking-widest border border-dashed border-white/10 rounded-[3rem]">No Records Found in Database</p> : (
       <div className="grid gap-6">
-        {posts.map(post => (
-          <div key={post.id} className="p-8 bg-white/5 rounded-[2.5rem] border border-white/10 hover:border-purple-500/30 transition-all group cursor-pointer relative overflow-hidden">
+        {posts.map((post: any) => (
+          <div key={post.id} className="p-8 bg-white/5 rounded-[2.5rem] border border-white/10 hover:border-purple-500/30 transition-all group cursor-pointer relative overflow-hidden text-left">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-100 transition-all"><ChevronRight size={32}/></div>
             <span className="text-purple-500 text-[10px] font-black uppercase tracking-widest mb-2 block italic">{post.category || 'General'}</span>
             <h3 className="text-2xl font-black text-white group-hover:text-purple-400 transition-colors">{post.title}</h3>
@@ -566,6 +691,7 @@ const Auth = ({ mode, setMode }: any) => {
         if (error) throw error;
         await supabase.from('profiles').insert([{ id: data.user?.id, nickname, grade: '신입' }]);
         alert('회원가입 성공! 이메일을 확인하세요.');
+        setMode('login');
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -581,14 +707,16 @@ const Auth = ({ mode, setMode }: any) => {
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-600 to-transparent"></div>
         <h2 className="text-5xl font-black italic mb-2 tracking-tighter uppercase">{mode === 'login' ? 'Sign In' : 'Join Us'}</h2>
         <p className="text-gray-600 text-[10px] font-black tracking-[0.4em] mb-12 uppercase italic">Authentication Required</p>
-        <form onSubmit={handleAuth} className="space-y-5">
-          <input type="email" placeholder="E-MAIL" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black" value={email} onChange={e => setEmail(e.target.value)} required />
-          <input type="password" placeholder="PASSWORD" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black" value={password} onChange={e => setPassword(e.target.value)} required />
-          {mode === 'signup' && <input type="text" placeholder="NICKNAME" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black" value={nickname} onChange={e => setNickname(e.target.value)} required />}
-          <button type="submit" className="w-full bg-purple-600 p-6 rounded-3xl font-black tracking-[0.3em] hover:bg-purple-700 transition-all shadow-xl shadow-purple-600/30 uppercase mt-6 active:scale-95">Proceed</button>
+        <form onSubmit={handleAuth} className="space-y-5 text-left">
+          <input type="email" placeholder="E-MAIL" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white" value={email} onChange={e => setEmail(e.target.value)} required />
+          <input type="password" placeholder="PASSWORD" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white" value={password} onChange={e => setPassword(e.target.value)} required />
+          {mode === 'signup' && (
+            <input type="text" placeholder="NICKNAME" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white" value={nickname} onChange={e => setNickname(e.target.value)} required />
+          )}
+          <button type="submit" className="w-full bg-purple-600 p-6 rounded-3xl font-black uppercase tracking-[0.3em] mt-6 hover:bg-purple-500 transition-colors shadow-lg shadow-purple-600/20 active:scale-95">Proceed</button>
         </form>
-        <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="w-full text-[10px] font-black text-gray-600 mt-10 hover:text-white tracking-widest uppercase transition-all">
-          {mode === 'login' ? "Create a new account" : "Back to sign in"}
+        <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="mt-8 text-[10px] font-black text-gray-600 hover:text-white uppercase transition-all">
+          Switch to {mode === 'login' ? 'signup' : 'login'}
         </button>
       </div>
     </div>
