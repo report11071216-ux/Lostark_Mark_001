@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Home, FileText, Calendar as CalendarIcon, 
   UserPlus, Shield, Plus, X, Clock, Users,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Trash2
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
-// --- 1. Supabase 설정 (환경변수 유지) ---
+// --- 1. Supabase 설정 ---
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -109,7 +109,7 @@ const RaidCalendar = ({ user }: any) => {
   }, [currentDate]);
 
   const fetchData = async () => {
-    const { data: rData } = await supabase.from('raid_schedules').select('*');
+    const { data: rData } = await supabase.from('raid_schedules').select('*').order('created_at', { ascending: true });
     const { data: pData } = await supabase.from('raid_participants').select('*');
     if (rData) setRaids(rData);
     if (pData) setParticipants(pData);
@@ -171,40 +171,19 @@ const RaidCalendar = ({ user }: any) => {
   );
 };
 
-// --- [수정 완료] 레이드 생성 모달 (시간 텍스트화 및 성공 알림) ---
 const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
   const [form, setForm] = useState({ raid_name: '', difficulty: '노말', raid_time: '오후 8:00' });
-  
   const save = async () => {
-    if(!form.raid_name) {
-      alert("레이드 이름을 입력해주세요.");
-      return;
-    }
-    
-    const { error } = await supabase.from('raid_schedules').insert([
-      { 
-        raid_name: form.raid_name, 
-        difficulty: form.difficulty, 
-        raid_time: form.raid_time, 
-        raid_date: date, 
-        max_participants: 8 
-      }
-    ]);
-
-    if (error) {
-      alert("생성 실패: " + error.message);
-    } else {
-      alert("레이드가 성공적으로 생성되었습니다!");
-      onRefresh();
-      onClose();
-    }
+    if(!form.raid_name) return alert("레이드 이름을 입력해주세요.");
+    const { error } = await supabase.from('raid_schedules').insert([{ ...form, raid_date: date, max_participants: 8 }]);
+    if (error) alert("생성 실패: " + error.message);
+    else { alert("레이드가 성공적으로 생성되었습니다!"); onRefresh(); onClose(); }
   };
-
   return (
-    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-6 text-left">
       <div className="bg-[#111] border border-white/10 p-10 rounded-[3rem] w-full max-w-sm shadow-2xl relative">
         <h3 className="text-2xl font-black text-purple-500 italic mb-8 tracking-tighter uppercase underline decoration-purple-600/30 underline-offset-8">New Raid // {date}</h3>
-        <div className="space-y-4 text-left">
+        <div className="space-y-4">
           <div className="space-y-1">
             <label className="text-[10px] font-black text-gray-500 ml-1 uppercase">Raid Name</label>
             <input placeholder="예: 카멘 3관" className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm outline-none focus:border-purple-500" value={form.raid_name} onChange={e => setForm({...form, raid_name: e.target.value})} />
@@ -213,15 +192,12 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-500 ml-1 uppercase">Difficulty</label>
               <select className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm outline-none" onChange={e => setForm({...form, difficulty: e.target.value})}>
-                <option value="노말">노말</option>
-                <option value="하드">하드</option>
-                <option value="나이트메어">나이트메어</option>
+                <option value="노말">노말</option><option value="하드">하드</option><option value="나이트메어">나이트메어</option>
               </select>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-500 ml-1 uppercase">Time</label>
-              {/* 시간을 텍스트로 입력받습니다 */}
-              <input type="text" placeholder="오후 8:00" className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm outline-none focus:border-purple-500 text-white font-bold" value={form.raid_time} onChange={e => setForm({...form, raid_time: e.target.value})} />
+              <input type="text" className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm outline-none focus:border-purple-500 text-white font-bold" value={form.raid_time} onChange={e => setForm({...form, raid_time: e.target.value})} />
             </div>
           </div>
           <button onClick={save} className="w-full bg-purple-600 p-5 rounded-2xl font-black tracking-widest hover:bg-purple-500 transition-all mt-4 shadow-lg shadow-purple-600/20 active:scale-95 uppercase">Confirm Raid</button>
@@ -232,7 +208,7 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
   );
 };
 
-// --- [수정 완료] Auth 컴포넌트 (로그인 성공 메시지 추가) ---
+// --- [수정 완료] Auth 컴포넌트: 로그인 성공 시 홈 이동 추가 ---
 const Auth = ({ mode, setMode }: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -250,6 +226,7 @@ const Auth = ({ mode, setMode }: any) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         alert('로그인 성공! 환영합니다.');
+        setMode('home'); // 로그인 성공 시 홈 탭으로 이동
       }
     } catch (err: any) { alert(err.message); }
   };
@@ -276,95 +253,40 @@ const Auth = ({ mode, setMode }: any) => {
   );
 };
 
-// --- 나머지 컴포넌트 (원래 디자인 보존) ---
-
-const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
-  const navItems = [
-    { id: 'home', label: '홈', icon: Home },
-    { id: 'posts', label: '게시판', icon: FileText },
-    ...(user ? [] : [
-      { id: 'login', label: '로그인', icon: Users },
-      { id: 'signup', label: '회원가입', icon: UserPlus },
-    ]),
-  ];
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('home')}>
-          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-purple-600/20">
-            <Shield className="text-white w-5 h-5" />
-          </div>
-          <span className="text-xl font-black tracking-tighter uppercase font-mono">INXX</span>
-        </div>
-        <div className="flex gap-6">
-          {navItems.map((item) => (
-            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`text-xs font-black tracking-widest transition-colors ${activeTab === item.id ? 'text-purple-400' : 'text-gray-500 hover:text-white'}`}>
-              {item.label}
-            </button>
-          ))}
-          {user && <button onClick={onLogout} className="text-xs font-black text-gray-500 hover:text-red-400 uppercase tracking-widest">Logout</button>}
-        </div>
-      </div>
-    </nav>
-  );
-};
-
-const Hero = ({ settings }: any) => (
-  <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-b from-purple-900/20 to-transparent z-0"></div>
-    <div className="relative z-10 text-center px-4">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
-        <span className="inline-block px-4 py-1 rounded-full bg-purple-500/10 text-purple-400 text-[10px] font-black mb-4 border border-purple-500/20 tracking-widest uppercase italic">
-          Lost Ark Guild System
-        </span>
-        <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-500 font-mono">
-          {settings?.guild_name}
-        </h1>
-        <p className="text-gray-500 text-lg max-w-2xl mx-auto leading-relaxed font-bold italic uppercase tracking-tight">
-          {settings?.guild_description}
-        </p>
-      </motion.div>
-    </div>
-  </section>
-);
-
-const RaidItem = ({ raid, parts, onRefresh }: any) => {
-  const [showJoin, setShowJoin] = useState(false);
-  return (
-    <>
-      <div onClick={() => setShowJoin(true)} className="bg-purple-900/10 border border-purple-500/20 p-2.5 rounded-xl cursor-pointer hover:border-purple-500/50 transition-all shadow-lg">
-        <div className="flex justify-between text-[8px] font-black text-purple-400 uppercase mb-1 tracking-tighter">
-          <span className="bg-purple-600/20 px-1 rounded">{raid.difficulty}</span>
-          <span>{parts.length}/8</span>
-        </div>
-        <div className="text-[10px] font-bold truncate text-gray-200">{raid.raid_name}</div>
-        <div className="text-[9px] text-gray-500 mt-1 flex items-center gap-1 font-bold italic"><Clock size={9}/> {raid.raid_time}</div>
-      </div>
-      {showJoin && <JoinModal raid={raid} parts={parts} onRefresh={onRefresh} onClose={() => setShowJoin(false)} />}
-    </>
-  );
-};
-
+// --- [수정 완료] JoinModal: 일정 삭제 기능 추가 ---
 const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
   const [f, setF] = useState({ character_name: '', position: '딜러', item_level: '', class_name: '' });
+  
   const join = async () => {
     if(!f.character_name) return alert("캐릭터명을 입력해주세요.");
     const { error } = await supabase.from('raid_participants').insert([{ schedule_id: raid.id, ...f }]);
     if (!error) { onRefresh(); onClose(); }
     else { alert("신청 실패: 로그인이 필요할 수 있습니다."); }
   };
+
+  const deleteRaid = async () => {
+    if (window.confirm("이 레이드 일정을 삭제하시겠습니까?")) {
+      const { error } = await supabase.from('raid_schedules').delete().eq('id', raid.id);
+      if (!error) { alert("삭제되었습니다."); onRefresh(); onClose(); }
+      else { alert("삭제 실패: " + error.message); }
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left">
       <div className="bg-[#111] border border-white/10 p-10 rounded-[3rem] w-full max-w-2xl shadow-2xl relative">
-        <div className="flex justify-between items-center mb-10">
+        <div className="flex justify-between items-start mb-10">
           <div>
             <h3 className="text-3xl font-black text-purple-500 italic tracking-tighter uppercase">{raid.raid_name}</h3>
             <p className="text-gray-500 text-[10px] font-black tracking-widest uppercase mt-1">{raid.difficulty} // {raid.raid_time}</p>
           </div>
-          <button onClick={onClose} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-all"><X size={24}/></button>
+          <div className="flex gap-2">
+            <button onClick={deleteRaid} className="p-2 bg-red-500/10 text-red-500 rounded-full hover:bg-red-500 hover:text-white transition-all"><Trash2 size={20}/></button>
+            <button onClick={onClose} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-all text-white"><X size={24}/></button>
+          </div>
         </div>
         <div className="grid md:grid-cols-2 gap-10">
-          <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar text-left">
+          <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
             <h4 className="text-[10px] font-black text-gray-500 tracking-widest mb-4 uppercase italic">Participants ({parts.length}/8)</h4>
             {parts.map((p: any) => (
               <div key={p.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 flex justify-between items-center">
@@ -373,7 +295,7 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
               </div>
             ))}
           </div>
-          <div className="space-y-4 text-left">
+          <div className="space-y-4">
             <h4 className="text-[10px] font-black text-gray-500 tracking-widest mb-4 uppercase italic">Join Expedition</h4>
             <input placeholder="캐릭터명" className="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs outline-none focus:border-purple-500 font-bold" onChange={e => setF({...f, character_name: e.target.value})} />
             <select className="w-full bg-black border border-white/10 p-4 rounded-2xl text-xs outline-none font-bold text-gray-400" onChange={e => setF({...f, position: e.target.value})}>
@@ -386,5 +308,56 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
         </div>
       </div>
     </div>
+  );
+};
+
+// --- 기타 디자인 컴포넌트 (동일) ---
+const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
+  const navItems = [{ id: 'home', label: '홈' }, { id: 'posts', label: '게시판' }, ...(user ? [] : [{ id: 'login', label: '로그인' }, { id: 'signup', label: '회원가입' }])];
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('home')}>
+          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center"><Shield className="text-white w-5 h-5" /></div>
+          <span className="text-xl font-black tracking-tighter uppercase font-mono">INXX</span>
+        </div>
+        <div className="flex gap-6">
+          {navItems.map((item) => (
+            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`text-xs font-black tracking-widest transition-colors ${activeTab === item.id ? 'text-purple-400' : 'text-gray-500 hover:text-white'}`}>{item.label}</button>
+          ))}
+          {user && <button onClick={onLogout} className="text-xs font-black text-gray-500 hover:text-red-400 uppercase tracking-widest">Logout</button>}
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+const Hero = ({ settings }: any) => (
+  <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-b from-purple-900/20 to-transparent"></div>
+    <div className="relative z-10 text-center px-4">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
+        <span className="inline-block px-4 py-1 rounded-full bg-purple-500/10 text-purple-400 text-[10px] font-black mb-4 border border-purple-500/20 tracking-widest uppercase italic">Lost Ark Guild System</span>
+        <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-500 font-mono">{settings?.guild_name}</h1>
+        <p className="text-gray-500 text-lg max-w-2xl mx-auto font-bold italic uppercase tracking-tight">{settings?.guild_description}</p>
+      </motion.div>
+    </div>
+  </section>
+);
+
+const RaidItem = ({ raid, parts, onRefresh }: any) => {
+  const [showJoin, setShowJoin] = useState(false);
+  return (
+    <>
+      <div onClick={() => setShowJoin(true)} className="bg-purple-900/10 border border-purple-500/20 p-2.5 rounded-xl cursor-pointer hover:border-purple-500/50 transition-all shadow-lg text-left">
+        <div className="flex justify-between text-[8px] font-black text-purple-400 uppercase mb-1 tracking-tighter">
+          <span className="bg-purple-600/20 px-1 rounded">{raid.difficulty}</span>
+          <span>{parts.length}/8</span>
+        </div>
+        <div className="text-[10px] font-bold truncate text-gray-200">{raid.raid_name}</div>
+        <div className="text-[9px] text-gray-500 mt-1 flex items-center gap-1 font-bold italic"><Clock size={9}/> {raid.raid_time}</div>
+      </div>
+      {showJoin && <JoinModal raid={raid} parts={parts} onRefresh={onRefresh} onClose={() => setShowJoin(false)} />}
+    </>
   );
 };
