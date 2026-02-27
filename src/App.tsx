@@ -393,7 +393,11 @@ available_difficulties: ["노말","하드","나이트메어"],
   available_difficulties:
     item.available_difficulties ?? ["노말","하드","나이트메어"]
 }));
-
+setMaxGate(item.max_gate ?? 4);
+  setAvailableDifficulties(
+    item.available_difficulties ?? ["노말","하드","나이트메어"]
+  );
+};
     const { data } = await supabase
       .from('content_details')
       .select('*')
@@ -437,6 +441,8 @@ available_difficulties: ["노말","하드","나이트메어"],
           name: form.name,
           category: isRaid ? '레이드' : '가디언 토벌',
           image_url: form.image_url
+          max_gate: maxGate,
+available_difficulties: availableDifficulties,
         },
         { onConflict: 'id' }
       )
