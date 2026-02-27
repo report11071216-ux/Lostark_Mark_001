@@ -1010,8 +1010,54 @@ const Auth = ({ mode, setMode }: any) => {
 };
 
 const MyRoom = ({ user, profile }: any) => {
-  if (!user || !profile) return null;
+ const [rankIcon, setRankIcon] = React.useState<string | null>(null);
 
+useEffect(() => {
+  const fetchRankIcon = async () => {
+    if (!profile?.rank_name) return;
+
+    const { data, error } = await supabase
+      .from('ranks')
+      .select('icon_url')
+      .eq('name', profile.rank_name)
+      .single();
+
+    if (!error && data?.icon_url) {
+      setRankIcon(data.icon_url);
+    }
+  };
+
+  fetchRankIcon();
+}, [profile]);
+  if (!user || !profile) return null;
+const handleAttendance = async () => {
+  const today = new Date().toISOString().split('T')[0];
+
+  if (profile.last_attendance === today) {
+    alert("오늘은 이미 출석했습니다 ✅");
+    return;
+  }
+
+  const { error } = await supabase.rpc('add_points', {
+    p_user_id: user.id,
+    p_points: 10,
+    p_type: 'attendance'
+  });
+
+  if (error) {
+    alert("출석 실패: " + error.message);
+    return;
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ last_attendance: today })
+    .eq('id', user.id);
+
+  alert("출석 완료! +10 포인트 🎉");
+
+  window.location.reload(); // 간단하게 새로고침
+};
   return (
     <div className="max-w-4xl mx-auto py-24 px-6 text-center">
       <h2 className="text-4xl font-black italic mb-10 uppercase tracking-tight">
@@ -1034,9 +1080,18 @@ const MyRoom = ({ user, profile }: any) => {
 
         <div>
           <div className="text-gray-500 text-xs uppercase mb-2">현재 등급</div>
-          <div className="text-xl font-black text-yellow-400">
-            {profile.rank_name || "Seed"}
-          </div>
+        <div className="flex flex-col items-center gap-3">
+  {rankIcon && (
+    <img
+      src={rankIcon}
+      alt="rank icon"
+      className="w-20 h-20 object-contain"
+    />
+  )}
+  <div className="text-xl font-black text-yellow-400">
+    {profile.rank_name || "Seed"}
+  </div>
+</div>
         </div>
 
       </div>
