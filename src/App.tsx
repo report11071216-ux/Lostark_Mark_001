@@ -1002,3 +1002,280 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
     </div>
   );
 };
+
+const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
+const navItems = [
+  { id: 'home', label: '홈' }, 
+  { id: 'posts', label: '게시판' },
+  { id: 'ranking', label: '랭킹' },
+  ...(user ? [{ id: 'myroom', label: '마이룸' }] : []),
+  ...(profile?.role === 'admin' ? [{ id: 'admin', label: '관리자' }] : []),
+  ...(user ? [] : [{ id: 'login', label: '로그인' }, { id: 'signup', label: '회원가입' }])
+];
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
+          <div className="w-9 h-9 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-600/30"><Shield className="text-white w-5 h-5" /></div>
+          <span className="text-2xl font-black tracking-tighter uppercase font-mono italic">INXX</span>
+        </div>
+        <div className="flex gap-8">
+          {navItems.map((item) => (
+            <button key={item.id} onClick={() => setActiveTab(item.id)} className={`text-xs font-black tracking-[0.2em] transition-all uppercase ${activeTab === item.id ? 'text-purple-400' : 'text-gray-500 hover:text-white'}`}>{item.label}</button>
+          ))}
+          {user && <button onClick={onLogout} className="text-xs font-black text-gray-500 hover:text-red-400 uppercase tracking-widest transition-colors ml-4">Logout</button>}
+        </div>
+      </div>
+    </nav>
+  );
+};
+
+const Hero = ({ settings }: any) => (
+  <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-b from-purple-900/10 to-transparent"></div>
+    <div className="relative z-10 text-center px-4">
+      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }}>
+        <span className="inline-block px-5 py-2 rounded-full bg-purple-500/5 text-purple-400 text-[10px] font-black mb-6 border border-purple-500/10 tracking-[0.4em] uppercase italic">Lost Ark Guild System v2.0</span>
+        <h1 className="text-7xl md:text-9xl font-black mb-8 tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-b from-white to-white/20 font-mono leading-none">{settings?.guild_name}</h1>
+        <p className="text-gray-500 text-xl max-w-2xl mx-auto font-bold italic uppercase tracking-tight opacity-70 leading-relaxed whitespace-pre-line">{settings?.guild_description}</p>
+      </motion.div>
+    </div>
+    <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0a0a0a] to-transparent"></div>
+  </section>
+);
+
+const Auth = ({ mode, setMode }: any) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [nickname, setNickname] = useState('');
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (mode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { nickname } } });
+        if (error) throw error;
+        await supabase.from('profiles').insert([{ id: data.user?.id, nickname, grade: '신입' }]);
+        alert('회원가입 성공! 이메일을 확인하세요.');
+        setMode('login');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        setMode('home');
+      }
+    } catch (err: any) { alert(err.message); }
+  };
+
+  return (
+    <div className="max-w-md mx-auto py-32 px-4">
+      <div className="p-12 rounded-[4rem] border border-white/10 bg-[#0f0f0f] shadow-2xl relative overflow-hidden text-center">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-600 to-transparent"></div>
+        <h2 className="text-5xl font-black italic mb-2 tracking-tighter uppercase">{mode === 'login' ? 'Sign In' : 'Join Us'}</h2>
+        <p className="text-gray-600 text-[10px] font-black tracking-[0.4em] mb-12 uppercase italic">Authentication Required</p>
+        <form onSubmit={handleAuth} className="space-y-5 text-left">
+          <input type="email" placeholder="E-MAIL" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white" value={email} onChange={e => setEmail(e.target.value)} required />
+          <input type="password" placeholder="PASSWORD" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white" value={password} onChange={e => setPassword(e.target.value)} required />
+          {mode === 'signup' && (
+            <input type="text" placeholder="NICKNAME" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white" value={nickname} onChange={e => setNickname(e.target.value)} required />
+          )}
+          <button type="submit" className="w-full bg-purple-600 p-6 rounded-3xl font-black uppercase tracking-[0.3em] mt-6 hover:bg-purple-500 transition-colors shadow-lg shadow-purple-600/20 active:scale-95 text-white">Proceed</button>
+        </form>
+        <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="mt-8 text-[10px] font-black text-gray-600 hover:text-white uppercase transition-all">Switch to {mode === 'login' ? 'signup' : 'login'}</button>
+      </div>
+    </div>
+  );
+};
+
+const MyRoom = ({ user, profile }: any) => {
+ const [rankIcon, setRankIcon] = React.useState<string | null>(null);
+
+useEffect(() => {
+  const fetchRankIcon = async () => {
+    if (!profile?.rank_name) return;
+
+    const { data, error } = await supabase
+      .from('ranks')
+      .select('icon_url')
+      .eq('name', profile.rank_name)
+      .maybeSingle();
+
+    if (!error && data?.icon_url) {
+      setRankIcon(data.icon_url);
+    }
+  };
+
+  fetchRankIcon();
+}, [profile]);
+  if (!user || !profile) return null;
+const handleAttendance = async () => {
+  const today = new Date().toISOString().split('T')[0];
+
+  if (profile.last_attendance === today) {
+    alert("오늘은 이미 출석했습니다 ✅");
+    return;
+  }
+
+  const { error } = await supabase.rpc('add_points', {
+    p_user_id: user.id,
+    p_points: 10,
+    p_type: 'attendance'
+  });
+
+  if (error) {
+    alert("출석 실패: " + error.message);
+    return;
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ last_attendance: today })
+    .eq('id', user.id);
+
+  alert("출석 완료! +10 포인트 🎉");
+
+  window.location.reload(); // 간단하게 새로고침
+};
+  return (
+    <div className="max-w-4xl mx-auto py-24 px-6 text-center">
+      <h2 className="text-4xl font-black italic mb-10 uppercase tracking-tight">
+        My Room
+      </h2>
+
+      <div className="bg-white/5 border border-white/10 rounded-3xl p-12 space-y-6">
+        
+        <div>
+          <div className="text-gray-500 text-xs uppercase mb-2">닉네임</div>
+          <div className="text-2xl font-black">{profile.nickname}</div>
+        </div>
+
+        <div>
+          <div className="text-gray-500 text-xs uppercase mb-2">현재 포인트</div>
+          <div className="text-3xl font-black text-purple-400">
+            {profile.points || 0} P
+          </div>
+        </div>
+
+        <div>
+          <div className="text-gray-500 text-xs uppercase mb-2">현재 등급</div>
+        <div className="flex flex-col items-center gap-3">
+  {rankIcon && (
+    <img
+      src={rankIcon}
+      alt="rank icon"
+      className="w-20 h-20 object-contain"
+    />
+  )}
+  <div className="text-xl font-black text-yellow-400">
+    {profile.rank_name || "Seed"}
+  </div>
+</div>
+        </div>
+<button
+    onClick={handleAttendance}
+    className="w-full bg-purple-600 p-4 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all mt-6"
+  >
+    출석 체크 (+10P)
+  </button>
+      </div>
+    </div>
+  );
+};
+const RankingPage = ({ user, profile }: any) => {
+  const [users, setUsers] = React.useState<any[]>([]);
+  const [myRank, setMyRank] = React.useState<number | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetchRanking();
+  }, []);
+
+  const fetchRanking = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, nickname, points, rank_name')
+      .order('points', { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setLoading(false);
+      return;
+    }
+
+    if (data) {
+      setUsers(data);
+
+      if (user) {
+        const index = data.findIndex((u: any) => u.id === user.id);
+        if (index !== -1) {
+          setMyRank(index + 1);
+        }
+      }
+    }
+
+    setLoading(false);
+  };
+
+  const getMedal = (index: number) => {
+    if (index === 0) return "🥇";
+    if (index === 1) return "🥈";
+    if (index === 2) return "🥉";
+    return `#${index + 1}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto py-32 text-center">
+        <div className="text-gray-500 font-black">LOADING RANKING...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto py-24 px-6 text-left">
+      <h2 className="text-4xl font-black italic mb-12 uppercase tracking-tight">
+        Guild Ranking
+      </h2>
+
+      <div className="space-y-4">
+        {users.slice(0, 10).map((u, i) => (
+          <div
+            key={u.id}
+            className={`flex justify-between items-center p-6 rounded-2xl border transition-all
+              ${user?.id === u.id
+                ? "bg-purple-600/10 border-purple-500"
+                : "bg-white/5 border-white/10"}`}
+          >
+            <div className="flex items-center gap-6">
+              <div className="text-2xl font-black w-12 text-center">
+                {getMedal(i)}
+              </div>
+
+              <div>
+                <div className="text-lg font-black">
+                  {u.nickname}
+                </div>
+                <div className="text-xs text-gray-500 uppercase">
+                  {u.rank_name || "Seed"}
+                </div>
+              </div>
+            </div>
+
+            <div className="text-xl font-black text-purple-400">
+              {u.points || 0} P
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {user && myRank && (
+        <div className="mt-12 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl">
+          <div className="text-sm text-gray-400 mb-2 uppercase">
+            My Rank
+          </div>
+          <div className="text-3xl font-black text-yellow-400">
+            #{myRank}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
