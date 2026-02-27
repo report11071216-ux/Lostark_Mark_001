@@ -311,7 +311,7 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
 // --- [관리자] 레이드 & 가디언 리스트 기반 에디터 ---
 const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const [list, setList] = useState<any[]>([]);
-  const [selectedGate, setSelectedGate] = useState(1);
+  const [selectedGate, setSelectedGate] = useState("1");
   const [difficulty, setDifficulty] = useState('노말');
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -413,7 +413,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
         {
           content_id: data.id,
           difficulty: isRaid ? difficulty : null,
-          gate_num: isRaid ? selectedGate : 0,
+          gate_num: isRaid ? Number(selectedGate) : 0,
           hp: form.hp,
           element_type: form.element,
           attribute: form.attribute,
@@ -490,11 +490,10 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
         {isRaid && (
           <div className="grid grid-cols-2 gap-4">
-            <select
-              className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
-              value={selectedGate}
-              onChange={e=>setSelectedGate(Number(e.target.value))}
-            >
+           <select
+  value={selectedGate}
+  onChange={e=>setSelectedGate(e.target.value)}
+>
               <select
   className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
   value={selectedGate}
