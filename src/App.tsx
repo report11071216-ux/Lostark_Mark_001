@@ -311,7 +311,7 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
 // --- [관리자] 레이드 & 가디언 리스트 기반 에디터 ---
 const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const [list, setList] = useState<any[]>([]);
-  const [selectedGate, setSelectedGate] = useState("1");
+  const [selectedGate, setSelectedGate] = useState(1);
   const [difficulty, setDifficulty] = useState('노말');
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -494,17 +494,22 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   value={selectedGate}
   onChange={e=>setSelectedGate(e.target.value)}
 >
-              <select
-  className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
-  value={selectedGate}
-  onChange={e=>setSelectedGate(Number(e.target.value))}
->
-  {[1,2,3,4].map(g=>(
-    <option key={g} value={g}>
+      <div className="flex gap-2">
+  {[1,2,3,4].map(g => (
+    <button
+      key={g}
+      type="button"
+      onClick={() => setSelectedGate(g)}
+      className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+        selectedGate === g
+          ? "bg-purple-600 text-white"
+          : "bg-black border border-white/10 text-gray-400"
+      }`}
+    >
       {g}관문
-    </option>
+    </button>
   ))}
-</select>
+</div>
             </select>
 
             <select
