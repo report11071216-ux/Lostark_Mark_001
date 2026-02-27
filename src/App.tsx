@@ -309,6 +309,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const [list, setList] = useState<any[]>([]);
   const [selectedGate, setSelectedGate] = useState(1);
   const [difficulty, setDifficulty] = useState('노말');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -316,10 +317,11 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     hp: '',
     element: '',
     attribute: '',
-    d_card: '',
-    s_card: '',
     gold: 0
   });
+
+  const elementOptions = ['악마형', '야수형', '인간형', '정령형', '기계형', '고대', '불사', '신'];
+  const attributeOptions = ['화속성', '수속성', '암속성', '빛속성', '토속성'];
 
   useEffect(() => { fetchList(); }, [isRaid]);
 
@@ -329,7 +331,49 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       .select('*')
       .eq('category', isRaid ? '레이드' : '가디언 토벌')
       .order('name');
+
     if (data) setList(data);
+  };
+
+  // 🔥 리스트 클릭 시 기존 데이터 불러오기
+  const loadItem = async (item: any) => {
+    setEditingId(item.id);
+    setForm(prev => ({
+      ...prev,
+      name: item.name,
+      image_url: item.image_url || ''
+    }));
+
+    const { data } = await supabase
+      .from('content_details')
+      .select('*')
+      .eq('content_id', item.id)
+      .eq('difficulty', isRaid ? difficulty : null)
+      .eq('gate_num', isRaid ? selectedGate : 0)
+      .maybeSingle();
+
+    if (data) {
+      setForm({
+        name: item.name,
+        image_url: item.image_url || '',
+        hp: data.hp || '',
+        element: data.element_type || '',
+        attribute: data.attribute || '',
+        gold: data.clear_gold || 0
+      });
+    }
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setForm({
+      name: '',
+      image_url: '',
+      hp: '',
+      element: '',
+      attribute: '',
+      gold: 0
+    });
   };
 
   const handleSave = async () => {
@@ -339,11 +383,12 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       .from('contents')
       .upsert(
         {
+          id: editingId || undefined,
           name: form.name,
           category: isRaid ? '레이드' : '가디언 토벌',
           image_url: form.image_url
         },
-        { onConflict: 'name' }
+        { onConflict: 'id' }
       )
       .select()
       .single();
@@ -360,30 +405,28 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
           hp: form.hp,
           element_type: form.element,
           attribute: form.attribute,
-          dealer_cards: form.d_card,
-          support_cards: form.s_card,
           clear_gold: form.gold
         },
         { onConflict: 'content_id, difficulty, gate_num' }
       );
 
     if (!dErr) {
-      alert("저장 성공!");
+      alert(editingId ? "수정 완료!" : "등록 완료!");
       fetchList();
+      resetForm();
     } else {
       alert(dErr.message);
     }
   };
 
   const deleteItem = async (id: string, name: string) => {
-    if (!confirm(`[${name}]을(를) 정말 삭제하시겠습니까?`)) return;
-
+    if (!confirm(`[${name}]을(를) 삭제하시겠습니까?`)) return;
     await supabase.from('content_details').delete().eq('content_id', id);
     const { error } = await supabase.from('contents').delete().eq('id', id);
-
     if (!error) {
       alert("삭제 완료");
       fetchList();
+      resetForm();
     }
   };
 
@@ -397,16 +440,18 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
           {list.map(item => (
             <div
               key={item.id}
-              className="flex items-center justify-between bg-black/40 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-all"
+              onClick={() => loadItem(item)}
+              className={`flex items-center justify-between bg-black/40 p-4 rounded-xl border cursor-pointer transition-all
+                ${editingId === item.id ? 'border-purple-500' : 'border-white/5 hover:border-white/20'}`}
             >
               <span className="text-sm font-bold text-gray-300">
                 {item.name}
               </span>
               <button
-                onClick={() => deleteItem(item.id, item.name)}
-                className="text-gray-600 hover:text-red-500 transition-colors"
+                onClick={(e) => { e.stopPropagation(); deleteItem(item.id, item.name); }}
+                className="text-gray-600 hover:text-red-500"
               >
-                <Trash2 size={16} />
+                <Trash2 size={16}/>
               </button>
             </div>
           ))}
@@ -414,15 +459,21 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       </div>
 
       <div className="space-y-6">
+        {editingId && (
+          <div className="text-xs font-black text-yellow-400 uppercase tracking-widest">
+            🔧 수정 모드
+          </div>
+        )}
+
         <AdminInput
           label="Content Name"
           value={form.name}
-          onChange={(v: any) => setForm({ ...form, name: v })}
+          onChange={(v:any)=>setForm({...form, name:v})}
         />
 
         <ImageUploader
           label="Image"
-          onUpload={(url) => setForm({ ...form, image_url: url })}
+          onUpload={(url)=>setForm({...form, image_url:url})}
         />
 
         {isRaid && (
@@ -430,59 +481,64 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
             <select
               className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
               value={selectedGate}
-              onChange={e => setSelectedGate(Number(e.target.value))}
+              onChange={e=>setSelectedGate(Number(e.target.value))}
             >
-              {[1, 2, 3, 4].map(g => (
-                <option key={g} value={g}>{g}관문</option>
-              ))}
+              {[1,2,3,4].map(g=><option key={g}>{g}관문</option>)}
             </select>
 
             <select
               className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
               value={difficulty}
-              onChange={e => setDifficulty(e.target.value)}
+              onChange={e=>setDifficulty(e.target.value)}
             >
-              {['노말', '하드', '나이트메어'].map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
+              {['노말','하드','나이트메어'].map(d=><option key={d}>{d}</option>)}
             </select>
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-4">
-          <AdminInput
-            label="HP"
-            value={form.hp}
-            onChange={(v: any) => setForm({ ...form, hp: v })}
-          />
-          <AdminInput
-            label="Gold"
-            type="number"
-            value={form.gold}
-            onChange={(v: any) => setForm({ ...form, gold: v })}
-          />
+          <AdminInput label="HP" value={form.hp} onChange={(v:any)=>setForm({...form, hp:v})} />
+          <AdminInput label="Gold" type="number" value={form.gold} onChange={(v:any)=>setForm({...form, gold:v})} />
         </div>
 
-        {/* 🔥 여기 새로 추가됨 */}
+        {/* 🔥 드롭다운화 */}
         <div className="grid grid-cols-2 gap-4">
-          <AdminInput
-            label="계열"
+          <select
+            className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
             value={form.element}
-            onChange={(v: any) => setForm({ ...form, element: v })}
-          />
-          <AdminInput
-            label="속성"
+            onChange={e=>setForm({...form, element:e.target.value})}
+          >
+            <option value="">계열 선택</option>
+            {elementOptions.map(e=><option key={e}>{e}</option>)}
+          </select>
+
+          <select
+            className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
             value={form.attribute}
-            onChange={(v: any) => setForm({ ...form, attribute: v })}
-          />
+            onChange={e=>setForm({...form, attribute:e.target.value})}
+          >
+            <option value="">속성 선택</option>
+            {attributeOptions.map(a=><option key={a}>{a}</option>)}
+          </select>
         </div>
 
-        <button
-          onClick={handleSave}
-          className="w-full bg-purple-600 p-4 rounded-xl font-black uppercase hover:bg-purple-500 transition-all"
-        >
-          Save / Update
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={handleSave}
+            className="flex-1 bg-purple-600 p-4 rounded-xl font-black uppercase hover:bg-purple-500 transition-all"
+          >
+            {editingId ? "Update Content" : "Register Content"}
+          </button>
+
+          {editingId && (
+            <button
+              onClick={resetForm}
+              className="bg-gray-700 px-4 rounded-xl font-black uppercase"
+            >
+              Cancel
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
