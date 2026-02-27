@@ -1093,7 +1093,12 @@ const handleAttendance = async () => {
   </div>
 </div>
         </div>
-
+<button
+    onClick={handleAttendance}
+    className="w-full bg-purple-600 p-4 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all mt-6"
+  >
+    출석 체크 (+10P)
+  </button>
       </div>
     </div>
   );
