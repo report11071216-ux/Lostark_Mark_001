@@ -328,6 +328,14 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const attributeOptions = ['화속성', '수속성', '암속성', '빛속성', '토속성'];
 
   useEffect(() => { fetchList(); }, [isRaid]);
+  useEffect(() => {
+  if (editingId) {
+    const item = list.find(l => l.id === editingId);
+    if (item) {
+      loadItem(item);
+    }
+  }
+}, [selectedGate, difficulty]);
 
   const fetchList = async () => {
     const { data } = await supabase
