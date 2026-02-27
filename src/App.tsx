@@ -4,8 +4,7 @@ import {
   Home, FileText, Calendar as CalendarIcon, 
   UserPlus, Shield, Plus, X, Clock, Users,
   ChevronLeft, ChevronRight, Trash2, Settings,
-  Database, Layers, Link as LinkIcon, Save, Info, Image as ImageIcon,
-  Send, Edit3
+  Database, Layers, Link as LinkIcon, Save, Info, Image as ImageIcon
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -40,7 +39,7 @@ export default function App() {
       setUser(session?.user ?? null);
       if (session?.user) fetchProfile(session.user.id);
     });
-
+   
     return () => authListener.subscription.unsubscribe();
   }, []);
 
@@ -98,7 +97,7 @@ export default function App() {
             </motion.div>
           )}
 
-          {activeTab === 'posts' && <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} />}
+          {activeTab === 'posts' && <PostBoard posts={posts} user={user} />}
           {activeTab === 'admin' && profile?.role === 'admin' && <AdminPanel settings={settings} setSettings={setSettings} />}
           {(activeTab === 'login' || activeTab === 'signup') && <Auth key="auth" mode={activeTab} setMode={setActiveTab} />}
         </AnimatePresence>
@@ -135,7 +134,6 @@ const ImageUploader = ({ onUpload, label }: { onUpload: (url: string) => void, l
       setUploading(false);
     }
   };
-
   return (
     <div className="space-y-3 text-left">
       <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
@@ -168,20 +166,18 @@ const MainContentViewer = ({ type }: { type: string }) => {
   }, [type]);
 
   return (
-    <section className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 py-10">
-      {items.length === 0 && <div className="col-span-full text-center text-gray-600 font-black italic py-10 uppercase">No Contents Registered.</div>}
+    <section className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10 py-10">
+      {items.length === 0 && <div className="col-span-3 text-center text-gray-600 font-black italic py-10 uppercase">No Contents Registered.</div>}
       {items.map(item => (
-        <motion.div 
-          whileHover={{ y: -5 }} 
-          key={item.id} 
-          onClick={() => setSelectedItem(item)} 
-          className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black aspect-square cursor-pointer shadow-xl"
-        >
+        <motion.div whileHover={{ y: -10 }} key={item.id} onClick={() => setSelectedItem(item)} className="group relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-black aspect-[4/5] cursor-pointer shadow-2xl">
           <img src={item.image_url || 'https://images.unsplash.com/photo-1542751371-adc38448a05e'} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
-          <div className="absolute bottom-4 left-4 right-4 text-left">
-            <span className="text-[8px] font-black text-purple-500 uppercase tracking-widest mb-1 block italic">{type}</span>
-            <h3 className="text-sm font-black italic uppercase tracking-tighter leading-tight truncate">{item.name || item.sub_class}</h3>
+          <div className="absolute bottom-10 left-10 right-10">
+            <span className="text-[10px] font-black text-purple-500 uppercase tracking-[0.3em] mb-2 block italic">{type}</span>
+            <h3 className="text-3xl font-black italic mb-6 uppercase tracking-tighter leading-none">{item.name || item.sub_class}</h3>
+            <button className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest bg-white text-black px-8 py-4 rounded-full group-hover:bg-purple-600 group-hover:text-white transition-all">
+              View Details <ChevronRight size={14} />
+            </button>
           </div>
         </motion.div>
       ))}
@@ -220,7 +216,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
           <img src={item.image_url || 'https://images.unsplash.com/photo-1542751371-adc38448a05e'} className="w-full md:w-48 h-48 object-cover rounded-3xl border border-white/10 shadow-2xl" />
           <div className="flex flex-col justify-end">
             <h2 className="text-5xl font-black italic uppercase text-purple-500 mb-2">{item.name || item.sub_class}</h2>
-            <p className="text-gray-500 font-bold uppercase tracking-widest italic">{type} Specification</p>
+            <p className="text-gray-500 font-bold uppercase tracking-widest italic">{type} Detailed Specification</p>
           </div>
         </div>
         
@@ -238,9 +234,14 @@ const DetailPopup = ({ item, type, onClose }: any) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {type === '클래스' ? (
             <>
+              <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-3">
+                <label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">시너지 (Synergy)</label>
+                <div className="text-xl font-black text-white">{item.synergy || '-'}</div>
+              </div>
               <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">직업 각인</label><div className="text-lg font-black">{item.engraving_job || '-'}</div></div>
               <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-2"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">공용 각인</label><div className="text-lg font-black">{item.engraving_common?.join(', ') || '-'}</div></div>
               <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-3"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">아크 패시브</label><div className="text-lg font-black">{item.ark_passive?.join(' / ') || '-'}</div></div>
+              <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-3"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">카운터 스킬</label><div className="text-lg font-black">{item.counter_skills?.join(', ') || '-'}</div></div>
             </>
           ) : (
             details ? (
@@ -248,9 +249,11 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                 <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">HP (체력)</label><div className="text-lg font-black text-white">{details.hp || '-'}</div></div>
                 <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">계열</label><div className="text-lg font-black text-white">{details.element_type || '-'}</div></div>
                 <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">속성</label><div className="text-lg font-black text-white">{details.attribute || '-'}</div></div>
-                <div className="p-6 bg-white/5 rounded-2xl border border-purple-500/20 md:col-span-3"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">클리어 골드</label><div className="text-2xl font-black text-yellow-400">{details.clear_gold?.toLocaleString() || '0'} G</div></div>
+                <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-3"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">추천 딜러 카드</label><div className="text-lg font-black text-white">{details.dealer_cards || '-'}</div></div>
+                <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-3"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">추천 서포터 카드</label><div className="text-lg font-black text-white">{details.support_cards || '-'}</div></div>
+                <div className="p-6 bg-white/5 rounded-2xl border border-purple-500/20 md:col-span-3 shadow-[0_0_15px_rgba(168,85,247,0.1)]"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">클리어 골드</label><div className="text-2xl font-black text-yellow-400">{details.clear_gold?.toLocaleString() || '0'} G</div></div>
               </>
-            ) : <div className="col-span-3 py-20 text-center text-gray-700 font-black italic uppercase tracking-widest">데이터가 없습니다.</div>
+            ) : <div className="col-span-3 py-20 text-center text-gray-700 font-black italic uppercase tracking-widest">해당 관문/난이도의 데이터가 없습니다.</div>
           )}
         </div>
       </div>
@@ -258,7 +261,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
   );
 };
 
-// --- [관리자] 통합 설정 패널 (리스트 기반 삭제 로직 포함) ---
+// --- [관리자] 통합 설정 패널 ---
 const AdminPanel = ({ settings, setSettings }: any) => {
   const [adminTab, setAdminTab] = useState('레이드');
   return (
@@ -268,7 +271,7 @@ const AdminPanel = ({ settings, setSettings }: any) => {
         <h2 className="text-4xl font-black italic uppercase tracking-tighter">Admin Console</h2>
       </div>
 
-      <div className="flex gap-6 mb-10 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="flex gap-6 mb-10 overflow-x-auto pb-2">
         {['레이드', '가디언 토벌', '클래스', '길드 설정'].map(t => (
           <button 
             key={t} 
@@ -290,253 +293,241 @@ const AdminPanel = ({ settings, setSettings }: any) => {
   );
 };
 
+// --- [기능] 길드 메인 설정 에디터 ---
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
   const handleSave = async () => {
     const { error } = await supabase.from('settings').upsert(settings);
-    if (error) alert(error.message); else alert("길드 설정 업데이트 완료!");
+    if (error) alert(error.message); else alert("길드 설정이 업데이트되었습니다!");
   };
   return (
     <div className="space-y-8">
-      <AdminInput label="Guild Name" value={settings.guild_name} onChange={(v:any)=>setSettings({...settings, guild_name: v})} />
+      <AdminInput label="Guild Name (Main Title)" value={settings.guild_name} onChange={(v:any)=>setSettings({...settings, guild_name: v})} />
       <AdminInput label="Guild Description" value={settings.guild_description} onChange={(v:any)=>setSettings({...settings, guild_description: v})} />
-      <button onClick={handleSave} className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all">Update Hero Section</button>
+      <button onClick={handleSave} className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all">
+        Update Hero Section
+      </button>
     </div>
   );
 };
 
-// --- [관리자] 레이드 & 가디언 리스트 기반 에디터 ---
+// --- [기능] 레이드 & 가디언 에디터 (계열, 속성 필드 추가) ---
 const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
-  const [list, setList] = useState<any[]>([]);
   const [selectedGate, setSelectedGate] = useState(1);
   const [difficulty, setDifficulty] = useState('노말');
-  const [form, setForm] = useState({ name: '', image_url: '', hp: '', element: '', attribute: '', d_card: '', s_card: '', gold: 0 });
-
-  useEffect(() => { fetchList(); }, [isRaid]);
-
-  const fetchList = async () => {
-    const { data } = await supabase.from('contents').select('*').eq('category', isRaid ? '레이드' : '가디언 토벌').order('name');
-    if (data) setList(data);
-  };
+  const [form, setForm] = useState({
+    name: '', image_url: '', hp: '', element: '', attribute: '', d_card: '', s_card: '', gold: 0
+  });
 
   const handleSave = async () => {
-    if (!form.name) return alert("이름을 입력하세요.");
-    const { data, error: cErr } = await supabase.from('contents').upsert({ name: form.name, category: isRaid ? '레이드' : '가디언 토벌', image_url: form.image_url }, { onConflict: 'name' }).select().single();
-    if (cErr) return alert(cErr.message);
-    
-    const { error: dErr } = await supabase.from('content_details').upsert({
-      content_id: data.id, difficulty: isRaid ? difficulty : null, gate_num: isRaid ? selectedGate : 0,
-      hp: form.hp, element_type: form.element, attribute: form.attribute, dealer_cards: form.d_card, support_cards: form.s_card, clear_gold: form.gold
-    }, { onConflict: 'content_id, difficulty, gate_num' });
+    if (!form.name) return alert("콘텐츠 이름을 입력해주세요.");
+    const category = isRaid ? '레이드' : '가디언 토벌';
+    const { data: contentData, error: cErr } = await supabase.from('contents')
+      .upsert({ name: form.name, category: category, image_url: form.image_url }, { onConflict: 'name' })
+      .select().single();
 
-    if (!dErr) { alert("저장 성공!"); fetchList(); }
-  };
+    if (cErr) return alert("저장 실패: " + cErr.message);
 
-  const deleteItem = async (id: string, name: string) => {
-    if (!confirm(`[${name}]을(를) 정말 삭제하시겠습니까?`)) return;
-    await supabase.from('content_details').delete().eq('content_id', id);
-    const { error } = await supabase.from('contents').delete().eq('id', id);
-    if (!error) { alert("삭제 완료"); fetchList(); }
+    const { error: dErr } = await supabase.from('content_details')
+      .upsert({
+        content_id: contentData.id,
+        difficulty: isRaid ? difficulty : null,
+        gate_num: isRaid ? selectedGate : 0,
+        hp: form.hp,
+        element_type: form.element,
+        attribute: form.attribute,
+        dealer_cards: form.d_card,
+        support_cards: form.s_card,
+        clear_gold: form.gold
+      }, { onConflict: 'content_id, difficulty, gate_num' });
+
+    if (dErr) alert("상세 정보 저장 실패: " + dErr.message);
+    else alert(`[${form.name}] 정보가 업데이트되었습니다!`);
   };
 
   return (
-    <div className="grid md:grid-cols-2 gap-12">
-      <div className="space-y-6">
-        <h4 className="text-xs font-black uppercase text-purple-500 tracking-widest">Current List</h4>
-        <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-          {list.map(item => (
-            <div key={item.id} className="flex items-center justify-between bg-black/40 p-4 rounded-xl border border-white/5 hover:border-white/10 transition-all">
-              <span className="text-sm font-bold text-gray-300">{item.name}</span>
-              <button onClick={() => deleteItem(item.id, item.name)} className="text-gray-600 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
+    <div className="space-y-8 text-left">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <AdminInput label="Content Name" placeholder={isRaid ? "에키드나" : "에기르"} value={form.name} onChange={(v:any) => setForm({...form, name: v})} />
+        <ImageUploader label="Background Image" onUpload={(url) => setForm({...form, image_url: url})} />
+      </div>
+
+      {isRaid && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Gate Selection</label>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4].map(g => (
+                <button key={g} onClick={() => setSelectedGate(g)} className={`flex-1 py-4 rounded-2xl font-black transition-all ${selectedGate === g ? 'bg-purple-600 shadow-lg shadow-purple-600/20' : 'bg-black border border-white/10 text-gray-500'}`}>{g} Gate</button>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
-      <div className="space-y-6">
-        <AdminInput label="Content Name" value={form.name} onChange={(v:any)=>setForm({...form, name:v})} />
-        <ImageUploader label="Image" onUpload={(url)=>setForm({...form, image_url:url})} />
-        {isRaid && (
-          <div className="grid grid-cols-2 gap-4">
-             <select className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold" value={selectedGate} onChange={e=>setSelectedGate(Number(e.target.value))}>
-               {[1,2,3,4].map(g=><option key={g} value={g}>{g}관문</option>)}
-             </select>
-             <select className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold" value={difficulty} onChange={e=>setDifficulty(e.target.value)}>
-               {['노말','하드','나이트메어'].map(d=><option key={d} value={d}>{d}</option>)}
-             </select>
           </div>
-        )}
-        <div className="grid grid-cols-2 gap-4">
-          <AdminInput label="HP" value={form.hp} onChange={(v:any)=>setForm({...form, hp:v})} />
-          <AdminInput label="Gold" type="number" value={form.gold} onChange={(v:any)=>setForm({...form, gold:v})} />
+          <div className="space-y-4">
+            <label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Difficulty</label>
+            <div className="flex gap-2 p-1 bg-black rounded-2xl border border-white/5">
+              {['노말', '하드', '나이트메어'].map(d => (
+                <button key={d} onClick={() => setDifficulty(d)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${difficulty === d ? 'bg-white/10 text-white' : 'text-gray-600'}`}>{d}</button>
+              ))}
+            </div>
+          </div>
         </div>
-        <button onClick={handleSave} className="w-full bg-purple-600 p-4 rounded-xl font-black uppercase hover:bg-purple-500 transition-all">Save / Update</button>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <AdminInput label="HP (체력)" value={form.hp} onChange={(v:any) => setForm({...form, hp: v})} />
+        <AdminInput label="Element (계열)" placeholder="인간, 악마 등" value={form.element} onChange={(v:any) => setForm({...form, element: v})} />
+        <AdminInput label="Attribute (속성)" placeholder="성속성 취약 등" value={form.attribute} onChange={(v:any) => setForm({...form, attribute: v})} />
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <AdminInput label="Dealer Card" value={form.d_card} onChange={(v:any) => setForm({...form, d_card: v})} />
+        <AdminInput label="Support Card" value={form.s_card} onChange={(v:any) => setForm({...form, s_card: v})} />
+      </div>
+
+      <AdminInput label="Clear Gold" type="number" value={form.gold} onChange={(v:any) => setForm({...form, gold: v})} />
+
+      <button onClick={handleSave} className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-purple-500 transition-all shadow-xl shadow-purple-600/20">
+        <Save size={20} /> Update Content Info
+      </button>
     </div>
   );
 };
 
-// --- [관리자] 클래스 리스트 기반 에디터 ---
+// --- [기능] 클래스 에디터 (시너지 필드 추가) ---
 const ClassContentEditor = () => {
-  const [list, setList] = useState<any[]>([]);
-  const [form, setForm] = useState({ root: '', sub: '', eng_job: '', link: '', image_url: '' });
+  const [form, setForm] = useState({ root: '', sub: '', eng_job: '', synergy: '', link: '', image_url: '' });
+  const [commonEngravings, setCommonEngravings] = useState<string[]>([]);
+  const [arkPassive, setArkPassive] = useState<string[]>([]);
+  const [counters, setCounters] = useState<string[]>([]);
 
-  useEffect(() => { fetchList(); }, []);
-  const fetchList = async () => {
-    const { data } = await supabase.from('class_infos').select('*').order('sub_class');
-    if (data) setList(data);
+  const addField = (list: any, set: any, max: number) => { if(list.length < max) set([...list, ""]); };
+  const updateField = (list: any, set: any, index: number, val: string) => { 
+    const newList = [...list]; 
+    newList[index] = val;
+    set(newList); 
   };
 
   const handleSave = async () => {
     if(!form.sub) return alert("직업명을 입력하세요.");
-    const { error } = await supabase.from('class_infos').upsert({ root_class: form.root, sub_class: form.sub, engraving_job: form.eng_job, skill_code_link: form.link, image_url: form.image_url }, { onConflict: 'sub_class' });
-    if (!error) { alert("저장 완료!"); fetchList(); }
-  };
-
-  const deleteItem = async (sub_class: string) => {
-    if (!confirm(`[${sub_class}] 클래스를 삭제하시겠습니까?`)) return;
-    const { error } = await supabase.from('class_infos').delete().eq('sub_class', sub_class);
-    if (!error) { alert("삭제 완료"); fetchList(); }
+    const { error } = await supabase.from('class_infos').upsert({ 
+      root_class: form.root, sub_class: form.sub, engraving_job: form.eng_job, 
+      synergy: form.synergy,
+      engraving_common: commonEngravings.filter(Boolean), 
+      ark_passive: arkPassive.filter(Boolean), 
+      counter_skills: counters.filter(Boolean), 
+      skill_code_link: form.link,
+      image_url: form.image_url
+    }, { onConflict: 'sub_class' });
+    if (error) alert(error.message); else alert("클래스 정보가 저장되었습니다.");
   };
 
   return (
-    <div className="grid md:grid-cols-2 gap-12">
+    <div className="space-y-10 text-left">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <AdminInput label="Root Class" placeholder="전사" value={form.root} onChange={(v:any)=>setForm({...form, root:v})} />
+        <AdminInput label="Sub Class" placeholder="버서커" value={form.sub} onChange={(v:any)=>setForm({...form, sub:v})} />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <AdminInput label="Job Engraving" value={form.eng_job} onChange={(v:any)=>setForm({...form, eng_job:v})} />
+        <AdminInput label="Synergy (시너지)" placeholder="치적, 방깎 등" value={form.synergy} onChange={(v:any)=>setForm({...form, synergy:v})} />
+      </div>
+      <ImageUploader label="Class Image" onUpload={(url)=>setForm({...form, image_url: url})} />
+
       <div className="space-y-6">
-        <h4 className="text-xs font-black uppercase text-purple-500 tracking-widest">Class List</h4>
-        <div className="grid grid-cols-2 gap-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-          {list.map(item => (
-            <div key={item.id} className="flex items-center justify-between bg-black/40 p-3 rounded-xl border border-white/5">
-              <span className="text-[10px] font-bold text-gray-400">{item.sub_class}</span>
-              <button onClick={() => deleteItem(item.sub_class)} className="text-gray-600 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
-            </div>
+        <div className="flex justify-between items-center"><label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Common Engravings (Max 5)</label><button onClick={() => addField(commonEngravings, setCommonEngravings, 5)} className="p-1 bg-purple-600 rounded-lg"><Plus size={16}/></button></div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {commonEngravings.map((val, i) => (
+            <input key={i} value={val} onChange={(e) => updateField(commonEngravings, setCommonEngravings, i, e.target.value)} className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold outline-none focus:border-purple-500" placeholder={`각인 ${i+1}`} />
           ))}
         </div>
       </div>
+
       <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <AdminInput label="Root" value={form.root} onChange={(v:any)=>setForm({...form, root:v})} />
-          <AdminInput label="Sub" value={form.sub} onChange={(v:any)=>setForm({...form, sub:v})} />
+        <div className="flex justify-between items-center"><label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Ark Passive / Grid (Max 6)</label><button onClick={() => addField(arkPassive, setArkPassive, 6)} className="p-1 bg-purple-600 rounded-lg"><Plus size={16}/></button></div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {arkPassive.map((val, i) => (
+            <input key={i} value={val} onChange={(e) => updateField(arkPassive, setArkPassive, i, e.target.value)} className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold outline-none focus:border-purple-500" placeholder={`그리드 ${i+1}`} />
+          ))}
         </div>
-        <AdminInput label="Job Engraving" value={form.eng_job} onChange={(v:any)=>setForm({...form, eng_job:v})} />
-        <ImageUploader label="Class Image" onUpload={(url)=>setForm({...form, image_url: url})} />
-        <button onClick={handleSave} className="w-full bg-purple-600 p-4 rounded-xl font-black uppercase hover:bg-purple-500 transition-all">Update Class</button>
       </div>
+
+      <AdminInput label="Skill Code Link" placeholder="https://..." value={form.link} onChange={(v:any)=>setForm({...form, link:v})} />
+      
+      <button onClick={handleSave} className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-purple-500 transition-all shadow-xl shadow-purple-600/20">
+        <Save size={20} /> Update Class Metadata
+      </button>
     </div>
   );
 };
 
-// --- [기능] 게시판 (로그인 제한, 이미지 업로드, 삭제 기능 추가) ---
-const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
+// --- [기능] 게시판 ---
+const PostBoard = ({ posts, user }: any) => {
   const [currentTab, setCurrentTab] = useState('전체');
-  const [isWriteOpen, setIsWriteOpen] = useState(false);
+  const [subTab, setSubTab] = useState('전체');
+
   const tabs = ["전체", "스크린샷", "MVP", "커스터마이징 및 의상", "수집형 포인트"];
+  const collectionSubTabs = ["전체", "섬의 마음", "거인의 심장", "모코코 씨앗", "미술품"];
 
-  const filteredPosts = posts.filter((p: any) => currentTab === '전체' || p.category === currentTab);
-
-  const handleDelete = async (postId: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-    const { error } = await supabase.from('posts').delete().eq('id', postId);
-    if (!error) onRefresh();
-  };
-
-  if (!user) {
-    return (
-      <div className="max-w-2xl mx-auto py-32 text-center space-y-6">
-        <Shield size={64} className="mx-auto text-gray-800" />
-        <h2 className="text-3xl font-black italic uppercase tracking-tighter">Access Denied</h2>
-        <p className="text-gray-500 font-bold">게시판은 로그인한 회원만 이용 가능합니다.</p>
-      </div>
-    );
-  }
+  const filteredPosts = posts.filter((p: any) => {
+    const matchMain = currentTab === '전체' || p.category === currentTab;
+    const matchSub = subTab === '전체' || p.sub_category === subTab;
+    return matchMain && matchSub;
+  });
 
   return (
     <motion.div initial={{opacity:0}} animate={{opacity:1}} className="max-w-6xl mx-auto p-12 text-left">
       <div className="flex items-center justify-between mb-12">
-        <h2 className="text-4xl font-black italic uppercase tracking-tighter">Bulletin Board</h2>
-        <button onClick={() => setIsWriteOpen(true)} className="bg-purple-600 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-purple-500 transition-all shadow-lg flex items-center gap-2">
-          <Edit3 size={16}/> Write Post
-        </button>
+        <h2 className="text-4xl font-black italic uppercase tracking-tighter underline decoration-purple-600/30 underline-offset-8">Bulletin Board</h2>
+        {user && <button className="bg-purple-600 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-purple-500 transition-all">Write Post</button>}
       </div>
 
       <div className="flex gap-4 mb-8 overflow-x-auto pb-2 scrollbar-hide">
         {tabs.map(t => (
-          <button key={t} onClick={() => setCurrentTab(t)} className={`whitespace-nowrap px-8 py-3 rounded-full text-[10px] font-black uppercase transition-all ${currentTab === t ? 'bg-purple-600 text-white' : 'bg-white/5 text-gray-500 hover:bg-white/10'}`}>{t}</button>
+          <button key={t} onClick={() => {setCurrentTab(t); setSubTab('전체');}} className={`whitespace-nowrap px-8 py-3 rounded-full text-[10px] font-black uppercase transition-all ${currentTab === t ? 'bg-purple-600 text-white' : 'bg-white/5 text-gray-500'}`}>{t}</button>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {filteredPosts.map((post: any) => (
-          <div key={post.id} className="group p-8 bg-white/5 rounded-[2.5rem] border border-white/10 hover:border-purple-500/30 transition-all relative overflow-hidden">
-            <div className="flex justify-between items-start mb-4">
-              <span className="text-purple-500 text-[9px] font-black uppercase italic">{post.category}</span>
-              {(profile?.role === 'admin' || user?.id === post.user_id) && (
-                <button onClick={() => handleDelete(post.id)} className="text-gray-600 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
-              )}
-            </div>
-            {post.image_url && <img src={post.image_url} className="w-full h-48 object-cover rounded-2xl mb-4 border border-white/5" />}
-            <h3 className="text-2xl font-black text-white mb-4">{post.title}</h3>
-            <p className="text-gray-400 text-sm mb-6 line-clamp-2">{post.content}</p>
-            <div className="flex justify-between items-center text-[10px] text-gray-600 font-black uppercase">
-              <span>{post.author}</span>
-              <span>{new Date(post.created_at).toLocaleDateString()}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {isWriteOpen && <PostWriteModal user={user} profile={profile} onRefresh={onRefresh} onClose={() => setIsWriteOpen(false)} />}
-      </AnimatePresence>
-    </motion.div>
-  );
-};
-
-// --- [기능] 게시판 글쓰기 모달 (이미지 첨부 포함) ---
-const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState('스크린샷');
-  const [imgUrl, setImgUrl] = useState('');
-
-  const handlePost = async () => {
-    if (!title || !content) return alert("제목과 내용을 입력하세요.");
-    const { error } = await supabase.from('posts').insert([{
-      title, content, category, 
-      image_url: imgUrl, 
-      author: profile?.nickname || 'Anonymous',
-      user_id: user.id
-    }]);
-    if (!error) { onRefresh(); onClose(); } else alert(error.message);
-  };
-
-  return (
-    <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left">
-      <div className="bg-[#111] border border-white/10 p-10 rounded-[3rem] w-full max-w-2xl shadow-2xl relative">
-        <button onClick={onClose} className="absolute top-8 right-8 text-white/50 hover:text-white"><X/></button>
-        <h3 className="text-3xl font-black italic uppercase text-purple-500 mb-8">Create New Post</h3>
-        <div className="space-y-5">
-          <select className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold" value={category} onChange={e=>setCategory(e.target.value)}>
-            {["스크린샷", "MVP", "커스터마이징 및 의상", "수집형 포인트"].map(t=><option key={t} value={t}>{t}</option>)}
-          </select>
-          <input className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold" placeholder="TITLE" value={title} onChange={e=>setTitle(e.target.value)} />
-          <textarea className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold h-40" placeholder="CONTENT" value={content} onChange={e=>setContent(e.target.value)} />
-          <ImageUploader label="Attach Image" onUpload={(url)=>setImgUrl(url)} />
-          {imgUrl && <div className="text-[10px] text-purple-500 font-bold">✓ Image Ready</div>}
-          <button onClick={handlePost} className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all flex items-center justify-center gap-2">
-            <Send size={18}/> Publish
-          </button>
+      {currentTab === '수집형 포인트' && (
+        <div className="flex flex-wrap gap-2 mb-10 bg-black/40 p-6 rounded-[2.5rem] border border-white/5">
+          {collectionSubTabs.map(s => (
+            <button key={s} onClick={() => setSubTab(s)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${subTab === s ? 'text-purple-400 bg-purple-500/10' : 'text-gray-600'}`}># {s}</button>
+          ))}
         </div>
-      </div>
+      )}
+
+      {filteredPosts.length === 0 ? (
+        <div className="py-20 text-center text-gray-700 font-black italic uppercase tracking-widest border border-dashed border-white/10 rounded-[3rem]">No Records</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredPosts.map((post: any) => (
+            <div key={post.id} className="p-8 bg-white/5 rounded-[2.5rem] border border-white/10 hover:border-purple-500/30 transition-all group cursor-pointer relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-all"><ChevronRight size={32} className="text-purple-500"/></div>
+              <div className="flex gap-2 mb-3">
+                <span className="text-purple-500 text-[9px] font-black uppercase tracking-widest italic">{post.category}</span>
+                {post.sub_category && <span className="text-gray-600 text-[9px] font-black uppercase tracking-widest italic">// {post.sub_category}</span>}
+              </div>
+              <h3 className="text-2xl font-black text-white group-hover:text-purple-400 mb-4">{post.title}</h3>
+              <div className="flex gap-4 items-center">
+                <div className="w-6 h-6 bg-white/10 rounded-full"></div>
+                <p className="text-gray-500 text-[10px] font-black uppercase">{post.author} // {new Date(post.created_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 };
 
 // --- 공통 컴포넌트: 관리자 인풋 ---
 const AdminInput = ({ label, value, onChange, placeholder, type="text" }: any) => (
-  <div className="space-y-3 text-left w-full">
+  <div className="space-y-3 text-left">
     <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">{label}</label>
     <input 
-      type={type} placeholder={placeholder}
+      type={type}
+      placeholder={placeholder}
       className="w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-purple-500 font-bold text-sm text-white transition-all"
-      value={value} onChange={e => onChange && onChange(e.target.value)}
+      value={value}
+      onChange={e => onChange && onChange(e.target.value)}
     />
   </div>
 );
@@ -592,7 +583,7 @@ const RaidCalendar = ({ user }: any) => {
               <div key={day} className="bg-[#0a0a0a] min-h-[180px] p-5 group relative hover:bg-white/[0.02] transition-all">
                 <div className="flex justify-between items-center mb-5">
                   <span className="text-xs font-black text-gray-700 group-hover:text-purple-500 transition-colors">{day}</span>
-                  <button onClick={() => { setSelectedDate(dateStr); setIsModalOpen(true); }} className="opacity-0 group-hover:opacity-100 p-1.5 bg-purple-600 text-white rounded-lg transition-all scale-90 hover:scale-100 hover:bg-purple-500 shadow-lg shadow-purple-600/20"><Plus size={18}/></button>
+                  {user && <button onClick={() => { setSelectedDate(dateStr); setIsModalOpen(true); }} className="opacity-0 group-hover:opacity-100 p-1.5 bg-purple-600 text-white rounded-lg transition-all scale-90 hover:scale-100 shadow-lg shadow-purple-600/20"><Plus size={18}/></button>}
                 </div>
                 <div className="space-y-2.5">
                   {dayRaids.map(raid => (
@@ -634,11 +625,10 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
     if (error) alert("생성 실패: " + error.message);
     else { alert("레이드가 생성되었습니다!"); onRefresh(); onClose(); }
   };
-  
   return (
     <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left">
       <div className="bg-[#111] border border-white/10 p-12 rounded-[3.5rem] w-full max-w-sm shadow-2xl relative">
-        <h3 className="text-3xl font-black text-purple-500 italic mb-10 tracking-tighter uppercase underline decoration-purple-600/30 underline-offset-8">New Raid Event</h3>
+        <h3 className="text-3xl font-black text-purple-500 italic mb-10 tracking-tighter uppercase underline decoration-purple-600/30 underline-offset-8">New Raid</h3>
         <div className="space-y-5">
           <AdminInput label="Raid Name" placeholder="카멘 3관" value={form.raid_name} onChange={(v:any)=>setForm({...form, raid_name:v})} />
           <div className="grid grid-cols-2 gap-4">
@@ -650,8 +640,8 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
             </div>
             <AdminInput label="Time" value={form.raid_time} onChange={(v:any)=>setForm({...form, raid_time:v})} />
           </div>
-          <button onClick={save} className="w-full bg-purple-600 p-6 rounded-2xl font-black tracking-widest hover:bg-purple-500 transition-all mt-6 shadow-xl shadow-purple-600/20 active:scale-95 uppercase text-white">Confirm Raid</button>
-          <button onClick={onClose} className="w-full text-gray-600 text-[10px] font-black py-2 tracking-widest hover:text-white uppercase transition-colors">Cancel</button>
+          <button onClick={save} className="w-full bg-purple-600 p-6 rounded-2xl font-black tracking-widest hover:bg-purple-500 transition-all mt-6 shadow-xl uppercase">Confirm</button>
+          <button onClick={onClose} className="w-full text-gray-600 text-[10px] font-black py-2 hover:text-white uppercase transition-colors">Cancel</button>
         </div>
       </div>
     </div>
@@ -665,14 +655,12 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
     const { error } = await supabase.from('raid_participants').insert([{ schedule_id: raid.id, ...f }]);
     if (!error) { onRefresh(); onClose(); } else alert("신청 실패: " + error.message);
   };
-  
   const deleteRaid = async () => {
     if (confirm("삭제하시겠습니까?")) {
       const { error } = await supabase.from('raid_schedules').delete().eq('id', raid.id);
       if (!error) { onRefresh(); onClose(); }
     }
   };
-
   return (
     <div className="fixed inset-0 z-[200] bg-black/98 backdrop-blur-2xl flex items-center justify-center p-6 text-left">
       <div className="bg-[#0f0f0f] border border-white/10 p-12 rounded-[4rem] w-full max-w-2xl shadow-2xl relative">
@@ -714,7 +702,7 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
               <AdminInput label="Item Level" onChange={(v:any)=>setF({...f, item_level:v})} />
               <AdminInput label="Class" onChange={(v:any)=>setF({...f, class_name:v})} />
             </div>
-            <button onClick={join} className="w-full bg-purple-600 p-6 rounded-[2rem] font-black mt-4 tracking-[0.2em] hover:bg-purple-500 transition-all shadow-xl shadow-purple-600/20 uppercase text-white">Apply Now</button>
+            <button onClick={join} className="w-full bg-purple-600 p-6 rounded-[2rem] font-black mt-4 tracking-[0.2em] hover:bg-purple-500 shadow-xl uppercase">Apply Now</button>
           </div>
         </div>
       </div>
@@ -781,7 +769,6 @@ const Auth = ({ mode, setMode }: any) => {
       }
     } catch (err: any) { alert(err.message); }
   };
-
   return (
     <div className="max-w-md mx-auto py-32 px-4">
       <div className="p-12 rounded-[4rem] border border-white/10 bg-[#0f0f0f] shadow-2xl relative overflow-hidden text-center">
@@ -794,7 +781,7 @@ const Auth = ({ mode, setMode }: any) => {
           {mode === 'signup' && (
             <input type="text" placeholder="NICKNAME" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white" value={nickname} onChange={e => setNickname(e.target.value)} required />
           )}
-          <button type="submit" className="w-full bg-purple-600 p-6 rounded-3xl font-black uppercase tracking-[0.3em] mt-6 hover:bg-purple-500 transition-colors shadow-lg shadow-purple-600/20 active:scale-95 text-white">Proceed</button>
+          <button type="submit" className="w-full bg-purple-600 p-6 rounded-3xl font-black uppercase tracking-[0.3em] mt-6 hover:bg-purple-500 shadow-lg text-white">Proceed</button>
         </form>
         <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="mt-8 text-[10px] font-black text-gray-600 hover:text-white uppercase transition-all">Switch to {mode === 'login' ? 'signup' : 'login'}</button>
       </div>
