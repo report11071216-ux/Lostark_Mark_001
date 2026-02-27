@@ -653,29 +653,64 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
       </div>
 
       <AnimatePresence>
-        {isWriteOpen && <PostWriteModal user={user} profile={profile} onRefresh={onRefresh} onClose={() => setIsWriteOpen(false)} />}
+        {isWriteOpen && (
+  <PostWriteModal 
+    user={user}
+    profile={profile}
+    onRefresh={onRefresh}
+    onClose={() => setIsWriteOpen(false)}
+    refreshProfile={() => fetchProfile(user.id)}
+  />
+)}
       </AnimatePresence>
     </motion.div>
   );
 };
 
 // --- [기능] 게시판 글쓰기 모달 (이미지 첨부 포함) ---
-const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
+const PostWriteModal = ({ user, profile, onRefresh, onClose, refreshProfile }: any) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('스크린샷');
   const [imgUrl, setImgUrl] = useState('');
 
   const handlePost = async () => {
-    if (!title || !content) return alert("제목과 내용을 입력하세요.");
-    const { error } = await supabase.from('posts').insert([{
-      title, content, category, 
-      image_url: imgUrl, 
-      author: profile?.nickname || 'Anonymous',
-      user_id: user.id
-    }]);
-    if (!error) { onRefresh(); onClose(); } else alert(error.message);
-  };
+  if (!title || !content) {
+    alert("제목과 내용을 입력하세요.");
+    return;
+  }
+
+  // 1️⃣ 게시글 저장
+  const { error } = await supabase.from('posts').insert([{
+    title,
+    content,
+    category,
+    image_url: imgUrl,
+    author: profile?.nickname || 'Anonymous',
+    user_id: user.id
+  }]);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  // 2️⃣ 포인트 +5 지급
+  const { error: pointError } = await supabase.rpc('add_points', {
+    p_user_id: user.id,
+    p_points: 5,
+    p_type: 'post'
+  });
+
+  if (pointError) {
+    console.error("포인트 지급 실패:", pointError.message);
+  }
+
+  alert("게시글 작성 완료! +5 포인트 획득 🎉");
+
+  onRefresh();
+  onClose();
+};
 
   return (
     <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left">
