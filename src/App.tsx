@@ -1078,20 +1078,61 @@ const navItems = [
     </nav>
   );
 };
+import { useEffect } from "react";
 
-const Hero = ({ settings }: any) => (
-  <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-b from-purple-900/10 to-transparent"></div>
-    <div className="relative z-10 text-center px-4">
-      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1 }}>
-        <span className="inline-block px-5 py-2 rounded-full bg-purple-500/5 text-purple-400 text-[10px] font-black mb-6 border border-purple-500/10 tracking-[0.4em] uppercase italic">Lost Ark Guild System v2.0</span>
-        <h1 className="text-7xl md:text-9xl font-black mb-8 tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-b from-white to-white/20 font-mono leading-none">{settings?.guild_name}</h1>
-        <p className="text-gray-500 text-xl max-w-2xl mx-auto font-bold italic uppercase tracking-tight opacity-70 leading-relaxed whitespace-pre-line">{settings?.guild_description}</p>
-      </motion.div>
-    </div>
-    <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0a0a0a] to-transparent"></div>
-  </section>
-);
+const Hero = ({ settings }: any) => {
+
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/@splinetool/viewer@1.12.61/build/spline-viewer.js";
+    script.type = "module";
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  return (
+    <section className="relative h-[100vh] flex items-center justify-center overflow-hidden">
+
+      {/* 🔥 Spline 배경 */}
+      <div className="absolute inset-0 -z-10">
+        <spline-viewer
+          url="https://prod.spline.design/여기네URL/scene.splinecode"
+          style={{ width: "100%", height: "100%" }}
+        ></spline-viewer>
+      </div>
+
+      {/* 어둡게 오버레이 */}
+      <div className="absolute inset-0 bg-black/50"></div>
+
+      {/* 기존 텍스트 */}
+      <div className="relative z-10 text-center px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1 }}
+        >
+          <span className="inline-block px-5 py-2 rounded-full bg-purple-500/5 text-purple-400 text-[10px] font-black mb-6 border border-purple-500/10 tracking-[0.4em] uppercase italic">
+            Lost Ark Guild System v2.0
+          </span>
+
+          <h1 className="text-7xl md:text-9xl font-black mb-8 tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-b from-white to-white/20 font-mono leading-none">
+            {settings?.guild_name}
+          </h1>
+
+          <p className="text-gray-300 text-xl max-w-2xl mx-auto font-bold italic uppercase tracking-tight opacity-80">
+            {settings?.guild_description}
+          </p>
+        </motion.div>
+      </div>
+
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0a0a0a] to-transparent"></div>
+    </section>
+  );
+};
+
 
 const Auth = ({ mode, setMode }: any) => {
   const [email, setEmail] = useState('');
