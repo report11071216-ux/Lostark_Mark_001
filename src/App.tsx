@@ -99,6 +99,7 @@ export default function App() {
           )}
 
           {activeTab === 'posts' && <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} />}
+          {activeTab === 'myroom' && <MyRoom user={user} profile={profile} />}
           {activeTab === 'admin' && profile?.role === 'admin' && <AdminPanel settings={settings} setSettings={setSettings} />}
           {(activeTab === 'login' || activeTab === 'signup') && <Auth key="auth" mode={activeTab} setMode={setActiveTab} />}
         </AnimatePresence>
@@ -928,12 +929,13 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
 };
 
 const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
-  const navItems = [
-    { id: 'home', label: '홈' }, 
-    { id: 'posts', label: '게시판' },
-    ...(profile?.role === 'admin' ? [{ id: 'admin', label: '관리자' }] : []),
-    ...(user ? [] : [{ id: 'login', label: '로그인' }, { id: 'signup', label: '회원가입' }])
-  ];
+const navItems = [
+  { id: 'home', label: '홈' }, 
+  { id: 'posts', label: '게시판' },
+  ...(user ? [{ id: 'myroom', label: '마이룸' }] : []),
+  ...(profile?.role === 'admin' ? [{ id: 'admin', label: '관리자' }] : []),
+  ...(user ? [] : [{ id: 'login', label: '로그인' }, { id: 'signup', label: '회원가입' }])
+];
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -1002,6 +1004,41 @@ const Auth = ({ mode, setMode }: any) => {
           <button type="submit" className="w-full bg-purple-600 p-6 rounded-3xl font-black uppercase tracking-[0.3em] mt-6 hover:bg-purple-500 transition-colors shadow-lg shadow-purple-600/20 active:scale-95 text-white">Proceed</button>
         </form>
         <button onClick={() => setMode(mode === 'login' ? 'signup' : 'login')} className="mt-8 text-[10px] font-black text-gray-600 hover:text-white uppercase transition-all">Switch to {mode === 'login' ? 'signup' : 'login'}</button>
+      </div>
+    </div>
+  );
+};
+
+const MyRoom = ({ user, profile }: any) => {
+  if (!user || !profile) return null;
+
+  return (
+    <div className="max-w-4xl mx-auto py-24 px-6 text-center">
+      <h2 className="text-4xl font-black italic mb-10 uppercase tracking-tight">
+        My Room
+      </h2>
+
+      <div className="bg-white/5 border border-white/10 rounded-3xl p-12 space-y-6">
+        
+        <div>
+          <div className="text-gray-500 text-xs uppercase mb-2">닉네임</div>
+          <div className="text-2xl font-black">{profile.nickname}</div>
+        </div>
+
+        <div>
+          <div className="text-gray-500 text-xs uppercase mb-2">현재 포인트</div>
+          <div className="text-3xl font-black text-purple-400">
+            {profile.points || 0} P
+          </div>
+        </div>
+
+        <div>
+          <div className="text-gray-500 text-xs uppercase mb-2">현재 등급</div>
+          <div className="text-xl font-black text-yellow-400">
+            {profile.rank_name || "Seed"}
+          </div>
+        </div>
+
       </div>
     </div>
   );
