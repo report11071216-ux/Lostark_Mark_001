@@ -314,6 +314,12 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const [selectedGate, setSelectedGate] = useState(1);
   const [difficulty, setDifficulty] = useState('노말');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [maxGate, setMaxGate] = useState(4);
+const [availableDifficulties, setAvailableDifficulties] = useState([
+  "노말",
+  "하드",
+  "나이트메어"
+]);
 
   const [form, setForm] = useState({
     name: '',
@@ -322,6 +328,8 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     element: '',
     attribute: '',
     gold: 0
+    max_gate: 4,
+available_difficulties: ["노말","하드","나이트메어"],
   });
 
   const elementOptions = ['악마형', '야수형', '인간형', '정령형', '기계형', '고대', '불사', '신'];
@@ -351,10 +359,13 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const loadItem = async (item: any) => {
     setEditingId(item.id);
     setForm(prev => ({
-      ...prev,
-      name: item.name,
-      image_url: item.image_url || ''
-    }));
+  ...prev,
+  name: item.name,
+  image_url: item.image_url || '',
+  max_gate: item.max_gate ?? 4,
+  available_difficulties:
+    item.available_difficulties ?? ["노말","하드","나이트메어"]
+}));
 
     const { data } = await supabase
       .from('content_details')
