@@ -100,6 +100,9 @@ export default function App() {
 
           {activeTab === 'posts' && <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} />}
           {activeTab === 'myroom' && <MyRoom user={user} profile={profile} />}
+          {activeTab === 'ranking' && (
+  <RankingPage user={user} profile={profile} />
+)}
           {activeTab === 'admin' && profile?.role === 'admin' && <AdminPanel settings={settings} setSettings={setSettings} />}
           {(activeTab === 'login' || activeTab === 'signup') && <Auth key="auth" mode={activeTab} setMode={setActiveTab} />}
         </AnimatePresence>
@@ -932,6 +935,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
 const navItems = [
   { id: 'home', label: '홈' }, 
   { id: 'posts', label: '게시판' },
+  { id: 'ranking', label: '랭킹' },
   ...(user ? [{ id: 'myroom', label: '마이룸' }] : []),
   ...(profile?.role === 'admin' ? [{ id: 'admin', label: '관리자' }] : []),
   ...(user ? [] : [{ id: 'login', label: '로그인' }, { id: 'signup', label: '회원가입' }])
@@ -1100,6 +1104,106 @@ const handleAttendance = async () => {
     출석 체크 (+10P)
   </button>
       </div>
+    </div>
+  );
+};
+const RankingPage = ({ user, profile }: any) => {
+  const [users, setUsers] = React.useState<any[]>([]);
+  const [myRank, setMyRank] = React.useState<number | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    fetchRanking();
+  }, []);
+
+  const fetchRanking = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, nickname, points, rank_name')
+      .order('points', { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setLoading(false);
+      return;
+    }
+
+    if (data) {
+      setUsers(data);
+
+      if (user) {
+        const index = data.findIndex((u: any) => u.id === user.id);
+        if (index !== -1) {
+          setMyRank(index + 1);
+        }
+      }
+    }
+
+    setLoading(false);
+  };
+
+  const getMedal = (index: number) => {
+    if (index === 0) return "🥇";
+    if (index === 1) return "🥈";
+    if (index === 2) return "🥉";
+    return `#${index + 1}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto py-32 text-center">
+        <div className="text-gray-500 font-black">LOADING RANKING...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto py-24 px-6 text-left">
+      <h2 className="text-4xl font-black italic mb-12 uppercase tracking-tight">
+        Guild Ranking
+      </h2>
+
+      <div className="space-y-4">
+        {users.slice(0, 10).map((u, i) => (
+          <div
+            key={u.id}
+            className={`flex justify-between items-center p-6 rounded-2xl border transition-all
+              ${user?.id === u.id
+                ? "bg-purple-600/10 border-purple-500"
+                : "bg-white/5 border-white/10"}`}
+          >
+            <div className="flex items-center gap-6">
+              <div className="text-2xl font-black w-12 text-center">
+                {getMedal(i)}
+              </div>
+
+              <div>
+                <div className="text-lg font-black">
+                  {u.nickname}
+                </div>
+                <div className="text-xs text-gray-500 uppercase">
+                  {u.rank_name || "Seed"}
+                </div>
+              </div>
+            </div>
+
+            <div className="text-xl font-black text-purple-400">
+              {u.points || 0} P
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {user && myRank && (
+        <div className="mt-12 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl">
+          <div className="text-sm text-gray-400 mb-2 uppercase">
+            My Rank
+          </div>
+          <div className="text-3xl font-black text-yellow-400">
+            #{myRank}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
