@@ -901,8 +901,40 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
           <div className="space-y-4 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar">
             <h4 className="text-[10px] font-black text-gray-500 tracking-[0.2em] mb-6 uppercase italic">Party Members ({parts.length}/8)</h4>
             {parts.map((p: any) => (
-              <div key={p.id} className="bg-white/5 p-5 rounded-[2rem] border border-white/5 flex justify-between items-center group/p hover:border-purple-500/30 transition-all">
-                <div>
+  <div
+    key={p.id}
+    className="bg-white/5 p-5 rounded-[2rem] border border-white/5 flex justify-between items-center group/p hover:border-purple-500/30 transition-all"
+  >
+    {/* 왼쪽 정보 영역 */}
+    <div>
+      <div className="font-bold text-white">
+        {p.character_name}
+      </div>
+      <div className="text-xs text-gray-400">
+        {p.class_name} / {p.position}
+      </div>
+    </div>
+
+    {/* 🔥 여기 오른쪽에 버튼 추가 */}
+    {p.user_id === user.id && (
+      <button
+        onClick={async () => {
+          if (!confirm("신청을 취소하시겠습니까?")) return;
+
+          await supabase
+            .from('raid_participants')
+            .delete()
+            .eq('id', p.id);
+
+          onRefresh();
+        }}
+        className="text-red-400 text-xs hover:text-red-300 transition"
+      >
+        취소
+      </button>
+    )}
+  </div>
+))}
                   <div className="text-base font-black text-purple-200">{p.character_name}</div>
                   <div className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{p.class_name} // LV.{p.item_level}</div>
                 </div>
