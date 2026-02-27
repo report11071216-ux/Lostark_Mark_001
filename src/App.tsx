@@ -876,43 +876,6 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
   };
   
   const deleteRaid = async () => {
-    const completeRaid = async () => {
-  if (!confirm("이 레이드를 완료 처리하시겠습니까?")) return;
-
-  // 1️⃣ 현재 레이드 참여자 불러오기
-  const { data: participantsData, error } = await supabase
-    .from('raid_participants')
-    .select('*')
-    .eq('schedule_id', raid.id);
-
-  if (error || !participantsData) {
-    alert("참여자 불러오기 실패");
-    return;
-  }
-
-  // 2️⃣ raid_history에 기록 저장
-  const historyRecords = participantsData.map((p: any) => ({
-    user_id: p.user_id,
-    schedule_id: raid.id,
-    raid_name: raid.raid_name,
-    difficulty: raid.difficulty,
-    raid_date: raid.raid_date
-  }));
-
-  const { error: insertError } = await supabase
-    .from('raid_history')
-    .insert(historyRecords);
-
-  if (insertError) {
-    alert("기록 저장 실패: " + insertError.message);
-    return;
-  }
-
-  alert("레이드 완료 처리 완료!");
-
-  onRefresh();
-  onClose();
-};
     if (confirm("삭제하시겠습니까?")) {
       const { error } = await supabase.from('raid_schedules').delete().eq('id', raid.id);
       if (!error) { onRefresh(); onClose(); }
@@ -961,12 +924,6 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
               <AdminInput label="Class" onChange={(v:any)=>setF({...f, class_name:v})} />
             </div>
             <button onClick={join} className="w-full bg-purple-600 p-6 rounded-[2rem] font-black mt-4 tracking-[0.2em] hover:bg-purple-500 transition-all shadow-xl shadow-purple-600/20 uppercase text-white">Apply Now</button>
-          <button
-  onClick={completeRaid}
-  className="w-full bg-green-600 p-4 rounded-[2rem] font-black mt-3 tracking-[0.2em] hover:bg-green-500 transition-all uppercase text-white"
->
-  레이드 완료 처리
-</button>
           </div>
         </div>
       </div>
