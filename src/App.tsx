@@ -603,10 +603,30 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
   const filteredPosts = posts.filter((p: any) => currentTab === '전체' || p.category === currentTab);
 
   const handleDelete = async (postId: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-    const { error } = await supabase.from('posts').delete().eq('id', postId);
-    if (!error) onRefresh();
-  };
+  if (!confirm("정말 삭제하시겠습니까?")) return;
+
+  const { error } = await supabase
+    .from('posts')
+    .delete()
+    .eq('id', postId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  // 🔥 포인트 -5 차감
+  await supabase.rpc('add_points', {
+    p_user_id: user.id,
+    p_points: -5,
+    p_type: 'post_delete'
+  });
+
+  alert("게시글 삭제 완료 (-5P)");
+
+  onRefresh();
+};
+  
 
   if (!user) {
     return (
@@ -1010,7 +1030,26 @@ const Auth = ({ mode, setMode }: any) => {
 };
 
 const MyRoom = ({ user, profile }: any) => {
- const [rankIcon, setRankIcon] = React.useState<string | null>(null);
+const [showNext, setShowNext] = useState(false);
+const [nextRank, setNextRank] = useState<any>(null);
+  useEffect(() => {
+  const fetchNextRank = async () => {
+    const { data } = await supabase
+      .from('ranks')
+      .select('*')
+      .gt('min_points', profile.points)
+      .order('min_points', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (data) setNextRank(data);
+  };
+
+  if (profile?.points !== undefined) {
+    fetchNextRank();
+  }
+}, [profile]);
+  const [rankIcon, setRankIcon] = React.useState<string | null>(null);
 
 useEffect(() => {
   const fetchRankIcon = async () => {
@@ -1060,9 +1099,18 @@ const handleAttendance = async () => {
 };
   return (
     <div className="max-w-4xl mx-auto py-24 px-6 text-center">
-      <h2 className="text-4xl font-black italic mb-10 uppercase tracking-tight">
-        My Room
-      </h2>
+   <div className="flex justify-between items-center mb-10">
+  <h2 className="text-4xl font-black italic uppercase tracking-tight">
+    My Room
+  </h2>
+
+  <button
+    onClick={() => setShowNext(!showNext)}
+    className="text-xs font-black text-purple-400 border border-purple-400 px-4 py-2 rounded-xl hover:bg-purple-600 hover:text-white transition-all"
+  >
+    NEXT RANK
+  </button>
+</div>
 
       <div className="bg-white/5 border border-white/10 rounded-3xl p-12 space-y-6">
         
@@ -1078,18 +1126,34 @@ const handleAttendance = async () => {
           </div>
         </div>
 
-        <div>
-          <div className="text-gray-500 text-xs uppercase mb-2">현재 등급</div>
-        <div className="flex flex-col items-center gap-3">
-  {rankIcon && (
-    <img
-      src={rankIcon}
-      alt="rank icon"
-      className="w-20 h-20 object-contain"
-    />
-  )}
-  <div className="text-xl font-black text-yellow-400">
-    {profile.rank_name || "Seed"}
+       <div>
+  <div className="text-gray-500 text-xs uppercase mb-2">현재 등급</div>
+
+  <div className="flex flex-col items-center gap-3">
+    {rankIcon && (
+      <img
+        src={rankIcon}
+        alt="rank icon"
+        className="w-20 h-20 object-contain"
+      />
+    )}
+
+    <div className="text-xl font-black text-yellow-400">
+      {profile.rank_name || "Seed"}
+    </div>
+
+    {/* 👇 여기 추가 */}
+    {showNext && nextRank && (
+      <div className="mt-4 text-center">
+        <div className="text-gray-500 text-xs uppercase mb-1">
+          다음 등급까지
+        </div>
+        <div className="text-lg font-black text-green-400">
+          {nextRank.min_points - profile.points} P 남음
+        </div>
+      </div>
+    )}
+
   </div>
 </div>
         </div>
