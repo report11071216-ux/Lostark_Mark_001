@@ -1020,7 +1020,7 @@ useEffect(() => {
       .from('ranks')
       .select('icon_url')
       .eq('name', profile.rank_name)
-      .single();
+      .maybeSingle();
 
     if (!error && data?.icon_url) {
       setRankIcon(data.icon_url);
