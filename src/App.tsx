@@ -519,6 +519,22 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
             >
               {['노말','하드','나이트메어'].map(d=><option key={d}>{d}</option>)}
             </select>
+            <div className="mt-4 flex gap-2">
+  {[1,2,3,4].map(g => (
+    <button
+      key={g}
+      type="button"
+      onClick={() => setSelectedGate(g)}
+      className={`px-4 py-2 rounded-lg text-xs font-bold ${
+        selectedGate === g
+          ? "bg-purple-600 text-white"
+          : "bg-black border border-white/20 text-gray-400"
+      }`}
+    >
+      {g}관문
+    </button>
+  ))}
+</div>
           </div>
         )}
 
