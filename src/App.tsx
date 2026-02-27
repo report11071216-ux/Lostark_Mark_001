@@ -106,7 +106,7 @@ export default function App() {
   );
 }
 
-// --- 공통 컴포넌트: 이미지 업로더 ---
+// --- 공통 컴포넌트: 이미지 업로더 (오류 수정 및 안정화 적용) ---
 const ImageUploader = ({ onUpload, label }: { onUpload: (url: string) => void, label: string }) => {
   const [uploading, setUploading] = useState(false);
 
@@ -117,16 +117,24 @@ const ImageUploader = ({ onUpload, label }: { onUpload: (url: string) => void, l
       if (!file) return;
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      // 중복 이름 방지 및 캐싱 이슈 해결을 위해 랜덤 문자열 추가
+      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
       const filePath = `contents/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage.from('images').upload(filePath, file);
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+        
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);
       onUpload(data.publicUrl);
     } catch (err: any) {
-      alert("이미지 업로드 실패: " + err.message);
+      console.error('Upload Error:', err);
+      alert(`이미지 업로드 실패: ${err.message}\n(Supabase Storage에 'images' 버킷이 생성 및 Public으로 설정되었는지 확인하세요.)`);
     } finally {
       setUploading(false);
     }
@@ -160,6 +168,7 @@ const MainContentViewer = ({ type }: { type: string }) => {
         setItems(data || []);
       }
     };
+  
     fetchData();
   }, [type]);
 
@@ -169,6 +178,7 @@ const MainContentViewer = ({ type }: { type: string }) => {
       {items.map(item => (
         <motion.div whileHover={{ y: -10 }} key={item.id} onClick={() => setSelectedItem(item)} className="group relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-black aspect-[4/5] cursor-pointer shadow-2xl">
           <img src={item.image_url || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80'} className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000" />
+     
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
           <div className="absolute bottom-10 left-10 right-10">
             <span className="text-[10px] font-black text-purple-500 uppercase tracking-[0.3em] mb-2 block italic">{type}</span>
@@ -201,6 +211,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
           .eq('gate_num', type === '레이드' ? gate : 0)
           .maybeSingle();
         setDetails(data);
+ 
       };
       fetchDetail();
     }
@@ -220,11 +231,13 @@ const DetailPopup = ({ item, type, onClose }: any) => {
         
         {type === '레이드' && (
           <div className="flex gap-4 mb-8">
+          
             <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5">
               {[1,2,3,4].map(g=><button key={g} onClick={()=>setGate(g)} className={`px-6 py-2 rounded-lg font-black transition-all ${gate===g?'bg-purple-600 shadow-lg shadow-purple-600/20':'text-gray-500'}`}>{g}관문</button>)}
             </div>
             <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5">
               {['노말','하드','나이트메어'].map(d=><button key={d} onClick={()=>setDiff(d)} className={`px-6 py-2 rounded-lg font-black text-xs transition-all ${diff===d?'bg-white text-black':'text-gray-500'}`}>{d}</button>)}
+            
             </div>
           </div>
         )}
@@ -241,6 +254,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
             details ? (
               <>
                 <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">HP (체력)</label><div className="text-lg font-black text-white">{details.hp || '-'}</div></div>
+             
                 <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">계열</label><div className="text-lg font-black text-white">{details.element_type || '-'}</div></div>
                 <div className="p-6 bg-white/5 rounded-2xl border border-white/5"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">속성</label><div className="text-lg font-black text-white">{details.attribute || '-'}</div></div>
                 <div className="p-6 bg-white/5 rounded-2xl border border-white/5 md:col-span-3"><label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">추천 딜러 카드</label><div className="text-lg font-black text-white">{details.dealer_cards || '-'}</div></div>
@@ -258,6 +272,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
 // --- [관리자] 통합 설정 패널 ---
 const AdminPanel = ({ settings, setSettings }: any) => {
   const [adminTab, setAdminTab] = useState('레이드');
+
   return (
     <motion.div initial={{opacity:0}} animate={{opacity:1}} className="max-w-6xl mx-auto p-8 text-left">
       <div className="flex items-center gap-4 mb-10">
@@ -268,6 +283,7 @@ const AdminPanel = ({ settings, setSettings }: any) => {
       <div className="flex gap-6 mb-10 overflow-x-auto pb-2">
         {['레이드', '가디언 토벌', '클래스', '길드 설정'].map(t => (
           <button 
+           
             key={t} 
             onClick={() => setAdminTab(t)}
             className={`whitespace-nowrap px-6 py-2 rounded-full text-xs font-black tracking-widest uppercase transition-all ${adminTab === t ? 'bg-purple-600 text-white' : 'bg-white/5 text-gray-500 hover:bg-white/10'}`}
@@ -319,6 +335,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     const { data: contentData, error: cErr } = await supabase.from('contents')
       .upsert({ name: form.name, category: category, image_url: form.image_url }, { onConflict: 'name' })
       .select().single();
+      
     if (cErr) return alert("저장 실패: " + cErr.message);
 
     const { error: dErr } = await supabase.from('content_details')
@@ -333,6 +350,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
         support_cards: form.s_card,
         clear_gold: form.gold
       }, { onConflict: 'content_id, difficulty, gate_num' });
+      
     if (dErr) alert("상세 정보 저장 실패: " + dErr.message);
     else alert(`[${form.name}] 정보가 성공적으로 업데이트되었습니다!`);
   };
@@ -347,11 +365,13 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       {isRaid && (
         <>
           <div className="space-y-4">
+          
             <label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Gate Selection</label>
             <div className="flex gap-2">
               {[1, 2, 3, 4].map(g => (
                 <button key={g} onClick={() => setSelectedGate(g)} className={`flex-1 py-4 rounded-2xl font-black transition-all ${selectedGate === g ? 'bg-purple-600 shadow-lg shadow-purple-600/20' : 'bg-black border border-white/10 text-gray-500'}`}>{g} Gate</button>
               ))}
+       
             </div>
           </div>
           <div className="flex gap-4 p-1 bg-black rounded-2xl border border-white/5">
@@ -366,6 +386,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
         <AdminInput label="HP" value={form.hp} onChange={(v:any) => setForm({...form, hp: v})} />
         <AdminInput label="Element" value={form.element} onChange={(v:any) => setForm({...form, element: v})} />
         <AdminInput label="Attribute" value={form.attribute} onChange={(v:any) => setForm({...form, attribute: v})} />
+   
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -388,7 +409,7 @@ const ClassContentEditor = () => {
   const [commonEngravings, setCommonEngravings] = useState<string[]>([]);
   const [arkPassive, setArkPassive] = useState<string[]>([]);
   const [counters, setCounters] = useState<string[]>([]);
-
+  
   const addField = (list: any, set: any, max: number) => { if(list.length < max) set([...list, ""]); };
   const updateField = (list: any, set: any, index: number, val: string) => { const newList = [...list]; newList[index] = val; set(newList); };
 
@@ -414,6 +435,7 @@ const ClassContentEditor = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <AdminInput label="Job Engraving" value={form.eng_job} onChange={(v:any)=>setForm({...form, eng_job:v})} />
         <ImageUploader label="Class Image" onUpload={(url)=>setForm({...form, image_url: url})} />
+ 
       </div>
 
       {/* 가변 필드 그룹 */}
@@ -430,6 +452,7 @@ const ClassContentEditor = () => {
         <div className="flex justify-between items-center"><label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Ark Passive / Grid (Max 6)</label><button onClick={() => addField(arkPassive, setArkPassive, 6)} className="p-1 bg-purple-600 rounded-lg"><Plus size={16}/></button></div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {arkPassive.map((val, i) => (
+       
             <input key={i} value={val} onChange={(e) => updateField(arkPassive, setArkPassive, i, e.target.value)} className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold outline-none focus:border-purple-500" placeholder={`그리드 ${i+1}`} />
           ))}
         </div>
@@ -450,17 +473,18 @@ const PostBoard = ({ posts }: any) => {
   const [subTab, setSubTab] = useState('전체');
 
   const tabs = ["전체", "스크린샷", "MVP", "커스터마이징 및 의상", "수집형 포인트"];
+  
   const collectionSubTabs = [
     "전체", "섬의 마음", "거인의 심장", "오르페우스의 별", "위대한 미술품", 
     "기억의 오르골", "모코코 씨앗", "세계수의 잎", "항해 모험물", "크림스네일의 해도", "누크만의 환영석"
   ];
-
+  
   const filteredPosts = posts.filter((p: any) => {
     const matchMain = currentTab === '전체' || p.category === currentTab;
     const matchSub = subTab === '전체' || p.sub_category === subTab;
     return matchMain && matchSub;
   });
-
+  
   return (
     <motion.div initial={{opacity:0}} animate={{opacity:1}} className="max-w-6xl mx-auto p-12 text-left">
       <div className="flex items-center justify-between mb-12">
@@ -471,6 +495,7 @@ const PostBoard = ({ posts }: any) => {
       {/* 메인 탭 */}
       <div className="flex gap-4 mb-8 overflow-x-auto pb-2 scrollbar-hide">
         {tabs.map(t => (
+    
           <button 
             key={t} 
             onClick={() => {setCurrentTab(t); setSubTab('전체');}} 
@@ -478,6 +503,7 @@ const PostBoard = ({ posts }: any) => {
           >
             {t}
           </button>
+  
         ))}
       </div>
 
@@ -487,6 +513,7 @@ const PostBoard = ({ posts }: any) => {
           {collectionSubTabs.map(s => (
             <button 
               key={s} 
+         
               onClick={() => setSubTab(s)}
               className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${subTab === s ? 'text-purple-400 bg-purple-500/10' : 'text-gray-600 hover:text-gray-300'}`}
             >
@@ -514,6 +541,7 @@ const PostBoard = ({ posts }: any) => {
               </div>
             </div>
           ))}
+  
         </div>
       )}
     </motion.div>
@@ -541,7 +569,7 @@ const RaidCalendar = ({ user }: any) => {
   const [participants, setParticipants] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-
+  
   useEffect(() => { fetchData(); }, [currentDate]);
 
   const fetchData = async () => {
@@ -556,7 +584,7 @@ const RaidCalendar = ({ user }: any) => {
   const firstDayOfMonth = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const dateArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
+  
   return (
     <section id="calendar" className="max-w-7xl mx-auto px-6 py-24 border-t border-white/5">
       <div className="flex items-center justify-between mb-12">
@@ -565,6 +593,7 @@ const RaidCalendar = ({ user }: any) => {
             <CalendarIcon className="text-purple-500" />
           </div>
           <h2 className="text-4xl font-black italic tracking-tighter uppercase font-mono">{year}. {String(month + 1).padStart(2, '0')}</h2>
+       
         </div>
         <div className="flex gap-3">
           <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="p-3 hover:bg-white/5 rounded-xl border border-white/10 transition-all active:scale-90"><ChevronLeft size={24}/></button>
@@ -590,6 +619,7 @@ const RaidCalendar = ({ user }: any) => {
                 <div className="space-y-2.5">
                   {dayRaids.map(raid => (
                     <RaidItem key={raid.id} raid={raid} parts={participants.filter(p => p.schedule_id === raid.id)} onRefresh={fetchData} />
+       
                   ))}
                 </div>
               </div>
@@ -604,6 +634,7 @@ const RaidCalendar = ({ user }: any) => {
 
 const RaidItem = ({ raid, parts, onRefresh }: any) => {
   const [showJoin, setShowJoin] = useState(false);
+  
   return (
     <>
       <div onClick={() => setShowJoin(true)} className="bg-purple-950/20 border border-purple-500/20 p-3.5 rounded-2xl cursor-pointer hover:border-purple-500/60 hover:bg-purple-900/30 transition-all shadow-xl group/item text-left">
@@ -612,6 +643,7 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
           <span className="flex items-center gap-1"><Users size={8}/> {parts.length}/8</span>
         </div>
         <div className="text-xs font-black truncate text-gray-200 group-hover/item:text-white transition-colors">{raid.raid_name}</div>
+      
         <div className="text-[10px] text-gray-500 mt-2 flex items-center gap-1.5 font-bold italic"><Clock size={10} className="text-purple-500"/> {raid.raid_time}</div>
       </div>
       {showJoin && <JoinModal raid={raid} parts={parts} onRefresh={onRefresh} onClose={() => setShowJoin(false)} />}
@@ -621,12 +653,14 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
 
 const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
   const [form, setForm] = useState({ raid_name: '', difficulty: '노말', raid_time: '오후 8:00' });
+  
   const save = async () => {
     if(!form.raid_name) return alert("레이드 이름을 입력해주세요.");
     const { error } = await supabase.from('raid_schedules').insert([{ ...form, raid_date: date, max_participants: 8 }]);
     if (error) alert("생성 실패: " + error.message);
     else { alert("레이드가 생성되었습니다!"); onRefresh(); onClose(); }
   };
+  
   return (
     <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left">
       <div className="bg-[#111] border border-white/10 p-12 rounded-[3.5rem] w-full max-w-sm shadow-2xl relative">
@@ -634,11 +668,13 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
         <div className="space-y-5">
           <AdminInput label="Raid Name" placeholder="카멘 3관" value={form.raid_name} onChange={(v:any)=>setForm({...form, raid_name:v})} />
           <div className="grid grid-cols-2 gap-4">
+ 
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-500 ml-1 uppercase">Difficulty</label>
               <select className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm outline-none font-bold text-white" onChange={e => setForm({...form, difficulty: e.target.value})}>
                 <option value="노말">노말</option><option value="하드">하드</option><option value="나이트메어">나이트메어</option>
               </select>
+       
             </div>
             <AdminInput label="Time" value={form.raid_time} onChange={(v:any)=>setForm({...form, raid_time:v})} />
           </div>
@@ -652,17 +688,20 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
 
 const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
   const [f, setF] = useState({ character_name: '', position: '딜러', item_level: '', class_name: '' });
+  
   const join = async () => {
     if(!f.character_name) return alert("캐릭터명을 입력해주세요.");
     const { error } = await supabase.from('raid_participants').insert([{ schedule_id: raid.id, ...f }]);
     if (!error) { onRefresh(); onClose(); } else alert("신청 실패: " + error.message);
   };
+  
   const deleteRaid = async () => {
     if (confirm("삭제하시겠습니까?")) {
       const { error } = await supabase.from('raid_schedules').delete().eq('id', raid.id);
       if (!error) { onRefresh(); onClose(); }
     }
   };
+  
   return (
     <div className="fixed inset-0 z-[200] bg-black/98 backdrop-blur-2xl flex items-center justify-center p-6 text-left">
       <div className="bg-[#0f0f0f] border border-white/10 p-12 rounded-[4rem] w-full max-w-2xl shadow-2xl relative">
@@ -670,6 +709,7 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
           <div>
             <span className="text-purple-500 text-[10px] font-black tracking-[0.4em] uppercase mb-2 block italic">Expedition Briefing</span>
             <h3 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-none">{raid.raid_name}</h3>
+        
             <p className="text-gray-500 text-xs font-bold tracking-widest uppercase mt-3">{raid.difficulty} // {raid.raid_time}</p>
           </div>
           <div className="flex gap-3">
@@ -677,12 +717,14 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
             <button onClick={onClose} className="p-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-all text-white"><X size={28}/></button>
           </div>
         </div>
+        
         <div className="grid md:grid-cols-2 gap-12">
           <div className="space-y-4 max-h-[400px] overflow-y-auto pr-4 custom-scrollbar">
             <h4 className="text-[10px] font-black text-gray-500 tracking-[0.2em] mb-6 uppercase italic">Party Members ({parts.length}/8)</h4>
             {parts.map((p: any) => (
               <div key={p.id} className="bg-white/5 p-5 rounded-[2rem] border border-white/5 flex justify-between items-center group/p hover:border-purple-500/30 transition-all">
                 <div>
+    
                   <div className="text-base font-black text-purple-200">{p.character_name}</div>
                   <div className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">{p.class_name} // LV.{p.item_level}</div>
                 </div>
@@ -693,18 +735,21 @@ const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
           <div className="space-y-5">
             <h4 className="text-[10px] font-black text-gray-500 tracking-[0.2em] mb-6 uppercase italic">Sign Up Form</h4>
             <AdminInput label="Character Name" onChange={(v:any)=>setF({...f, character_name:v})} />
+           
             <div className="space-y-3">
               <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Position</label>
               <select className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold text-white outline-none" onChange={e => setF({...f, position: e.target.value})}>
                 <option value="딜러">딜러</option><option value="서포터">서포터</option>
               </select>
             </div>
+     
             <div className="grid grid-cols-2 gap-4">
               <AdminInput label="Item Level" onChange={(v:any)=>setF({...f, item_level:v})} />
               <AdminInput label="Class" onChange={(v:any)=>setF({...f, class_name:v})} />
             </div>
             <button onClick={join} className="w-full bg-purple-600 p-6 rounded-[2rem] font-black mt-4 tracking-[0.2em] hover:bg-purple-500 transition-all shadow-xl shadow-purple-600/20 uppercase">Apply Now</button>
           </div>
+     
         </div>
       </div>
     </div>
@@ -718,6 +763,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
     ...(profile?.role === 'admin' ? [{ id: 'admin', label: '관리자' }] : []),
     ...(user ? [] : [{ id: 'login', label: '로그인' }, { id: 'signup', label: '회원가입' }])
   ];
+  
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -726,6 +772,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
           <span className="text-2xl font-black tracking-tighter uppercase font-mono italic">INXX</span>
         </div>
         <div className="flex gap-8">
+ 
           {navItems.map((item) => (
             <button key={item.id} onClick={() => setActiveTab(item.id)} className={`text-xs font-black tracking-[0.2em] transition-all uppercase ${activeTab === item.id ? 'text-purple-400' : 'text-gray-500 hover:text-white'}`}>{item.label}</button>
           ))}
@@ -754,6 +801,7 @@ const Auth = ({ mode, setMode }: any) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
+  
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -770,7 +818,7 @@ const Auth = ({ mode, setMode }: any) => {
       }
     } catch (err: any) { alert(err.message); }
   };
-
+  
   return (
     <div className="max-w-md mx-auto py-32 px-4">
       <div className="p-12 rounded-[4rem] border border-white/10 bg-[#0f0f0f] shadow-2xl relative overflow-hidden text-center">
@@ -778,10 +826,12 @@ const Auth = ({ mode, setMode }: any) => {
         <h2 className="text-5xl font-black italic mb-2 tracking-tighter uppercase">{mode === 'login' ? 'Sign In' : 'Join Us'}</h2>
         <p className="text-gray-600 text-[10px] font-black tracking-[0.4em] mb-12 uppercase italic">Authentication Required</p>
         <form onSubmit={handleAuth} className="space-y-5 text-left">
+          
           <input type="email" placeholder="E-MAIL" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white" value={email} onChange={e => setEmail(e.target.value)} required />
           <input type="password" placeholder="PASSWORD" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white" value={password} onChange={e => setPassword(e.target.value)} required />
           {mode === 'signup' && (
             <input type="text" placeholder="NICKNAME" className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white" value={nickname} onChange={e => setNickname(e.target.value)} required />
+    
           )}
           <button type="submit" className="w-full bg-purple-600 p-6 rounded-3xl font-black uppercase tracking-[0.3em] mt-6 hover:bg-purple-500 transition-colors shadow-lg shadow-purple-600/20 active:scale-95 text-white">Proceed</button>
         </form>
