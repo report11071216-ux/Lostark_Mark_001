@@ -495,7 +495,17 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
               value={selectedGate}
               onChange={e=>setSelectedGate(Number(e.target.value))}
             >
-              {[1,2,3,4].map(g=><option key={g}>{g}관문</option>)}
+              <select
+  className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
+  value={selectedGate}
+  onChange={e=>setSelectedGate(Number(e.target.value))}
+>
+  {[1,2,3,4].map(g=>(
+    <option key={g} value={g}>
+      {g}관문
+    </option>
+  ))}
+</select>
             </select>
 
             <select
