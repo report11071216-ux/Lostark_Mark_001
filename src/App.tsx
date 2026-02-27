@@ -327,8 +327,8 @@ const [availableDifficulties, setAvailableDifficulties] = useState([
     hp: '',
     element: '',
     attribute: '',
-    gold: 0
-    max_gate: 4,
+gold: 0,
+max_gate: 4,
 available_difficulties: ["노말","하드","나이트메어"],
   });
 
