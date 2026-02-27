@@ -231,37 +231,10 @@ const DetailPopup = ({ item, type, onClose }: any) => {
         {type === '레이드' && (
           <div className="flex gap-4 mb-8">
             <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5">
-              {Array.from({ length: selectedContent?.max_gate || 1 }).map((_, i) => {
-  const g = i + 1;
-  return (
-    <button
-      key={g}
-      onClick={()=>setGate(g)}
-      className={`px-6 py-2 rounded-lg font-black transition-all ${
-        gate===g
-          ? 'bg-purple-600 shadow-lg shadow-purple-600/20'
-          : 'text-gray-500'
-      }`}
-    >
-      {g}관문
-    </button>
-  );
-})}
+              {[1,2,3,4].map(g=><button key={g} onClick={()=>setGate(g)} className={`px-6 py-2 rounded-lg font-black transition-all ${gate===g?'bg-purple-600 shadow-lg shadow-purple-600/20':'text-gray-500'}`}>{g}관문</button>)}
             </div>
             <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5">
-             {(selectedContent?.available_difficulties || []).map(d => (
-  <button
-    key={d}
-    onClick={()=>setDiff(d)}
-    className={`px-6 py-2 rounded-lg font-black text-xs transition-all ${
-      diff===d
-        ? 'bg-white text-black'
-        : 'text-gray-500'
-    }`}
-  >
-    {d}
-  </button>
-))}
+              {['노말','하드','나이트메어'].map(d=><button key={d} onClick={()=>setDiff(d)} className={`px-6 py-2 rounded-lg font-black text-xs transition-all ${diff===d?'bg-white text-black':'text-gray-500'}`}>{d}</button>)}
             </div>
           </div>
         )}
@@ -384,40 +357,35 @@ available_difficulties: ["노말","하드","나이트메어"],
 
   // 🔥 리스트 클릭 시 기존 데이터 불러오기
   const loadItem = async (item: any) => {
-  setEditingId(item.id);
-
-  setForm(prev => ({
-    ...prev,
-    name: item.name,
-    image_url: item.image_url || '',
-    max_gate: item.max_gate ?? 4,
-    available_difficulties:
-      item.available_difficulties ?? ["노말","하드","나이트메어"]
-  }));
-
-  setMaxGate(item.max_gate ?? 4);
-  setAvailableDifficulties(
-    item.available_difficulties ?? ["노말","하드","나이트메어"]
-  );
-
-  const { data } = await supabase
-    .from('content_details')
-    .select('*')
-    .eq('content_id', item.id)
-    .eq('difficulty', isRaid ? difficulty : null)
-    .eq('gate_num', isRaid ? selectedGate : 0)
-    .maybeSingle();
-
-  if (data) {
+    setEditingId(item.id);
     setForm(prev => ({
-      ...prev,
-      hp: data.hp || '',
-      element: data.element_type || '',
-      attribute: data.attribute || '',
-      gold: data.clear_gold || 0
-    }));
-  }
-};
+  ...prev,
+  name: item.name,
+  image_url: item.image_url || '',
+  max_gate: item.max_gate ?? 4,
+  available_difficulties:
+    item.available_difficulties ?? ["노말","하드","나이트메어"]
+}));
+
+    const { data } = await supabase
+      .from('content_details')
+      .select('*')
+      .eq('content_id', item.id)
+      .eq('difficulty', isRaid ? difficulty : null)
+      .eq('gate_num', isRaid ? selectedGate : 0)
+      .maybeSingle();
+
+    if (data) {
+      setForm({
+        name: item.name,
+        image_url: item.image_url || '',
+        hp: data.hp || '',
+        element: data.element_type || '',
+        attribute: data.attribute || '',
+        gold: data.clear_gold || 0
+      });
+    }
+  };
 
   const resetForm = () => {
     setEditingId(null);
@@ -442,8 +410,6 @@ available_difficulties: ["노말","하드","나이트메어"],
           name: form.name,
           category: isRaid ? '레이드' : '가디언 토벌',
           image_url: form.image_url
-          max_gate: maxGate,
-available_difficulties: availableDifficulties,
         },
         { onConflict: 'id' }
       )
