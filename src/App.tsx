@@ -231,10 +231,37 @@ const DetailPopup = ({ item, type, onClose }: any) => {
         {type === '레이드' && (
           <div className="flex gap-4 mb-8">
             <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5">
-              {[1,2,3,4].map(g=><button key={g} onClick={()=>setGate(g)} className={`px-6 py-2 rounded-lg font-black transition-all ${gate===g?'bg-purple-600 shadow-lg shadow-purple-600/20':'text-gray-500'}`}>{g}관문</button>)}
+              {Array.from({ length: selectedContent?.max_gate || 1 }).map((_, i) => {
+  const g = i + 1;
+  return (
+    <button
+      key={g}
+      onClick={()=>setGate(g)}
+      className={`px-6 py-2 rounded-lg font-black transition-all ${
+        gate===g
+          ? 'bg-purple-600 shadow-lg shadow-purple-600/20'
+          : 'text-gray-500'
+      }`}
+    >
+      {g}관문
+    </button>
+  );
+})}
             </div>
             <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5">
-              {['노말','하드','나이트메어'].map(d=><button key={d} onClick={()=>setDiff(d)} className={`px-6 py-2 rounded-lg font-black text-xs transition-all ${diff===d?'bg-white text-black':'text-gray-500'}`}>{d}</button>)}
+             {(selectedContent?.available_difficulties || []).map(d => (
+  <button
+    key={d}
+    onClick={()=>setDiff(d)}
+    className={`px-6 py-2 rounded-lg font-black text-xs transition-all ${
+      diff===d
+        ? 'bg-white text-black'
+        : 'text-gray-500'
+    }`}
+  >
+    {d}
+  </button>
+))}
             </div>
           </div>
         )}
