@@ -1052,11 +1052,25 @@ const JoinModal = ({ raid, parts, onClose, onRefresh }: any) => {
 
   const [showJoin,setShowJoin] = useState(false)
 
-  const dealers = parts.filter((p:any)=>p.role==="딜러").length
-  const supports = parts.filter((p:any)=>p.role==="서포터").length
+  const dealers = parts.filter((p:any)=>p.position==="딜러").length
+  const supports = parts.filter((p:any)=>p.position==="서포터").length
 
-  const isFull =
-    dealers >= 6 && supports >= 2
+  const isFull = dealers >= 6 && supports >= 2
+
+  const handleDelete = async () => {
+
+    const ok = confirm("레이드를 삭제하시겠습니까?")
+
+    if(!ok) return
+
+    await supabase
+      .from("raid_schedules")
+      .delete()
+      .eq("id", raid.id)
+
+    onRefresh()
+    onClose()
+  }
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
@@ -1081,15 +1095,21 @@ const JoinModal = ({ raid, parts, onClose, onRefresh }: any) => {
 
         <div className="space-y-2 max-h-[200px] overflow-y-auto mb-4">
 
+          {parts.length === 0 && (
+            <div className="text-gray-500 text-sm">
+              아직 참가자가 없습니다
+            </div>
+          )}
+
           {parts.map((p:any,i:number)=>(
             <div key={i} className="flex justify-between text-sm text-gray-300">
 
               <div>
-                {p.nickname} ({p.level})
+                {p.character_name} ({p.item_level})
               </div>
 
               <div className="text-purple-400">
-                {p.class} / {p.role}
+                {p.class_name} / {p.position}
               </div>
 
             </div>
@@ -1105,6 +1125,13 @@ const JoinModal = ({ raid, parts, onClose, onRefresh }: any) => {
             참여하기
           </button>
         )}
+
+        <button
+          onClick={handleDelete}
+          className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg mb-2"
+        >
+          레이드 삭제
+        </button>
 
         <button
           onClick={onClose}
@@ -1127,6 +1154,96 @@ const JoinModal = ({ raid, parts, onClose, onRefresh }: any) => {
       </div>
 
     </div>
+  )
+}
+
+
+
+const JoinForm = ({ raid, onClose, onSuccess }: any) => {
+
+  const [nickname,setNickname] = useState("")
+  const [level,setLevel] = useState("")
+  const [playerClass,setPlayerClass] = useState("")
+  const [role,setRole] = useState("딜러")
+
+  const handleJoin = async () => {
+
+    const { error } = await supabase
+      .from("raid_participants")
+      .insert({
+        schedule_id: raid.id,
+        character_name: nickname,
+        item_level: level,
+        class_name: playerClass,
+        position: role
+      })
+
+    if(!error){
+      onSuccess()
+    } else {
+      alert("참여 실패")
+    }
+
+  }
+
+  return (
+
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+
+      <div className="bg-[#0f0f1a] p-6 rounded-xl w-[320px] space-y-3">
+
+        <div className="text-white font-bold mb-2">
+          레이드 참여
+        </div>
+
+        <input
+          placeholder="닉네임"
+          value={nickname}
+          onChange={(e)=>setNickname(e.target.value)}
+          className="w-full p-2 bg-black text-white rounded"
+        />
+
+        <input
+          placeholder="아이템 레벨"
+          value={level}
+          onChange={(e)=>setLevel(e.target.value)}
+          className="w-full p-2 bg-black text-white rounded"
+        />
+
+        <input
+          placeholder="클래스"
+          value={playerClass}
+          onChange={(e)=>setPlayerClass(e.target.value)}
+          className="w-full p-2 bg-black text-white rounded"
+        />
+
+        <select
+          value={role}
+          onChange={(e)=>setRole(e.target.value)}
+          className="w-full p-2 bg-black text-white rounded"
+        >
+          <option>딜러</option>
+          <option>서포터</option>
+        </select>
+
+        <button
+          onClick={handleJoin}
+          className="w-full bg-green-600 py-2 rounded"
+        >
+          참가
+        </button>
+
+        <button
+          onClick={onClose}
+          className="w-full bg-gray-700 py-2 rounded"
+        >
+          취소
+        </button>
+
+      </div>
+
+    </div>
+
   )
 }
 
