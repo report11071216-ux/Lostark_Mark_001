@@ -1349,8 +1349,9 @@ const [imageFile, setImageFile] = React.useState<File | null>(null)
   const fetchCharacters = async () => {
 
 const { data, error } = await supabase
-.from("guild_members")
-.select("*")
+  .from("guild_members")
+  .select("*")
+  .eq("user_id", user.id)  // ✅ 내 캐릭터만 가져오기
 
 if(!error){
 setCharacters(data)
