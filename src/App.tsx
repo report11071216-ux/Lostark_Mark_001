@@ -934,16 +934,7 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
   const [form, setForm] = useState({ raid_name: '', difficulty: '노말', raid_time: '오후 8:00' });
   const save = async () => {
     if(!form.raid_name) return alert("레이드 이름을 입력해주세요.");
-    const creator = prompt("생성자 닉네임 입력")
-
-const { error } = await supabase
-.from('raid_schedules')
-.insert([{
-  ...form,
-  raid_date: date,
-  max_participants: 8,
-  creator
-}]);
+    const { error } = await supabase.from('raid_schedules').insert([{ ...form, raid_date: date, max_participants: 8 }]);
     if (error) alert("생성 실패: " + error.message);
     else { alert("레이드가 생성되었습니다!"); onRefresh(); onClose(); }
   };
@@ -1042,12 +1033,8 @@ const JoinModal = ({ raid, parts, onClose, onRefresh }: any) => {
 
         {!isFull && (
           <button
-    
-
-<div
-  onClick={()=>setShowJoin(true)}
-  className={`${difficultyColor} border p-3 rounded-xl cursor-pointer`}
->
+            onClick={()=>setShowJoin(true)}
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg mb-2"
           >
             참여하기
           </button>
@@ -1184,16 +1171,8 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
   return (
     <>
       <div
-     <div
-onClick={()=>setShowJoin(true)}
-className={`${
-raid.difficulty === "노말"
-? "bg-green-900/20 border-green-500/30 hover:border-green-400"
-: raid.difficulty === "하드"
-? "bg-red-900/20 border-red-500/30 hover:border-red-400"
-: "bg-purple-900/20 border-purple-500/30 hover:border-purple-400"
-} border p-3 rounded-xl cursor-pointer`}
->
+        onClick={()=>setShowJoin(true)}
+        className="bg-purple-950/20 border border-purple-500/20 p-3 rounded-xl cursor-pointer hover:border-purple-500"
       >
 
         <div className="flex justify-between text-[10px] text-purple-400 mb-1">
@@ -1208,12 +1187,8 @@ raid.difficulty === "노말"
         </div>
 
         <div className="text-xs font-bold text-white leading-tight whitespace-normal break-words">
-  {raid.raid_name}
-</div>
-
-<div className="text-[10px] text-gray-400">
-  생성자 : {raid.creator}
-</div>
+          {raid.raid_name}
+        </div>
 
         <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-1">
           <Clock size={10}/>
