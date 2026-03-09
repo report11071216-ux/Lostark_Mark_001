@@ -1769,6 +1769,12 @@ const deleteMember = async (id: string) => {
     <div className="text-sm text-purple-400 mt-2">
       {m.item_level}
     </div>
+    <button
+  onClick={() => deleteMember(m.id)}
+  className="mt-3 bg-red-500 px-3 py-1 rounded-lg text-sm"
+>
+  삭제
+</button>
 
   </div>
 ))}
