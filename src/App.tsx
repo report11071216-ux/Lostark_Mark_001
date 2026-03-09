@@ -1343,9 +1343,23 @@ const MyRoom = ({ user, profile }: any) => {
 const [className, setClassName] = React.useState("")
 const [engraving, setEngraving] = React.useState("")
 const [itemLevel, setItemLevel] = React.useState("")
+  const [characters, setCharacters] = React.useState([])
 const [imageFile, setImageFile] = React.useState<File | null>(null)
 
-useEffect(() => {
+  const fetchCharacters = async () => {
+
+const { data, error } = await supabase
+.from("guild_members")
+.select("*")
+.eq("user_id", user.id)
+
+if(!error){
+setCharacters(data)
+}
+
+}
+
+  useEffect(() => {
   const fetchRankIcon = async () => {
     if (!profile?.rank_name) return;
 
@@ -1360,7 +1374,9 @@ useEffect(() => {
     }
   };
 
+  
   fetchRankIcon();
+    fetchCharacters();
 }, [profile]);
   if (!user || !profile) return null;
   
@@ -1434,6 +1450,7 @@ if(error){
 alert("캐릭터 등록 실패 : " + error.message)
 }else{
 alert("캐릭터 등록 완료 🎉")
+fetchCharacters()
 }
 
 }
