@@ -930,23 +930,6 @@ const RaidCalendar = ({ user }: any) => {
   );
 };
 
-const RaidItem = ({ raid, parts, onRefresh }: any) => {
-  const [showJoin, setShowJoin] = useState(false);
-  return (
-    <>
-      <div onClick={() => setShowJoin(true)} className="bg-purple-950/20 border border-purple-500/20 p-3.5 rounded-2xl cursor-pointer hover:border-purple-500/60 hover:bg-purple-900/30 transition-all shadow-xl group/item text-left">
-        <div className="flex justify-between text-[8px] font-black text-purple-400 uppercase mb-2 tracking-widest">
-          <span className="bg-purple-600 text-white px-2 py-0.5 rounded-md">{raid.difficulty}</span>
-          <span className="flex items-center gap-1"><Users size={8}/> {parts.length}/8</span>
-        </div>
-        <div className="text-xs font-black truncate text-gray-200 group-hover/item:text-white transition-colors">{raid.raid_name}</div>
-        <div className="text-[10px] text-gray-500 mt-2 flex items-center gap-1.5 font-bold italic"><Clock size={10} className="text-purple-500"/> {raid.raid_time}</div>
-      </div>
-      {showJoin && <JoinModal raid={raid} parts={parts} onRefresh={onRefresh} onClose={() => setShowJoin(false)} />}
-    </>
-  );
-};
-
 const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
   const [form, setForm] = useState({ raid_name: '', difficulty: '노말', raid_time: '오후 8:00' });
   const save = async () => {
