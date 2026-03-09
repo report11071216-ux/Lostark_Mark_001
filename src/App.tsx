@@ -1648,6 +1648,7 @@ const GuildMembersPage = ({ user }: any) => {
     const { data, error } = await supabase
       .from("guild_members")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: true })
 
     if (!error && data) {
@@ -1690,8 +1691,7 @@ const deleteMember = async (id: string) => {
       </h1>
 
       <div className="grid grid-cols-4 gap-6">
-
-        {members.map((m) => (
+{members.map((m) => (
   <div key={m.id} className="bg-zinc-900 p-5 rounded-xl">
 
     {m.avatar_url && (
@@ -1709,21 +1709,15 @@ const deleteMember = async (id: string) => {
       {m.class_name}
     </div>
 
-<div className="text-sm text-purple-400 mt-2">
-  {m.item_level}
-</div>
+    <div className="text-sm text-purple-400 mt-2">
+      {m.item_level}
+    </div>
 
-<button
-  onClick={() => deleteMember(m.id)}
-  className="mt-3 text-xs text-red-400"
->
-  캐릭터 삭제
-</button>
-
-</div>
+  </div>
 ))}
 
 </div>
 </div>
 );
 }
+        
