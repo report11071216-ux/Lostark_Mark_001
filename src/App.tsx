@@ -1700,20 +1700,21 @@ const GuildMembersPage = ({ user }: any) => {
     fetchMembers()
   }, [])
 
-  const fetchMembers = async () => {
+ const fetchMembers = async () => {
+  const { data, error } = await supabase
+    .from("guild_members")
+    .select("*")
+    .eq("guild_id", user.guild_id)  // 내 길드 전체 멤버
+    .order("created_at", { ascending: true });
 
-    const { data, error } = await supabase
-      .from("guild_members")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true })
-
-    if (!error && data) {
-      setMembers(data)
-    }
-
-    setLoading(false)
+  if (!error && data) {
+    setMembers(data);
   }
+
+  setLoading(false);
+};
+
+   
 
 const deleteMember = async (id: string) => {
 
