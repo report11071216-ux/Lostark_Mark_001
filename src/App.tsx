@@ -1351,7 +1351,7 @@ const [imageFile, setImageFile] = React.useState<File | null>(null)
 const { data, error } = await supabase
   .from("guild_members")
   .select("*")
-  .eq("guild_id", user.guild_id) // 같은 길드 캐릭터만 가져오기
+  .eq("user_id", user.id)  // ✅ 내 캐릭터만
   .order("created_at", { ascending: true });
 if(!error){
 setCharacters(data)
@@ -1701,11 +1701,11 @@ const GuildMembersPage = ({ user }: any) => {
   }, [])
 
  const fetchMembers = async () => {
-  const { data, error } = await supabase
-    .from("guild_members")
-    .select("*")
-    .eq("guild_id", user.guild_id)  // 내 길드 전체 멤버
-    .order("created_at", { ascending: true });
+const { data, error } = await supabase
+  .from("guild_members")
+  .select("*")
+  .eq("guild_id", user.guild_id)  // ✅ 같은 길드 캐릭터 모두
+  .order("created_at", { ascending: true });
 
   if (!error && data) {
     setMembers(data);
