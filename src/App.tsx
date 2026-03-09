@@ -1531,6 +1531,8 @@ alert("캐릭터 등록 완료 🎉")
     </div>
   );
 };
+
+
 const RankingPage = ({ user, profile }: any) => {
   const [users, setUsers] = React.useState<any[]>([]);
   const [myRank, setMyRank] = React.useState<number | null>(null);
@@ -1707,21 +1709,23 @@ const deleteMember = async (id: string) => {
       {m.class_name}
     </div>
 
-    <div className="text-sm text-purple-400 mt-2">
-      {m.item_level}
     </div>
+
+<div className="text-sm text-purple-400 mt-2">
+  {m.item_level}
+</div>
+
 <button
   onClick={() => deleteMember(m.id)}
   className="mt-3 text-xs text-red-400"
 >
   캐릭터 삭제
 </button>
-    <button
-      onClick={() => deleteMember(m.id)}
-      className="mt-3 text-xs text-red-400"
-    >
-      캐릭터 삭제
-    </button>
 
-  </div>
+</div>
 ))}
+
+</div>
+</div>
+);
+}
