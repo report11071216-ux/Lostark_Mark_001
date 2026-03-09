@@ -961,6 +961,58 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
     </div>
   );
 };
+const JoinModal = ({ raid, parts, onClose }: any) => {
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+
+      <div className="bg-[#0f0f1a] border border-purple-500/30 rounded-2xl p-6 w-[350px]">
+
+        <div className="text-white text-lg font-bold mb-4">
+          {raid.raid_name}
+        </div>
+
+        <div className="text-sm text-gray-400 mb-2">
+          날짜 : {raid.raid_date}
+        </div>
+
+        <div className="text-sm text-gray-400 mb-4">
+          시간 : {raid.raid_time}
+        </div>
+
+        <div className="text-sm text-gray-400 mb-4">
+          참여 인원 : {parts.length} / {raid.max_participants}
+        </div>
+
+        <div className="space-y-2 max-h-[200px] overflow-y-auto mb-4">
+
+          {parts.length === 0 && (
+            <div className="text-gray-500 text-sm">
+              아직 참가자가 없습니다
+            </div>
+          )}
+
+          {parts.map((p:any,i:number)=>(
+            <div key={i} className="text-gray-300 text-sm">
+              {p.nickname || "참가자"}
+            </div>
+          ))}
+
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg"
+        >
+          닫기
+        </button>
+
+      </div>
+
+    </div>
+  )
+}
+
 
 const RaidItem = ({ raid, parts, onRefresh }: any) => {
 
