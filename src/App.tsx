@@ -1544,6 +1544,52 @@ fetchCharacters()
   </button>
 
 </div>
+
+<div className="mt-10">
+
+<div className="text-xl font-bold mb-4">
+내 캐릭터
+</div>
+
+<div className="grid grid-cols-3 gap-4">
+
+{characters.map((c:any) => (
+
+<div key={c.id} className="bg-black/40 p-4 rounded-xl">
+
+{c.avatar_url && (
+<img
+src={c.avatar_url}
+className="w-full h-32 object-cover rounded mb-2"
+/>
+)}
+
+<div className="font-bold">
+{c.character_name}
+</div>
+
+<div className="text-sm text-gray-400">
+{c.class_name}
+</div>
+
+<div className="text-purple-400">
+{c.item_level}
+</div>
+
+</div>
+
+))}
+
+</div>
+
+</div>
+
+      </div>
+    </div>
+  );
+};
+
+</div>
       </div>
     </div>
   );
