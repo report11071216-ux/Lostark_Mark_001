@@ -961,12 +961,107 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
     </div>
   );
 };
-const JoinModal = ({ raid, parts, onClose }: any) => {
+const JoinForm = ({ raid, onClose, onSuccess }: any) => {
+
+  const [nickname,setNickname] = useState("")
+  const [level,setLevel] = useState("")
+  const [playerClass,setPlayerClass] = useState("")
+  const [role,setRole] = useState("딜러")
+
+  const handleJoin = async () => {
+
+    const { error } = await supabase
+      .from("raid_participants")
+      .insert([
+        {
+          raid_id: raid.id,
+          nickname,
+          level,
+          class: playerClass,
+          role
+        }
+      ])
+
+    if(!error){
+      onSuccess()
+    }
+  }
+
+  return (
+
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+
+      <div className="bg-[#0f0f1a] p-6 rounded-xl w-[320px] space-y-3">
+
+        <div className="text-white font-bold mb-2">
+          레이드 참여
+        </div>
+
+        <input
+          placeholder="닉네임"
+          value={nickname}
+          onChange={(e)=>setNickname(e.target.value)}
+          className="w-full p-2 bg-black text-white rounded"
+        />
+
+        <input
+          placeholder="레벨"
+          value={level}
+          onChange={(e)=>setLevel(e.target.value)}
+          className="w-full p-2 bg-black text-white rounded"
+        />
+
+        <input
+          placeholder="클래스"
+          value={playerClass}
+          onChange={(e)=>setPlayerClass(e.target.value)}
+          className="w-full p-2 bg-black text-white rounded"
+        />
+
+        <select
+          value={role}
+          onChange={(e)=>setRole(e.target.value)}
+          className="w-full p-2 bg-black text-white rounded"
+        >
+          <option>딜러</option>
+          <option>서포터</option>
+        </select>
+
+        <button
+          onClick={handleJoin}
+          className="w-full bg-green-600 py-2 rounded"
+        >
+          참가
+        </button>
+
+        <button
+          onClick={onClose}
+          className="w-full bg-gray-700 py-2 rounded"
+        >
+          취소
+        </button>
+
+      </div>
+
+    </div>
+
+  )
+}
+
+const JoinModal = ({ raid, parts, onClose, onRefresh }: any) => {
+
+  const [showJoin,setShowJoin] = useState(false)
+
+  const dealers = parts.filter((p:any)=>p.role==="딜러").length
+  const supports = parts.filter((p:any)=>p.role==="서포터").length
+
+  const isFull =
+    dealers >= 6 && supports >= 2
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
 
-      <div className="bg-[#0f0f1a] border border-purple-500/30 rounded-2xl p-6 w-[350px]">
+      <div className="bg-[#0f0f1a] border border-purple-500/30 rounded-2xl p-6 w-[380px]">
 
         <div className="text-white text-lg font-bold mb-4">
           {raid.raid_name}
@@ -976,36 +1071,58 @@ const JoinModal = ({ raid, parts, onClose }: any) => {
           날짜 : {raid.raid_date}
         </div>
 
-        <div className="text-sm text-gray-400 mb-4">
+        <div className="text-sm text-gray-400 mb-2">
           시간 : {raid.raid_time}
         </div>
 
         <div className="text-sm text-gray-400 mb-4">
-          참여 인원 : {parts.length} / {raid.max_participants}
+          딜러 {dealers}/6 | 서포터 {supports}/2
         </div>
 
         <div className="space-y-2 max-h-[200px] overflow-y-auto mb-4">
 
-          {parts.length === 0 && (
-            <div className="text-gray-500 text-sm">
-              아직 참가자가 없습니다
-            </div>
-          )}
-
           {parts.map((p:any,i:number)=>(
-            <div key={i} className="text-gray-300 text-sm">
-              {p.nickname || "참가자"}
+            <div key={i} className="flex justify-between text-sm text-gray-300">
+
+              <div>
+                {p.nickname} ({p.level})
+              </div>
+
+              <div className="text-purple-400">
+                {p.class} / {p.role}
+              </div>
+
             </div>
           ))}
 
         </div>
 
+        {!isFull && (
+          <button
+            onClick={()=>setShowJoin(true)}
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg mb-2"
+          >
+            참여하기
+          </button>
+        )}
+
         <button
           onClick={onClose}
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg"
+          className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg"
         >
           닫기
         </button>
+
+        {showJoin && (
+          <JoinForm
+            raid={raid}
+            onClose={()=>setShowJoin(false)}
+            onSuccess={()=>{
+              setShowJoin(false)
+              onRefresh()
+            }}
+          />
+        )}
 
       </div>
 
