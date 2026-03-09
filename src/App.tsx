@@ -1337,12 +1337,16 @@ const Auth = ({ mode, setMode }: any) => {
 };
 
 const MyRoom = ({ user, profile }: any) => {
+  
  const [rankIcon, setRankIcon] = React.useState<string | null>(null);
   const [characterName, setCharacterName] = React.useState("")
 const [className, setClassName] = React.useState("")
 const [engraving, setEngraving] = React.useState("")
 const [itemLevel, setItemLevel] = React.useState("")
 const [imageFile, setImageFile] = React.useState<File | null>(null)
+  const [guildName, setGuildName] = React.useState("")
+const [guildDesc, setGuildDesc] = React.useState("")
+const [guildImage, setGuildImage] = React.useState("")
 
 useEffect(() => {
   const fetchRankIcon = async () => {
