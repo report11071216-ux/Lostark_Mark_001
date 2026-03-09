@@ -1351,7 +1351,6 @@ const [imageFile, setImageFile] = React.useState<File | null>(null)
 const { data, error } = await supabase
 .from("guild_members")
 .select("*")
-.eq("user_id", user.id)
 
 if(!error){
 setCharacters(data)
