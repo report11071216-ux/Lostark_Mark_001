@@ -1530,3 +1530,20 @@ const RankingPage = ({ user, profile }: any) => {
     </div>
   );
 };
+
+const GuildMembersPage = ({ user }: any) => {
+  return (
+    <div className="max-w-6xl mx-auto px-6 py-20">
+      <h1 className="text-3xl font-bold mb-10">길드 멤버</h1>
+
+      <div className="grid grid-cols-4 gap-6">
+        
+        <div className="bg-zinc-900 p-4 rounded-xl">
+          <div className="text-lg font-bold">캐릭터 이름</div>
+          <div className="text-sm text-gray-400">직업</div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
