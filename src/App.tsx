@@ -1042,12 +1042,7 @@ const JoinModal = ({ raid, parts, onClose, onRefresh }: any) => {
 
         {!isFull && (
           <button
-           const difficultyColor =
-  raid.difficulty === "노말"
-    ? "bg-green-900/20 border-green-500/30 hover:border-green-400"
-    : raid.difficulty === "하드"
-    ? "bg-red-900/20 border-red-500/30 hover:border-red-400"
-    : "bg-purple-900/20 border-purple-500/30 hover:border-purple-400"
+    
 
 <div
   onClick={()=>setShowJoin(true)}
@@ -1189,8 +1184,16 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
   return (
     <>
       <div
-        onClick={()=>setShowJoin(true)}
-        className="bg-purple-950/20 border border-purple-500/20 p-3 rounded-xl cursor-pointer hover:border-purple-500"
+     <div
+onClick={()=>setShowJoin(true)}
+className={`${
+raid.difficulty === "노말"
+? "bg-green-900/20 border-green-500/30 hover:border-green-400"
+: raid.difficulty === "하드"
+? "bg-red-900/20 border-red-500/30 hover:border-red-400"
+: "bg-purple-900/20 border-purple-500/30 hover:border-purple-400"
+} border p-3 rounded-xl cursor-pointer`}
+>
       >
 
         <div className="flex justify-between text-[10px] text-purple-400 mb-1">
