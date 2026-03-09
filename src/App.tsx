@@ -1655,6 +1655,23 @@ const GuildMembersPage = ({ user }: any) => {
     setLoading(false)
   }
 
+const deleteMember = async (id: string) => {
+
+  const ok = confirm("캐릭터 삭제할까요?")
+
+  if (!ok) return
+
+  const { error } = await supabase
+    .from("guild_members")
+    .delete()
+    .eq("id", id)
+
+  if (!error) {
+    fetchMembers()
+  }
+
+}
+  
   if (loading) {
     return (
       <div className="text-center py-20 text-gray-400">
@@ -1673,32 +1690,38 @@ const GuildMembersPage = ({ user }: any) => {
       <div className="grid grid-cols-4 gap-6">
 
         {members.map((m) => (
-          <div key={m.id} className="bg-zinc-900 p-5 rounded-xl">
-            {m.image_url && (
-  <img
-    src={m.image_url}
-    className="w-full h-40 object-cover rounded-lg mb-3"
-  />
-)}
+  <div key={m.id} className="bg-zinc-900 p-5 rounded-xl">
 
-            <div className="text-lg font-bold">
-              {m.character_name}
-            </div>
+    {m.avatar_url && (
+      <img
+        src={m.avatar_url}
+        className="w-full h-40 object-cover rounded-lg mb-3"
+      />
+    )}
 
-            <div className="text-sm text-gray-400">
-              {m.class_name}
-            </div>
-
-            <div className="text-sm text-purple-400 mt-2">
-              {m.item_level}
-            </div>
-
-          </div>
-        ))}
-
-      </div>
-
+    <div className="text-lg font-bold">
+      {m.character_name}
     </div>
-  )
-}
 
+    <div className="text-sm text-gray-400">
+      {m.class_name}
+    </div>
+
+    <div className="text-sm text-purple-400 mt-2">
+      {m.item_level}
+    </div>
+<button
+  onClick={() => deleteMember(m.id)}
+  className="mt-3 text-xs text-red-400"
+>
+  캐릭터 삭제
+</button>
+    <button
+      onClick={() => deleteMember(m.id)}
+      className="mt-3 text-xs text-red-400"
+    >
+      캐릭터 삭제
+    </button>
+
+  </div>
+))}
