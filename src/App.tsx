@@ -1398,7 +1398,8 @@ let imageUrl = null
 
 if(imageFile){
 
-const fileName = `${user.id}-${Date.now()}.png`
+const ext = imageFile.name.split('.').pop()
+const fileName = `${user.id}-${Date.now()}.${ext}`
 
 const { error:uploadError } = await supabase
 .storage
@@ -1422,12 +1423,11 @@ imageUrl = data.publicUrl
 const { error } = await supabase
 .from("guild_members")
 .insert({
-user_id:user.id,
-character_name:characterName,
-class_name:className,
-engraving:engraving,
-item_level:itemLevel,
-image_url:imageUrl
+  user_id: user.id,
+  character_name: characterName,
+  class_name: className,
+  item_level: itemLevel,
+  avatar_url: imageUrl
 })
 
 if(error){
