@@ -810,8 +810,15 @@ const RaidCalendar = ({ user }: any) => {
   useEffect(() => { fetchData(); }, [currentDate]);
 
   const fetchData = async () => {
-    const { data: rData } = await supabase.from('raid_schedules').select('*').order('created_at', { ascending: true });
-    const { data: pData } = await supabase.from('raid_participants').select('*');
+    const { data: rData } = await supabase
+      .from('raid_schedules')
+      .select('*')
+      .order('raid_time');
+
+    const { data: pData } = await supabase
+      .from('raid_participants')
+      .select('*');
+
     if (rData) setRaids(rData);
     if (pData) setParticipants(pData);
   };
@@ -820,49 +827,105 @@ const RaidCalendar = ({ user }: any) => {
   const month = currentDate.getMonth();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
+
   const dateArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return (
-    <section id="calendar" className="max-w-7xl mx-auto px-6 py-24 border-t border-white/5">
+    <section className="max-w-7xl mx-auto px-6 py-24 border-t border-white/5">
+
       <div className="flex items-center justify-between mb-12">
-        <div className="flex items-center gap-5">
-          <div className="p-4 bg-purple-600/10 rounded-2xl border border-purple-500/20 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
-            <CalendarIcon className="text-purple-500" />
-          </div>
-          <h2 className="text-4xl font-black italic tracking-tighter uppercase font-mono">{year}. {String(month + 1).padStart(2, '0')}</h2>
-        </div>
+
+        <h2 className="text-4xl font-black italic">
+          {year}.{String(month + 1).padStart(2, '0')}
+        </h2>
+
         <div className="flex gap-3">
-          <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="p-3 hover:bg-white/5 rounded-xl border border-white/10 transition-all active:scale-90"><ChevronLeft size={24}/></button>
-          <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))} className="p-3 hover:bg-white/5 rounded-xl border border-white/10 transition-all active:scale-90"><ChevronRight size={24}/></button>
+          <button
+            onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
+            className="p-3 border border-white/10 rounded-xl"
+          >
+            <ChevronLeft/>
+          </button>
+
+          <button
+            onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
+            className="p-3 border border-white/10 rounded-xl"
+          >
+            <ChevronRight/>
+          </button>
         </div>
+
       </div>
 
-      <div className="bg-[#0f0f0f] rounded-[3rem] border border-white/5 overflow-hidden shadow-2xl">
-        <div className="grid grid-cols-7 bg-white/5 border-b border-white/5 text-[10px] font-black tracking-[0.2em] text-gray-500 text-center uppercase">
-          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="p-5">{d}</div>)}
+      <div className="bg-[#0f0f0f] rounded-[3rem] border border-white/5 overflow-hidden">
+
+        <div className="grid grid-cols-7 text-center text-xs text-gray-500 border-b border-white/5">
+          {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d =>
+            <div key={d} className="p-4">{d}</div>
+          )}
         </div>
+
         <div className="grid grid-cols-7 gap-[1px] bg-white/5">
-          {Array.from({ length: firstDayOfMonth }).map((_, i) => <div key={`empty-${i}`} className="bg-[#0a0a0a] min-h-[180px]" />)}
+
+          {Array.from({ length: firstDayOfMonth }).map((_, i) =>
+            <div key={i} className="bg-[#0a0a0a] min-h-[160px]" />
+          )}
+
           {dateArray.map(day => {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+            const dateStr =
+              `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+
             const dayRaids = raids.filter(r => r.raid_date === dateStr);
+
             return (
-              <div key={day} className="bg-[#0a0a0a] min-h-[180px] p-5 group relative hover:bg-white/[0.02] transition-all">
-                <div className="flex justify-between items-center mb-5">
-                  <span className="text-xs font-black text-gray-700 group-hover:text-purple-500 transition-colors">{day}</span>
-                  <button onClick={() => { setSelectedDate(dateStr); setIsModalOpen(true); }} className="opacity-0 group-hover:opacity-100 p-1.5 bg-purple-600 text-white rounded-lg transition-all scale-90 hover:scale-100 hover:bg-purple-500 shadow-lg shadow-purple-600/20"><Plus size={18}/></button>
+
+              <div key={day} className="bg-[#0a0a0a] min-h-[160px] p-3">
+
+                <div className="flex justify-between mb-2">
+
+                  <span className="text-xs text-gray-500">{day}</span>
+
+                  <button
+                    onClick={()=>{
+                      setSelectedDate(dateStr);
+                      setIsModalOpen(true);
+                    }}
+                    className="text-purple-400"
+                  >
+                    <Plus size={16}/>
+                  </button>
+
                 </div>
-                <div className="space-y-2.5">
+
+                <div className="space-y-2">
+
                   {dayRaids.map(raid => (
-                    <RaidItem key={raid.id} raid={raid} parts={participants.filter(p => p.schedule_id === raid.id)} onRefresh={fetchData} />
+                    <RaidItem
+                      key={raid.id}
+                      raid={raid}
+                      parts={participants.filter(p=>p.schedule_id===raid.id)}
+                      onRefresh={fetchData}
+                    />
                   ))}
+
                 </div>
+
               </div>
             );
           })}
+
         </div>
       </div>
-      {isModalOpen && <CreateRaidModal date={selectedDate} onRefresh={fetchData} onClose={() => setIsModalOpen(false)} />}
+
+      {isModalOpen &&
+        <CreateRaidModal
+          date={selectedDate}
+          onRefresh={fetchData}
+          onClose={()=>setIsModalOpen(false)}
+        />
+      }
+
     </section>
   );
 };
@@ -916,141 +979,52 @@ const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
   );
 };
 
-const JoinModal = ({ raid, parts, onRefresh, onClose }: any) => {
-  const [f, setF] = useState({
-    character_name: '',
-    position: '딜러',
-    item_level: '',
-    class_name: ''
-  });
+const RaidItem = ({ raid, parts, onRefresh }: any) => {
 
-  const join = async () => {
-    if (!f.character_name) {
-      alert("캐릭터 이름을 입력하세요.");
-      return;
-    }
+  const [showJoin,setShowJoin] = useState(false)
 
-    if (parts.length >= raid.max_participants) {
-      alert("이미 인원이 가득 찼습니다.");
-      return;
-    }
-
-    const { error } = await supabase
-      .from('raid_participants')
-      .insert([
-        {
-          schedule_id: raid.id,
-          character_name: f.character_name,
-          position: f.position,
-          item_level: f.item_level,
-          class_name: f.class_name
-        }
-      ]);
-
-    if (error) {
-      alert("참여 실패: " + error.message);
-    } else {
-      alert("참여 완료!");
-      onRefresh();
-      onClose();
-    }
-  };
-
-  const leave = async (id: string) => {
-    const { error } = await supabase
-      .from('raid_participants')
-      .delete()
-      .eq('id', id);
-
-    if (!error) {
-      onRefresh();
-    }
-  };
+  const isFull = parts.length >= raid.max_participants
 
   return (
-    <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left">
-      <div className="bg-[#111] border border-white/10 p-10 rounded-[3rem] w-full max-w-lg shadow-2xl relative">
-        <button
-          onClick={onClose}
-          className="absolute top-6 right-6 text-white/50 hover:text-white"
-        >
-          <X />
-        </button>
+    <>
+      <div
+        onClick={()=>setShowJoin(true)}
+        className="bg-purple-950/20 border border-purple-500/20 p-3 rounded-xl cursor-pointer hover:border-purple-500"
+      >
 
-        <h3 className="text-3xl font-black text-purple-500 italic mb-8 uppercase">
-          Raid Join
-        </h3>
+        <div className="flex justify-between text-[10px] text-purple-400 mb-1">
 
-        <div className="space-y-4 mb-8">
-          <AdminInput
-            label="Character Name"
-            value={f.character_name}
-            onChange={(v: any) => setF({ ...f, character_name: v })}
-          />
+          <span>{raid.difficulty}</span>
 
-          <AdminInput
-            label="Class"
-            value={f.class_name}
-            onChange={(v: any) => setF({ ...f, class_name: v })}
-          />
+          <span>
+            {parts.length}/{raid.max_participants}
+            {isFull && " FULL"}
+          </span>
 
-          <AdminInput
-            label="Item Level"
-            value={f.item_level}
-            onChange={(v: any) => setF({ ...f, item_level: v })}
-          />
-
-          <select
-            className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold"
-            value={f.position}
-            onChange={(e) => setF({ ...f, position: e.target.value })}
-          >
-            <option value="딜러">딜러</option>
-            <option value="서포터">서포터</option>
-          </select>
         </div>
 
-        <button
-          onClick={join}
-          className="w-full bg-purple-600 p-5 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all"
-        >
-          Join Raid
-        </button>
-
-        <div className="mt-10">
-          <h4 className="text-sm font-black text-gray-400 mb-4 uppercase">
-            Participants ({parts.length}/{raid.max_participants})
-          </h4>
-
-          <div className="space-y-2 max-h-40 overflow-y-auto">
-            {parts.map((p: any) => (
-              <div
-                key={p.id}
-                className="flex justify-between bg-black/40 p-3 rounded-xl border border-white/5"
-              >
-                <div>
-                  <div className="text-sm font-bold">
-                    {p.character_name}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {p.class_name} | {p.item_level} | {p.position}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => leave(p.id)}
-                  className="text-gray-600 hover:text-red-500"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
+        <div className="text-xs font-bold text-white leading-tight whitespace-normal break-words">
+          {raid.raid_name}
         </div>
+
+        <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-1">
+          <Clock size={10}/>
+          {raid.raid_time}
+        </div>
+
       </div>
-    </div>
-  );
-};
+
+      {showJoin &&
+        <JoinModal
+          raid={raid}
+          parts={parts}
+          onRefresh={onRefresh}
+          onClose={()=>setShowJoin(false)}
+        />
+      }
+    </>
+  )
+}
 
 const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
 const navItems = [
