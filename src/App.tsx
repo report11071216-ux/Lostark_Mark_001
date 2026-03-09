@@ -1709,8 +1709,6 @@ const deleteMember = async (id: string) => {
       {m.class_name}
     </div>
 
-    </div>
-
 <div className="text-sm text-purple-400 mt-2">
   {m.item_level}
 </div>
