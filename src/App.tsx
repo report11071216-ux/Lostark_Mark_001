@@ -1338,30 +1338,7 @@ const Auth = ({ mode, setMode }: any) => {
 
 const MyRoom = ({ user, profile }: any) => {
  const [rankIcon, setRankIcon] = React.useState<string | null>(null);
-const [characterName, setCharacterName] = useState("")
-  const [className, setClassName] = useState("")
-  const [engraving, setEngraving] = useState("")
-  const [itemLevel, setItemLevel] = useState("")
-  const saveCharacter = async () => {
 
-  const { error } = await supabase
-    .from("guild_members")
-    .insert({
-      user_id: user.id,
-      character_name: characterName,
-      class_name: className,
-      engraving: engraving,
-      item_level: itemLevel
-    })
-
-  if(error){
-    alert("저장 실패")
-  } else {
-    alert("캐릭터 등록 완료")
-  }
-
-}
-  
 useEffect(() => {
   const fetchRankIcon = async () => {
     if (!profile?.rank_name) return;
@@ -1409,47 +1386,6 @@ const handleAttendance = async () => {
   window.location.reload(); // 간단하게 새로고침
 };
   return (
-    <div className="mt-10 p-6 bg-black/40 rounded-xl">
-
-<h2 className="text-xl font-bold mb-4">
-길드 캐릭터 등록
-</h2>
-
-<input
-  placeholder="캐릭터 이름"
-  value={characterName}
-  onChange={(e) => setCharacterName(e.target.value)}
-  className="w-full p-2 mb-2 bg-black border border-gray-600 rounded"
-/>
-
-<input
-  placeholder="직업"
-  value={className}
-  onChange={(e) => setClassName(e.target.value)}
-  className="w-full p-2 mb-2 bg-black border border-gray-600 rounded"
-/>
-
-<input
-  placeholder="직업각인"
-  value={engraving}
-  onChange={(e) => setEngraving(e.target.value)}
-  className="w-full p-2 mb-2 bg-black border border-gray-600 rounded"
-/>
-
-<input
-  placeholder="아이템레벨"
-  value={itemLevel}
-  onChange={(e) => setItemLevel(e.target.value)}
-  className="w-full p-2 mb-4 bg-black border border-gray-600 rounded"
-/>
-
-<button
-  onClick={saveCharacter}
-  className="px-4 py-2 bg-purple-600 rounded font-bold hover:bg-purple-500"
->
-캐릭터 등록
-</button>
-
     <div className="max-w-4xl mx-auto py-24 px-6 text-center">
       <h2 className="text-4xl font-black italic mb-10 uppercase tracking-tight">
         My Room
