@@ -100,6 +100,9 @@ export default function App() {
 
           {activeTab === 'posts' && <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} />}
           {activeTab === 'myroom' && <MyRoom user={user} profile={profile} />}
+          {activeTab === 'guild' && (
+  <GuildMembersPage user={user} />
+)}
           {activeTab === 'ranking' && (
   <RankingPage user={user} profile={profile} />
 )}
@@ -1214,6 +1217,7 @@ const navItems = [
   { id: 'home', label: '홈' }, 
   { id: 'posts', label: '게시판' },
   { id: 'ranking', label: '랭킹' },
+  { id: 'guild', label: '길드' },
   ...(user ? [{ id: 'myroom', label: '마이룸' }] : []),
   ...(profile?.role === 'admin' ? [{ id: 'admin', label: '관리자' }] : []),
   ...(user ? [] : [{ id: 'login', label: '로그인' }, { id: 'signup', label: '회원가입' }])
