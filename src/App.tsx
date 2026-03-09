@@ -1532,18 +1532,66 @@ const RankingPage = ({ user, profile }: any) => {
 };
 
 const GuildMembersPage = ({ user }: any) => {
+
+  const [members, setMembers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchMembers()
+  }, [])
+
+  const fetchMembers = async () => {
+
+    const { data, error } = await supabase
+      .from("guild_members")
+      .select("*")
+      .order("created_at", { ascending: true })
+
+    if (!error && data) {
+      setMembers(data)
+    }
+
+    setLoading(false)
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-20 text-gray-400">
+        길드 멤버 불러오는 중...
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-6 py-20">
-      <h1 className="text-3xl font-bold mb-10">길드 멤버</h1>
+
+      <h1 className="text-3xl font-bold mb-10">
+        길드 멤버
+      </h1>
 
       <div className="grid grid-cols-4 gap-6">
-        
-        <div className="bg-zinc-900 p-4 rounded-xl">
-          <div className="text-lg font-bold">캐릭터 이름</div>
-          <div className="text-sm text-gray-400">직업</div>
-        </div>
+
+        {members.map((m) => (
+          <div key={m.id} className="bg-zinc-900 p-5 rounded-xl">
+
+            <div className="text-lg font-bold">
+              {m.character_name}
+            </div>
+
+            <div className="text-sm text-gray-400">
+              {m.class_name}
+            </div>
+
+            <div className="text-sm text-purple-400 mt-2">
+              {m.item_level}
+            </div>
+
+          </div>
+        ))}
 
       </div>
+
     </div>
   )
 }
+
