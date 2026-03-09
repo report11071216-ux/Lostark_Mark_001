@@ -1450,7 +1450,6 @@ const handleAttendance = async () => {
 캐릭터 등록
 </button>
 
-</div>
     <div className="max-w-4xl mx-auto py-24 px-6 text-center">
       <h2 className="text-4xl font-black italic mb-10 uppercase tracking-tight">
         My Room
