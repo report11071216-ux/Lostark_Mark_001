@@ -1338,6 +1338,11 @@ const Auth = ({ mode, setMode }: any) => {
 
 const MyRoom = ({ user, profile }: any) => {
  const [rankIcon, setRankIcon] = React.useState<string | null>(null);
+  const [characterName, setCharacterName] = React.useState("")
+const [className, setClassName] = React.useState("")
+const [engraving, setEngraving] = React.useState("")
+const [itemLevel, setItemLevel] = React.useState("")
+const [imageFile, setImageFile] = React.useState<File | null>(null)
 
 useEffect(() => {
   const fetchRankIcon = async () => {
@@ -1357,6 +1362,30 @@ useEffect(() => {
   fetchRankIcon();
 }, [profile]);
   if (!user || !profile) return null;
+  const handleCreateGuild = async () => {
+  if (!guildName) {
+    alert("길드 이름을 입력하세요");
+    return;
+  }
+
+  const { error } = await supabase
+    .from("guilds")
+    .insert({
+      name: guildName,
+      description: guildDesc,
+      image_url: guildImage,
+      owner_id: user.id
+    });
+
+  if (error) {
+    alert("길드 생성 실패: " + error.message);
+  } else {
+    alert("길드 생성 완료 🎉");
+    setGuildName("");
+    setGuildDesc("");
+    setGuildImage("");
+  }
+};
 const handleAttendance = async () => {
   const today = new Date().toISOString().split('T')[0];
 
@@ -1385,6 +1414,51 @@ const handleAttendance = async () => {
 
   window.location.reload(); // 간단하게 새로고침
 };
+  const saveCharacter = async () => {
+
+let imageUrl = null
+
+if(imageFile){
+
+const fileName = `${user.id}-${Date.now()}`
+
+const { error:uploadError } = await supabase
+.storage
+.from("guild-images")
+.upload(fileName,imageFile)
+
+if(uploadError){
+alert("이미지 업로드 실패")
+return
+}
+
+const { data } = supabase
+.storage
+.from("guild-images")
+.getPublicUrl(fileName)
+
+imageUrl = data.publicUrl
+
+}
+
+const { error } = await supabase
+.from("guild_members")
+.insert({
+user_id:user.id,
+character_name:characterName,
+class_name:className,
+engraving:engraving,
+item_level:itemLevel,
+image_url:imageUrl
+})
+
+if(error){
+alert("캐릭터 등록 실패")
+}else{
+alert("캐릭터 등록 완료")
+}
+
+}
   return (
     <div className="max-w-4xl mx-auto py-24 px-6 text-center">
       <h2 className="text-4xl font-black italic mb-10 uppercase tracking-tight">
@@ -1426,6 +1500,89 @@ const handleAttendance = async () => {
   >
     출석 체크 (+10P)
   </button>
+        <div className="mt-10 space-y-3">
+
+  <div className="font-black text-lg">
+    길드 생성
+  </div>
+
+  <input
+    placeholder="길드 이름"
+    value={guildName}
+    onChange={(e) => setGuildName(e.target.value)}
+    className="w-full border p-3 rounded-xl"
+  />
+
+  <input
+    placeholder="길드 설명"
+    value={guildDesc}
+    onChange={(e) => setGuildDesc(e.target.value)}
+    className="w-full border p-3 rounded-xl"
+  />
+
+  <input
+    placeholder="길드 이미지 URL"
+    value={guildImage}
+    onChange={(e) => setGuildImage(e.target.value)}
+    className="w-full border p-3 rounded-xl"
+  />
+
+  <button
+    onClick={handleCreateGuild}
+    className="w-full bg-green-600 p-4 rounded-xl font-black hover:bg-green-500"
+  >
+    길드 생성
+  </button>
+
+</div>
+        <div className="mt-10 space-y-4">
+
+  <div className="text-lg font-black">
+    캐릭터 등록
+  </div>
+
+  <input
+    placeholder="캐릭터명"
+    value={characterName}
+    onChange={(e) => setCharacterName(e.target.value)}
+    className="w-full border p-3 rounded-xl"
+  />
+
+  <input
+    placeholder="직업"
+    value={className}
+    onChange={(e) => setClassName(e.target.value)}
+    className="w-full border p-3 rounded-xl"
+  />
+
+  <input
+    placeholder="직업각인"
+    value={engraving}
+    onChange={(e) => setEngraving(e.target.value)}
+    className="w-full border p-3 rounded-xl"
+  />
+
+  <input
+    placeholder="아이템 레벨"
+    value={itemLevel}
+    onChange={(e) => setItemLevel(e.target.value)}
+    className="w-full border p-3 rounded-xl"
+  />
+
+  <input
+    type="file"
+    onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+    className="w-full border p-3 rounded-xl"
+  />
+
+  <button
+    onClick={saveCharacter}
+    className="w-full bg-blue-500 p-3 rounded-xl font-black"
+  >
+    캐릭터 저장
+  </button>
+
+</div>
       </div>
     </div>
   );
