@@ -1363,30 +1363,7 @@ useEffect(() => {
   fetchRankIcon();
 }, [profile]);
   if (!user || !profile) return null;
-  const handleCreateGuild = async () => {
-  if (!guildName) {
-    alert("길드 이름을 입력하세요");
-    return;
-  }
-
-  const { error } = await supabase
-    .from("guilds")
-    .insert({
-      name: guildName,
-      description: guildDesc,
-      image_url: guildImage,
-      owner_id: user.id
-    });
-
-  if (error) {
-    alert("길드 생성 실패: " + error.message);
-  } else {
-    alert("길드 생성 완료 🎉");
-    setGuildName("");
-    setGuildDesc("");
-    setGuildImage("");
-  }
-};
+  
 const handleAttendance = async () => {
   const today = new Date().toISOString().split('T')[0];
 
@@ -1415,13 +1392,13 @@ const handleAttendance = async () => {
 
   window.location.reload(); // 간단하게 새로고침
 };
-  const saveCharacter = async () => {
+const saveCharacter = async () => {
 
 let imageUrl = null
 
 if(imageFile){
 
-const fileName = `${user.id}-${Date.now()}`
+const fileName = `${user.id}-${Date.now()}.png`
 
 const { error:uploadError } = await supabase
 .storage
@@ -1429,7 +1406,7 @@ const { error:uploadError } = await supabase
 .upload(fileName,imageFile)
 
 if(uploadError){
-alert("이미지 업로드 실패")
+alert("이미지 업로드 실패 : " + uploadError.message)
 return
 }
 
@@ -1454,9 +1431,9 @@ image_url:imageUrl
 })
 
 if(error){
-alert("캐릭터 등록 실패")
+alert("캐릭터 등록 실패 : " + error.message)
 }else{
-alert("캐릭터 등록 완료")
+alert("캐릭터 등록 완료 🎉")
 }
 
 }
@@ -1697,6 +1674,12 @@ const GuildMembersPage = ({ user }: any) => {
 
         {members.map((m) => (
           <div key={m.id} className="bg-zinc-900 p-5 rounded-xl">
+            {m.image_url && (
+  <img
+    src={m.image_url}
+    className="w-full h-40 object-cover rounded-lg mb-3"
+  />
+)}
 
             <div className="text-lg font-bold">
               {m.character_name}
