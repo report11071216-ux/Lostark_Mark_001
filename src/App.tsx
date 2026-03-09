@@ -1344,9 +1344,6 @@ const [className, setClassName] = React.useState("")
 const [engraving, setEngraving] = React.useState("")
 const [itemLevel, setItemLevel] = React.useState("")
 const [imageFile, setImageFile] = React.useState<File | null>(null)
-  const [guildName, setGuildName] = React.useState("")
-const [guildDesc, setGuildDesc] = React.useState("")
-const [guildImage, setGuildImage] = React.useState("")
 
 useEffect(() => {
   const fetchRankIcon = async () => {
@@ -1504,41 +1501,7 @@ alert("캐릭터 등록 완료")
   >
     출석 체크 (+10P)
   </button>
-        <div className="mt-10 space-y-3">
-
-  <div className="font-black text-lg">
-    길드 생성
-  </div>
-
-  <input
-    placeholder="길드 이름"
-    value={guildName}
-    onChange={(e) => setGuildName(e.target.value)}
-    className="w-full border p-3 rounded-xl"
-  />
-
-  <input
-    placeholder="길드 설명"
-    value={guildDesc}
-    onChange={(e) => setGuildDesc(e.target.value)}
-    className="w-full border p-3 rounded-xl"
-  />
-
-  <input
-    placeholder="길드 이미지 URL"
-    value={guildImage}
-    onChange={(e) => setGuildImage(e.target.value)}
-    className="w-full border p-3 rounded-xl"
-  />
-
-  <button
-    onClick={handleCreateGuild}
-    className="w-full bg-green-600 p-4 rounded-xl font-black hover:bg-green-500"
-  >
-    길드 생성
-  </button>
-
-</div>
+   
         <div className="mt-10 space-y-4">
 
   <div className="text-lg font-black">
