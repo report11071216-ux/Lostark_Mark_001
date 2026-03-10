@@ -1101,8 +1101,8 @@ const isFull = dealers >= dealerLimit && supports >= supportLimit
         </div>
 
         <div className="text-sm text-gray-400 mb-4">
-          딜러 {dealers}/6 | 서포터 {supports}/2
-        </div>
+딜러 {dealers}/{dealerLimit} | 서포터 {supports}/{supportLimit}
+</div>
 
         <div className="space-y-2 max-h-[200px] overflow-y-auto mb-4">
 
@@ -1140,27 +1140,30 @@ const isFull = dealers >= dealerLimit && supports >= supportLimit
         </div>
 
         {!isFull && (
-          <button
-            onClick={()=>setShowJoin(true)}
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg mb-2"
-          >
-            참여하기
-          </button>
-        )}
+         <div className="flex flex-col gap-3 mt-4">
 
-        <button
-          onClick={handleDelete}
-          className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg mb-2"
-        >
-          레이드 삭제
-        </button>
+<button
+onClick={()=>setShowJoin(true)}
+className="w-full py-3 rounded-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:scale-105 transition shadow-lg"
+>
+⚔️ 레이드 참여
+</button>
 
-        <button
-          onClick={onClose}
-          className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg"
-        >
-          닫기
-        </button>
+<button
+onClick={handleDelete}
+className="w-full py-3 rounded-xl font-bold bg-red-600 hover:bg-red-700 transition shadow-lg"
+>
+🗑 레이드 삭제
+</button>
+
+<button
+onClick={onClose}
+className="w-full py-3 rounded-xl font-bold bg-gray-700 hover:bg-gray-600 transition"
+>
+닫기
+</button>
+
+</div>
 
         {showJoin && (
           <JoinForm
