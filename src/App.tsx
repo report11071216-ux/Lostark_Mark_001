@@ -82,15 +82,37 @@ export default function App() {
               <Hero settings={settings} />
               <div className="max-w-7xl mx-auto px-6 mb-12">
                 <div className="flex justify-center gap-12 border-b border-white/5 pb-6">
-                 {['레이드', '가디언 토벌', '클래스', '길드 설정','캐릭터 관리','레이드 관리','회원 관리'].map(t => (
-  <button 
-    key={t} 
+             {['레이드', '가디언 토벌', '클래스'].map(t => (
+  <button
+    key={t}
     onClick={() => setContentView(t)}
-    className={`text-xl font-black italic uppercase transition-all ${contentView === t ? 'text-purple-500 scale-110 underline underline-offset-8' : 'text-gray-600 hover:text-gray-400'}`}
+    className={`text-xl font-black italic uppercase transition-all ${
+      contentView === t
+        ? 'text-purple-500 scale-110 underline underline-offset-8'
+        : 'text-gray-600 hover:text-gray-400'
+    }`}
   >
     {t}
   </button>
 ))}
+
+{profile?.is_admin && (
+  <>
+    {['길드 설정','캐릭터 관리','레이드 관리','회원 관리'].map(t => (
+      <button
+        key={t}
+        onClick={() => setContentView(t)}
+        className={`text-xl font-black italic uppercase transition-all ${
+          contentView === t
+            ? 'text-red-500 scale-110 underline underline-offset-8'
+            : 'text-gray-600 hover:text-gray-400'
+        }`}
+      >
+        {t}
+      </button>
+    ))}
+  </>
+)}
                 </div>
               </div>
               <MainContentViewer type={contentView} />
