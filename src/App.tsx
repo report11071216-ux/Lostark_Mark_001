@@ -506,8 +506,7 @@ available_difficulties: ["노말","하드","나이트메어"],
         />
 
         {isRaid && (
-          <div className="grid grid-cols-2 gap-4">
-           <select
+          <div className="grid grid-cols-2 gap-4">         
 <select
   value={selectedGate}
   onChange={e=>setSelectedGate(Number(e.target.value))}
