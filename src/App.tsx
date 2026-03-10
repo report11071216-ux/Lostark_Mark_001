@@ -1020,6 +1020,7 @@ className="w-full p-3"
 >
 <option>노말</option>
 <option>하드</option>
+<option>나이트메어</option>
 </select>
 
 <input
