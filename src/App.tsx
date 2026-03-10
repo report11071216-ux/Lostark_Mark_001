@@ -974,10 +974,12 @@ const max = form.type === "4인" ? 4 : 8
 const { error } = await supabase
 .from("raid_schedules")
 .insert({
+.insert({
 raid_name:form.raid_name,
 raid_date:date,
 raid_time:form.raid_time,
 difficulty:form.difficulty,
+raid_type:form.type,
 max_participants:max
 })
 
@@ -1042,14 +1044,31 @@ className="w-full bg-purple-600 py-2 rounded"
 
 }
 const JoinModal = ({ raid, parts, onClose, onRefresh }: any) => {
+  const handleLeave = async (participantId:string) => {
+
+  const ok = confirm("레이드 참여를 취소하시겠습니까?")
+  if(!ok) return
+
+  const { error } = await supabase
+    .from("raid_participants")
+    .delete()
+    .eq("id", participantId)
+
+  if(!error){
+    onRefresh()
+  }
+
+}
 
   const [showJoin,setShowJoin] = useState(false)
 
-  const dealers = parts.filter((p:any)=>p.position==="딜러").length
-  const supports = parts.filter((p:any)=>p.position==="서포터").length
+  const dealerLimit = raid.max_participants === 4 ? 3 : 6
+const supportLimit = raid.max_participants === 4 ? 1 : 2
 
-  const isFull = dealers >= 6 && supports >= 2
+const dealers = parts.filter((p:any)=>p.position==="딜러").length
+const supports = parts.filter((p:any)=>p.position==="서포터").length
 
+const isFull = dealers >= dealerLimit && supports >= supportLimit
   const handleDelete = async () => {
 
     const ok = confirm("레이드를 삭제하시겠습니까?")
@@ -1093,20 +1112,31 @@ const JoinModal = ({ raid, parts, onClose, onRefresh }: any) => {
               아직 참가자가 없습니다
             </div>
           )}
+{parts.map((p:any,i:number)=>(
+  <div key={i} className="flex justify-between items-center text-sm text-gray-300">
 
-          {parts.map((p:any,i:number)=>(
-            <div key={i} className="flex justify-between text-sm text-gray-300">
+    <div>
+      {p.character_name} ({p.item_level})
+    </div>
 
-              <div>
-                {p.character_name} ({p.item_level})
-              </div>
+    <div className="flex items-center gap-2">
 
-              <div className="text-purple-400">
-                {p.class_name} / {p.position}
-              </div>
+      <span className="text-purple-400">
+        {p.class_name} / {p.position}
+      </span>
 
-            </div>
-          ))}
+      <button
+        onClick={()=>handleLeave(p.id)}
+        className="text-red-400 hover:text-red-600 text-xs"
+      >
+        취소
+      </button>
+
+    </div>
+
+  </div>
+))}
+         
 
         </div>
 
