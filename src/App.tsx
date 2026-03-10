@@ -834,12 +834,7 @@ const RaidCalendar = ({ user }: any) => {
   const [participants, setParticipants] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-const [weeklyStats,setWeeklyStats] = useState({
-  total:0,
-  raid4:0,
-  raid8:0,
-  participants:0
-})
+
   useEffect(() => { fetchData(); }, [currentDate]);
 
   const fetchData = async () => {
@@ -855,72 +850,14 @@ const [weeklyStats,setWeeklyStats] = useState({
     if (rData) setRaids(rData);
     if (pData) setParticipants(pData);
   };
-useEffect(()=>{
 
-const start = new Date()
-start.setDate(start.getDate() - start.getDay())
-
-const end = new Date(start)
-end.setDate(start.getDate()+7)
-
-const weekRaids = raids.filter(r=>{
-  const d = new Date(r.raid_date)
-  return d >= start && d < end
-})
-
-let total = weekRaids.length
-let raid4 = weekRaids.filter(r=>r.raid_type==="4인").length
-let raid8 = weekRaids.filter(r=>r.raid_type==="8인").length
-
-let participantsCount = weekRaids.reduce((sum,r)=>{
-  return sum + participants.filter(p=>p.schedule_id===r.id).length
-},0)
-
-setWeeklyStats({
-  total,
-  raid4,
-  raid8,
-  participants:participantsCount
-})
-
-},[raids,participants])
-  
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const dateArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-return (
-<section className="max-w-7xl mx-auto px-6 py-24 border-t border-white/5">
 
-{/* ⭐ 주간 통계 */}
-<div className="grid grid-cols-4 gap-4 mb-10">
-
-<div className="bg-black/40 p-4 rounded-xl text-center">
-<div className="text-xs text-gray-400">총 레이드</div>
-<div className="text-2xl font-bold">{weeklyStats.total}</div>
-</div>
-
-<div className="bg-purple-900/30 p-4 rounded-xl text-center">
-<div className="text-xs text-gray-400">⚔️ 4인</div>
-<div className="text-2xl font-bold">{weeklyStats.raid4}</div>
-</div>
-
-<div className="bg-indigo-900/30 p-4 rounded-xl text-center">
-<div className="text-xs text-gray-400">🐉 8인</div>
-<div className="text-2xl font-bold">{weeklyStats.raid8}</div>
-</div>
-
-<div className="bg-green-900/30 p-4 rounded-xl text-center">
-<div className="text-xs text-gray-400">👥 참여</div>
-<div className="text-2xl font-bold">{weeklyStats.participants}</div>
-</div>
-
-</div>
-
-
-<div className="flex items-center justify-between mb-12">
   return (
     <section className="max-w-7xl mx-auto px-6 py-24 border-t border-white/5">
 
@@ -2059,44 +1996,10 @@ className="text-red-500"
 const AdminRaidManager = () => {
 
 const [raids,setRaids] = useState<any[]>([])
-const [weeklyStats,setWeeklyStats] = useState({
-total:0,
-raid4:0,
-raid8:0,
-participants:0
-})
+
 useEffect(()=>{
 fetchRaids()
 },[])
-  useEffect(()=>{
-
-const start = new Date()
-start.setDate(start.getDate() - start.getDay())
-
-const end = new Date(start)
-end.setDate(start.getDate()+7)
-
-const weekRaids = raids.filter(r=>{
-const d = new Date(r.raid_date)
-return d >= start && d < end
-})
-
-let total = weekRaids.length
-let raid4 = weekRaids.filter(r=>r.raid_type==="4인").length
-let raid8 = weekRaids.filter(r=>r.raid_type==="8인").length
-
-let participants = weekRaids.reduce((sum,r)=>{
-return sum + (r.participants?.length || 0)
-},0)
-
-setWeeklyStats({
-total,
-raid4,
-raid8,
-participants
-})
-
-},[raids])
 
 const fetchRaids = async()=>{
 
