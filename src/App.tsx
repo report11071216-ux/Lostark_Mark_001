@@ -1279,31 +1279,57 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
 
   const isFull = parts.length >= raid.max_participants
 
+  const percent =
+    (parts.length / raid.max_participants) * 100
+
   return (
     <>
       <div
         onClick={()=>setShowJoin(true)}
-        className="bg-purple-950/20 border border-purple-500/20 p-3 rounded-xl cursor-pointer hover:border-purple-500"
+        className="relative bg-gradient-to-br from-purple-900/30 to-indigo-900/20 
+        border border-purple-500/20 p-3 rounded-xl cursor-pointer 
+        hover:border-purple-400 hover:scale-[1.03] transition-all shadow-lg"
       >
 
-        <div className="flex justify-between text-[10px] text-purple-400 mb-1">
+        {/* 상단 */}
+        <div className="flex justify-between items-center mb-1">
 
-          <span>{raid.difficulty}</span>
+          <span className="text-[10px] text-purple-400 font-bold">
+            {raid.raid_type} · {raid.difficulty}
+          </span>
 
-          <span>
+          <span className={`text-[10px] font-bold ${
+            isFull ? "text-red-400" : "text-gray-400"
+          }`}>
             {parts.length}/{raid.max_participants}
             {isFull && " FULL"}
           </span>
 
         </div>
 
-        <div className="text-xs font-bold text-white leading-tight whitespace-normal break-words">
+        {/* 레이드 이름 */}
+        <div className="text-xs font-bold text-white leading-tight truncate">
           {raid.raid_name}
         </div>
 
+        {/* 시간 */}
         <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-1">
           <Clock size={10}/>
           {raid.raid_time}
+        </div>
+
+        {/* 참여도 바 */}
+        <div className="mt-2 h-[4px] bg-black/40 rounded">
+
+          <div
+            style={{ width:`${percent}%` }}
+            className={`h-full rounded ${
+              isFull
+                ? "bg-red-500"
+                : "bg-purple-500"
+            }`}
+          />
+
         </div>
 
       </div>
@@ -1316,6 +1342,7 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
           onClose={()=>setShowJoin(false)}
         />
       }
+
     </>
   )
 }
