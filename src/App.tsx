@@ -974,7 +974,6 @@ const max = form.type === "4인" ? 4 : 8
 const { error } = await supabase
 .from("raid_schedules")
 .insert({
-.insert({
 raid_name:form.raid_name,
 raid_date:date,
 raid_time:form.raid_time,
