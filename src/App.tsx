@@ -82,7 +82,7 @@ export default function App() {
               <Hero settings={settings} />
               <div className="max-w-7xl mx-auto px-6 mb-12">
                 <div className="flex justify-center gap-12 border-b border-white/5 pb-6">
-                  {['레이드', '가디언 토벌', '클래스'].map(type => (
+                 {['레이드', '가디언 토벌', '클래스', '길드 설정','캐릭터 관리','레이드 관리','회원 관리'].map(t => (
                     <button 
                       key={type} 
                       onClick={() => setContentView(type)}
@@ -288,10 +288,13 @@ const AdminPanel = ({ settings, setSettings }: any) => {
       </div>
 
       <div className="bg-[#111] border border-white/5 rounded-[2.5rem] p-10">
-        {adminTab === '레이드' && <RaidContentEditor isRaid={true} />}
-        {adminTab === '가디언 토벌' && <RaidContentEditor isRaid={false} />}
-        {adminTab === '클래스' && <ClassContentEditor />}
-        {adminTab === '길드 설정' && <GuildSettingsEditor settings={settings} setSettings={setSettings} />}
+       {adminTab === '레이드' && <RaidContentEditor isRaid={true} />}
+{adminTab === '가디언 토벌' && <RaidContentEditor isRaid={false} />}
+{adminTab === '클래스' && <ClassContentEditor />}
+{adminTab === '길드 설정' && <GuildSettingsEditor settings={settings} setSettings={setSettings} />}
+{adminTab === '캐릭터 관리' && <AdminCharacterManager />}
+{adminTab === '레이드 관리' && <AdminRaidManager />}
+{adminTab === '회원 관리' && <AdminUserManager />}
       </div>
     </motion.div>
   );
@@ -1398,7 +1401,36 @@ const [engraving,setEngraving] = useState("")
 const [itemLevel,setItemLevel] = useState("")
 const [characters,setCharacters] = useState<any[]>([])
 const [imageFile,setImageFile] = useState<File | null>(null)
+const handleAttendance = async () => {
 
+const today = new Date().toISOString().split("T")[0]
+
+if(profile.last_attendance === today){
+alert("오늘은 이미 출석했습니다 ✅")
+return
+}
+
+const { error } = await supabase.rpc("add_points",{
+p_user_id:user.id,
+p_points:10,
+p_type:"attendance"
+})
+
+if(error){
+alert("출석 실패")
+return
+}
+
+await supabase
+.from("profiles")
+.update({ last_attendance: today })
+.eq("id", user.id)
+
+alert("출석 완료! +10 포인트 🎉")
+
+window.location.reload()
+
+}
 const fetchCharacters = async () => {
 
 const { data,error } = await supabase
@@ -1526,7 +1558,12 @@ My Room
 <div className="text-xl">
 포인트 : {profile.points || 0}
 </div>
-
+<button
+onClick={handleAttendance}
+className="bg-green-600 px-5 py-2 rounded-xl"
+>
+출석 체크 (+10P)
+</button>
 {rankIcon && (
 <img
 src={rankIcon}
@@ -1795,4 +1832,202 @@ className="w-full h-40 object-cover rounded-lg mb-3"
 
 }
 
-        
+
+const AdminCharacterManager = () => {
+
+const [chars,setChars] = useState<any[]>([])
+
+useEffect(()=>{
+fetchChars()
+},[])
+
+const fetchChars = async()=>{
+
+const { data } = await supabase
+.from("guild_members")
+.select("*")
+.order("created_at",{ascending:false})
+
+if(data){
+setChars(data)
+}
+
+}
+
+const deleteChar = async(id:string)=>{
+
+if(!confirm("캐릭터 삭제할까요?")) return
+
+await supabase
+.from("guild_members")
+.delete()
+.eq("id",id)
+
+fetchChars()
+
+}
+
+return(
+
+<div className="space-y-4">
+
+<h3 className="text-xl font-bold">
+길드 캐릭터 관리
+</h3>
+
+{chars.map(c=>(
+<div key={c.id} className="flex justify-between bg-black/40 p-4 rounded">
+
+<div>
+<div>{c.character_name}</div>
+<div className="text-xs text-gray-400">{c.class_name}</div>
+</div>
+
+<button
+onClick={()=>deleteChar(c.id)}
+className="text-red-500"
+>
+삭제
+</button>
+
+</div>
+))}
+
+</div>
+
+)
+
+}
+
+const AdminRaidManager = () => {
+
+const [raids,setRaids] = useState<any[]>([])
+
+useEffect(()=>{
+fetchRaids()
+},[])
+
+const fetchRaids = async()=>{
+
+const { data } = await supabase
+.from("raid_schedules")
+.select("*")
+.order("raid_date")
+
+if(data){
+setRaids(data)
+}
+
+}
+
+const deleteRaid = async(id:string)=>{
+
+if(!confirm("레이드 삭제할까요?")) return
+
+await supabase
+.from("raid_schedules")
+.delete()
+.eq("id",id)
+
+fetchRaids()
+
+}
+
+return(
+
+<div className="space-y-4">
+
+<h3 className="text-xl font-bold">
+레이드 일정 관리
+</h3>
+
+{raids.map(r=>(
+<div key={r.id} className="flex justify-between bg-black/40 p-4 rounded">
+
+<div>
+<div>{r.raid_name}</div>
+<div className="text-xs text-gray-400">
+{r.raid_date} {r.raid_time}
+</div>
+</div>
+
+<button
+onClick={()=>deleteRaid(r.id)}
+className="text-red-500"
+>
+삭제
+</button>
+
+</div>
+))}
+
+</div>
+
+)
+
+}
+
+const AdminUserManager = () => {
+
+const [users,setUsers] = useState<any[]>([])
+
+useEffect(()=>{
+fetchUsers()
+},[])
+
+const fetchUsers = async()=>{
+
+const { data } = await supabase
+.from("profiles")
+.select("*")
+
+if(data){
+setUsers(data)
+}
+
+}
+
+const deleteUser = async(id:string)=>{
+
+if(!confirm("회원 삭제할까요?")) return
+
+await supabase
+.from("profiles")
+.delete()
+.eq("id",id)
+
+fetchUsers()
+
+}
+
+return(
+
+<div className="space-y-4">
+
+<h3 className="text-xl font-bold">
+회원 관리
+</h3>
+
+{users.map(u=>(
+<div key={u.id} className="flex justify-between bg-black/40 p-4 rounded">
+
+<div>
+<div>{u.nickname}</div>
+<div className="text-xs text-gray-400">{u.rank_name}</div>
+</div>
+
+<button
+onClick={()=>deleteUser(u.id)}
+className="text-red-500"
+>
+삭제
+</button>
+
+</div>
+))}
+
+</div>
+
+)
+
+}
