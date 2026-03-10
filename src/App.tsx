@@ -361,7 +361,7 @@ available_difficulties: ["노말","하드","나이트메어"],
   });
 
   const elementOptions = ['악마형', '야수형', '인간형', '정령형', '기계형', '고대', '불사', '신'];
-  const attributeOptions = ['화속성', '수속성', '암속성', '빛속성', '토속성'];
+  const attributeOptions = ['화속성 취약', '수속성 취약', '암속성 취약', '빛속성 취약', '토속성 취약', '뇌속성 취약'];
 
   useEffect(() => { fetchList(); }, [isRaid]);
   useEffect(() => {
