@@ -101,7 +101,7 @@ export default function App() {
           {activeTab === 'posts' && <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} />}
           {activeTab === 'myroom' && <MyRoom user={user} profile={profile} />}
           {activeTab === 'guild' && (
-  <GuildMembersPage user={user} />
+  <GuildMembersPage user={user} profile={profile} />
 )}
           {activeTab === 'ranking' && (
   <RankingPage user={user} profile={profile} />
@@ -1349,10 +1349,10 @@ const [imageFile, setImageFile] = React.useState<File | null>(null)
   const fetchCharacters = async () => {
 
 const { data, error } = await supabase
-  .from("guild_members")
-  .select("*")
-  .eq("user_id", user.id)  // ✅ 내 캐릭터만
-  .order("created_at", { ascending: true });
+.from("guild_members")
+.select("*")
+.eq("guild_id", profile.guild_id) // 🔥 수정
+.order("created_at", { ascending: true });
 if(!error){
 setCharacters(data)
 }
@@ -1440,6 +1440,7 @@ const { error } = await supabase
 .from("guild_members")
 .insert({
   user_id: user.id,
+  guild_id: profile.guild_id, // 🔥 추가
   character_name: characterName,
   class_name: className,
   item_level: itemLevel,
@@ -1691,7 +1692,7 @@ const RankingPage = ({ user, profile }: any) => {
   );
 };
 
-const GuildMembersPage = ({ user }: any) => {
+const GuildMembersPage = ({ user, profile }) => {
 
   const [members, setMembers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -1700,39 +1701,38 @@ const GuildMembersPage = ({ user }: any) => {
     fetchMembers()
   }, [])
 
- const fetchMembers = async () => {
-const { data, error } = await supabase
-  .from("guild_members")
-  .select("*")
-  .eq("guild_id", user.guild_id)  // ✅ 같은 길드 캐릭터 모두
-  .order("created_at", { ascending: true });
+  const fetchMembers = async () => {
 
-  if (!error && data) {
-    setMembers(data);
+    if(!profile?.guild_id) return
+
+    const { data, error } = await supabase
+      .from("guild_members")
+      .select("*")
+      .eq("guild_id", profile.guild_id)
+      .order("created_at", { ascending: true });
+
+    if (!error && data) {
+      setMembers(data);
+    }
+
+    setLoading(false);
+  };
+
+  const deleteMember = async (id: string) => {
+
+    const ok = confirm("캐릭터 삭제할까요?")
+    if (!ok) return
+
+    const { error } = await supabase
+      .from("guild_members")
+      .delete()
+      .eq("id", id)
+
+    if (!error) {
+      fetchMembers()
+    }
   }
 
-  setLoading(false);
-};
-
-   
-
-const deleteMember = async (id: string) => {
-
-  const ok = confirm("캐릭터 삭제할까요?")
-
-  if (!ok) return
-
-  const { error } = await supabase
-    .from("guild_members")
-    .delete()
-    .eq("id", id)
-
-  if (!error) {
-    fetchMembers()
-  }
-
-}
-  
   if (loading) {
     return (
       <div className="text-center py-20 text-gray-400">
@@ -1742,48 +1742,51 @@ const deleteMember = async (id: string) => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-20">
+    <div className="max-w-6xl mx-auto px-6 py-16">
 
-      <h1 className="text-3xl font-bold mb-10">
-        길드 멤버
-      </h1>
+      <h2 className="text-3xl font-black italic mb-10 text-center">
+        GUILD MEMBERS
+      </h2>
 
-      <div className="grid grid-cols-4 gap-6">
-{members.map((m) => (
-  <div key={m.id} className="bg-zinc-900 p-5 rounded-xl">
+      <div className="grid md:grid-cols-3 lg:grid-cols-4 gap-6">
 
-    {m.avatar_url && (
-      <img
-        src={m.avatar_url}
-        className="w-full h-40 object-cover rounded-lg mb-3"
-      />
-    )}
+        {members.map(member => (
+          <div
+            key={member.id}
+            className="bg-black border border-white/10 rounded-2xl p-6 text-center"
+          >
 
-    <div className="text-lg font-bold">
-      {m.character_name}
+            <img
+              src={member.avatar_url || "https://i.imgur.com/4M34hi2.png"}
+              className="w-24 h-24 rounded-full mx-auto mb-4 object-cover"
+            />
+
+            <div className="font-black text-lg">
+              {member.character_name}
+            </div>
+
+            <div className="text-gray-400 text-sm">
+              {member.class_name}
+            </div>
+
+            <div className="text-purple-400 font-bold mt-1">
+              {member.item_level}
+            </div>
+
+            {profile?.role === "admin" && (
+              <button
+                onClick={() => deleteMember(member.id)}
+                className="mt-4 text-red-400 text-xs hover:text-red-300"
+              >
+                삭제
+              </button>
+            )}
+
+          </div>
+        ))}
+
+      </div>
+
     </div>
-
-    <div className="text-sm text-gray-400">
-      {m.class_name}
-    </div>
-
-    <div className="text-sm text-purple-400 mt-2">
-      {m.item_level}
-    </div>
-    {m.user_id === user.id && (
-<button
-  onClick={() => deleteMember(m.id)}
-  className="mt-3 bg-red-500 px-3 py-1 rounded-lg text-sm"
->
-삭제
-</button>
-)}
-
-  </div>
-))}
-
-</div>
-</div>
-);
+  )
 }
-        
