@@ -1164,7 +1164,7 @@ className="w-full py-3 rounded-xl font-bold bg-gray-700 hover:bg-gray-600 transi
 </button>
 
 </div>
-
+)}
         {showJoin && (
           <JoinForm
             raid={raid}
