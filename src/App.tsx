@@ -933,38 +933,89 @@ const RaidCalendar = ({ user }: any) => {
   );
 };
 
-const CreateRaidModal = ({ date, onRefresh, onClose }: any) => {
-  const [form, setForm] = useState({ raid_name: '', difficulty: '노말', raid_time: '오후 8:00' });
-  const save = async () => {
-    if(!form.raid_name) return alert("레이드 이름을 입력해주세요.");
-    const { error } = await supabase.from('raid_schedules').insert([{ ...form, raid_date: date, max_participants: 8 }]);
-    if (error) alert("생성 실패: " + error.message);
-    else { alert("레이드가 생성되었습니다!"); onRefresh(); onClose(); }
-  };
-  
-  return (
-    <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left">
-      <div className="bg-[#111] border border-white/10 p-12 rounded-[3.5rem] w-full max-w-sm shadow-2xl relative">
-        <h3 className="text-3xl font-black text-purple-500 italic mb-10 tracking-tighter uppercase underline decoration-purple-600/30 underline-offset-8">New Raid Event</h3>
-        <div className="space-y-5">
-          <AdminInput label="Raid Name" placeholder="카멘 3관" value={form.raid_name} onChange={(v:any)=>setForm({...form, raid_name:v})} />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-500 ml-1 uppercase">Difficulty</label>
-              <select className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm outline-none font-bold text-white" onChange={e => setForm({...form, difficulty: e.target.value})}>
-                <option value="노말">노말</option><option value="하드">하드</option><option value="나이트메어">나이트메어</option>
-              </select>
-            </div>
-            <AdminInput label="Time" value={form.raid_time} onChange={(v:any)=>setForm({...form, raid_time:v})} />
-          </div>
-          <button onClick={save} className="w-full bg-purple-600 p-6 rounded-2xl font-black tracking-widest hover:bg-purple-500 transition-all mt-6 shadow-xl shadow-purple-600/20 active:scale-95 uppercase text-white">Confirm Raid</button>
-          <button onClick={onClose} className="w-full text-gray-600 text-[10px] font-black py-2 tracking-widest hover:text-white uppercase transition-colors">Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-};
+const CreateRaidModal = ({ date,onRefresh,onClose }:any)=>{
 
+const [form,setForm] = useState({
+raid_name:"",
+difficulty:"노말",
+raid_time:"20:00",
+type:"8인"
+})
+
+const save = async()=>{
+
+const max = form.type === "4인" ? 4 : 8
+
+const { error } = await supabase
+.from("raid_schedules")
+.insert({
+raid_name:form.raid_name,
+raid_date:date,
+raid_time:form.raid_time,
+difficulty:form.difficulty,
+max_participants:max
+})
+
+if(!error){
+
+alert("레이드 생성 완료")
+
+onRefresh()
+onClose()
+
+}
+
+}
+
+return(
+
+<div className="fixed inset-0 bg-black/90 flex items-center justify-center">
+
+<div className="bg-zinc-900 p-8 rounded-xl w-[350px] space-y-4">
+
+<input
+placeholder="레이드 이름"
+value={form.raid_name}
+onChange={(e)=>setForm({...form,raid_name:e.target.value})}
+className="w-full p-3"
+/>
+
+<select
+onChange={(e)=>setForm({...form,type:e.target.value})}
+className="w-full p-3"
+>
+<option>8인</option>
+<option>4인</option>
+</select>
+
+<select
+onChange={(e)=>setForm({...form,difficulty:e.target.value})}
+className="w-full p-3"
+>
+<option>노말</option>
+<option>하드</option>
+</select>
+
+<input
+value={form.raid_time}
+onChange={(e)=>setForm({...form,raid_time:e.target.value})}
+className="w-full p-3"
+/>
+
+<button
+onClick={save}
+className="w-full bg-purple-600 py-2 rounded"
+>
+생성
+</button>
+
+</div>
+
+</div>
+
+)
+
+}
 const JoinModal = ({ raid, parts, onClose, onRefresh }: any) => {
 
   const [showJoin,setShowJoin] = useState(false)
@@ -1335,95 +1386,90 @@ const Auth = ({ mode, setMode }: any) => {
     </div>
   );
 };
-
 const MyRoom = ({ user, profile }: any) => {
-  
- const [rankIcon, setRankIcon] = React.useState<string | null>(null);
-  const [characterName, setCharacterName] = React.useState("")
-const [className, setClassName] = React.useState("")
-const [engraving, setEngraving] = React.useState("")
-const [itemLevel, setItemLevel] = React.useState("")
-  const [characters, setCharacters] = React.useState([])
-const [imageFile, setImageFile] = React.useState<File | null>(null)
 
-  const fetchCharacters = async () => {
+const [rankIcon,setRankIcon] = useState<string | null>(null)
 
-const { data, error } = await supabase
-  .from("guild_members")
-  .select("*")
-  .eq("user_id", user.id)  // ✅ 내 캐릭터만
-  .order("created_at", { ascending: true });
+const [showRegister,setShowRegister] = useState(false)
+
+const [characterName,setCharacterName] = useState("")
+const [className,setClassName] = useState("")
+const [engraving,setEngraving] = useState("")
+const [itemLevel,setItemLevel] = useState("")
+const [characters,setCharacters] = useState<any[]>([])
+const [imageFile,setImageFile] = useState<File | null>(null)
+
+const fetchCharacters = async () => {
+
+const { data,error } = await supabase
+.from("guild_members")
+.select("*")
+.eq("user_id",user.id)
+.order("created_at",{ascending:true})
+
 if(!error){
 setCharacters(data)
 }
 
 }
 
-  useEffect(() => {
-  const fetchRankIcon = async () => {
-    if (!profile?.rank_name) return;
+useEffect(()=>{
 
-    const { data, error } = await supabase
-      .from('ranks')
-      .select('icon_url')
-      .eq('name', profile.rank_name)
-      .maybeSingle();
+const fetchRankIcon = async () => {
 
-    if (!error && data?.icon_url) {
-      setRankIcon(data.icon_url);
-    }
-  };
+if(!profile?.rank_name) return
 
-  
-  fetchRankIcon();
-    fetchCharacters();
-}, [profile]);
-  if (!user || !profile) return null;
-  
-const handleAttendance = async () => {
-  const today = new Date().toISOString().split('T')[0];
+const { data } = await supabase
+.from("ranks")
+.select("icon_url")
+.eq("name",profile.rank_name)
+.maybeSingle()
 
-  if (profile.last_attendance === today) {
-    alert("오늘은 이미 출석했습니다 ✅");
-    return;
-  }
+if(data?.icon_url){
+setRankIcon(data.icon_url)
+}
 
-  const { error } = await supabase.rpc('add_points', {
-    p_user_id: user.id,
-    p_points: 10,
-    p_type: 'attendance'
-  });
+}
 
-  if (error) {
-    alert("출석 실패: " + error.message);
-    return;
-  }
+fetchRankIcon()
+fetchCharacters()
 
-  await supabase
-    .from('profiles')
-    .update({ last_attendance: today })
-    .eq('id', user.id);
+},[profile])
 
-  alert("출석 완료! +10 포인트 🎉");
+const deleteCharacter = async(id:string)=>{
 
-  window.location.reload(); // 간단하게 새로고침
-};
-const saveCharacter = async () => {
+const ok = confirm("캐릭터 삭제할까요?")
+
+if(!ok) return
+
+const { error } = await supabase
+.from("guild_members")
+.delete()
+.eq("id",id)
+
+if(!error){
+fetchCharacters()
+}
+
+}
+
+const saveCharacter = async()=>{
 
 let imageUrl = null
 
 if(imageFile){
 
-const ext = imageFile.name.split('.').pop()
+const ext = imageFile.name.split(".").pop()
+
 const fileName = `${user.id}-${Date.now()}.${ext}`
 
-const { error:uploadError } = await supabase
+const { error } = await supabase
 .storage
 .from("guild-images")
 .upload(fileName,imageFile)
 
-if(uploadError){
-alert("이미지 업로드 실패 : " + uploadError.message)
+if(error){
+alert("이미지 업로드 실패")
 return
 }
 
@@ -1439,122 +1485,107 @@ imageUrl = data.publicUrl
 const { error } = await supabase
 .from("guild_members")
 .insert({
-  user_id: user.id,
-  character_name: characterName,
-  class_name: className,
-  item_level: itemLevel,
-  avatar_url: imageUrl
+user_id:user.id,
+character_name:characterName,
+class_name:className,
+item_level:itemLevel,
+avatar_url:imageUrl
 })
 
-if(error){
-alert("캐릭터 등록 실패 : " + error.message)
-}else{
-alert("캐릭터 등록 완료 🎉")
+if(!error){
+
+alert("캐릭터 등록 완료")
+
+setCharacterName("")
+setClassName("")
+setItemLevel("")
+setImageFile(null)
+
 fetchCharacters()
-}
 
 }
-  return (
-    <div className="max-w-4xl mx-auto py-24 px-6 text-center">
-      <h2 className="text-4xl font-black italic mb-10 uppercase tracking-tight">
-        My Room
-      </h2>
 
-      <div className="bg-white/5 border border-white/10 rounded-3xl p-12 space-y-6">
-        
-        <div>
-          <div className="text-gray-500 text-xs uppercase mb-2">닉네임</div>
-          <div className="text-2xl font-black">{profile.nickname}</div>
-        </div>
+}
 
-        <div>
-          <div className="text-gray-500 text-xs uppercase mb-2">현재 포인트</div>
-          <div className="text-3xl font-black text-purple-400">
-            {profile.points || 0} P
-          </div>
-        </div>
+if(!user || !profile) return null
 
-        <div>
-          <div className="text-gray-500 text-xs uppercase mb-2">현재 등급</div>
-        <div className="flex flex-col items-center gap-3">
-  {rankIcon && (
-    <img
-      src={rankIcon}
-      alt="rank icon"
-      className="w-20 h-20 object-contain"
-    />
-  )}
-  <div className="text-xl font-black text-yellow-400">
-    {profile.rank_name || "Seed"}
-  </div>
+return(
+
+<div className="max-w-4xl mx-auto py-24 px-6">
+
+<h2 className="text-4xl font-black mb-10">
+My Room
+</h2>
+
+<div className="bg-white/5 p-10 rounded-3xl space-y-6">
+
+<div className="text-xl font-bold">
+닉네임 : {profile.nickname}
 </div>
-        </div>
+
+<div className="text-xl">
+포인트 : {profile.points || 0}
+</div>
+
+{rankIcon && (
+<img
+src={rankIcon}
+className="w-20"
+/>
+)}
+
 <button
-    onClick={handleAttendance}
-    className="w-full bg-purple-600 p-4 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all mt-6"
-  >
-    출석 체크 (+10P)
-  </button>
-   
-        <div className="mt-10 space-y-4">
+onClick={()=>setShowRegister(!showRegister)}
+className="bg-purple-600 px-5 py-2 rounded-xl"
+>
+캐릭터 등록
+</button>
 
-  <div className="text-lg font-black">
-    캐릭터 등록
-  </div>
+{showRegister && (
 
-  <input
-    placeholder="캐릭터명"
-    value={characterName}
-    onChange={(e) => setCharacterName(e.target.value)}
-    className="w-full border p-3 rounded-xl"
-  />
+<div className="space-y-3">
 
-  <input
-    placeholder="직업"
-    value={className}
-    onChange={(e) => setClassName(e.target.value)}
-    className="w-full border p-3 rounded-xl"
-  />
+<input
+placeholder="캐릭터명"
+value={characterName}
+onChange={(e)=>setCharacterName(e.target.value)}
+className="w-full p-3 rounded"
+/>
 
-  <input
-    placeholder="직업각인"
-    value={engraving}
-    onChange={(e) => setEngraving(e.target.value)}
-    className="w-full border p-3 rounded-xl"
-  />
+<input
+placeholder="직업"
+value={className}
+onChange={(e)=>setClassName(e.target.value)}
+className="w-full p-3 rounded"
+/>
 
-  <input
-    placeholder="아이템 레벨"
-    value={itemLevel}
-    onChange={(e) => setItemLevel(e.target.value)}
-    className="w-full border p-3 rounded-xl"
-  />
+<input
+placeholder="아이템레벨"
+value={itemLevel}
+onChange={(e)=>setItemLevel(e.target.value)}
+className="w-full p-3 rounded"
+/>
 
-  <input
-    type="file"
-    onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-    className="w-full border p-3 rounded-xl"
-  />
+<input
+type="file"
+onChange={(e)=>setImageFile(e.target.files?.[0] || null)}
+className="w-full"
+/>
 
-  <button
-    onClick={saveCharacter}
-    className="w-full bg-blue-500 p-3 rounded-xl font-black"
-  >
-    캐릭터 저장
-  </button>
+<button
+onClick={saveCharacter}
+className="bg-blue-500 px-4 py-2 rounded"
+>
+저장
+</button>
 
 </div>
 
-<div className="mt-10">
+)}
 
-<div className="text-xl font-bold mb-4">
-내 캐릭터
-</div>
+<div className="grid grid-cols-3 gap-4 mt-8">
 
-<div className="grid grid-cols-3 gap-4">
-
-{characters.map((c:any) => (
-
+{characters.map((c)=>(
 <div key={c.id} className="bg-black/40 p-4 rounded-xl">
 
 {c.avatar_url && (
@@ -1576,18 +1607,26 @@ className="w-full h-32 object-cover rounded mb-2"
 {c.item_level}
 </div>
 
-</div>
+<button
+onClick={()=>deleteCharacter(c.id)}
+className="bg-red-500 mt-3 px-3 py-1 rounded text-sm"
+>
+삭제
+</button>
 
+</div>
 ))}
 
 </div>
 
 </div>
 
-      </div>
-    </div>
-  )
-};
+</div>
+
+)
+
+}
+
 
 
 const RankingPage = ({ user, profile }: any) => {
@@ -1690,100 +1729,70 @@ const RankingPage = ({ user, profile }: any) => {
     </div>
   );
 };
+const GuildMembersPage = () => {
 
-const GuildMembersPage = ({ user }: any) => {
+const [members,setMembers] = useState<any[]>([])
 
-  const [members, setMembers] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+useEffect(()=>{
 
-  useEffect(() => {
-    fetchMembers()
-  }, [])
+fetchMembers()
 
- const fetchMembers = async () => {
-const { data, error } = await supabase
-  .from("guild_members")
-  .select("*")
-  .eq("guild_id", user.guild_id)  // ✅ 같은 길드 캐릭터 모두
-  .order("created_at", { ascending: true });
+},[])
 
-  if (!error && data) {
-    setMembers(data);
-  }
+const fetchMembers = async()=>{
 
-  setLoading(false);
-};
+const { data } = await supabase
+.from("guild_members")
+.select("*")
+.order("created_at",{ascending:true})
 
-   
-
-const deleteMember = async (id: string) => {
-
-  const ok = confirm("캐릭터 삭제할까요?")
-
-  if (!ok) return
-
-  const { error } = await supabase
-    .from("guild_members")
-    .delete()
-    .eq("id", id)
-
-  if (!error) {
-    fetchMembers()
-  }
+if(data){
+setMembers(data)
+}
 
 }
-  
-  if (loading) {
-    return (
-      <div className="text-center py-20 text-gray-400">
-        길드 멤버 불러오는 중...
-      </div>
-    )
-  }
 
-  return (
-    <div className="max-w-6xl mx-auto px-6 py-20">
+return(
 
-      <h1 className="text-3xl font-bold mb-10">
-        길드 멤버
-      </h1>
+<div className="max-w-6xl mx-auto px-6 py-20">
 
-      <div className="grid grid-cols-4 gap-6">
-{members.map((m) => (
-  <div key={m.id} className="bg-zinc-900 p-5 rounded-xl">
+<h1 className="text-3xl font-bold mb-10">
+길드 캐릭터
+</h1>
 
-    {m.avatar_url && (
-      <img
-        src={m.avatar_url}
-        className="w-full h-40 object-cover rounded-lg mb-3"
-      />
-    )}
+<div className="grid grid-cols-4 gap-6">
 
-    <div className="text-lg font-bold">
-      {m.character_name}
-    </div>
+{members.map((m)=>(
+<div key={m.id} className="bg-zinc-900 p-5 rounded-xl">
 
-    <div className="text-sm text-gray-400">
-      {m.class_name}
-    </div>
-
-    <div className="text-sm text-purple-400 mt-2">
-      {m.item_level}
-    </div>
-    {m.user_id === user.id && (
-<button
-  onClick={() => deleteMember(m.id)}
-  className="mt-3 bg-red-500 px-3 py-1 rounded-lg text-sm"
->
-삭제
-</button>
+{m.avatar_url && (
+<img
+src={m.avatar_url}
+className="w-full h-40 object-cover rounded-lg mb-3"
+/>
 )}
 
-  </div>
+<div className="text-lg font-bold">
+{m.character_name}
+</div>
+
+<div className="text-sm text-gray-400">
+{m.class_name}
+</div>
+
+<div className="text-sm text-purple-400 mt-2">
+{m.item_level}
+</div>
+
+</div>
 ))}
 
 </div>
+
 </div>
-);
+
+)
+
 }
+
         
