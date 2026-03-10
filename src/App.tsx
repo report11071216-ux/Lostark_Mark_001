@@ -1160,6 +1160,30 @@ className="w-full py-3 rounded-xl font-bold bg-red-600 hover:bg-red-700 transiti
 onClick={onClose}
 className="w-full py-3 rounded-xl font-bold bg-gray-700 hover:bg-gray-600 transition"
 >
+{hover && parts.length > 0 && (
+
+<div className="absolute z-20 left-0 top-full mt-1 w-full bg-black/90 border border-gray-700 rounded-lg p-2 text-xs shadow-xl">
+
+<div className="font-bold mb-1 text-gray-300">
+참여자
+</div>
+
+{parts.map((p:any)=>(
+<div key={p.id} className="flex justify-between text-gray-200">
+
+<span>{p.character_name}</span>
+
+<span className="text-gray-400">
+{p.role}
+</span>
+
+</div>
+))}
+
+</div>
+
+)}
+  
 닫기
 </button>
 
@@ -1275,20 +1299,34 @@ const JoinForm = ({ raid, onClose, onSuccess }: any) => {
 
 const RaidItem = ({ raid, parts, onRefresh }: any) => {
 
+  const [hover,setHover] = useState(false)
   const [showJoin,setShowJoin] = useState(false)
 
   const isFull = parts.length >= raid.max_participants
 
   const percent =
     (parts.length / raid.max_participants) * 100
-
+const raidColor =
+  raid.raid_type === "4인"
+    ? "blue"
+    : "purple"
   return (
     <>
       <div
-        onClick={()=>setShowJoin(true)}
-        className="relative bg-gradient-to-br from-purple-900/30 to-indigo-900/20 
-        border border-purple-500/20 p-3 rounded-xl cursor-pointer 
-        hover:border-purple-400 hover:scale-[1.03] transition-all shadow-lg"
+        <div
+onClick={()=>setShowJoin(true)}
+onMouseEnter={()=>setHover(true)}
+onMouseLeave={()=>setHover(false)}
+       className={`relative p-3 rounded-xl cursor-pointer 
+hover:scale-[1.03] transition-all shadow-lg
+
+${raidColor === "blue"
+  ? "bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border-blue-500/30 hover:border-blue-400"
+  : "bg-gradient-to-br from-purple-900/30 to-indigo-900/20 border-purple-500/30 hover:border-purple-400"
+}
+
+${isFull ? "border-red-500 bg-red-900/20" : ""}
+`}
       >
 
         {/* 상단 */}
@@ -1323,11 +1361,13 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
 
           <div
             style={{ width:`${percent}%` }}
-            className={`h-full rounded ${
-              isFull
-                ? "bg-red-500"
-                : "bg-purple-500"
-            }`}
+          className={`h-full rounded ${
+  isFull
+    ? "bg-red-500"
+    : raidColor === "blue"
+    ? "bg-blue-500"
+    : "bg-purple-500"
+}`}
           />
 
         </div>
