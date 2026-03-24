@@ -905,14 +905,34 @@ const RaidCalendar = ({ user }: any) => {
               `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 
             const dayRaids = raids.filter(r => r.raid_date === dateStr);
+const today = new Date();
 
+const isToday =
+  today.getFullYear() === year &&
+  today.getMonth() === month &&
+  today.getDate() === day;
+      
             return (
-
-              <div key={day} className="bg-[#0a0a0a] min-h-[160px] p-3">
+<div
+  key={day}
+  className={`min-h-[160px] p-3 border transition-all
+    ${isToday
+      ? "bg-purple-900/40 border-purple-500 shadow-lg shadow-purple-500/20"
+      : "bg-[#0a0a0a] border-transparent"
+    }
+  `}
+>
+           
 
                 <div className="flex justify-between mb-2">
 
-                  <span className="text-xs text-gray-500">{day}</span>
+<span
+  className={`text-xs font-bold
+    ${isToday ? "text-purple-400 text-sm" : "text-gray-500"}
+  `}
+>
+  {day}
+</span>
 
                   <button
                     onClick={()=>{
