@@ -200,12 +200,40 @@ async function startServer() {
     res.json(results);
   });
 
-  app.post("/api/raid-schedules", (req, res) => {
-    const { raid_name, date, time, difficulty, max_participants } = req.body;
-    const info = db.prepare("INSERT INTO raid_schedules (raid_name, date, time, difficulty, max_participants) VALUES (?, ?, ?, ?, ?)")
-      .run(raid_name, date, time, difficulty, max_participants || 8);
-    res.json({ id: info.lastInsertRowid });
-  });
+ app.post("/api/raid-schedules", async (req, res) => {
+  const { raid_name, date, time, difficulty, max_participants } = req.body;
+
+  const info = db.prepare(`
+    INSERT INTO raid_schedules 
+    (raid_name, date, time, difficulty, max_participants) 
+    VALUES (?, ?, ?, ?, ?)
+  `).run(raid_name, date, time, difficulty, max_participants || 8);
+
+  // 🔥 디스코드 알림 추가
+  try {
+    const webhook = process.env.DISCORD_WEBHOOK;
+
+    await fetch(webhook!, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        content:
+`📢 레이드 생성 알림!
+
+🎯 ${raid_name} (${difficulty})
+📅 ${date} ${time}
+
+👉 참여하러 가기!`
+      })
+    });
+  } catch (err) {
+    console.error("디스코드 전송 실패:", err);
+  }
+
+  res.json({ id: info.lastInsertRowid });
+});
 
   app.delete("/api/raid-schedules/:id", (req, res) => {
     db.prepare("DELETE FROM raid_schedules WHERE id = ?").run(req.params.id);
