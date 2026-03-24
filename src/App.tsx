@@ -1006,10 +1006,6 @@ const CreateRaidModal = ({
   contentsList
 }) => {
 
-useEffect(() => {
-  fetchRaidList()
-}, [])
-
 const fetchRaidList = async () => {
   const { data } = await supabase
     .from('contents')
@@ -1018,6 +1014,10 @@ const fetchRaidList = async () => {
 
   if (data) setRaidList(data)
 } 
+
+      useEffect(() => {
+  fetchRaidList()
+}, [])
   const [raidList, setRaidList] = useState<any[]>([])
 const [form,setForm] = useState({
   raid_name:"",
