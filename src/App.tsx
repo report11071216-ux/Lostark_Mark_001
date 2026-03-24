@@ -979,14 +979,26 @@ const isToday =
 };
 
 const CreateRaidModal = ({ date,onRefresh,onClose }:any)=>{
+useEffect(() => {
+  fetchRaidList()
+}, [])
 
+const fetchRaidList = async () => {
+  const { data } = await supabase
+    .from('contents')
+    .select('*')
+    .eq('category', '레이드')
+
+  if (data) setRaidList(data)
+} 
+  const [raidList, setRaidList] = useState<any[]>([])
 const [form,setForm] = useState({
-raid_name:"",
-difficulty:"노말",
-raid_time:"20:00",
-type:"8인"
+  raid_name:"",
+  difficulty:"노말",
+  raid_time:"20:00",
+  raid_type:"8인",
+  type:"raid" // 🔥 추가
 })
-
 const save = async()=>{
 
 const max = form.type === "4인" ? 4 : 8
@@ -994,12 +1006,13 @@ const max = form.type === "4인" ? 4 : 8
 const { error } = await supabase
 .from("raid_schedules")
 .insert({
-raid_name:form.raid_name,
-raid_date:date,
-raid_time:form.raid_time,
-difficulty:form.difficulty,
-raid_type:form.type,
-max_participants:max
+  raid_name:form.raid_name,
+  raid_date:date,
+  raid_time:form.raid_time,
+  difficulty:form.difficulty,
+  raid_type:form.raid_type,
+  max_participants:max,
+  type: form.type // 🔥 추가
 })
 
 if(!error){
@@ -1019,13 +1032,26 @@ return(
 
 <div className="bg-zinc-900 p-8 rounded-xl w-[350px] space-y-4">
 
-<input
-placeholder="레이드 이름"
-value={form.raid_name}
-onChange={(e)=>setForm({...form,raid_name:e.target.value})}
-className="w-full p-3"
-/>
-
+<select
+  value={form.raid_name}
+  onChange={(e)=>setForm({...form, raid_name:e.target.value})}
+  className="w-full p-3"
+>
+  <option value="">레이드 선택</option>
+<select
+  value={form.type}
+  onChange={(e)=>setForm({...form,type:e.target.value})}
+  className="w-full p-3"
+>
+  <option value="raid">레이드</option>
+  <option value="anime">영화, 애니 시청</option>
+</select>
+  {raidList.map((r)=>(
+    <option key={r.id} value={r.name}>
+      {r.name}
+    </option>
+  ))}
+</select>
 <select
 onChange={(e)=>setForm({...form,type:e.target.value})}
 className="w-full p-3"
@@ -1295,7 +1321,8 @@ const JoinForm = ({ raid, onClose, onSuccess }: any) => {
 
 
 const RaidItem = ({ raid, parts, onRefresh }: any) => {
-
+ const isAnime = raid.type === "anime" // 🔥 이거 추가
+  
   const [showJoin,setShowJoin] = useState(false)
 
   const isFull = parts.length >= raid.max_participants
@@ -1303,10 +1330,11 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
   const percent =
     (parts.length / raid.max_participants) * 100
 const raidColor =
-  raid.raid_type === "4인"
+  isAnime
+    ? "green" // 🔥 애니면 초록
+    : raid.raid_type === "4인"
     ? "blue"
     : "purple"
-  return (
     <>
       <div
         onClick={()=>setShowJoin(true)}
@@ -1326,15 +1354,20 @@ ${isFull ? "border-red-500 bg-red-900/20" : ""}
         <div className="flex justify-between items-center mb-1">
 
           <span className="text-[10px] text-purple-400 font-bold">
-            {raid.raid_type} · {raid.difficulty}
-          </span>
+  {isAnime
+    ? "📺 시청"
+    : `${raid.raid_type} · ${raid.difficulty}`
+  }
+</span>
 
-          <span className={`text-[10px] font-bold ${
-            isFull ? "text-red-400" : "text-gray-400"
-          }`}>
-            {parts.length}/{raid.max_participants}
-            {isFull && " FULL"}
-          </span>
+         {!isAnime && (
+  <span className={`text-[10px] font-bold ${
+    isFull ? "text-red-400" : "text-gray-400"
+  }`}>
+    {parts.length}/{raid.max_participants}
+    {isFull && " FULL"}
+  </span>
+)}
 
         </div>
 
