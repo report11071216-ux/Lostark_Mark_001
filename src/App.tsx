@@ -79,7 +79,7 @@ export default function App() {
         <AnimatePresence mode="wait">
           {activeTab === 'home' && (
             <motion.div key="home" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}>
-              <Hero settings={settings} />
+              <RaidCalendar user={user} />
               <div className="max-w-7xl mx-auto px-6 mb-12">
                 <div className="flex justify-center gap-12 border-b border-white/5 pb-6">
              {['레이드', '가디언 토벌', '클래스'].map(t => (
@@ -116,7 +116,7 @@ export default function App() {
                 </div>
               </div>
               <MainContentViewer type={contentView} />
-              <RaidCalendar user={user} /> 
+             
             </motion.div>
           )}
 
