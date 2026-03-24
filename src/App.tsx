@@ -847,7 +847,10 @@ const RaidCalendar = ({ user }: any) => {
   if (data) setContentsList(data)
 }
 
-  useEffect(() => { fetchData(); }, [currentDate]);
+ useEffect(() => {
+  fetchData();
+  fetchContents(); // 🔥 이거 추가
+}, [currentDate]);
 
   const fetchData = async () => {
     const { data: rData } = await supabase
