@@ -837,8 +837,8 @@ const RaidCalendar = ({ user }: any) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [contentsList, setContentsList] = useState<any[]>([]) // 🔥 이거 추가
   
-  const selectedContent = contentsList.find(
-  (c) => c.id === selectedContentId
+const selectedContent = contentsList.find(
+  (c) => c.id === Number(selectedContentId)
 );
   const fetchContents = async () => {
   console.log("🔥 fetchContents 실행됨"); // 확인용
