@@ -828,6 +828,61 @@ const AdminInput = ({ label, value, onChange, placeholder, type="text" }: any) =
 );
 
 // --- [기능] 레이드 캘린더 ---
+const CreateRaidModal = ({
+  date,
+  onRefresh,
+  onClose,
+  selectedContentId,
+  setSelectedContentId,
+  contentsList
+}) => {
+
+const fetchRaidList = async () => {
+  const { data } = await supabase
+    .from('contents')
+    .select('*')
+    .eq('category', '레이드')
+
+  if (data) setRaidList(data)
+} 
+
+      useEffect(() => {
+  fetchRaidList()
+}, [])
+  const [raidList, setRaidList] = useState<any[]>([])
+const [form,setForm] = useState({
+  raid_name:"",
+  difficulty:"노말",
+  raid_time:"20:00",
+  raid_type:"8인",
+  type:"raid" // 🔥 추가
+})
+const save = async()=>{
+
+const max = form.type === "4인" ? 4 : 8
+
+const { error } = await supabase
+.from("raid_schedules")
+.insert({
+  raid_name:form.raid_name,
+  raid_date:date,
+  raid_time:form.raid_time,
+  difficulty:form.difficulty,
+  raid_type:form.raid_type,
+  max_participants:max,
+  type: form.type // 🔥 추가
+})
+
+if(!error){
+
+alert("레이드 생성 완료")
+
+onRefresh()
+onClose()
+
+}
+
+}
 const RaidCalendar = ({ user }: any) => {
   const [selectedContentId, setSelectedContentId] = useState('')
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -997,61 +1052,7 @@ const isToday =
     contentsList={contentsList}
   />
 }
-const CreateRaidModal = ({
-  date,
-  onRefresh,
-  onClose,
-  selectedContentId,
-  setSelectedContentId,
-  contentsList
-}) => {
 
-const fetchRaidList = async () => {
-  const { data } = await supabase
-    .from('contents')
-    .select('*')
-    .eq('category', '레이드')
-
-  if (data) setRaidList(data)
-} 
-
-      useEffect(() => {
-  fetchRaidList()
-}, [])
-  const [raidList, setRaidList] = useState<any[]>([])
-const [form,setForm] = useState({
-  raid_name:"",
-  difficulty:"노말",
-  raid_time:"20:00",
-  raid_type:"8인",
-  type:"raid" // 🔥 추가
-})
-const save = async()=>{
-
-const max = form.type === "4인" ? 4 : 8
-
-const { error } = await supabase
-.from("raid_schedules")
-.insert({
-  raid_name:form.raid_name,
-  raid_date:date,
-  raid_time:form.raid_time,
-  difficulty:form.difficulty,
-  raid_type:form.raid_type,
-  max_participants:max,
-  type: form.type // 🔥 추가
-})
-
-if(!error){
-
-alert("레이드 생성 완료")
-
-onRefresh()
-onClose()
-
-}
-
-}
 
 return(
 
