@@ -1331,11 +1331,13 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
     (parts.length / raid.max_participants) * 100
 const raidColor =
   isAnime
-    ? "green" // 🔥 애니면 초록
+    ? "green"
     : raid.raid_type === "4인"
     ? "blue"
-    : "purple"
-    <>
+    : "purple"; // 🔥 세미콜론 추가
+
+return (  // 🔥 이거 추가
+  <>
       <div
         onClick={()=>setShowJoin(true)}
        className={`relative p-3 rounded-xl cursor-pointer 
