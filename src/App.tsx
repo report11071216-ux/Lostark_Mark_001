@@ -829,6 +829,7 @@ const AdminInput = ({ label, value, onChange, placeholder, type="text" }: any) =
 
 // --- [기능] 레이드 캘린더 ---
 const RaidCalendar = ({ user }: any) => {
+  const [selectedContentId, setSelectedContentId] = useState('')
   const [currentDate, setCurrentDate] = useState(new Date());
   const [raids, setRaids] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
