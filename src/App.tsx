@@ -985,19 +985,27 @@ const isToday =
         </div>
       </div>
 
-      {isModalOpen &&
-        <CreateRaidModal
-          date={selectedDate}
-          onRefresh={fetchData}
-          onClose={()=>setIsModalOpen(false)}
-        />
-      }
+    {isModalOpen &&
+  <CreateRaidModal
+    date={selectedDate}
+    onRefresh={fetchData}
+    onClose={()=>setIsModalOpen(false)}
 
-    </section>
-  );
-};
+    // 🔥 추가 (핵심)
+    selectedContentId={selectedContentId}
+    setSelectedContentId={setSelectedContentId}
+    contentsList={contentsList}
+  />
+}
+const CreateRaidModal = ({
+  date,
+  onRefresh,
+  onClose,
+  selectedContentId,
+  setSelectedContentId,
+  contentsList
+}) => {
 
-const CreateRaidModal = ({ date,onRefresh,onClose }:any)=>{
 useEffect(() => {
   fetchRaidList()
 }, [])
@@ -1086,11 +1094,12 @@ return(
 )}
 
 <select
-onChange={(e)=>setForm({...form,type:e.target.value})}
-className="w-full p-3"
+  value={form.raid_type}
+  onChange={(e)=>setForm({...form, raid_type:e.target.value})}
+  className="w-full p-3"
 >
-<option>8인</option>
-<option>4인</option>
+  <option value="8인">8인</option>
+  <option value="4인">4인</option>
 </select>
 
 <select
