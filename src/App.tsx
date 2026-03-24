@@ -847,10 +847,7 @@ const RaidCalendar = ({ user }: any) => {
   if (data) setContentsList(data)
 }
 
- useEffect(() => {
-  fetchData();
-  fetchContents(); // 🔥 이거 추가
-}, [currentDate]);
+  useEffect(() => { fetchData(); }, [currentDate]);
 
   const fetchData = async () => {
     const { data: rData } = await supabase
@@ -1048,26 +1045,31 @@ return(
 <div className="bg-zinc-900 p-8 rounded-xl w-[350px] space-y-4">
 
 <select
-  value={selectedContentId}
-  onChange={(e) => setSelectedContentId(e.target.value)}
+  value={form.raid_name}
+  onChange={(e)=>setForm({...form, raid_name:e.target.value})}
   className="w-full p-3"
 >
   <option value="">레이드 선택</option>
-
-  {contentsList.map((content) => (
-    <option key={content.id} value={content.id}>
-      {content.name}
-    </option>
-  ))}
-</select>
-
 <select
   value={form.type}
   onChange={(e)=>setForm({...form,type:e.target.value})}
   className="w-full p-3"
 >
   <option value="raid">레이드</option>
-  <option value="anime">애니</option>
+  <option value="anime">영화, 애니 시청</option>
+</select>
+  {raidList.map((r)=>(
+    <option key={r.id} value={r.name}>
+      {r.name}
+    </option>
+  ))}
+</select>
+<select
+onChange={(e)=>setForm({...form,type:e.target.value})}
+className="w-full p-3"
+>
+<option>8인</option>
+<option>4인</option>
 </select>
 
 <select
