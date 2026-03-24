@@ -834,6 +834,14 @@ const RaidCalendar = ({ user }: any) => {
   const [participants, setParticipants] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [contentsList, setContentsList] = useState<any[]>([]) // 🔥 이거 추가
+  const fetchContents = async () => {
+  const { data } = await supabase
+    .from('contents')
+    .select('*')
+
+  if (data) setContentsList(data)
+}
 
   useEffect(() => { fetchData(); }, [currentDate]);
 
@@ -2052,9 +2060,10 @@ const AdminRaidManager = () => {
 
 const [raids,setRaids] = useState<any[]>([])
 
-useEffect(()=>{
-fetchRaids()
-},[])
+useEffect(() => {
+  fetchRaids()
+  fetchContents() // 🔥 이 줄 추가
+}, [])
 
 const fetchRaids = async()=>{
 
@@ -2081,7 +2090,7 @@ await supabase
 fetchRaids()
 
 }
-
+console.log(contentsList)
 return(
 
 <div className="space-y-4">
