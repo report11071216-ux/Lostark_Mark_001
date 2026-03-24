@@ -201,38 +201,55 @@ async function startServer() {
   });
 
  app.post("/api/raid-schedules", async (req, res) => {
-  const { raid_name, date, time, difficulty, max_participants } = req.body;
-
-  const info = db.prepare(`
-    INSERT INTO raid_schedules 
-    (raid_name, date, time, difficulty, max_participants) 
-    VALUES (?, ?, ?, ?, ?)
-  `).run(raid_name, date, time, difficulty, max_participants || 8);
-
-  // 🔥 디스코드 알림 추가
   try {
-    const webhook = process.env.DISCORD_WEBHOOK;
+    const { raid_name, date, time, difficulty, max_participants } = req.body;
 
-    await fetch(webhook!, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        content:
+    // 1️⃣ DB 저장
+    const info = db.prepare(`
+      INSERT INTO raid_schedules 
+      (raid_name, date, time, difficulty, max_participants) 
+      VALUES (?, ?, ?, ?, ?)
+    `).run(raid_name, date, time, difficulty, max_participants || 8);
+
+    // 2️⃣ 👉 먼저 응답 보내기 (핵심)
+    res.json({ id: info.lastInsertRowid });
+
+    // 3️⃣ 👉 디스코드 알림 (뒤에서 실행)
+    try {
+      const webhook = process.env.DISCORD_WEBHOOK;
+      console.log("웹훅:", webhook);
+
+      if (!webhook) {
+        console.log("❌ 웹훅 없음");
+        return;
+      }
+
+      await fetch(webhook, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content:
 `📢 레이드 생성 알림!
 
 🎯 ${raid_name} (${difficulty})
 📅 ${date} ${time}
 
 👉 참여하러 가기!`
-      })
-    });
-  } catch (err) {
-    console.error("디스코드 전송 실패:", err);
-  }
+        })
+      });
 
-  res.json({ id: info.lastInsertRowid });
+      console.log("✅ 디스코드 전송 성공");
+
+    } catch (err) {
+      console.error("❌ 디스코드 전송 실패:", err);
+    }
+
+  } catch (err) {
+    console.error("❌ 서버 에러:", err);
+    res.status(500).json({ error: "서버 오류" });
+  }
 });
 
   app.delete("/api/raid-schedules/:id", (req, res) => {
