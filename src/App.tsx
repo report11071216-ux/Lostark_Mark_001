@@ -835,6 +835,10 @@ const RaidCalendar = ({ user }: any) => {
   const [selectedDate, setSelectedDate] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [contentsList, setContentsList] = useState<any[]>([]) // 🔥 이거 추가
+  
+  const selectedContent = contentsList.find(
+  (c) => c.id === selectedContentId
+);
   const fetchContents = async () => {
   console.log("🔥 fetchContents 실행됨"); // 확인용
 
@@ -863,6 +867,8 @@ const RaidCalendar = ({ user }: any) => {
     if (pData) setParticipants(pData);
   };
 
+
+  
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
@@ -1043,27 +1049,41 @@ return(
 <div className="fixed inset-0 bg-black/90 flex items-center justify-center">
 
 <div className="bg-zinc-900 p-8 rounded-xl w-[350px] space-y-4">
-
+{/* 레이드 선택 */}
 <select
-  value={form.raid_name}
-  onChange={(e)=>setForm({...form, raid_name:e.target.value})}
+  value={selectedContentId}
+  onChange={(e) => setSelectedContentId(e.target.value)}
   className="w-full p-3"
 >
   <option value="">레이드 선택</option>
-<select
-  value={form.type}
-  onChange={(e)=>setForm({...form,type:e.target.value})}
-  className="w-full p-3"
->
-  <option value="raid">레이드</option>
-  <option value="anime">영화, 애니 시청</option>
-</select>
-  {raidList.map((r)=>(
-    <option key={r.id} value={r.name}>
-      {r.name}
+
+  {contentsList.map((content) => (
+    <option key={content.id} value={content.id}>
+      {content.name}
     </option>
   ))}
 </select>
+
+{/* 🔥 레이드 미리보기 */}
+{selectedContent && (
+  <div className="bg-zinc-800 p-3 rounded-lg space-y-2">
+
+    <img
+      src={selectedContent.image_url}
+      className="w-full h-32 object-cover rounded"
+    />
+
+    <div className="text-sm text-yellow-400">
+      💰 클리어 골드: {selectedContent.gold}
+    </div>
+
+    <div className="text-sm text-blue-400">
+      ⚡ 약점 속성: {selectedContent.weakness}
+    </div>
+
+  </div>
+)}
+
 <select
 onChange={(e)=>setForm({...form,type:e.target.value})}
 className="w-full p-3"
