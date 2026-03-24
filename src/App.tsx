@@ -836,9 +836,13 @@ const RaidCalendar = ({ user }: any) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [contentsList, setContentsList] = useState<any[]>([]) // 🔥 이거 추가
   const fetchContents = async () => {
+  console.log("🔥 fetchContents 실행됨"); // 확인용
+
   const { data } = await supabase
     .from('contents')
     .select('*')
+
+  console.log("🔥 데이터:", data); // 확인용
 
   if (data) setContentsList(data)
 }
