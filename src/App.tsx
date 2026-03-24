@@ -1009,7 +1009,8 @@ const [form,setForm] = useState({
   difficulty:"노말",
   raid_time:"20:00",
   raid_type:"8인",
-  type:"raid" // 🔥 추가
+  experience:"트라이", // 🔥 추가
+  type:"raid"
 })
 const save = async()=>{
 
@@ -1050,6 +1051,23 @@ return(
   className="w-full p-3"
 >
   <option value="">레이드 선택</option>
+
+  {raidList.map((r)=>(
+    <option key={r.id} value={r.name}>
+      {r.name}
+    </option>
+  ))}
+</select>
+<select
+  value={form.experience}
+  onChange={(e)=>setForm({...form, experience:e.target.value})}
+  className="w-full p-3"
+>
+  <option value="트라이">트라이</option>
+  <option value="클경">클경</option>
+  <option value="반숙">반숙</option>
+  <option value="숙련">숙련</option>
+</select>
 <select
   value={form.type}
   onChange={(e)=>setForm({...form,type:e.target.value})}
@@ -1058,12 +1076,8 @@ return(
   <option value="raid">레이드</option>
   <option value="anime">영화, 애니 시청</option>
 </select>
-  {raidList.map((r)=>(
-    <option key={r.id} value={r.name}>
-      {r.name}
-    </option>
-  ))}
-</select>
+
+  
 <select
 onChange={(e)=>setForm({...form,type:e.target.value})}
 className="w-full p-3"
