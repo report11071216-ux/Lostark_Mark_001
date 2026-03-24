@@ -1316,20 +1316,20 @@ const raidColor =
   return (
     <>
  
-       <div
-  onClick={()=>setShowJoin(true)}
-  className={`relative p-3 rounded-xl cursor-pointer 
-  hover:scale-[1.03] transition-all shadow-lg
-
-  ${isPast ? "opacity-40 grayscale pointer-events-none" : ""}
-
+   <div
+  onClick={() => !isPast && setShowJoin(true)}
+  className={`relative p-3 rounded-xl cursor-pointer hover:scale-[1.03] transition-all shadow-lg
+  ${isPast ? "opacity-40 grayscale" : ""}
   ${raidColor === "blue"
-    ? "bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border-blue-500/30 hover:border-blue-400"
-    : "bg-gradient-to-br from-purple-900/30 to-indigo-900/20 border-purple-500/30 hover:border-purple-400"
+    ? "bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border-blue-500/30"
+    : "bg-gradient-to-br from-purple-900/30 to-indigo-900/20 border-purple-500/30"
   }
-
-  ${isFull ? "border-red-500 bg-red-900/20" : ""}
-`}
+  ${isPast
+    ? "border-gray-700 bg-gray-900/40"
+    : isFull
+      ? "border-red-500 bg-red-900/20"
+      : ""
+  }`}
 >
 ${raidColor === "blue"
   ? "bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border-blue-500/30 hover:border-blue-400"
