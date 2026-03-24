@@ -1403,7 +1403,12 @@ ${isFull ? "border-red-500 bg-red-900/20" : ""}
         <div className="text-xs font-bold text-white leading-tight truncate">
           {raid.raid_name}
         </div>
-
+{!isAnime && raid.experience && (
+  <div className="text-[10px] text-green-400 font-bold mt-1">
+    🎯 {raid.experience}
+  </div>
+)}
+        
         {/* 시간 */}
         <div className="text-[10px] text-gray-400 flex items-center gap-1 mt-1">
           <Clock size={10}/>
