@@ -905,34 +905,14 @@ const RaidCalendar = ({ user }: any) => {
               `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 
             const dayRaids = raids.filter(r => r.raid_date === dateStr);
-const today = new Date();
 
-const isToday =
-  today.getFullYear() === year &&
-  today.getMonth() === month &&
-  today.getDate() === day;
-      
             return (
-<div
-  key={day}
-  className={`min-h-[160px] p-3 border transition-all
-    ${isToday
-      ? "bg-purple-900/40 border-purple-500 shadow-lg shadow-purple-500/20"
-      : "bg-[#0a0a0a] border-transparent"
-    }
-  `}
->
-           
+
+              <div key={day} className="bg-[#0a0a0a] min-h-[160px] p-3">
 
                 <div className="flex justify-between mb-2">
 
-<span
-  className={`text-xs font-bold
-    ${isToday ? "text-purple-400 text-sm" : "text-gray-500"}
-  `}
->
-  {day}
-</span>
+                  <span className="text-xs text-gray-500">{day}</span>
 
                   <button
                     onClick={()=>{
@@ -1299,13 +1279,6 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
   const [showJoin,setShowJoin] = useState(false)
 
   const isFull = parts.length >= raid.max_participants
-  const now = new Date()
-
-const raidDateTime = new Date(
-  `${raid.raid_date}T${raid.raid_time}`
-)
-
-const isPast = raidDateTime < now
 
   const percent =
     (parts.length / raid.max_participants) * 100
@@ -1315,24 +1288,11 @@ const raidColor =
     : "purple"
   return (
     <>
- 
-<div
-  onClick={() => !isPast && setShowJoin(true)}
-  className={`relative p-3 rounded-xl cursor-pointer hover:scale-[1.03] transition-all shadow-lg ${
-    isPast ? "opacity-40 grayscale border-gray-700 bg-gray-900/40" :
-    isFull ? "border-red-500 bg-red-900/20" :
-    raidColor === "blue"
-      ? "bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border-blue-500/30"
-      : "bg-gradient-to-br from-purple-900/30 to-indigo-900/20 border-purple-500/30"
-  }`}
->
-  ${isPast
-    ? "border-gray-700 bg-gray-900/40"
-    : isFull
-      ? "border-red-500 bg-red-900/20"
-      : ""
-  }`}
->
+      <div
+        onClick={()=>setShowJoin(true)}
+       className={`relative p-3 rounded-xl cursor-pointer 
+hover:scale-[1.03] transition-all shadow-lg
+
 ${raidColor === "blue"
   ? "bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border-blue-500/30 hover:border-blue-400"
   : "bg-gradient-to-br from-purple-900/30 to-indigo-900/20 border-purple-500/30 hover:border-purple-400"
