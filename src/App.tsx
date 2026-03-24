@@ -1026,6 +1026,7 @@ const { error } = await supabase
   raid_type:form.raid_type,
   max_participants:max,
   type: form.type // 🔥 추가
+  experience: form.experience
 })
 
 if(!error){
