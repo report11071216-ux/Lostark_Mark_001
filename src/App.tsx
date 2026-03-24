@@ -828,73 +828,13 @@ const AdminInput = ({ label, value, onChange, placeholder, type="text" }: any) =
 );
 
 // --- [기능] 레이드 캘린더 ---
-const CreateRaidModal = ({
-  date,
-  onRefresh,
-  onClose,
-  selectedContentId,
-  setSelectedContentId,
-  contentsList
-}) => {
-
-const fetchRaidList = async () => {
-  const { data } = await supabase
-    .from('contents')
-    .select('*')
-    .eq('category', '레이드')
-
-  if (data) setRaidList(data)
-} 
-
-      useEffect(() => {
-  fetchRaidList()
-}, [])
-  const [raidList, setRaidList] = useState<any[]>([])
-const [form,setForm] = useState({
-  raid_name:"",
-  difficulty:"노말",
-  raid_time:"20:00",
-  raid_type:"8인",
-  type:"raid" // 🔥 추가
-})
-const save = async()=>{
-
-const max = form.type === "4인" ? 4 : 8
-
-const { error } = await supabase
-.from("raid_schedules")
-.insert({
-  raid_name:form.raid_name,
-  raid_date:date,
-  raid_time:form.raid_time,
-  difficulty:form.difficulty,
-  raid_type:form.raid_type,
-  max_participants:max,
-  type: form.type // 🔥 추가
-})
-
-if(!error){
-
-alert("레이드 생성 완료")
-
-onRefresh()
-onClose()
-
-}
-
-}
 const RaidCalendar = ({ user }: any) => {
-  const [selectedContentId, setSelectedContentId] = useState('')
   const [currentDate, setCurrentDate] = useState(new Date());
   const [raids, setRaids] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [contentsList, setContentsList] = useState<any[]>([]) // 🔥 이거 추가
-  
-const selectedContent = contentsList.find(
-  (c) => c.id === Number(selectedContentId)
-);
   const fetchContents = async () => {
   console.log("🔥 fetchContents 실행됨"); // 확인용
 
@@ -923,8 +863,6 @@ const selectedContent = contentsList.find(
     if (pData) setParticipants(pData);
   };
 
-
-  
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
@@ -1040,67 +978,98 @@ const isToday =
         </div>
       </div>
 
-    {isModalOpen &&
-  <CreateRaidModal
-    date={selectedDate}
-    onRefresh={fetchData}
-    onClose={()=>setIsModalOpen(false)}
+      {isModalOpen &&
+        <CreateRaidModal
+          date={selectedDate}
+          onRefresh={fetchData}
+          onClose={()=>setIsModalOpen(false)}
+        />
+      }
 
-    // 🔥 추가 (핵심)
-    selectedContentId={selectedContentId}
-    setSelectedContentId={setSelectedContentId}
-    contentsList={contentsList}
-  />
+    </section>
+  );
+};
+
+const CreateRaidModal = ({ date,onRefresh,onClose }:any)=>{
+useEffect(() => {
+  fetchRaidList()
+}, [])
+
+const fetchRaidList = async () => {
+  const { data } = await supabase
+    .from('contents')
+    .select('*')
+    .eq('category', '레이드')
+
+  if (data) setRaidList(data)
+} 
+  const [raidList, setRaidList] = useState<any[]>([])
+const [form,setForm] = useState({
+  raid_name:"",
+  difficulty:"노말",
+  raid_time:"20:00",
+  raid_type:"8인",
+  type:"raid" // 🔥 추가
+})
+const save = async()=>{
+
+const max = form.type === "4인" ? 4 : 8
+
+const { error } = await supabase
+.from("raid_schedules")
+.insert({
+  raid_name:form.raid_name,
+  raid_date:date,
+  raid_time:form.raid_time,
+  difficulty:form.difficulty,
+  raid_type:form.raid_type,
+  max_participants:max,
+  type: form.type // 🔥 추가
+})
+
+if(!error){
+
+alert("레이드 생성 완료")
+
+onRefresh()
+onClose()
+
 }
 
+}
 
 return(
 
 <div className="fixed inset-0 bg-black/90 flex items-center justify-center">
 
 <div className="bg-zinc-900 p-8 rounded-xl w-[350px] space-y-4">
-{/* 레이드 선택 */}
+
 <select
-  value={selectedContentId}
-  onChange={(e) => setSelectedContentId(e.target.value)}
+  value={form.raid_name}
+  onChange={(e)=>setForm({...form, raid_name:e.target.value})}
   className="w-full p-3"
 >
   <option value="">레이드 선택</option>
-
-  {contentsList.map((content) => (
-    <option key={content.id} value={content.id}>
-      {content.name}
+<select
+  value={form.type}
+  onChange={(e)=>setForm({...form,type:e.target.value})}
+  className="w-full p-3"
+>
+  <option value="raid">레이드</option>
+  <option value="anime">영화, 애니 시청</option>
+</select>
+  {raidList.map((r)=>(
+    <option key={r.id} value={r.name}>
+      {r.name}
     </option>
   ))}
 </select>
-
-{/* 🔥 레이드 미리보기 */}
-{selectedContent && (
-  <div className="bg-zinc-800 p-3 rounded-lg space-y-2">
-
-    <img
-      src={selectedContent.image_url}
-      className="w-full h-32 object-cover rounded"
-    />
-
-    <div className="text-sm text-yellow-400">
-      💰 클리어 골드: {selectedContent.gold}
-    </div>
-
-    <div className="text-sm text-blue-400">
-      ⚡ 약점 속성: {selectedContent.weakness}
-    </div>
-
-  </div>
-)}
-
 <select
-  value={form.raid_type}
-  onChange={(e)=>setForm({...form, raid_type:e.target.value})}
-  className="w-full p-3"
+onChange={(e)=>setForm({...form,type:e.target.value})}
+className="w-full p-3"
 >
-  <option value="8인">8인</option>
-  <option value="4인">4인</option>
+<option>8인</option>
+<option>4인</option>
 </select>
 
 <select
