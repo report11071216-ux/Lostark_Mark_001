@@ -1315,7 +1315,7 @@ const raidColor =
     : "purple"
   return (
     <>
-      <div
+ 
        <div
   onClick={()=>setShowJoin(true)}
   className={`relative p-3 rounded-xl cursor-pointer 
