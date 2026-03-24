@@ -1299,6 +1299,13 @@ const RaidItem = ({ raid, parts, onRefresh }: any) => {
   const [showJoin,setShowJoin] = useState(false)
 
   const isFull = parts.length >= raid.max_participants
+  const now = new Date()
+
+const raidDateTime = new Date(
+  `${raid.raid_date}T${raid.raid_time}`
+)
+
+const isPast = raidDateTime < now
 
   const percent =
     (parts.length / raid.max_participants) * 100
@@ -1309,10 +1316,21 @@ const raidColor =
   return (
     <>
       <div
-        onClick={()=>setShowJoin(true)}
-       className={`relative p-3 rounded-xl cursor-pointer 
-hover:scale-[1.03] transition-all shadow-lg
+       <div
+  onClick={()=>setShowJoin(true)}
+  className={`relative p-3 rounded-xl cursor-pointer 
+  hover:scale-[1.03] transition-all shadow-lg
 
+  ${isPast ? "opacity-40 grayscale pointer-events-none" : ""}
+
+  ${raidColor === "blue"
+    ? "bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border-blue-500/30 hover:border-blue-400"
+    : "bg-gradient-to-br from-purple-900/30 to-indigo-900/20 border-purple-500/30 hover:border-purple-400"
+  }
+
+  ${isFull ? "border-red-500 bg-red-900/20" : ""}
+`}
+>
 ${raidColor === "blue"
   ? "bg-gradient-to-br from-blue-900/30 to-indigo-900/20 border-blue-500/30 hover:border-blue-400"
   : "bg-gradient-to-br from-purple-900/30 to-indigo-900/20 border-purple-500/30 hover:border-purple-400"
