@@ -177,6 +177,79 @@ const toNumber = (value: any) => {
 const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
+
+const normalizeEquippedBadges = (input: any): Array<{ badge_item_id: string; badge_name: string; badge_color?: string | null }> => {
+  if (!input) return [];
+  if (Array.isArray(input)) {
+    return input
+      .map((item: any) => {
+        if (!item) return null;
+        if (typeof item === "string") {
+          return { badge_item_id: item, badge_name: item, badge_color: null };
+        }
+        return {
+          badge_item_id: String(item.badge_item_id || item.id || item.badge_name || ""),
+          badge_name: item.badge_name || item.name || item.label || "뱃지",
+          badge_color: item.badge_color || item.color || null,
+        };
+      })
+      .filter(Boolean) as Array<{ badge_item_id: string; badge_name: string; badge_color?: string | null }>;
+  }
+
+  if (typeof input === "string") {
+    try {
+      return normalizeEquippedBadges(JSON.parse(input));
+    } catch {
+      return input.trim()
+        ? [{ badge_item_id: input, badge_name: input, badge_color: null }]
+        : [];
+    }
+  }
+
+  return [];
+};
+
+const getCharacterBadges = (character: any) => {
+  const equipped = normalizeEquippedBadges(character?.equipped_badges);
+  if (equipped.length > 0) return equipped;
+
+  if (Array.isArray(character?.equipped_badge_names) && character.equipped_badge_names.length > 0) {
+    return character.equipped_badge_names.map((name: string, index: number) => ({
+      badge_item_id: `${name}-${index}`,
+      badge_name: name,
+      badge_color: null,
+    }));
+  }
+
+  if (character?.badge_name) {
+    return [
+      {
+        badge_item_id: String(character.badge_item_id || character.equipped_badge_id || character.badge_name),
+        badge_name: character.badge_name,
+        badge_color: character.badge_color || null,
+      },
+    ];
+  }
+
+  return [];
+};
+
+const uploadGuildImage = async (file: File, userId: string) => {
+  const client = getSupabaseOrThrow();
+  const ext = (file.name.split(".").pop() || "png").toLowerCase();
+  const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+  const { error } = await client.storage
+    .from("guild-images")
+    .upload(fileName, file, { upsert: true, contentType: file.type || undefined });
+
+  if (error) throw error;
+
+  const { data } = client.storage.from("guild-images").getPublicUrl(fileName);
+  return data.publicUrl;
+};
+
+
 const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: ProfileLike }) => {
   const [notices, setNotices] = useState<PostLike[]>([]);
   const [loading, setLoading] = useState(true);
@@ -352,9 +425,9 @@ export default function App() {
       let currentUser: any = null;
 
       try {
-        const sessionResult = await withTimeout(client.auth.getSession(), 10000);
+        const sessionResult = await withTimeout(client.auth.getUser(), 7000);
         const {
-          data: { session },
+          data: { user: fetchedUser },
           error: sessionError,
         } = sessionResult;
 
@@ -362,7 +435,7 @@ export default function App() {
           console.error("getSession error:", sessionError);
         }
 
-        currentUser = session?.user ?? null;
+        currentUser = fetchedUser ?? null;
       } catch (error) {
         console.error("getSession timeout or failure:", error);
         currentUser = null;
@@ -404,7 +477,7 @@ export default function App() {
     data: { subscription },
   } = supabase.auth.onAuthStateChange(async (_event, session) => {
     try {
-      const currentUser = session?.user ?? null;
+      const currentUser = fetchedUser ?? null;
       setUser(currentUser);
 
       if (currentUser) {
@@ -3034,10 +3107,13 @@ const MyRoom = ({ user, profile }: any) => {
   };
 
   const fetchCharacters = async () => {
-    const { data, error } = await supabase
+    const client = getSupabaseOrThrow();
+    const { data, error } = await client
       .from("guild_members")
       .select("*")
       .or(`user_id.eq.${user.id},owner_id.eq.${user.id}`)
+      .order("is_main", { ascending: false })
+      .order("item_level", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: true });
 
     if (error) {
@@ -3047,26 +3123,31 @@ const MyRoom = ({ user, profile }: any) => {
     }
 
     setCharacters(
-      (data || []).map((item: any) => ({
-        ...item,
-        isEditing: false,
-        draft: {
-          character_name: item.character_name || "",
-          class_name: item.class_name || "",
-          item_level: item.item_level || "",
-          character_level: item.character_level || "",
-          combat_power: item.combat_power || "",
-          role_hint: item.role_hint || "딜러",
-          profile_theme: item.profile_theme || item.theme_color || "#8b5cf6",
-          character_intro: item.character_intro || item.bio || "",
-          badge_item_id: item.badge_item_id || item.equipped_badge_id || "",
-        },
-      }))
+      (data || []).map((item: any) => {
+        const equippedBadges = getCharacterBadges(item);
+        return {
+          ...item,
+          equipped_badges: equippedBadges,
+          isEditing: false,
+          draft: {
+            character_name: item.character_name || "",
+            class_name: item.class_name || "",
+            item_level: item.item_level || "",
+            character_level: item.character_level || "",
+            combat_power: item.combat_power || "",
+            role_hint: item.role_hint || "딜러",
+            profile_theme: item.profile_theme || item.theme_color || "#8b5cf6",
+            character_intro: item.character_intro || item.bio || "",
+            equipped_badge_ids: equippedBadges.map((badge: any) => String(badge.badge_item_id)),
+          },
+        };
+      })
     );
   };
 
   const fetchOwnedBadges = async () => {
-    const { data, error } = await supabase
+    const client = getSupabaseOrThrow();
+    const { data, error } = await client
       .from("user_owned_badges")
       .select("id, badge_item_id, badge_name, badge_color")
       .eq("user_id", user.id)
@@ -3110,22 +3191,18 @@ const MyRoom = ({ user, profile }: any) => {
 
     let imageUrl = null;
 
-    if (imageFile) {
-      const ext = imageFile.name.split(".").pop();
-      const fileName = `${user.id}-${Date.now()}.${ext}`;
-
-      const { error } = await supabase.storage.from("guild-images").upload(fileName, imageFile);
-
-      if (error) {
-        alert("이미지 업로드 실패");
-        return;
+    try {
+      if (imageFile) {
+        imageUrl = await uploadGuildImage(imageFile, user.id);
       }
-
-      const { data } = supabase.storage.from("guild-images").getPublicUrl(fileName);
-      imageUrl = data.publicUrl;
+    } catch (error: any) {
+      console.error("image upload error:", error);
+      alert(`이미지 업로드 실패: ${error?.message || "storage 정책을 확인해줘."}`);
+      return;
     }
 
-    const { error } = await supabase.from("guild_members").insert({
+    const client = getSupabaseOrThrow();
+    const { error } = await client.from("guild_members").insert({
       user_id: user.id,
       owner_id: user.id,
       owner_nickname: profile.nickname,
@@ -3175,7 +3252,7 @@ const MyRoom = ({ user, profile }: any) => {
                     role_hint: item.role_hint || "딜러",
                     profile_theme: item.profile_theme || "#8b5cf6",
                     character_intro: item.character_intro || "",
-                    badge_item_id: item.badge_item_id || "",
+                    equipped_badge_ids: getCharacterBadges(item).map((badge: any) => String(badge.badge_item_id)),
                   }
                 : item.draft,
             }
@@ -3195,7 +3272,13 @@ const MyRoom = ({ user, profile }: any) => {
   };
 
   const saveCharacterEdit = async (character: any) => {
-    const badge = ownedBadges.find((x) => x.badge_item_id === character.draft.badge_item_id);
+    const selectedBadgeIds = Array.isArray(character.draft.equipped_badge_ids)
+      ? character.draft.equipped_badge_ids
+      : [];
+    const selectedBadges = ownedBadges.filter((x) =>
+      selectedBadgeIds.includes(String(x.badge_item_id))
+    );
+
     const payload = {
       character_name: character.draft.character_name,
       class_name: character.draft.class_name,
@@ -3207,17 +3290,23 @@ const MyRoom = ({ user, profile }: any) => {
       theme_color: character.draft.profile_theme || "#8b5cf6",
       character_intro: character.draft.character_intro || "",
       bio: character.draft.character_intro || "",
-      badge_item_id: character.draft.badge_item_id || null,
-      equipped_badge_id: character.draft.badge_item_id || null,
-      badge_name: badge?.badge_name || null,
-      equipped_badge_label: badge?.badge_name || null,
-      badge_color: badge?.badge_color || null,
+      badge_item_id: selectedBadges[0]?.badge_item_id || null,
+      equipped_badge_id: selectedBadges[0]?.badge_item_id || null,
+      badge_name: selectedBadges[0]?.badge_name || null,
+      equipped_badge_label: selectedBadges[0]?.badge_name || null,
+      badge_color: selectedBadges[0]?.badge_color || null,
+      equipped_badges: selectedBadges.map((badge: any) => ({
+        badge_item_id: badge.badge_item_id,
+        badge_name: badge.badge_name,
+        badge_color: badge.badge_color || null,
+      })),
       owner_nickname: profile.nickname,
       owner_id: user.id,
       user_id: user.id,
     };
 
-    const { error } = await supabase.from("guild_members").update(payload).eq("id", character.id);
+    const client = getSupabaseOrThrow();
+    const { error } = await client.from("guild_members").update(payload).eq("id", character.id);
     if (error) return alert(error.message);
 
     alert("캐릭터 수정 완료");
@@ -3272,9 +3361,19 @@ const MyRoom = ({ user, profile }: any) => {
             </select>
             <input
               type="file"
+              accept="image/*"
               onChange={(e) => setImageFile(e.target.files?.[0] || null)}
               className="w-full text-sm text-gray-400"
             />
+            {imageFile && (
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
+                <div className="text-xs text-gray-400 mb-2">미리보기</div>
+                <img
+                  src={URL.createObjectURL(imageFile)}
+                  className="w-full max-w-xs h-44 object-cover rounded-xl"
+                />
+              </div>
+            )}
             <button onClick={saveCharacter} className="bg-blue-500 px-4 py-3 rounded-xl font-black">
               저장
             </button>
@@ -3311,14 +3410,23 @@ const MyRoom = ({ user, profile }: any) => {
                       <div className="font-bold text-lg">{character.character_name}</div>
                       <div className="text-sm text-gray-400">{character.class_name}</div>
                     </div>
-                    {character.badge_name && (
-                      <span
-                        className="px-3 py-1 rounded-full text-xs font-black"
-                        style={{ backgroundColor: `${character.badge_color || "#8b5cf6"}33`, color: character.badge_color || "#c4b5fd", border: `1px solid ${character.badge_color || "#8b5cf6"}` }}
-                      >
-                        {character.badge_name}
-                      </span>
-                    )}
+                    <div className="flex flex-wrap gap-2 justify-end">
+                      {getCharacterBadges(character).length > 0 ? (
+                        getCharacterBadges(character).map((badge: any, index: number) => (
+                          <span
+                            key={`${badge.badge_item_id}-${index}`}
+                            className="px-3 py-1 rounded-full text-xs font-black"
+                            style={{
+                              backgroundColor: `${badge.badge_color || "#8b5cf6"}33`,
+                              color: badge.badge_color || "#c4b5fd",
+                              border: `1px solid ${badge.badge_color || "#8b5cf6"}`,
+                            }}
+                          >
+                            {badge.badge_name}
+                          </span>
+                        ))
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 mt-4">
@@ -3370,18 +3478,44 @@ const MyRoom = ({ user, profile }: any) => {
                       <option value="서포터">서포터</option>
                     </select>
 
-                    <select
-                      value={character.draft.badge_item_id || ""}
-                      onChange={(e) => updateDraft(character.id, "badge_item_id", e.target.value)}
-                      className="w-full bg-black border border-white/10 rounded-xl p-4"
-                    >
-                      <option value="">뱃지 미착용</option>
-                      {ownedBadges.map((badge) => (
-                        <option key={badge.badge_item_id} value={badge.badge_item_id}>
-                          {badge.badge_name}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <div className="text-xs text-gray-400 mb-3">착용 뱃지 (복수 선택 가능)</div>
+                      <div className="flex flex-wrap gap-2">
+                        {ownedBadges.length === 0 && (
+                          <div className="text-sm text-gray-500">보유한 뱃지가 없습니다.</div>
+                        )}
+                        {ownedBadges.map((badge) => {
+                          const checked = (character.draft.equipped_badge_ids || []).includes(String(badge.badge_item_id));
+                          return (
+                            <label
+                              key={badge.badge_item_id}
+                              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer"
+                              style={{
+                                borderColor: checked ? badge.badge_color || "#8b5cf6" : "rgba(255,255,255,0.08)",
+                                backgroundColor: checked ? `${badge.badge_color || "#8b5cf6"}22` : "rgba(255,255,255,0.03)",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  const next = new Set(character.draft.equipped_badge_ids || []);
+                                  if (e.target.checked) next.add(String(badge.badge_item_id));
+                                  else next.delete(String(badge.badge_item_id));
+                                  updateDraft(character.id, "equipped_badge_ids", Array.from(next));
+                                }}
+                              />
+                              <span
+                                className="text-xs font-black"
+                                style={{ color: badge.badge_color || "#c4b5fd" }}
+                              >
+                                {badge.badge_name}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-3">
@@ -3592,22 +3726,58 @@ const GuildMembersPage = () => {
 
   const fetchMembers = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("guild_member_overview")
-      .select("*")
-      .order("item_level", { ascending: false })
-      .order("is_main", { ascending: false })
-      .order("character_name", { ascending: true });
 
-    if (error) {
+    try {
+      const client = getSupabaseOrThrow();
+      const [liveRes, overviewRes] = await Promise.allSettled([
+        client
+          .from("guild_members")
+          .select("*")
+          .order("is_main", { ascending: false })
+          .order("item_level", { ascending: false, nullsFirst: false })
+          .order("character_name", { ascending: true }),
+        client
+          .from("guild_member_overview")
+          .select("*")
+          .order("item_level", { ascending: false })
+          .order("is_main", { ascending: false })
+          .order("character_name", { ascending: true }),
+      ]);
+
+      const liveRows =
+        liveRes.status === "fulfilled" && !liveRes.value.error ? liveRes.value.data || [] : [];
+      const overviewRows =
+        overviewRes.status === "fulfilled" && !overviewRes.value.error ? overviewRes.value.data || [] : [];
+
+      if (liveRes.status === "fulfilled" && liveRes.value.error) {
+        console.error("guild_members fetch error:", liveRes.value.error);
+      }
+      if (overviewRes.status === "fulfilled" && overviewRes.value.error) {
+        console.error("guild_member_overview fetch error:", overviewRes.value.error);
+      }
+
+      const overviewMap = new Map(overviewRows.map((row: any) => [row.id, row]));
+      const merged = (liveRows.length > 0 ? liveRows : overviewRows).map((row: any) => {
+        const overview = overviewMap.get(row.id) || {};
+        const base = { ...overview, ...row };
+        return {
+          ...base,
+          equipped_badges: getCharacterBadges(base),
+        };
+      });
+
+      setMembers(
+        merged.sort((a: any, b: any) => {
+          if (Boolean(a.is_main) !== Boolean(b.is_main)) return a.is_main ? -1 : 1;
+          return Number(b.item_level || 0) - Number(a.item_level || 0);
+        })
+      );
+    } catch (error) {
       console.error(error);
       setMembers([]);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setMembers(data || []);
-    setLoading(false);
   };
 
   const filteredMembers = useMemo(() => {
@@ -3673,14 +3843,19 @@ const GuildMembersPage = () => {
                           서폿
                         </span>
                       )}
-                      {member.badge_name && (
+                      {getCharacterBadges(member).map((badge: any, index: number) => (
                         <span
+                          key={`${badge.badge_item_id}-${index}`}
                           className="px-2 py-1 rounded-full text-[10px] font-black border"
-                          style={{ color: member.badge_color || "#c4b5fd", borderColor: member.badge_color || "#8b5cf6", backgroundColor: `${member.badge_color || "#8b5cf6"}22` }}
+                          style={{
+                            color: badge.badge_color || "#c4b5fd",
+                            borderColor: badge.badge_color || "#8b5cf6",
+                            backgroundColor: `${badge.badge_color || "#8b5cf6"}22`,
+                          }}
                         >
-                          {member.badge_name}
+                          {badge.badge_name}
                         </span>
-                      )}
+                      ))}
                     </div>
                     <div className="text-xl font-black truncate">{member.character_name}</div>
                     <div className="text-sm text-gray-400 truncate">{member.class_name}</div>
@@ -3703,9 +3878,11 @@ const GuildMembersPage = () => {
                 <InfoMiniCard title="참여율" value={`${member.participation_rate || 0}%`} />
               </div>
 
-              <div className="mt-4 text-sm text-gray-300 whitespace-pre-wrap">
-                {member.character_intro || "등록된 캐릭터 소개가 없습니다."}
-              </div>
+              {member.character_intro && (
+                <div className="mt-4 text-sm text-gray-300 whitespace-pre-wrap border-t border-white/5 pt-4">
+                  {member.character_intro}
+                </div>
+              )}
             </div>
           ))}
         </div>
