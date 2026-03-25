@@ -934,7 +934,7 @@ const RaidCalendar = ({ user }: any) => {
 
       </div>
 
-      <div className="bg-[#0f0f0f] rounded-[3rem] border border-white/5 overflow-hidden">
+      <div className="bg-slate-950/55 rounded-[3rem] border border-white/10 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.08)]
 
         <div className="grid grid-cols-7 text-center text-xs text-gray-500 border-b border-white/5">
           {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d =>
