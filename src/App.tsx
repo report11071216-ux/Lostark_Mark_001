@@ -1196,7 +1196,7 @@ const isFull = dealers >= dealerLimit && supports >= supportLimit
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
 
-      <div className="bg-[#0f0f1a] border border-purple-500/30 rounded-2xl p-6 w-[380px]">
+      <div className="bg-slate-950/75 border border-indigo-400/20 rounded-3xl p-6 w-[420px] backdrop-blur-2xl shadow-[0_0_60px_rgba(99,102,241,0.16)]">
 
         <div className="text-white text-lg font-bold mb-4">
           {raid.raid_name}
