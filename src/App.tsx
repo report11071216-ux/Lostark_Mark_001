@@ -1544,7 +1544,6 @@ const navItems = [
     </nav>
   );
 };
-import { useEffect } from "react";
 
 const Hero = ({ settings }: any) => {
 
