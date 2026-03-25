@@ -313,28 +313,55 @@ const BADGE_CARD_CLASS_STYLE_MAP: Record<string, any> = {
   },
 };
 
+const getPrimaryBadgeTheme = (character: any) => {
+  const badges = getCharacterBadges(character);
+  const representative =
+    badges.find((badge: any) => normalizeBadgeCardClass(badge?.badge_card_class) !== "none") || badges[0];
+
+  const representativeCardClass = normalizeBadgeCardClass(representative?.badge_card_class);
+  const characterCardClass = normalizeBadgeCardClass(character?.badge_card_class);
+
+  const cardClass =
+    representativeCardClass !== "none"
+      ? representativeCardClass
+      : characterCardClass !== "none"
+      ? characterCardClass
+      : "none";
+
+  const style = BADGE_CARD_CLASS_STYLE_MAP[cardClass] || BADGE_CARD_CLASS_STYLE_MAP.none;
+
+  return {
+    cardClass,
+    style,
+    representative,
+  };
+};
+
 const getCharacterBadges = (character: any) => {
   const equipped = normalizeEquippedBadges(character?.equipped_badges);
+  const characterCardClass = normalizeBadgeCardClass(character?.badge_card_class);
+
   if (equipped.length > 0) {
-    const fallbackCardClass = normalizeBadgeCardClass(character?.badge_card_class || "none");
-    return equipped.map((badge: any, index: number) => ({
-      ...badge,
-      badge_card_class:
-        normalizeBadgeCardClass(badge?.badge_card_class) !== "none"
-          ? normalizeBadgeCardClass(badge?.badge_card_class)
-          : index === 0 && fallbackCardClass !== "none"
-          ? fallbackCardClass
-          : normalizeBadgeCardClass(badge?.badge_card_class || "none"),
-    }));
+    return equipped.map((badge: any, index: number) => {
+      const badgeCardClass = normalizeBadgeCardClass(badge?.badge_card_class);
+      return {
+        ...badge,
+        badge_card_class:
+          badgeCardClass !== "none"
+            ? badgeCardClass
+            : index === 0 && characterCardClass !== "none"
+            ? characterCardClass
+            : "none",
+      };
+    });
   }
 
   if (Array.isArray(character?.equipped_badge_names) && character.equipped_badge_names.length > 0) {
-    const fallbackCardClass = normalizeBadgeCardClass(character?.badge_card_class || "none");
     return character.equipped_badge_names.map((name: string, index: number) => ({
       badge_item_id: `${name}-${index}`,
       badge_name: name,
-      badge_color: character?.badge_color || null,
-      badge_card_class: index === 0 ? fallbackCardClass : "none",
+      badge_color: null,
+      badge_card_class: index === 0 ? characterCardClass : "none",
     }));
   }
 
@@ -344,29 +371,12 @@ const getCharacterBadges = (character: any) => {
         badge_item_id: String(character.badge_item_id || character.equipped_badge_id || character.badge_name),
         badge_name: character.badge_name,
         badge_color: character.badge_color || null,
-        badge_card_class: normalizeBadgeCardClass(character.badge_card_class || "none"),
+        badge_card_class: characterCardClass,
       },
     ];
   }
 
   return [];
-};
-
-const getPrimaryBadgeTheme = (character: any) => {
-  const badges = getCharacterBadges(character);
-  const representative =
-    badges.find((badge: any) => normalizeBadgeCardClass(badge?.badge_card_class) !== "none") || badges[0];
-
-  const representativeCardClass = normalizeBadgeCardClass(representative?.badge_card_class || "none");
-  const fallbackCardClass = normalizeBadgeCardClass(character?.badge_card_class || "none");
-  const cardClass = representativeCardClass !== "none" ? representativeCardClass : fallbackCardClass;
-  const style = BADGE_CARD_CLASS_STYLE_MAP[cardClass] || BADGE_CARD_CLASS_STYLE_MAP.none;
-
-  return {
-    cardClass,
-    style,
-    representative,
-  };
 };
 
 const uploadGuildImage = async (file: File, userId: string) => {
@@ -3293,7 +3303,7 @@ const MyRoom = ({ user, profile }: any) => {
     const client = getSupabaseOrThrow();
     const { data, error } = await client
       .from("user_owned_badges")
-      .select("id, badge_item_id, badge_name, badge_color")
+      .select("id, badge_item_id, badge_name, badge_color, badge_card_class")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
@@ -3455,11 +3465,14 @@ const MyRoom = ({ user, profile }: any) => {
       equipped_badge_id: selectedBadges[0]?.badge_item_id || null,
       badge_name: selectedBadges[0]?.badge_name || null,
       equipped_badge_label: selectedBadges[0]?.badge_name || null,
+      equipped_badge_code: selectedBadges[0]?.badge_code || selectedBadges[0]?.badge_item_id || null,
       badge_color: selectedBadges[0]?.badge_color || null,
       badge_card_class: normalizeBadgeCardClass(selectedBadges[0]?.badge_card_class || "none"),
       equipped_badges: selectedBadges.map((badge: any) => ({
         badge_item_id: badge.badge_item_id,
+        badge_code: badge.badge_code || badge.badge_item_id || null,
         badge_name: badge.badge_name,
+        badge_label: badge.badge_label || badge.badge_name || null,
         badge_color: badge.badge_color || null,
         badge_card_class: normalizeBadgeCardClass(badge.badge_card_class || "none"),
       })),
