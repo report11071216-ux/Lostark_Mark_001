@@ -48,6 +48,7 @@ const supabase = supabaseConfigError
       auth: {
         persistSession: true,
         autoRefreshToken: true,
+        detectSessionInUrl: true,
       },
     });
 
@@ -65,6 +66,69 @@ const getSupabaseOrThrow = () => {
     throw new Error(supabaseConfigError || "Supabase client is not initialized.");
   }
   return supabase;
+};
+
+const isMissingRefreshTokenError = (error: any) => {
+  const message = String(error?.message || error?.name || error || "").toLowerCase();
+  return (
+    message.includes("invalid refresh token") ||
+    message.includes("refresh token not found") ||
+    message.includes("auth session missing") ||
+    message.includes("jwt expired") ||
+    message.includes("session missing")
+  );
+};
+
+const clearBrokenSession = async () => {
+  if (!supabase) return;
+  try {
+    await supabase.auth.signOut({ scope: "local" });
+  } catch (error) {
+    console.warn("clearBrokenSession failed:", error);
+  }
+};
+
+const getSafeCurrentUser = async () => {
+  const client = getSupabaseOrThrow();
+
+  try {
+    const sessionResult = await withTimeout(client.auth.getSession(), 7000);
+    const sessionError = sessionResult.error;
+    const sessionUser = sessionResult.data.session?.user ?? null;
+
+    if (sessionError) {
+      if (isMissingRefreshTokenError(sessionError)) {
+        await clearBrokenSession();
+        return null;
+      }
+      console.error("getSession error:", sessionError);
+      return null;
+    }
+
+    if (!sessionUser) return null;
+
+    const userResult = await withTimeout(client.auth.getUser(), 7000);
+    const userError = userResult.error;
+    const fetchedUser = userResult.data.user ?? null;
+
+    if (userError) {
+      if (isMissingRefreshTokenError(userError)) {
+        await clearBrokenSession();
+        return null;
+      }
+      console.error("getUser error:", userError);
+      return sessionUser;
+    }
+
+    return fetchedUser;
+  } catch (error) {
+    if (isMissingRefreshTokenError(error)) {
+      await clearBrokenSession();
+      return null;
+    }
+    console.error("getSafeCurrentUser unexpected error:", error);
+    return null;
+  }
 };
 
 type UserLike = any;
@@ -597,51 +661,30 @@ export default function App() {
     };
   }
 
+  const applyUserState = async (nextUser: any) => {
+    if (!mounted) return;
+    setUser(nextUser);
+
+    if (nextUser?.id) {
+      await fetchProfile(nextUser.id);
+    } else {
+      setProfile(null);
+    }
+  };
+
   const init = async () => {
     try {
-      const client = getSupabaseOrThrow();
-
-      let currentUser: any = null;
-
-      try {
-        const sessionResult = await withTimeout(client.auth.getUser(), 7000);
-        const {
-          data: { user: fetchedUser },
-          error: sessionError,
-        } = sessionResult;
-
-        if (sessionError) {
-          console.error("getSession error:", sessionError);
-        }
-
-        currentUser = fetchedUser ?? null;
-      } catch (error) {
-        console.error("getSession timeout or failure:", error);
-        currentUser = null;
-      }
+      await fetchInitialData();
+      const currentUser = await getSafeCurrentUser();
 
       if (!mounted) return;
 
-      setUser(currentUser);
-
-      const tasks: Promise<any>[] = [fetchInitialData()];
-
-      if (currentUser) {
-        tasks.push(fetchProfile(currentUser.id));
-      } else {
-        setProfile(null);
-      }
-
-      await Promise.allSettled(tasks);
-
-      if (mounted) {
-        setBootError(null);
-      }
+      await applyUserState(currentUser);
+      setBootError(null);
     } catch (error: any) {
       console.error("App init error:", error);
-
       if (mounted) {
-        setBootError(null);
+        setBootError(error?.message || "홈페이지 초기화 중 오류가 발생했습니다.");
       }
     } finally {
       if (mounted) {
@@ -654,18 +697,27 @@ export default function App() {
 
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange(async (_event, session) => {
+  } = supabase.auth.onAuthStateChange(async (event, session) => {
     try {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-
-      if (currentUser) {
-        await fetchProfile(currentUser.id);
-      } else {
-        setProfile(null);
+      if (event === "TOKEN_REFRESH_FAILED") {
+        await clearBrokenSession();
       }
+
+      const currentUser = session?.user ?? null;
+
+      if (!currentUser && event !== "SIGNED_OUT") {
+        const safeUser = await getSafeCurrentUser();
+        await applyUserState(safeUser);
+        return;
+      }
+
+      await applyUserState(currentUser);
     } catch (error) {
       console.error("Auth state change error:", error);
+      if (isMissingRefreshTokenError(error)) {
+        await clearBrokenSession();
+        await applyUserState(null);
+      }
     }
   });
 
@@ -674,9 +726,8 @@ export default function App() {
     subscription?.unsubscribe();
   };
 }, []);
- 
 
-  const fetchProfile = async (userId: string) => {
+const fetchProfile = async (userId: string) => {
     try {
       const client = getSupabaseOrThrow();
       const { data, error } = await client
@@ -3328,86 +3379,37 @@ const MyRoom = ({ user, profile }: any) => {
     const client = getSupabaseOrThrow();
 
     try {
-      const { data: shopData, error: shopError } = await client
-        .from("point_shop_items")
-        .select("id, title, badge_name, badge_color, badge_card_class, card_class, badge_theme, effect_class, reward_type")
-        .order("created_at", { ascending: false });
+      const [{ data: ownedData, error: ownedError }, { data: shopData, error: shopError }] = await Promise.all([
+        client
+          .from("user_owned_badges")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        client
+          .from("point_shop_items")
+          .select("*")
+          .order("created_at", { ascending: false }),
+      ]);
+
+      if (ownedError) {
+        console.error("fetchOwnedBadges owned lookup error:", ownedError);
+        setOwnedBadges([]);
+        return;
+      }
 
       if (shopError) {
         console.error("fetchOwnedBadges shop lookup error:", shopError);
       }
 
       const badgeShopItems = (shopData || []).filter(
-        (item: any) => item?.reward_type === "badge" || item?.badge_card_class || item?.badge_name
+        (item: any) => item?.reward_type === "badge" || item?.badge_card_class || item?.badge_name || item?.title
       );
 
-      let ownedRows: any[] = [];
-
-      const filteredResult = await client
-        .from("user_owned_badges")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (filteredResult.error) {
-        console.warn("fetchOwnedBadges filtered lookup failed, fallback to unfiltered view read:", filteredResult.error);
-      } else if (Array.isArray(filteredResult.data) && filteredResult.data.length > 0) {
-        ownedRows = filteredResult.data;
-      }
-
-      if (ownedRows.length === 0) {
-        const fallbackResult = await client
-          .from("user_owned_badges")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(200);
-
-        if (fallbackResult.error) {
-          console.error("fetchOwnedBadges fallback error:", fallbackResult.error);
-        } else {
-          const rows = Array.isArray(fallbackResult.data) ? fallbackResult.data : [];
-
-          ownedRows = rows.filter((row: any) => {
-            const candidates = [
-              row?.user_id,
-              row?.owner_id,
-              row?.profile_id,
-              row?.member_id,
-              row?.uid,
-            ]
-              .filter(Boolean)
-              .map((value: any) => String(value));
-
-            if (candidates.length === 0) return true;
-            return candidates.includes(String(user.id));
-          });
-        }
-      }
-
-      const merged = ownedRows.map((badge: any) => mergeOwnedBadgeWithShopItem(badge, badgeShopItems));
-
-      if (merged.length > 0) {
-        setOwnedBadges(merged);
-        return;
-      }
-
-      const emergencyBadgeList = badgeShopItems.map((item: any) =>
-        mergeOwnedBadgeWithShopItem(
-          {
-            id: item.id,
-            badge_item_id: String(item.badge_item_id || item.reward_badge_item_id || item.id || item.title || item.badge_name),
-            badge_name: item.badge_name || item.title || "뱃지",
-            badge_color: item.badge_color || null,
-            badge_card_class:
-              item.badge_card_class || item.card_class || item.badge_theme || item.effect_class || "none",
-            is_emergency_fallback: true,
-          },
-          badgeShopItems
-        )
+      const merged = (ownedData || []).map((badge: any) =>
+        mergeOwnedBadgeWithShopItem(badge, badgeShopItems)
       );
 
-      console.warn("fetchOwnedBadges emergency fallback: owned badge rows not found, showing shop badge list.");
-      setOwnedBadges(emergencyBadgeList);
+      setOwnedBadges(merged);
     } catch (error) {
       console.error("fetchOwnedBadges unexpected error:", error);
       setOwnedBadges([]);
