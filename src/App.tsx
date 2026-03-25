@@ -603,22 +603,22 @@ export default function App() {
 
   init();
 
-const {
-  data: { subscription },
-} = supabase.auth.onAuthStateChange(async (_event, session) => {
-  try {
-    const currentUser = session?.user ?? null;
-    setUser(currentUser);
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    try {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
 
-    if (currentUser) {
-      await fetchProfile(currentUser.id);
-    } else {
-      setProfile(null);
+      if (currentUser) {
+        await fetchProfile(currentUser.id);
+      } else {
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error("Auth state change error:", error);
     }
-  } catch (error) {
-    console.error("Auth state change error:", error);
-  }
-});
+  });
 
   return () => {
     mounted = false;
@@ -3277,13 +3277,51 @@ const MyRoom = ({ user, profile }: any) => {
 
   const fetchOwnedBadges = async () => {
     const client = getSupabaseOrThrow();
-    const { data, error } = await client
-      .from("user_owned_badges")
-      .select("id, badge_item_id, badge_name, badge_color")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
 
-    if (!error) setOwnedBadges(data || []);
+    const [ownedRes, shopRes] = await Promise.all([
+      client
+        .from("user_owned_badges")
+        .select("id, badge_item_id, badge_name, badge_color, badge_card_class")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false }),
+      client
+        .from("point_shop_items")
+        .select("id, title, badge_name, badge_color, badge_card_class, reward_type")
+        .eq("reward_type", "badge"),
+    ]);
+
+    if (ownedRes.error) {
+      console.error("fetchOwnedBadges error:", ownedRes.error);
+      setOwnedBadges([]);
+      return;
+    }
+
+    if (shopRes.error) {
+      console.error("point_shop_items badge fetch error:", shopRes.error);
+    }
+
+    const shopRows = shopRes.data || [];
+    const shopById = new Map(shopRows.map((item: any) => [String(item.id), item]));
+    const shopByName = new Map(
+      shopRows.map((item: any) => [String(item.badge_name || item.title || "").trim(), item])
+    );
+
+    const mergedBadges = (ownedRes.data || []).map((badge: any) => {
+      const matchedShopItem =
+        shopById.get(String(badge.badge_item_id || "")) ||
+        shopByName.get(String(badge.badge_name || "").trim());
+
+      return {
+        ...badge,
+        badge_name: badge.badge_name || matchedShopItem?.badge_name || matchedShopItem?.title || "뱃지",
+        badge_color: badge.badge_color || matchedShopItem?.badge_color || null,
+        badge_card_class: normalizeBadgeCardClass(
+          badge.badge_card_class || matchedShopItem?.badge_card_class || "none"
+        ),
+      };
+    });
+
+    setOwnedBadges(mergedBadges);
   };
 
   useEffect(() => {
@@ -3424,6 +3462,11 @@ const MyRoom = ({ user, profile }: any) => {
       return;
     }
 
+    const representativeBadge =
+      selectedBadges.find((badge: any) => normalizeBadgeCardClass(badge.badge_card_class || "none") !== "none") ||
+      selectedBadges[0] ||
+      null;
+
     const payload = {
       character_name: character.draft.character_name,
       class_name: character.draft.class_name,
@@ -3437,12 +3480,12 @@ const MyRoom = ({ user, profile }: any) => {
       bio: character.draft.character_intro || "",
       avatar_url: avatarUrl,
       image_url: avatarUrl,
-      badge_item_id: selectedBadges[0]?.badge_item_id || null,
-      equipped_badge_id: selectedBadges[0]?.badge_item_id || null,
-      badge_name: selectedBadges[0]?.badge_name || null,
-      equipped_badge_label: selectedBadges[0]?.badge_name || null,
-      badge_color: selectedBadges[0]?.badge_color || null,
-      badge_card_class: normalizeBadgeCardClass(selectedBadges[0]?.badge_card_class || "none"),
+      badge_item_id: representativeBadge?.badge_item_id || null,
+      equipped_badge_id: representativeBadge?.badge_item_id || null,
+      badge_name: representativeBadge?.badge_name || null,
+      equipped_badge_label: representativeBadge?.badge_name || null,
+      badge_color: representativeBadge?.badge_color || null,
+      badge_card_class: normalizeBadgeCardClass(representativeBadge?.badge_card_class || "none"),
       equipped_badges: selectedBadges.map((badge: any) => ({
         badge_item_id: badge.badge_item_id,
         badge_name: badge.badge_name,
