@@ -249,6 +249,15 @@ const uploadGuildImage = async (file: File, userId: string) => {
   return data.publicUrl;
 };
 
+const createPreviewUrl = (file: File | null, fallback?: string | null) => {
+  if (!file) return fallback || null;
+  try {
+    return URL.createObjectURL(file);
+  } catch {
+    return fallback || null;
+  }
+};
+
 
 const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: ProfileLike }) => {
   const [notices, setNotices] = useState<PostLike[]>([]);
@@ -291,7 +300,7 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                 길드 공지사항
               </h2>
               <p className="mt-2 text-gray-400">
-                공지사.
+                히어로 섹션 대신 최신 공지와 고정 공지를 바로 보이게 했어.
               </p>
             </div>
 
@@ -1351,7 +1360,7 @@ const RaidCalendar = ({ user, profile }: any) => {
 
         <SectionPanel
           title="월별 참여 랭킹"
-          description="이번 달 기준 캐릭터의 참가횟수를 확인 해보세요."
+          description="이번 달 기준 캐릭터 닉네임별 참가 횟수와 참가 등록 수를 볼 수 있어."
         >
           <div className="space-y-3">
             {monthlyCharacterStats.length === 0 && (
@@ -1467,7 +1476,7 @@ const RaidCalendar = ({ user, profile }: any) => {
 
         <SectionPanel
           title="월별 통계 보드"
-          description="이번 달 참여 많이 한 캐릭터를 확인해보세요."
+          description="이번 달 참여 많이 한 캐릭터를 전체로 확인할 수 있어."
         >
           {calendarLoading ? (
             <div className="py-12 text-center text-gray-500 font-bold">불러오는 중...</div>
@@ -3252,6 +3261,9 @@ const MyRoom = ({ user, profile }: any) => {
                     role_hint: item.role_hint || "딜러",
                     profile_theme: item.profile_theme || "#8b5cf6",
                     character_intro: item.character_intro || "",
+                    avatar_url: item.avatar_url || "",
+                    new_image_file: null,
+                    image_preview_url: item.avatar_url || "",
                     equipped_badge_ids: getCharacterBadges(item).map((badge: any) => String(badge.badge_item_id)),
                   }
                 : item.draft,
@@ -3279,6 +3291,18 @@ const MyRoom = ({ user, profile }: any) => {
       selectedBadgeIds.includes(String(x.badge_item_id))
     );
 
+    let avatarUrl = character.draft.avatar_url || character.avatar_url || null;
+
+    try {
+      if (character.draft.new_image_file) {
+        avatarUrl = await uploadGuildImage(character.draft.new_image_file, user.id);
+      }
+    } catch (error: any) {
+      console.error("character edit image upload error:", error);
+      alert(`수정 이미지 업로드 실패: ${error?.message || "storage 정책을 확인해줘."}`);
+      return;
+    }
+
     const payload = {
       character_name: character.draft.character_name,
       class_name: character.draft.class_name,
@@ -3290,6 +3314,8 @@ const MyRoom = ({ user, profile }: any) => {
       theme_color: character.draft.profile_theme || "#8b5cf6",
       character_intro: character.draft.character_intro || "",
       bio: character.draft.character_intro || "",
+      avatar_url: avatarUrl,
+      image_url: avatarUrl,
       badge_item_id: selectedBadges[0]?.badge_item_id || null,
       equipped_badge_id: selectedBadges[0]?.badge_item_id || null,
       badge_name: selectedBadges[0]?.badge_name || null,
@@ -3398,7 +3424,7 @@ const MyRoom = ({ user, profile }: any) => {
             >
               {character.avatar_url && (
                 <img
-                  src={character.avatar_url}
+                  src={character.avatar_url || character.image_url}
                   className="w-full h-40 object-cover rounded-xl mb-3"
                 />
               )}
@@ -3515,6 +3541,57 @@ const MyRoom = ({ user, profile }: any) => {
                           );
                         })}
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <div className="text-xs text-gray-400 mb-3">캐릭터 이미지 수정</div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        updateDraft(character.id, "new_image_file", file);
+                        updateDraft(
+                          character.id,
+                          "image_preview_url",
+                          createPreviewUrl(file, character.draft.avatar_url || character.avatar_url || "")
+                        );
+                      }}
+                      className="w-full text-sm text-gray-400"
+                    />
+                    {(character.draft.image_preview_url || character.draft.avatar_url || character.avatar_url) && (
+                      <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-3">
+                        <div className="text-xs text-gray-400 mb-2">현재/새 미리보기</div>
+                        <img
+                          src={character.draft.image_preview_url || character.draft.avatar_url || character.avatar_url}
+                          className="w-full max-w-xs h-44 object-cover rounded-xl"
+                        />
+                      </div>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateDraft(character.id, "new_image_file", null);
+                          updateDraft(character.id, "avatar_url", "");
+                          updateDraft(character.id, "image_preview_url", "");
+                        }}
+                        className="px-3 py-2 rounded-xl bg-zinc-800 text-xs font-black"
+                      >
+                        이미지 제거
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateDraft(character.id, "new_image_file", null);
+                          updateDraft(character.id, "avatar_url", character.avatar_url || "");
+                          updateDraft(character.id, "image_preview_url", character.avatar_url || "");
+                        }}
+                        className="px-3 py-2 rounded-xl bg-zinc-700 text-xs font-black"
+                      >
+                        원래 이미지로 복원
+                      </button>
                     </div>
                   </div>
 
@@ -3823,7 +3900,7 @@ const GuildMembersPage = () => {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-4 min-w-0">
                   <img
-                    src={member.avatar_url || "https://placehold.co/120x120?text=INXX"}
+                    src={member.avatar_url || member.image_url || "https://placehold.co/120x120?text=INXX"}
                     className="h-20 w-20 rounded-2xl object-cover border border-white/10"
                   />
                   <div className="min-w-0">
