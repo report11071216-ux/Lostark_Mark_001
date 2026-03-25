@@ -1194,127 +1194,137 @@ const isFull = dealers >= dealerLimit && supports >= supportLimit
   }
 
   return (
- <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-violet-500/15 via-indigo-500/10 to-sky-500/15 p-4 mb-4">
-  <div className="flex items-start justify-between gap-3">
-    <div>
-      <div className="text-2xl font-black tracking-wide text-white">
-        {raid.raid_name}
-      </div>
-      <div className="mt-2 text-sm text-white/70">
-        {raid.raid_date} · {raid.raid_time}
-      </div>
-    </div>
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+      <div className="bg-slate-950/75 border border-indigo-400/20 rounded-3xl p-6 w-[420px] backdrop-blur-2xl shadow-[0_0_60px_rgba(99,102,241,0.16)]">
+        <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-violet-500/15 via-indigo-500/10 to-sky-500/15 p-4 mb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-2xl font-black tracking-wide text-white">
+                {raid.raid_name}
+              </div>
+              <div className="mt-2 text-sm text-white/70">
+                {raid.raid_date} · {raid.raid_time}
+              </div>
+            </div>
 
-    <div className="text-right">
-      <div className="text-[11px] text-white/50 tracking-wider">모집 현황</div>
-      <div className="text-xl font-black text-violet-300">
-        {parts.length} / {raid.max_participants}
-      </div>
-    </div>
-  </div>
+            <div className="text-right">
+              <div className="text-[11px] text-white/50 tracking-wider">모집 현황</div>
+              <div className="text-xl font-black text-violet-300">
+                {parts.length} / {raid.max_participants}
+              </div>
+            </div>
+          </div>
 
-  <div className="mt-4 flex flex-wrap gap-2">
-    <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold">
-      {raid.raid_type}
-    </span>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold">
+              {raid.raid_type}
+            </span>
 
-    {raid.experience && (
-      <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/20 text-xs font-bold text-emerald-300">
-        {raid.experience}
-      </span>
-    )}
+            {raid.experience && (
+              <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/20 text-xs font-bold text-emerald-300">
+                {raid.experience}
+              </span>
+            )}
 
-    <span className="px-3 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-400/20 text-xs font-bold text-fuchsia-300">
-      딜러 {dealers}/{dealerLimit}
-    </span>
+            <span className="px-3 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-400/20 text-xs font-bold text-fuchsia-300">
+              딜러 {dealers}/{dealerLimit}
+            </span>
 
-    <span className="px-3 py-1 rounded-full bg-sky-500/10 border border-sky-400/20 text-xs font-bold text-sky-300">
-      서포터 {supports}/{supportLimit}
-    </span>
+            <span className="px-3 py-1 rounded-full bg-sky-500/10 border border-sky-400/20 text-xs font-bold text-sky-300">
+              서포터 {supports}/{supportLimit}
+            </span>
 
-    <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold">
-      빈자리 {raid.max_participants - parts.length}
-    </span>
-  </div>
-</div>
+            <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold">
+              빈자리 {raid.max_participants - parts.length}
+            </span>
+          </div>
+        </div>
 
-        <div className="space-y-2 max-h-[200px] overflow-y-auto mb-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="text-sm font-bold tracking-wider text-white/70">참가자 목록</div>
+          <div className="text-xs text-white/40">현재 참여 현황</div>
+        </div>
 
+        <div className="space-y-2 max-h-[240px] overflow-y-auto mb-4 pr-1">
           {parts.length === 0 && (
-            <div className="text-gray-500 text-sm">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-6 text-center text-sm text-white/50">
               아직 참가자가 없습니다
             </div>
           )}
-{parts.map((p:any,i:number)=>(
-  <div key={i} className="flex justify-between items-center text-sm text-gray-300">
 
-    <div>
-      {p.character_name} ({p.item_level})
-    </div>
+          {parts.map((p: any, i: number) => (
+            <div
+              key={i}
+              className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-3 backdrop-blur-sm"
+            >
+              <div>
+                <div className="font-bold text-white">{p.character_name}</div>
+                <div className="text-xs text-white/60">
+                  {p.class_name} · Lv.{p.item_level}
+                </div>
+              </div>
 
-    <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                    p.position === "서포터"
+                      ? "bg-sky-500/15 text-sky-300 border-sky-400/20"
+                      : "bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-400/20"
+                  }`}
+                >
+                  {p.position}
+                </span>
 
-      <span className="text-purple-400">
-        {p.class_name} / {p.position}
-      </span>
-
-      <button
-        onClick={()=>handleLeave(p.id)}
-        className="text-red-400 hover:text-red-600 text-xs"
-      >
-        취소
-      </button>
-
-    </div>
-
-  </div>
-))}
-         
-
+                <button
+                  onClick={() => handleLeave(p.id)}
+                  className="text-red-400 hover:text-red-300 text-xs font-bold transition"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {!isFull && (
-         <div className="flex flex-col gap-3 mt-4">
+        <div className="mt-5 flex flex-col gap-3">
+          {!isFull && (
+            <button
+              onClick={() => setShowJoin(true)}
+              className="w-full py-3 rounded-xl font-bold bg-gradient-to-r from-violet-600 to-indigo-600 hover:scale-[1.02] transition shadow-[0_0_30px_rgba(99,102,241,0.25)]"
+            >
+              ⚔️ 레이드 참여
+            </button>
+          )}
 
-<button
-onClick={()=>setShowJoin(true)}
-className="w-full py-3 rounded-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:scale-105 transition shadow-lg"
->
-⚔️ 레이드 참여
-</button>
+          <button
+            onClick={handleDelete}
+            className="w-full py-3 rounded-xl font-bold bg-red-600/90 hover:bg-red-600 transition shadow-lg"
+          >
+            🗑 레이드 삭제
+          </button>
 
-<button
-onClick={handleDelete}
-className="w-full py-3 rounded-xl font-bold bg-red-600 hover:bg-red-700 transition shadow-lg"
->
-🗑 레이드 삭제
-</button>
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-xl font-bold bg-white/5 border border-white/10 hover:bg-white/10 transition"
+          >
+            닫기
+          </button>
+        </div>
 
-<button
-onClick={onClose}
-className="w-full py-3 rounded-xl font-bold bg-gray-700 hover:bg-gray-600 transition"
->
-닫기
-</button>
-
-</div>
-)}
         {showJoin && (
           <JoinForm
             raid={raid}
-            onClose={()=>setShowJoin(false)}
-            onSuccess={()=>{
+            onClose={() => setShowJoin(false)}
+            onSuccess={() => {
               setShowJoin(false)
               onRefresh()
             }}
           />
         )}
-
       </div>
-
     </div>
   )
-}
+ 
 
 
 
