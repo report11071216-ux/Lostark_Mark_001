@@ -3324,105 +3324,95 @@ const MyRoom = ({ user, profile }: any) => {
     );
   };
 
-const fetchOwnedBadges = async () => {
-  const client = getSupabaseOrThrow();
+  const fetchOwnedBadges = async () => {
+    const client = getSupabaseOrThrow();
 
-  try {
-    const [{ data: ownedData, error: ownedError }, { data: shopData, error: shopError }] =
-      await Promise.all([
-        client
+    try {
+      const { data: shopData, error: shopError } = await client
+        .from("point_shop_items")
+        .select("id, title, badge_name, badge_color, badge_card_class, card_class, badge_theme, effect_class, reward_type")
+        .order("created_at", { ascending: false });
+
+      if (shopError) {
+        console.error("fetchOwnedBadges shop lookup error:", shopError);
+      }
+
+      const badgeShopItems = (shopData || []).filter(
+        (item: any) => item?.reward_type === "badge" || item?.badge_card_class || item?.badge_name
+      );
+
+      let ownedRows: any[] = [];
+
+      const filteredResult = await client
+        .from("user_owned_badges")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (filteredResult.error) {
+        console.warn("fetchOwnedBadges filtered lookup failed, fallback to unfiltered view read:", filteredResult.error);
+      } else if (Array.isArray(filteredResult.data) && filteredResult.data.length > 0) {
+        ownedRows = filteredResult.data;
+      }
+
+      if (ownedRows.length === 0) {
+        const fallbackResult = await client
           .from("user_owned_badges")
-          .select("id, badge_item_id, badge_name, badge_color, badge_card_class")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(200);
 
-        client
-          .from("point_shop_items")
-          .select(`
-            id,
-            title,
-            badge_name,
-            badge_color,
-            badge_card_class,
-            card_class,
-            badge_theme,
-            effect_class,
-            reward_type,
-            reward_badge_item_id
-          `),
-      ]);
+        if (fallbackResult.error) {
+          console.error("fetchOwnedBadges fallback error:", fallbackResult.error);
+        } else {
+          const rows = Array.isArray(fallbackResult.data) ? fallbackResult.data : [];
 
-    if (ownedError) {
-      console.error("fetchOwnedBadges error:", ownedError);
+          ownedRows = rows.filter((row: any) => {
+            const candidates = [
+              row?.user_id,
+              row?.owner_id,
+              row?.profile_id,
+              row?.member_id,
+              row?.uid,
+            ]
+              .filter(Boolean)
+              .map((value: any) => String(value));
+
+            if (candidates.length === 0) return true;
+            return candidates.includes(String(user.id));
+          });
+        }
+      }
+
+      const merged = ownedRows.map((badge: any) => mergeOwnedBadgeWithShopItem(badge, badgeShopItems));
+
+      if (merged.length > 0) {
+        setOwnedBadges(merged);
+        return;
+      }
+
+      const emergencyBadgeList = badgeShopItems.map((item: any) =>
+        mergeOwnedBadgeWithShopItem(
+          {
+            id: item.id,
+            badge_item_id: String(item.badge_item_id || item.reward_badge_item_id || item.id || item.title || item.badge_name),
+            badge_name: item.badge_name || item.title || "뱃지",
+            badge_color: item.badge_color || null,
+            badge_card_class:
+              item.badge_card_class || item.card_class || item.badge_theme || item.effect_class || "none",
+            is_emergency_fallback: true,
+          },
+          badgeShopItems
+        )
+      );
+
+      console.warn("fetchOwnedBadges emergency fallback: owned badge rows not found, showing shop badge list.");
+      setOwnedBadges(emergencyBadgeList);
+    } catch (error) {
+      console.error("fetchOwnedBadges unexpected error:", error);
       setOwnedBadges([]);
-      return;
     }
-
-    if (shopError) {
-      console.error("fetchOwnedBadges shop lookup error:", shopError);
-    }
-
-    const badgeShopItems = (shopData || []).filter(
-      (item: any) =>
-        item?.reward_type === "badge" ||
-        item?.badge_card_class ||
-        item?.card_class ||
-        item?.badge_theme ||
-        item?.effect_class ||
-        item?.badge_name
-    );
-
-    const merged = (ownedData || []).map((badge: any) => {
-      const ownedItemId = String(badge?.badge_item_id || badge?.id || "").trim();
-      const ownedName = String(badge?.badge_name || "").trim();
-
-      const matchedShopItem =
-        badgeShopItems.find(
-          (item: any) =>
-            String(item?.id || "").trim() === ownedItemId ||
-            String(item?.reward_badge_item_id || "").trim() === ownedItemId
-        ) ||
-        badgeShopItems.find(
-          (item: any) =>
-            String(item?.badge_name || "").trim() === ownedName ||
-            String(item?.title || "").trim() === ownedName
-        );
-
-      return {
-        ...badge,
-        badge_item_id:
-          ownedItemId ||
-          String(
-            matchedShopItem?.reward_badge_item_id ||
-              matchedShopItem?.id ||
-              ownedName
-          ),
-        badge_name:
-          badge?.badge_name ||
-          matchedShopItem?.badge_name ||
-          matchedShopItem?.title ||
-          "뱃지",
-        badge_color:
-          badge?.badge_color ||
-          matchedShopItem?.badge_color ||
-          null,
-        badge_card_class: normalizeBadgeCardClass(
-          badge?.badge_card_class ||
-            matchedShopItem?.badge_card_class ||
-            matchedShopItem?.card_class ||
-            matchedShopItem?.badge_theme ||
-            matchedShopItem?.effect_class ||
-            "none"
-        ),
-      };
-    });
-
-    setOwnedBadges(merged);
-  } catch (error) {
-    console.error("fetchOwnedBadges unexpected error:", error);
-    setOwnedBadges([]);
-  }
-};
+  };
 
   useEffect(() => {
     const fetchRankIcon = async () => {
