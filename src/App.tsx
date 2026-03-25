@@ -81,8 +81,6 @@ if (loading) {
   )
 }
   
-
-  return (
   return (
   <div className="min-h-screen relative overflow-hidden bg-[#05070d] text-white font-sans selection:bg-purple-500/30">
     {/* 우주/성운 배경 */}
