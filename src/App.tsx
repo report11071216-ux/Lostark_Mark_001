@@ -439,32 +439,21 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
 
   const fetchNotices = async () => {
     setLoading(true);
+    const { data, error } = await supabase
+      .from("posts")
+      .select("*")
+      .eq("is_notice", true)
+      .order("is_pinned", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(5);
 
-    try {
-      const client = getSupabaseOrThrow();
-      const { data, error } = await withTimeout(
-        client
-          .from("posts")
-          .select("id,title,content,is_notice,is_pinned,created_at")
-          .eq("is_notice", true)
-          .order("is_pinned", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(5),
-        4000
-      );
-
-      if (error) {
-        console.error(error);
-        setNotices([]);
-      } else {
-        setNotices(data || []);
-      }
-    } catch (error) {
-      console.error("fetchNotices error:", error);
+    if (error) {
+      console.error(error);
       setNotices([]);
-    } finally {
-      setLoading(false);
+    } else {
+      setNotices(data || []);
     }
+    setLoading(false);
   };
 
   return (
@@ -615,9 +604,9 @@ export default function App() {
       let currentUser: any = null;
 
       try {
-        const sessionResult = await withTimeout(client.auth.getSession(), 2500);
+        const sessionResult = await withTimeout(client.auth.getUser(), 7000);
         const {
-          data: { session },
+          data: { user: fetchedUser },
           error: sessionError,
         } = sessionResult;
 
@@ -625,7 +614,7 @@ export default function App() {
           console.error("getSession error:", sessionError);
         }
 
-        currentUser = session?.user ?? null;
+        currentUser = fetchedUser ?? null;
       } catch (error) {
         console.error("getSession timeout or failure:", error);
         currentUser = null;
@@ -712,16 +701,8 @@ export default function App() {
     try {
       const client = getSupabaseOrThrow();
       const [postsRes, settingsRes] = await Promise.allSettled([
-        withTimeout(
-          client
-            .from("posts")
-            .select("id,title,content,category,author,author_name,user_id,author_id,is_notice,is_pinned,created_at")
-            .order("is_pinned", { ascending: false })
-            .order("created_at", { ascending: false })
-            .limit(100),
-          5000
-        ),
-        withTimeout(client.from("settings").select("*").eq("id", 1).maybeSingle(), 5000),
+        withTimeout(client.from("posts").select("*").order("created_at", { ascending: false }), 10000),
+        withTimeout(client.from("settings").select("*").limit(1).maybeSingle(), 10000),
       ]);
 
       if (postsRes.status === "fulfilled") {
@@ -1420,17 +1401,13 @@ const RaidCalendar = ({ user, profile }: any) => {
       const monthStart = formatDate(year, month, 1);
       const monthEnd = formatDate(year, month, daysInMonth);
 
-      const client = getSupabaseOrThrow();
-      const { data: rData, error: raidError } = await withTimeout(
-        client
-          .from("raid_schedules")
-          .select("*")
-          .gte("raid_date", monthStart)
-          .lte("raid_date", monthEnd)
-          .order("raid_date", { ascending: true })
-          .order("raid_time", { ascending: true }),
-        5000
-      );
+      const { data: rData, error: raidError } = await supabase
+        .from("raid_schedules")
+        .select("*")
+        .gte("raid_date", monthStart)
+        .lte("raid_date", monthEnd)
+        .order("raid_date", { ascending: true })
+        .order("raid_time", { ascending: true });
 
       if (raidError) {
         console.error("raid_schedules fetch error:", raidError);
@@ -1443,13 +1420,10 @@ const RaidCalendar = ({ user, profile }: any) => {
 
       let pData: any[] = [];
       if (scheduleIds.length > 0) {
-        const { data, error: participantError } = await withTimeout(
-          client
-            .from("raid_participants")
-            .select("*")
-            .in("schedule_id", scheduleIds),
-          5000
-        );
+        const { data, error: participantError } = await supabase
+          .from("raid_participants")
+          .select("*")
+          .in("schedule_id", scheduleIds);
 
         if (participantError) {
           console.error("raid_participants fetch error:", participantError);
@@ -1856,8 +1830,7 @@ const CreateRaidModal = ({
   useEffect(() => {
     const fetchRaidList = async () => {
       try {
-        const client = getSupabaseOrThrow();
-        const { data, error } = await client
+        const { data, error } = await supabase
           .from("contents")
           .select("*")
           .eq("category", "레이드")
@@ -1890,8 +1863,7 @@ const CreateRaidModal = ({
     try {
       const maxParticipants = form.type === "anime" ? 8 : form.raid_type === "4인" ? 4 : 8;
 
-      const client = getSupabaseOrThrow();
-      const { error } = await client.from("raid_schedules").insert({
+      const { error } = await supabase.from("raid_schedules").insert({
         raid_name: form.raid_name,
         raid_date: date,
         raid_time: form.raid_time,
@@ -2054,9 +2026,8 @@ const RaidDetailModal = ({
     if (!ok) return;
 
     try {
-      const client = getSupabaseOrThrow();
-      await client.from("raid_participants").delete().eq("schedule_id", raid.id);
-      await client.from("raid_schedules").delete().eq("id", raid.id);
+      await supabase.from("raid_participants").delete().eq("schedule_id", raid.id);
+      await supabase.from("raid_schedules").delete().eq("id", raid.id);
       onRefresh();
     } catch (error) {
       console.error(error);
@@ -2438,7 +2409,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
 
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
   const handleSave = async () => {
-    const { error } = await supabase.from("settings").upsert({ id: 1, ...settings }, { onConflict: "id" });
+    const { error } = await supabase.from("settings").upsert(settings);
     if (error) alert(error.message);
     else alert("길드 설정 업데이트 완료!");
   };
@@ -3357,22 +3328,10 @@ const MyRoom = ({ user, profile }: any) => {
     const client = getSupabaseOrThrow();
 
     try {
-      const [{ data: ownedData, error: ownedError }, { data: shopData, error: shopError }] = await Promise.all([
-        client
-          .from("user_owned_badges")
-          .select("id, badge_item_id, badge_name, badge_color, badge_card_class")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        client
-          .from("point_shop_items")
-          .select("id, title, badge_name, badge_color, badge_card_class, card_class, badge_theme, effect_class, reward_type"),
-      ]);
-
-      if (ownedError) {
-        console.error("fetchOwnedBadges error:", ownedError);
-        setOwnedBadges([]);
-        return;
-      }
+      const { data: shopData, error: shopError } = await client
+        .from("point_shop_items")
+        .select("id, title, badge_name, badge_color, badge_card_class, card_class, badge_theme, effect_class, reward_type")
+        .order("created_at", { ascending: false });
 
       if (shopError) {
         console.error("fetchOwnedBadges shop lookup error:", shopError);
@@ -3382,9 +3341,73 @@ const MyRoom = ({ user, profile }: any) => {
         (item: any) => item?.reward_type === "badge" || item?.badge_card_class || item?.badge_name
       );
 
-      const merged = (ownedData || []).map((badge: any) => mergeOwnedBadgeWithShopItem(badge, badgeShopItems));
+      let ownedRows: any[] = [];
 
-      setOwnedBadges(merged);
+      const filteredResult = await client
+        .from("user_owned_badges")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (filteredResult.error) {
+        console.warn("fetchOwnedBadges filtered lookup failed, fallback to unfiltered view read:", filteredResult.error);
+      } else if (Array.isArray(filteredResult.data) && filteredResult.data.length > 0) {
+        ownedRows = filteredResult.data;
+      }
+
+      if (ownedRows.length === 0) {
+        const fallbackResult = await client
+          .from("user_owned_badges")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        if (fallbackResult.error) {
+          console.error("fetchOwnedBadges fallback error:", fallbackResult.error);
+        } else {
+          const rows = Array.isArray(fallbackResult.data) ? fallbackResult.data : [];
+
+          ownedRows = rows.filter((row: any) => {
+            const candidates = [
+              row?.user_id,
+              row?.owner_id,
+              row?.profile_id,
+              row?.member_id,
+              row?.uid,
+            ]
+              .filter(Boolean)
+              .map((value: any) => String(value));
+
+            if (candidates.length === 0) return true;
+            return candidates.includes(String(user.id));
+          });
+        }
+      }
+
+      const merged = ownedRows.map((badge: any) => mergeOwnedBadgeWithShopItem(badge, badgeShopItems));
+
+      if (merged.length > 0) {
+        setOwnedBadges(merged);
+        return;
+      }
+
+      const emergencyBadgeList = badgeShopItems.map((item: any) =>
+        mergeOwnedBadgeWithShopItem(
+          {
+            id: item.id,
+            badge_item_id: String(item.badge_item_id || item.reward_badge_item_id || item.id || item.title || item.badge_name),
+            badge_name: item.badge_name || item.title || "뱃지",
+            badge_color: item.badge_color || null,
+            badge_card_class:
+              item.badge_card_class || item.card_class || item.badge_theme || item.effect_class || "none",
+            is_emergency_fallback: true,
+          },
+          badgeShopItems
+        )
+      );
+
+      console.warn("fetchOwnedBadges emergency fallback: owned badge rows not found, showing shop badge list.");
+      setOwnedBadges(emergencyBadgeList);
     } catch (error) {
       console.error("fetchOwnedBadges unexpected error:", error);
       setOwnedBadges([]);
@@ -4047,26 +4070,42 @@ const GuildMembersPage = () => {
 
     try {
       const client = getSupabaseOrThrow();
-      const { data, error } = await withTimeout(
+      const [liveRes, overviewRes] = await Promise.allSettled([
         client
           .from("guild_members")
           .select("*")
           .order("is_main", { ascending: false })
           .order("item_level", { ascending: false, nullsFirst: false })
           .order("character_name", { ascending: true }),
-        5000
-      );
+        client
+          .from("guild_member_overview")
+          .select("*")
+          .order("item_level", { ascending: false })
+          .order("is_main", { ascending: false })
+          .order("character_name", { ascending: true }),
+      ]);
 
-      if (error) {
-        console.error("guild_members fetch error:", error);
-        setMembers([]);
-        return;
+      const liveRows =
+        liveRes.status === "fulfilled" && !liveRes.value.error ? liveRes.value.data || [] : [];
+      const overviewRows =
+        overviewRes.status === "fulfilled" && !overviewRes.value.error ? overviewRes.value.data || [] : [];
+
+      if (liveRes.status === "fulfilled" && liveRes.value.error) {
+        console.error("guild_members fetch error:", liveRes.value.error);
+      }
+      if (overviewRes.status === "fulfilled" && overviewRes.value.error) {
+        console.error("guild_member_overview fetch error:", overviewRes.value.error);
       }
 
-      const merged = (data || []).map((row: any) => ({
-        ...row,
-        equipped_badges: getCharacterBadges(row),
-      }));
+      const overviewMap = new Map(overviewRows.map((row: any) => [row.id, row]));
+      const merged = (liveRows.length > 0 ? liveRows : overviewRows).map((row: any) => {
+        const overview = overviewMap.get(row.id) || {};
+        const base = { ...overview, ...row };
+        return {
+          ...base,
+          equipped_badges: getCharacterBadges(base),
+        };
+      });
 
       setMembers(
         merged.sort((a: any, b: any) => {
@@ -4380,8 +4419,8 @@ const PointShopPage = ({ user, profile }: any) => {
   const fetchShop = async () => {
     setLoading(true);
     const [itemsRes, profileRes] = await Promise.all([
-      withTimeout(getSupabaseOrThrow().from("point_shop_items").select("*").order("price", { ascending: true }), 5000),
-      user ? withTimeout(getSupabaseOrThrow().from("profiles").select("points").eq("id", user.id).maybeSingle(), 5000) : Promise.resolve({ data: null }),
+      supabase.from("point_shop_items").select("*").order("price", { ascending: true }),
+      user ? supabase.from("profiles").select("points").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
 
     if ((itemsRes as any).error) {
