@@ -178,22 +178,53 @@ const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
 
-const normalizeEquippedBadges = (input: any): Array<{ badge_item_id: string; badge_name: string; badge_color?: string | null }> => {
+const BADGE_CARD_CLASS_OPTIONS = [
+  { value: "none", label: "효과 없음" },
+  { value: "violet", label: "보라 오라" },
+  { value: "ocean", label: "오션 블루" },
+  { value: "sunset", label: "선셋 글로우" },
+  { value: "emerald", label: "에메랄드" },
+  { value: "royal", label: "로열 골드" },
+  { value: "crimson", label: "크림슨" },
+  { value: "obsidian", label: "옵시디언" },
+  { value: "aurora", label: "오로라" },
+  { value: "legendary", label: "레전더리" },
+];
+
+const normalizeBadgeCardClass = (value: any) => {
+  const key = String(value || "none").trim().toLowerCase();
+  return BADGE_CARD_CLASS_OPTIONS.some((item) => item.value === key) ? key : "none";
+};
+
+const normalizeEquippedBadges = (
+  input: any
+): Array<{
+  badge_item_id: string;
+  badge_name: string;
+  badge_color?: string | null;
+  badge_card_class?: string | null;
+}> => {
   if (!input) return [];
   if (Array.isArray(input)) {
     return input
       .map((item: any) => {
         if (!item) return null;
         if (typeof item === "string") {
-          return { badge_item_id: item, badge_name: item, badge_color: null };
+          return { badge_item_id: item, badge_name: item, badge_color: null, badge_card_class: "none" };
         }
         return {
           badge_item_id: String(item.badge_item_id || item.id || item.badge_name || ""),
           badge_name: item.badge_name || item.name || item.label || "뱃지",
           badge_color: item.badge_color || item.color || null,
+          badge_card_class: normalizeBadgeCardClass(item.badge_card_class || item.card_class || item.badge_theme || item.effect_class || "none"),
         };
       })
-      .filter(Boolean) as Array<{ badge_item_id: string; badge_name: string; badge_color?: string | null }>;
+      .filter(Boolean) as Array<{
+        badge_item_id: string;
+        badge_name: string;
+        badge_color?: string | null;
+        badge_card_class?: string | null;
+      }>;
   }
 
   if (typeof input === "string") {
@@ -201,12 +232,102 @@ const normalizeEquippedBadges = (input: any): Array<{ badge_item_id: string; bad
       return normalizeEquippedBadges(JSON.parse(input));
     } catch {
       return input.trim()
-        ? [{ badge_item_id: input, badge_name: input, badge_color: null }]
+        ? [{ badge_item_id: input, badge_name: input, badge_color: null, badge_card_class: "none" }]
         : [];
     }
   }
 
   return [];
+};
+
+const BADGE_CARD_CLASS_STYLE_MAP: Record<string, any> = {
+  none: {
+    background: "rgba(13,17,28,0.8)",
+    borderColor: "rgba(255,255,255,0.1)",
+    boxShadow: "0 0 0 1px rgba(255,255,255,0.04) inset",
+    accent: "#8b5cf6",
+    aura: "rgba(139,92,246,0.18)",
+  },
+  violet: {
+    background: "linear-gradient(135deg, rgba(88,28,135,0.42) 0%, rgba(30,41,59,0.88) 55%, rgba(15,23,42,0.92) 100%)",
+    borderColor: "rgba(167,139,250,0.55)",
+    boxShadow: "0 0 0 1px rgba(167,139,250,0.24) inset, 0 18px 40px rgba(88,28,135,0.25)",
+    accent: "#c4b5fd",
+    aura: "rgba(167,139,250,0.28)",
+  },
+  ocean: {
+    background: "linear-gradient(135deg, rgba(14,116,144,0.42) 0%, rgba(15,23,42,0.9) 60%, rgba(2,6,23,0.96) 100%)",
+    borderColor: "rgba(103,232,249,0.5)",
+    boxShadow: "0 0 0 1px rgba(103,232,249,0.18) inset, 0 18px 40px rgba(8,145,178,0.22)",
+    accent: "#67e8f9",
+    aura: "rgba(34,211,238,0.24)",
+  },
+  sunset: {
+    background: "linear-gradient(135deg, rgba(249,115,22,0.4) 0%, rgba(127,29,29,0.35) 45%, rgba(15,23,42,0.92) 100%)",
+    borderColor: "rgba(253,186,116,0.5)",
+    boxShadow: "0 0 0 1px rgba(253,186,116,0.18) inset, 0 18px 40px rgba(234,88,12,0.22)",
+    accent: "#fdba74",
+    aura: "rgba(251,146,60,0.24)",
+  },
+  emerald: {
+    background: "linear-gradient(135deg, rgba(5,150,105,0.38) 0%, rgba(6,78,59,0.28) 38%, rgba(15,23,42,0.92) 100%)",
+    borderColor: "rgba(110,231,183,0.48)",
+    boxShadow: "0 0 0 1px rgba(110,231,183,0.18) inset, 0 18px 40px rgba(5,150,105,0.2)",
+    accent: "#6ee7b7",
+    aura: "rgba(16,185,129,0.24)",
+  },
+  royal: {
+    background: "linear-gradient(135deg, rgba(161,98,7,0.34) 0%, rgba(120,53,15,0.3) 40%, rgba(15,23,42,0.92) 100%)",
+    borderColor: "rgba(253,224,71,0.52)",
+    boxShadow: "0 0 0 1px rgba(253,224,71,0.2) inset, 0 18px 40px rgba(202,138,4,0.22)",
+    accent: "#fde047",
+    aura: "rgba(250,204,21,0.26)",
+  },
+  crimson: {
+    background: "linear-gradient(135deg, rgba(127,29,29,0.38) 0%, rgba(153,27,27,0.22) 35%, rgba(15,23,42,0.94) 100%)",
+    borderColor: "rgba(252,165,165,0.48)",
+    boxShadow: "0 0 0 1px rgba(252,165,165,0.18) inset, 0 18px 40px rgba(153,27,27,0.22)",
+    accent: "#fca5a5",
+    aura: "rgba(248,113,113,0.24)",
+  },
+  obsidian: {
+    background: "linear-gradient(135deg, rgba(17,24,39,0.98) 0%, rgba(30,41,59,0.92) 45%, rgba(2,6,23,0.98) 100%)",
+    borderColor: "rgba(148,163,184,0.42)",
+    boxShadow: "0 0 0 1px rgba(148,163,184,0.15) inset, 0 18px 42px rgba(2,6,23,0.42)",
+    accent: "#cbd5e1",
+    aura: "rgba(100,116,139,0.24)",
+  },
+  aurora: {
+    background: "linear-gradient(135deg, rgba(6,182,212,0.28) 0%, rgba(99,102,241,0.24) 28%, rgba(168,85,247,0.24) 62%, rgba(15,23,42,0.94) 100%)",
+    borderColor: "rgba(196,181,253,0.52)",
+    boxShadow: "0 0 0 1px rgba(196,181,253,0.2) inset, 0 18px 44px rgba(79,70,229,0.24)",
+    accent: "#e9d5ff",
+    aura: "rgba(129,140,248,0.28)",
+  },
+  legendary: {
+    background: "linear-gradient(135deg, rgba(250,204,21,0.22) 0%, rgba(249,115,22,0.22) 25%, rgba(168,85,247,0.22) 55%, rgba(15,23,42,0.96) 100%)",
+    borderColor: "rgba(253,224,71,0.68)",
+    boxShadow: "0 0 0 1px rgba(253,224,71,0.28) inset, 0 22px 50px rgba(245,158,11,0.28), 0 0 36px rgba(168,85,247,0.14)",
+    accent: "#fde68a",
+    aura: "rgba(253,224,71,0.32)",
+  },
+};
+
+const getPrimaryBadgeTheme = (character: any) => {
+  const badges = getCharacterBadges(character);
+  const representative =
+    badges.find((badge: any) => normalizeBadgeCardClass(badge?.badge_card_class) !== "none") || badges[0];
+
+  const cardClass = normalizeBadgeCardClass(
+    representative?.badge_card_class || character?.badge_card_class || "none"
+  );
+  const style = BADGE_CARD_CLASS_STYLE_MAP[cardClass] || BADGE_CARD_CLASS_STYLE_MAP.none;
+
+  return {
+    cardClass,
+    style,
+    representative,
+  };
 };
 
 const getCharacterBadges = (character: any) => {
@@ -2428,7 +2549,8 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
                 <Trash2 size={16} />
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -3321,10 +3443,12 @@ const MyRoom = ({ user, profile }: any) => {
       badge_name: selectedBadges[0]?.badge_name || null,
       equipped_badge_label: selectedBadges[0]?.badge_name || null,
       badge_color: selectedBadges[0]?.badge_color || null,
+      badge_card_class: normalizeBadgeCardClass(selectedBadges[0]?.badge_card_class || "none"),
       equipped_badges: selectedBadges.map((badge: any) => ({
         badge_item_id: badge.badge_item_id,
         badge_name: badge.badge_name,
         badge_color: badge.badge_color || null,
+        badge_card_class: normalizeBadgeCardClass(badge.badge_card_class || "none"),
       })),
       owner_nickname: profile.nickname,
       owner_id: user.id,
@@ -3895,13 +4019,31 @@ const GuildMembersPage = () => {
         <div className="text-center text-gray-500 py-10">길드원 불러오는 중...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {filteredMembers.map((member: any) => (
-            <div key={member.id} className="rounded-[2rem] border border-white/10 bg-[#0d111c]/80 p-5 overflow-hidden" style={{ boxShadow: `0 0 0 1px ${(member.profile_theme || "#8b5cf6")}44 inset` }}>
-              <div className="flex items-start justify-between gap-4">
+          {filteredMembers.map((member: any) => {
+            const badgeTheme = getPrimaryBadgeTheme(member);
+            return (
+            <div
+              key={member.id}
+              className="group relative rounded-[2rem] border p-5 overflow-hidden transition-all duration-300 hover:-translate-y-1"
+              style={{
+                background: badgeTheme.style.background,
+                borderColor: badgeTheme.style.borderColor,
+                boxShadow: `${badgeTheme.style.boxShadow}, 0 0 0 1px ${(member.profile_theme || "#8b5cf6")}22 inset`,
+              }}
+            >
+              <div
+                className="pointer-events-none absolute inset-0 opacity-80"
+                style={{
+                  background: `radial-gradient(circle at top right, ${badgeTheme.style.aura} 0%, transparent 38%), radial-gradient(circle at bottom left, ${(member.profile_theme || "#8b5cf6")}18 0%, transparent 30%)`,
+                }}
+              />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/20 opacity-50 group-hover:opacity-80" />
+              <div className="relative flex items-start justify-between gap-4">
                 <div className="flex gap-4 min-w-0">
                   <img
                     src={member.avatar_url || member.image_url || "https://placehold.co/120x120?text=INXX"}
-                    className="h-20 w-20 rounded-2xl object-cover border border-white/10"
+                    className="h-20 w-20 rounded-2xl object-cover border border-white/10 shadow-lg"
+                    style={{ boxShadow: `0 0 22px ${badgeTheme.style.aura}` }}
                   />
                   <div className="min-w-0">
                     <div className="flex flex-wrap gap-2 mb-2">
@@ -3918,6 +4060,18 @@ const GuildMembersPage = () => {
                       {member.role_hint === "서포터" && (
                         <span className="px-2 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
                           서폿
+                        </span>
+                      )}
+                      {badgeTheme.cardClass !== "none" && (
+                        <span
+                          className="px-2 py-1 rounded-full text-[10px] font-black border uppercase tracking-wider"
+                          style={{
+                            color: badgeTheme.style.accent,
+                            borderColor: badgeTheme.style.accent,
+                            backgroundColor: `${badgeTheme.style.accent}22`,
+                          }}
+                        >
+                          {BADGE_CARD_CLASS_OPTIONS.find((item) => item.value === badgeTheme.cardClass)?.label || "카드 효과"}
                         </span>
                       )}
                       {getCharacterBadges(member).map((badge: any, index: number) => (
@@ -4196,6 +4350,11 @@ const PointShopPage = ({ user, profile }: any) => {
                       )}
                     </div>
                     <div className="mt-2 text-sm text-gray-400 whitespace-pre-wrap">{item.description}</div>
+                    {item.reward_type === "badge" && (
+                      <div className="mt-2 text-xs" style={{ color: (BADGE_CARD_CLASS_STYLE_MAP[normalizeBadgeCardClass(item.badge_card_class)] || BADGE_CARD_CLASS_STYLE_MAP.none).accent }}>
+                        장착 시 카드 효과: {BADGE_CARD_CLASS_OPTIONS.find((option) => option.value === normalizeBadgeCardClass(item.badge_card_class))?.label || "효과 없음"}
+                      </div>
+                    )}
                     <div className="mt-3 text-xs text-gray-500">{getShopItemStatusText(item)}</div>
                   </div>
                   <ShoppingBag className="text-purple-300" />
@@ -4336,6 +4495,7 @@ const AdminPointShopManager = () => {
   const [description, setDescription] = useState("");
   const [rewardType, setRewardType] = useState("badge");
   const [badgeColor, setBadgeColor] = useState("#8b5cf6");
+  const [badgeCardClass, setBadgeCardClass] = useState("none");
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
@@ -4364,6 +4524,7 @@ const AdminPointShopManager = () => {
       reward_type: rewardType,
       badge_name: rewardType === "badge" ? title : null,
       badge_color: rewardType === "badge" ? badgeColor : null,
+      badge_card_class: rewardType === "badge" ? normalizeBadgeCardClass(badgeCardClass) : "none",
       available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
       available_to: availableTo ? new Date(availableTo).toISOString() : null,
     });
@@ -4373,6 +4534,7 @@ const AdminPointShopManager = () => {
     setDescription("");
     setRewardType("badge");
     setBadgeColor("#8b5cf6");
+    setBadgeCardClass("none");
     setAvailableFrom("");
     setAvailableTo("");
     fetchItems();
@@ -4421,6 +4583,53 @@ const AdminPointShopManager = () => {
         </div>
       </div>
 
+      {rewardType === "badge" && (
+        <div className="grid md:grid-cols-[1.2fr_1fr] gap-4 items-start">
+          <div>
+            <label className="text-xs text-gray-400 mb-2 block">카드 클래스 효과</label>
+            <select
+              className="w-full bg-black border border-white/10 rounded-2xl p-4"
+              value={badgeCardClass}
+              onChange={(e) => setBadgeCardClass(e.target.value)}
+            >
+              {BADGE_CARD_CLASS_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <div className="text-xs text-gray-500 mt-2">대표 뱃지로 장착되면 길드 캐릭터 카드 배경/오라가 이 설정을 따라갑니다.</div>
+          </div>
+
+          <div
+            className="rounded-[1.5rem] border p-4"
+            style={{
+              background: (BADGE_CARD_CLASS_STYLE_MAP[normalizeBadgeCardClass(badgeCardClass)] || BADGE_CARD_CLASS_STYLE_MAP.none).background,
+              borderColor: (BADGE_CARD_CLASS_STYLE_MAP[normalizeBadgeCardClass(badgeCardClass)] || BADGE_CARD_CLASS_STYLE_MAP.none).borderColor,
+              boxShadow: (BADGE_CARD_CLASS_STYLE_MAP[normalizeBadgeCardClass(badgeCardClass)] || BADGE_CARD_CLASS_STYLE_MAP.none).boxShadow,
+            }}
+          >
+            <div className="text-[10px] uppercase tracking-[0.25em] text-white/60 font-black">Preview</div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-lg font-black">{title || "뱃지 상품명"}</div>
+                <div className="text-xs text-white/60">{BADGE_CARD_CLASS_OPTIONS.find((item) => item.value === badgeCardClass)?.label}</div>
+              </div>
+              <span
+                className="px-3 py-1 rounded-full text-[10px] font-black border"
+                style={{
+                  color: badgeColor || "#c4b5fd",
+                  borderColor: badgeColor || "#8b5cf6",
+                  backgroundColor: `${badgeColor || "#8b5cf6"}22`,
+                }}
+              >
+                BADGE
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <button onClick={createItem} className="rounded-2xl bg-purple-600 font-black px-6 py-4">상품 생성</button>
 
       <div className="space-y-4">
@@ -4439,6 +4648,11 @@ const AdminPointShopManager = () => {
                 )}
               </div>
               <div className="text-xs text-gray-400">{item.description}</div>
+              {item.reward_type === "badge" && (
+                <div className="text-xs mt-1" style={{ color: (BADGE_CARD_CLASS_STYLE_MAP[normalizeBadgeCardClass(item.badge_card_class)] || BADGE_CARD_CLASS_STYLE_MAP.none).accent }}>
+                  카드 효과: {BADGE_CARD_CLASS_OPTIONS.find((option) => option.value === normalizeBadgeCardClass(item.badge_card_class))?.label || "효과 없음"}
+                </div>
+              )}
               <div className="text-yellow-300 font-black mt-1">{item.price} P</div>
               <div className="text-xs text-gray-500 mt-1">{getShopItemStatusText(item)}</div>
             </div>
