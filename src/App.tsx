@@ -336,80 +336,93 @@ export default function App() {
   const [settings, setSettings] = useState(defaultSettings);
 
   useEffect(() => {
-    let mounted = true;
+  let mounted = true;
 
-    if (!supabase) {
-      setLoading(false);
-      return () => {
-        mounted = false;
-      };
-    }
+  if (!supabase) {
+    setLoading(false);
+    return () => {
+      mounted = false;
+    };
+  }
 
-    const init = async () => {
+  const init = async () => {
+    try {
+      const client = getSupabaseOrThrow();
+
+      let currentUser: any = null;
+
       try {
-        const client = getSupabaseOrThrow();
+        const sessionResult = await withTimeout(client.auth.getSession(), 10000);
         const {
           data: { session },
           error: sessionError,
-        } = await withTimeout(client.auth.getSession(), 10000);
+        } = sessionResult;
 
         if (sessionError) {
           console.error("getSession error:", sessionError);
         }
 
-        if (!mounted) return;
-
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-
-        const tasks: Promise<any>[] = [fetchInitialData()];
-
-        if (currentUser) {
-          tasks.push(fetchProfile(currentUser.id));
-        } else {
-          setProfile(null);
-        }
-
-        await Promise.allSettled(tasks);
-        if (mounted) {
-          setBootError(null);
-        }
-      } catch (error: any) {
-        console.error("App init error:", error);
-        if (mounted) {
-          setBootError(error?.message || "초기 데이터를 불러오지 못했습니다.");
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    init();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      try {
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-
-        if (currentUser) {
-          await fetchProfile(currentUser.id);
-        } else {
-          setProfile(null);
-        }
+        currentUser = session?.user ?? null;
       } catch (error) {
-        console.error("Auth state change error:", error);
+        console.error("getSession timeout or failure:", error);
+        currentUser = null;
       }
-    });
 
-    return () => {
-      mounted = false;
-      subscription?.unsubscribe();
-    };
-  }, []);
+      if (!mounted) return;
+
+      setUser(currentUser);
+
+      const tasks: Promise<any>[] = [fetchInitialData()];
+
+      if (currentUser) {
+        tasks.push(fetchProfile(currentUser.id));
+      } else {
+        setProfile(null);
+      }
+
+      await Promise.allSettled(tasks);
+
+      if (mounted) {
+        setBootError(null);
+      }
+    } catch (error: any) {
+      console.error("App init error:", error);
+
+      if (mounted) {
+        setBootError(null);
+      }
+    } finally {
+      if (mounted) {
+        setLoading(false);
+      }
+    }
+  };
+
+  init();
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    try {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        await fetchProfile(currentUser.id);
+      } else {
+        setProfile(null);
+      }
+    } catch (error) {
+      console.error("Auth state change error:", error);
+    }
+  });
+
+  return () => {
+    mounted = false;
+    subscription?.unsubscribe();
+  };
+}, []);
+ 
 
   const fetchProfile = async (userId: string) => {
     try {
