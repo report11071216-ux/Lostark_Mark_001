@@ -313,32 +313,28 @@ const BADGE_CARD_CLASS_STYLE_MAP: Record<string, any> = {
   },
 };
 
-const getPrimaryBadgeTheme = (character: any) => {
-  const badges = getCharacterBadges(character);
-  const representative =
-    badges.find((badge: any) => normalizeBadgeCardClass(badge?.badge_card_class) !== "none") || badges[0];
-
-  const cardClass = normalizeBadgeCardClass(
-    representative?.badge_card_class || character?.badge_card_class || "none"
-  );
-  const style = BADGE_CARD_CLASS_STYLE_MAP[cardClass] || BADGE_CARD_CLASS_STYLE_MAP.none;
-
-  return {
-    cardClass,
-    style,
-    representative,
-  };
-};
-
 const getCharacterBadges = (character: any) => {
   const equipped = normalizeEquippedBadges(character?.equipped_badges);
-  if (equipped.length > 0) return equipped;
+  if (equipped.length > 0) {
+    const fallbackCardClass = normalizeBadgeCardClass(character?.badge_card_class || "none");
+    return equipped.map((badge: any, index: number) => ({
+      ...badge,
+      badge_card_class:
+        normalizeBadgeCardClass(badge?.badge_card_class) !== "none"
+          ? normalizeBadgeCardClass(badge?.badge_card_class)
+          : index === 0 && fallbackCardClass !== "none"
+          ? fallbackCardClass
+          : normalizeBadgeCardClass(badge?.badge_card_class || "none"),
+    }));
+  }
 
   if (Array.isArray(character?.equipped_badge_names) && character.equipped_badge_names.length > 0) {
+    const fallbackCardClass = normalizeBadgeCardClass(character?.badge_card_class || "none");
     return character.equipped_badge_names.map((name: string, index: number) => ({
       badge_item_id: `${name}-${index}`,
       badge_name: name,
-      badge_color: null,
+      badge_color: character?.badge_color || null,
+      badge_card_class: index === 0 ? fallbackCardClass : "none",
     }));
   }
 
@@ -348,11 +344,29 @@ const getCharacterBadges = (character: any) => {
         badge_item_id: String(character.badge_item_id || character.equipped_badge_id || character.badge_name),
         badge_name: character.badge_name,
         badge_color: character.badge_color || null,
+        badge_card_class: normalizeBadgeCardClass(character.badge_card_class || "none"),
       },
     ];
   }
 
   return [];
+};
+
+const getPrimaryBadgeTheme = (character: any) => {
+  const badges = getCharacterBadges(character);
+  const representative =
+    badges.find((badge: any) => normalizeBadgeCardClass(badge?.badge_card_class) !== "none") || badges[0];
+
+  const representativeCardClass = normalizeBadgeCardClass(representative?.badge_card_class || "none");
+  const fallbackCardClass = normalizeBadgeCardClass(character?.badge_card_class || "none");
+  const cardClass = representativeCardClass !== "none" ? representativeCardClass : fallbackCardClass;
+  const style = BADGE_CARD_CLASS_STYLE_MAP[cardClass] || BADGE_CARD_CLASS_STYLE_MAP.none;
+
+  return {
+    cardClass,
+    style,
+    representative,
+  };
 };
 
 const uploadGuildImage = async (file: File, userId: string) => {
@@ -607,7 +621,7 @@ export default function App() {
     data: { subscription },
   } = supabase.auth.onAuthStateChange(async (_event, session) => {
     try {
-      const currentUser = fetchedUser ?? null;
+      const currentUser = session?.user ?? null;
       setUser(currentUser);
 
       if (currentUser) {
