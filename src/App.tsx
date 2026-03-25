@@ -80,7 +80,7 @@ if (loading) {
     </div>
   )
 }
- return (
+return (
   <div className="min-h-screen relative overflow-hidden bg-[#05070d] text-white font-sans selection:bg-purple-500/30">
     {/* 우주/성운 배경 */}
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
@@ -95,10 +95,24 @@ if (loading) {
         }}
       />
 
-      <div className="absolute -top-24 left-[8%] w-[420px] h-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
-      <div className="absolute top-[18%] right-[6%] w-[360px] h-[360px] rounded-full bg-fuchsia-500/16 blur-3xl" />
-      <div className="absolute bottom-[-120px] left-[28%] w-[520px] h-[520px] rounded-full bg-sky-500/16 blur-3xl" />
+      <div className="absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
+      <div className="absolute top-[18%] right-[6%] h-[360px] w-[360px] rounded-full bg-fuchsia-500/16 blur-3xl" />
+      <div className="absolute bottom-[-120px] left-[28%] h-[520px] w-[520px] rounded-full bg-sky-500/16 blur-3xl" />
     </div>
+
+    {/* 실제 페이지 내용 */}
+    <div className="relative z-10">
+      {/* 여기 아래에 기존 네 페이지 전체 내용을 그대로 넣어 */}
+      {/* 예: nav, main, section, modal, footer 등 전부 */}
+
+      {/* 예시
+      <nav>...</nav>
+      <main>...</main>
+      */}
+    </div>
+  </div>
+)
+}
 
     {/* 실제 페이지 내용 */}
     <div className="relative z-10">
