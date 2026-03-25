@@ -149,6 +149,114 @@ const toNumber = (value: any) => {
 const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
+const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: ProfileLike }) => {
+  const [notices, setNotices] = useState<PostLike[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchNotices();
+  }, []);
+
+  const fetchNotices = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("posts")
+      .select("*")
+      .eq("is_notice", true)
+      .order("is_pinned", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (error) {
+      console.error(error);
+      setNotices([]);
+    } else {
+      setNotices(data || []);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <section className="max-w-7xl mx-auto px-6 pt-8 md:pt-12 pb-6">
+      <div className="rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-white/5 to-transparent overflow-hidden">
+        <div className="p-6 md:p-8 border-b border-white/10">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-300 text-[11px] font-black tracking-[0.2em] uppercase">
+                <Bell size={14} />
+                Guild Notice
+              </div>
+              <h2 className="mt-4 text-3xl md:text-5xl font-black tracking-tight">
+                길드 공지사항
+              </h2>
+              <p className="mt-2 text-gray-400">
+                히어로 섹션 대신 최신 공지와 고정 공지를 바로 보이게 했어.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 min-w-fit">
+              <MiniStat label="공지" value={notices.length} />
+              <MiniStat label="고정" value={notices.filter((x) => x.is_pinned).length} />
+              <MiniStat label="권한" value={profile?.role === "admin" ? "관리자" : user ? "길드원" : "게스트"} />
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 md:p-6 space-y-3">
+          {loading && (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
+              공지 불러오는 중...
+            </div>
+          )}
+
+          {!loading && notices.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
+              아직 등록된 공지가 없어.
+            </div>
+          )}
+
+          {!loading &&
+            notices.map((notice) => (
+              <button
+                key={notice.id}
+                className={cn(
+                  "w-full text-left rounded-2xl border p-4 md:p-5 transition hover:border-amber-400/40",
+                  notice.is_pinned
+                    ? "bg-amber-500/10 border-amber-500/20"
+                    : "bg-white/5 border-white/10"
+                )}
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  {notice.is_pinned && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-300 border border-rose-500/20">
+                      <Pin size={12} />
+                      PIN
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-300 border border-amber-500/20">
+                    공지
+                  </span>
+                  <span className="text-xs text-gray-500">{formatDateTime(notice.created_at)}</span>
+                </div>
+                <div className="text-lg md:text-xl font-black">{notice.title}</div>
+                <div className="mt-2 text-sm text-gray-300 line-clamp-2">{notice.content}</div>
+              </button>
+            ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const MiniStat = ({ label, value }: { label: string; value: React.ReactNode }) => (
+  <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+    <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black">{label}</div>
+    <div className="mt-1 text-lg font-black">{value}</div>
+  </div>
+);
+
+
+
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<UserLike>(null);
