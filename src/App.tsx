@@ -1325,7 +1325,7 @@ const JoinForm = ({ raid, onClose, onSuccess }: any) => {
 
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
 
-      <div className="bg-[#0f0f1a] p-6 rounded-xl w-[320px] space-y-3">
+      <div className="bg-slate-950/75 p-6 rounded-xl w-[320px] space-y-3 border border-white/10 backdrop-blur-2xl shadow-[0_0_40px_rgba(59,130,246,0.10)]">
 
         <div className="text-white font-bold mb-2">
           레이드 참여
@@ -1335,21 +1335,21 @@ const JoinForm = ({ raid, onClose, onSuccess }: any) => {
           placeholder="닉네임"
           value={nickname}
           onChange={(e)=>setNickname(e.target.value)}
-          className="w-full p-2 bg-black text-white rounded"
+          className="w-full p-3 bg-black/40 border border-white/10 text-white rounded-xl outline-none focus:border-violet-400 transition"
         />
 
         <input
           placeholder="아이템 레벨"
           value={level}
           onChange={(e)=>setLevel(e.target.value)}
-          className="w-full p-2 bg-black text-white rounded"
+          className="w-full p-3 bg-black/40 border border-white/10 text-white rounded-xl outline-none focus:border-violet-400 transition"
         />
 
         <input
           placeholder="클래스"
           value={playerClass}
           onChange={(e)=>setPlayerClass(e.target.value)}
-          className="w-full p-2 bg-black text-white rounded"
+          className="w-full p-3 bg-black/40 border border-white/10 text-white rounded-xl outline-none focus:border-violet-400 transition"
         />
 
         <select
