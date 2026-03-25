@@ -379,6 +379,31 @@ const getCharacterBadges = (character: any) => {
   return [];
 };
 
+const mergeOwnedBadgeWithShopItem = (ownedBadge: any, shopItems: any[]) => {
+  const ownedItemId = String(ownedBadge?.badge_item_id || ownedBadge?.id || "").trim();
+  const ownedName = String(ownedBadge?.badge_name || ownedBadge?.name || ownedBadge?.label || "").trim();
+
+  const matchedShopItem =
+    shopItems.find((item: any) => String(item?.badge_item_id || item?.reward_badge_item_id || item?.id || "").trim() === ownedItemId) ||
+    shopItems.find((item: any) => String(item?.title || item?.badge_name || item?.name || "").trim() === ownedName) ||
+    shopItems.find((item: any) => String(item?.badge_name || item?.name || "").trim() === ownedName);
+
+  return {
+    ...ownedBadge,
+    badge_item_id: ownedItemId || String(matchedShopItem?.badge_item_id || matchedShopItem?.reward_badge_item_id || matchedShopItem?.id || ownedName),
+    badge_name: ownedName || matchedShopItem?.title || matchedShopItem?.badge_name || "뱃지",
+    badge_color: ownedBadge?.badge_color || matchedShopItem?.badge_color || null,
+    badge_card_class: normalizeBadgeCardClass(
+      ownedBadge?.badge_card_class ||
+        matchedShopItem?.badge_card_class ||
+        matchedShopItem?.card_class ||
+        matchedShopItem?.badge_theme ||
+        matchedShopItem?.effect_class ||
+        "none"
+    ),
+  };
+};
+
 const uploadGuildImage = async (file: File, userId: string) => {
   const client = getSupabaseOrThrow();
   const ext = (file.name.split(".").pop() || "png").toLowerCase();
@@ -3301,13 +3326,40 @@ const MyRoom = ({ user, profile }: any) => {
 
   const fetchOwnedBadges = async () => {
     const client = getSupabaseOrThrow();
-    const { data, error } = await client
-      .from("user_owned_badges")
-      .select("id, badge_item_id, badge_name, badge_color, badge_card_class")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
 
-    if (!error) setOwnedBadges(data || []);
+    try {
+      const [{ data: ownedData, error: ownedError }, { data: shopData, error: shopError }] = await Promise.all([
+        client
+          .from("user_owned_badges")
+          .select("id, badge_item_id, badge_name, badge_color")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        client
+          .from("point_shop_items")
+          .select("id, title, badge_name, badge_color, badge_card_class, card_class, badge_theme, effect_class, reward_type"),
+      ]);
+
+      if (ownedError) {
+        console.error("fetchOwnedBadges error:", ownedError);
+        setOwnedBadges([]);
+        return;
+      }
+
+      if (shopError) {
+        console.error("fetchOwnedBadges shop lookup error:", shopError);
+      }
+
+      const badgeShopItems = (shopData || []).filter(
+        (item: any) => item?.reward_type === "badge" || item?.badge_card_class || item?.badge_name
+      );
+
+      const merged = (ownedData || []).map((badge: any) => mergeOwnedBadgeWithShopItem(badge, badgeShopItems));
+
+      setOwnedBadges(merged);
+    } catch (error) {
+      console.error("fetchOwnedBadges unexpected error:", error);
+      setOwnedBadges([]);
+    }
   };
 
   useEffect(() => {
@@ -3432,9 +3484,17 @@ const MyRoom = ({ user, profile }: any) => {
     const selectedBadgeIds = Array.isArray(character.draft.equipped_badge_ids)
       ? character.draft.equipped_badge_ids
       : [];
-    const selectedBadges = ownedBadges.filter((x) =>
-      selectedBadgeIds.includes(String(x.badge_item_id))
-    );
+    const selectedBadges = selectedBadgeIds
+      .map((selectedId: string) => {
+        const matchedOwnedBadge = ownedBadges.find((x) => String(x.badge_item_id) === String(selectedId));
+        if (matchedOwnedBadge) return matchedOwnedBadge;
+
+        const currentEquippedBadge = getCharacterBadges(character).find(
+          (badge: any) => String(badge.badge_item_id) === String(selectedId)
+        );
+        return currentEquippedBadge || null;
+      })
+      .filter(Boolean);
 
     let avatarUrl = character.draft.avatar_url || character.avatar_url || null;
 
@@ -3465,16 +3525,18 @@ const MyRoom = ({ user, profile }: any) => {
       equipped_badge_id: selectedBadges[0]?.badge_item_id || null,
       badge_name: selectedBadges[0]?.badge_name || null,
       equipped_badge_label: selectedBadges[0]?.badge_name || null,
-      equipped_badge_code: selectedBadges[0]?.badge_code || selectedBadges[0]?.badge_item_id || null,
+      equipped_badge_code: selectedBadges[0]?.badge_item_id ? String(selectedBadges[0].badge_item_id) : null,
       badge_color: selectedBadges[0]?.badge_color || null,
-      badge_card_class: normalizeBadgeCardClass(selectedBadges[0]?.badge_card_class || "none"),
-      equipped_badges: selectedBadges.map((badge: any) => ({
+      badge_card_class: normalizeBadgeCardClass(selectedBadges[0]?.badge_card_class || character?.badge_card_class || "none"),
+      equipped_badges: selectedBadges.map((badge: any, index: number) => ({
         badge_item_id: badge.badge_item_id,
-        badge_code: badge.badge_code || badge.badge_item_id || null,
         badge_name: badge.badge_name,
-        badge_label: badge.badge_label || badge.badge_name || null,
         badge_color: badge.badge_color || null,
-        badge_card_class: normalizeBadgeCardClass(badge.badge_card_class || "none"),
+        badge_card_class: normalizeBadgeCardClass(
+          badge.badge_card_class ||
+            (index === 0 ? selectedBadges[0]?.badge_card_class || character?.badge_card_class : "none") ||
+            "none"
+        ),
       })),
       owner_nickname: profile.nickname,
       owner_id: user.id,
