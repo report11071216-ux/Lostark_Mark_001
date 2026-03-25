@@ -27,17 +27,45 @@ import {
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
+const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
 
-if (!supabaseUrl || !supabaseKey) {
+const supabaseConfigError =
+  !supabaseUrl || !supabaseKey
+    ? "Vercel 환경변수(VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY)가 비어 있습니다."
+    : null;
+
+if (supabaseConfigError) {
   console.error("Missing Supabase env:", {
     VITE_SUPABASE_URL: !!supabaseUrl,
     VITE_SUPABASE_ANON_KEY: !!supabaseKey,
   });
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = supabaseConfigError
+  ? null
+  : createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+    });
+
+const withTimeout = async <T,>(promise: Promise<T>, ms = 12000): Promise<T> => {
+  return await Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      window.setTimeout(() => reject(new Error(`Request timeout after ${ms}ms`)), ms)
+    ),
+  ]);
+};
+
+const getSupabaseOrThrow = () => {
+  if (!supabase) {
+    throw new Error(supabaseConfigError || "Supabase client is not initialized.");
+  }
+  return supabase;
+};
 
 type UserLike = any;
 type ProfileLike = any;
@@ -302,6 +330,7 @@ export default function App() {
   const [user, setUser] = useState<UserLike>(null);
   const [profile, setProfile] = useState<ProfileLike>(null);
   const [loading, setLoading] = useState(true);
+  const [bootError, setBootError] = useState<string | null>(supabaseConfigError);
   const [contentView, setContentView] = useState("레이드");
   const [posts, setPosts] = useState<PostLike[]>([]);
   const [settings, setSettings] = useState(defaultSettings);
@@ -309,12 +338,20 @@ export default function App() {
   useEffect(() => {
     let mounted = true;
 
+    if (!supabase) {
+      setLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
     const init = async () => {
       try {
+        const client = getSupabaseOrThrow();
         const {
           data: { session },
           error: sessionError,
-        } = await supabase.auth.getSession();
+        } = await withTimeout(client.auth.getSession(), 10000);
 
         if (sessionError) {
           console.error("getSession error:", sessionError);
@@ -334,8 +371,14 @@ export default function App() {
         }
 
         await Promise.allSettled(tasks);
-      } catch (error) {
+        if (mounted) {
+          setBootError(null);
+        }
+      } catch (error: any) {
         console.error("App init error:", error);
+        if (mounted) {
+          setBootError(error?.message || "초기 데이터를 불러오지 못했습니다.");
+        }
       } finally {
         if (mounted) {
           setLoading(false);
@@ -364,13 +407,14 @@ export default function App() {
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, []);
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const client = getSupabaseOrThrow();
+      const { data, error } = await client
         .from("profiles")
         .select("*")
         .eq("id", userId)
@@ -390,9 +434,10 @@ export default function App() {
 
   const fetchInitialData = async () => {
     try {
+      const client = getSupabaseOrThrow();
       const [postsRes, settingsRes] = await Promise.allSettled([
-        supabase.from("posts").select("*").order("created_at", { ascending: false }),
-        supabase.from("settings").select("*").limit(1).maybeSingle(),
+        withTimeout(client.from("posts").select("*").order("created_at", { ascending: false }), 10000),
+        withTimeout(client.from("settings").select("*").limit(1).maybeSingle(), 10000),
       ]);
 
       if (postsRes.status === "fulfilled") {
@@ -426,7 +471,8 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    const client = getSupabaseOrThrow();
+    await client.auth.signOut();
     setUser(null);
     setProfile(null);
     setActiveTab("home");
@@ -437,6 +483,27 @@ export default function App() {
       <PageShell>
         <div className="min-h-screen flex items-center justify-center text-purple-300 font-black italic">
           INXX SYSTEM LOADING...
+        </div>
+      </PageShell>
+    );
+  }
+
+  if (bootError) {
+    return (
+      <PageShell>
+        <div className="min-h-screen flex items-center justify-center px-6">
+          <div className="w-full max-w-2xl rounded-[2rem] border border-red-500/30 bg-red-950/20 p-8 text-left">
+            <div className="text-[11px] font-black tracking-[0.3em] uppercase text-red-300">
+              Boot Error
+            </div>
+            <h1 className="mt-3 text-3xl font-black">홈페이지 초기화 실패</h1>
+            <p className="mt-4 text-sm leading-6 text-gray-300">
+              {bootError}
+            </p>
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
+              Vercel 프로젝트 환경변수와 Supabase 연결값을 다시 확인한 뒤 재배포하세요.
+            </div>
+          </div>
         </div>
       </PageShell>
     );
