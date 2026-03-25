@@ -985,7 +985,7 @@ const RaidCalendar = ({ user, profile }: any) => {
       <div className="grid lg:grid-cols-[1.2fr,0.8fr] gap-6 mb-8">
         <SectionPanel
           title="Raid Calendar"
-          description="월별 레이드 일정을 한눈에 보고 바로 참가할 수 있게 개선한 버전이야."
+          description="월별 레이드 일정."
           action={
             <div className="flex gap-2">
               <button
