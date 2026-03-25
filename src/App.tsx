@@ -4114,7 +4114,7 @@ const GuildMembersPage = () => {
                 </div>
               )}
             </div>
-          ))}
+          })}
         </div>
       )}
     </div>
