@@ -257,6 +257,46 @@ const MiniStat = ({ label, value }: { label: string; value: React.ReactNode }) =
 
 
 
+
+const formatInputDateTime = (value?: string | null) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const isShopItemAvailable = (item: any) => {
+  const now = Date.now();
+  const from = item?.available_from ? new Date(item.available_from).getTime() : null;
+  const to = item?.available_to ? new Date(item.available_to).getTime() : null;
+  if (!item?.is_active) return false;
+  if (from && now < from) return false;
+  if (to && now > to) return false;
+  return true;
+};
+
+const getShopItemStatusText = (item: any) => {
+  if (!item?.is_active) return "판매 중지";
+  const now = Date.now();
+  const from = item?.available_from ? new Date(item.available_from).getTime() : null;
+  const to = item?.available_to ? new Date(item.available_to).getTime() : null;
+  if (from && now < from) return `오픈 예정 · ${formatDateTime(item.available_from)}`;
+  if (to && now > to) return "판매 종료";
+  if (from || to) {
+    return `판매 기간 · ${item.available_from ? formatDateTime(item.available_from) : "즉시"} ~ ${item.available_to ? formatDateTime(item.available_to) : "상시"}`;
+  }
+  return "상시 판매";
+};
+
+const BADGE_PRESET_COLORS = [
+  "#8b5cf6",
+  "#ec4899",
+  "#22c55e",
+  "#f59e0b",
+  "#3b82f6",
+  "#ef4444",
+];
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<UserLike>(null);
@@ -515,7 +555,7 @@ export default function App() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <AdminPanel settings={settings} setSettings={setSettings} />
+                <AdminPanel settings={settings} setSettings={setSettings} user={user} profile={profile} />
               </motion.div>
             )}
 
@@ -594,7 +634,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
     { id: "posts", label: "게시판" },
     { id: "ranking", label: "랭킹" },
     { id: "guild", label: "길드" },
-    ...(user ? [{ id: "shop", label: "포인트처" }, { id: "myroom", label: "마이룸" }] : []),
+    ...(user ? [{ id: "shop", label: "포인트샵" }, { id: "myroom", label: "마이룸" }] : []),
     ...(profile?.role === "admin" ? [{ id: "admin", label: "관리자" }] : []),
     ...(user ? [] : [{ id: "login", label: "로그인" }, { id: "signup", label: "회원가입" }]),
   ];
@@ -1978,7 +2018,7 @@ const ModalFrame = ({
 );
 
 
-const AdminPanel = ({ settings, setSettings }: any) => {
+const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
   const [adminTab, setAdminTab] = useState("레이드");
 
   const tabs = [
@@ -1990,7 +2030,7 @@ const AdminPanel = ({ settings, setSettings }: any) => {
     "캐릭터 관리",
     "레이드 관리",
     "회원 관리",
-    "포인트 상점",
+    "포인트샵 관리",
   ];
 
   return (
@@ -2025,11 +2065,11 @@ const AdminPanel = ({ settings, setSettings }: any) => {
         {adminTab === "길드 설정" && (
           <GuildSettingsEditor settings={settings} setSettings={setSettings} />
         )}
-        {adminTab === "공지 관리" && <AdminNoticeManager />}
+        {adminTab === "공지 관리" && <AdminNoticeManager user={user} profile={profile} />}
         {adminTab === "캐릭터 관리" && <AdminCharacterManager />}
         {adminTab === "레이드 관리" && <AdminRaidManager />}
         {adminTab === "회원 관리" && <AdminUserManager />}
-        {adminTab === "포인트 상점" && <AdminPointShopManager />}
+        {adminTab === "포인트샵 관리" && <AdminPointShopManager />}
       </div>
     </motion.div>
   );
@@ -2881,7 +2921,11 @@ const MyRoom = ({ user, profile }: any) => {
   const [characterName, setCharacterName] = useState("");
   const [className, setClassName] = useState("");
   const [itemLevel, setItemLevel] = useState("");
+  const [characterLevel, setCharacterLevel] = useState("");
+  const [combatPower, setCombatPower] = useState("");
+  const [roleHint, setRoleHint] = useState("딜러");
   const [characters, setCharacters] = useState<any[]>([]);
+  const [ownedBadges, setOwnedBadges] = useState<any[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
   const handleAttendance = async () => {
@@ -2916,7 +2960,31 @@ const MyRoom = ({ user, profile }: any) => {
       .eq("user_id", user.id)
       .order("created_at", { ascending: true });
 
-    if (!error) setCharacters(data || []);
+    if (!error) setCharacters((data || []).map((item: any) => ({
+      ...item,
+      isEditing: false,
+      draft: {
+        character_name: item.character_name || "",
+        class_name: item.class_name || "",
+        item_level: item.item_level || "",
+        character_level: item.character_level || "",
+        combat_power: item.combat_power || "",
+        role_hint: item.role_hint || "딜러",
+        profile_theme: item.profile_theme || "#8b5cf6",
+        character_intro: item.character_intro || "",
+        badge_item_id: item.badge_item_id || "",
+      },
+    })));
+  };
+
+  const fetchOwnedBadges = async () => {
+    const { data, error } = await supabase
+      .from("user_owned_badges")
+      .select("id, badge_item_id, badge_name, badge_color")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (!error) setOwnedBadges(data || []);
   };
 
   useEffect(() => {
@@ -2936,17 +3004,22 @@ const MyRoom = ({ user, profile }: any) => {
     if (profile && user) {
       fetchRankIcon();
       fetchCharacters();
+      fetchOwnedBadges();
     }
   }, [profile, user]);
 
   const deleteCharacter = async (id: string) => {
     if (!confirm("캐릭터 삭제할까요?")) return;
-
     const { error } = await supabase.from("guild_members").delete().eq("id", id);
     if (!error) fetchCharacters();
   };
 
   const saveCharacter = async () => {
+    if (!characterName.trim() || !className.trim()) {
+      alert("캐릭터명과 직업을 입력해줘.");
+      return;
+    }
+
     let imageUrl = null;
 
     if (imageFile) {
@@ -2966,10 +3039,17 @@ const MyRoom = ({ user, profile }: any) => {
 
     const { error } = await supabase.from("guild_members").insert({
       user_id: user.id,
+      owner_id: user.id,
+      owner_nickname: profile.nickname,
       character_name: characterName,
       class_name: className,
-      item_level: itemLevel,
+      item_level: toNumber(itemLevel),
+      character_level: toNumber(characterLevel),
+      combat_power: toNumber(combatPower),
       avatar_url: imageUrl,
+      role_hint: roleHint,
+      profile_theme: "#8b5cf6",
+      character_intro: "",
     });
 
     if (!error) {
@@ -2977,23 +3057,90 @@ const MyRoom = ({ user, profile }: any) => {
       setCharacterName("");
       setClassName("");
       setItemLevel("");
+      setCharacterLevel("");
+      setCombatPower("");
+      setRoleHint("딜러");
       setImageFile(null);
       fetchCharacters();
       setShowRegister(false);
+    } else {
+      alert(error.message);
     }
+  };
+
+  const toggleEditing = (id: string, next: boolean) => {
+    setCharacters((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              isEditing: next,
+              draft: next
+                ? {
+                    character_name: item.character_name || "",
+                    class_name: item.class_name || "",
+                    item_level: item.item_level || "",
+                    character_level: item.character_level || "",
+                    combat_power: item.combat_power || "",
+                    role_hint: item.role_hint || "딜러",
+                    profile_theme: item.profile_theme || "#8b5cf6",
+                    character_intro: item.character_intro || "",
+                    badge_item_id: item.badge_item_id || "",
+                  }
+                : item.draft,
+            }
+          : item
+      )
+    );
+  };
+
+  const updateDraft = (id: string, key: string, value: any) => {
+    setCharacters((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, draft: { ...item.draft, [key]: value } }
+          : item
+      )
+    );
+  };
+
+  const saveCharacterEdit = async (character: any) => {
+    const badge = ownedBadges.find((x) => x.badge_item_id === character.draft.badge_item_id);
+    const payload = {
+      character_name: character.draft.character_name,
+      class_name: character.draft.class_name,
+      item_level: toNumber(character.draft.item_level),
+      character_level: toNumber(character.draft.character_level),
+      combat_power: toNumber(character.draft.combat_power),
+      role_hint: character.draft.role_hint || "딜러",
+      profile_theme: character.draft.profile_theme || "#8b5cf6",
+      character_intro: character.draft.character_intro || "",
+      badge_item_id: character.draft.badge_item_id || null,
+      badge_name: badge?.badge_name || null,
+      badge_color: badge?.badge_color || null,
+      owner_nickname: profile.nickname,
+      owner_id: user.id,
+    };
+
+    const { error } = await supabase.from("guild_members").update(payload).eq("id", character.id);
+    if (error) return alert(error.message);
+
+    alert("캐릭터 수정 완료");
+    fetchCharacters();
   };
 
   if (!user || !profile) return null;
 
   return (
-    <div className="max-w-5xl mx-auto py-24 px-6">
+    <div className="max-w-6xl mx-auto py-24 px-6">
       <h2 className="text-4xl font-black mb-10">My Room</h2>
 
       <div className="bg-white/5 p-10 rounded-3xl space-y-6">
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-4 gap-4">
           <InfoMiniCard title="닉네임" value={profile.nickname || "-"} />
           <InfoMiniCard title="포인트" value={`${profile.points || 0}`} />
           <InfoMiniCard title="랭크" value={profile.rank_name || "Seed"} />
+          <InfoMiniCard title="보유 뱃지" value={`${ownedBadges.length}개`} />
         </div>
 
         <div className="flex flex-wrap gap-3 items-center">
@@ -3011,9 +3158,23 @@ const MyRoom = ({ user, profile }: any) => {
 
         {showRegister && (
           <div className="space-y-3 border border-white/10 rounded-2xl p-5 bg-black/20">
-            <AdminInput label="캐릭터명" value={characterName} onChange={setCharacterName} />
-            <AdminInput label="직업" value={className} onChange={setClassName} />
-            <AdminInput label="아이템레벨" value={itemLevel} onChange={setItemLevel} />
+            <div className="grid md:grid-cols-2 gap-3">
+              <AdminInput label="캐릭터명" value={characterName} onChange={setCharacterName} />
+              <AdminInput label="직업" value={className} onChange={setClassName} />
+            </div>
+            <div className="grid md:grid-cols-3 gap-3">
+              <AdminInput label="아이템레벨" value={itemLevel} onChange={setItemLevel} />
+              <AdminInput label="캐릭터 레벨" value={characterLevel} onChange={setCharacterLevel} />
+              <AdminInput label="전투력" value={combatPower} onChange={setCombatPower} />
+            </div>
+            <select
+              value={roleHint}
+              onChange={(e) => setRoleHint(e.target.value)}
+              className="w-full bg-black border border-white/10 rounded-xl p-4"
+            >
+              <option value="딜러">딜러</option>
+              <option value="서포터">서포터</option>
+            </select>
             <input
               type="file"
               onChange={(e) => setImageFile(e.target.files?.[0] || null)}
@@ -3025,26 +3186,145 @@ const MyRoom = ({ user, profile }: any) => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
           {characters.map((character) => (
-            <div key={character.id} className="bg-black/40 p-4 rounded-xl border border-white/10">
+            <div
+              key={character.id}
+              className="p-4 rounded-2xl border"
+              style={{
+                background: "rgba(0,0,0,0.35)",
+                borderColor: character.profile_theme || "#ffffff22",
+                boxShadow: `0 0 0 1px ${character.profile_theme || "#ffffff11"} inset`,
+              }}
+            >
               {character.avatar_url && (
                 <img
                   src={character.avatar_url}
-                  className="w-full h-32 object-cover rounded mb-2"
+                  className="w-full h-40 object-cover rounded-xl mb-3"
                 />
               )}
 
-              <div className="font-bold">{character.character_name}</div>
-              <div className="text-sm text-gray-400">{character.class_name}</div>
-              <div className="text-purple-400">{character.item_level}</div>
+              {!character.isEditing ? (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-bold text-lg">{character.character_name}</div>
+                      <div className="text-sm text-gray-400">{character.class_name}</div>
+                    </div>
+                    {character.badge_name && (
+                      <span
+                        className="px-3 py-1 rounded-full text-xs font-black"
+                        style={{ backgroundColor: `${character.badge_color || "#8b5cf6"}33`, color: character.badge_color || "#c4b5fd", border: `1px solid ${character.badge_color || "#8b5cf6"}` }}
+                      >
+                        {character.badge_name}
+                      </span>
+                    )}
+                  </div>
 
-              <button
-                onClick={() => deleteCharacter(character.id)}
-                className="bg-red-500 mt-3 px-3 py-2 rounded text-sm font-black"
-              >
-                삭제
-              </button>
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <InfoMiniCard title="아이템레벨" value={character.item_level || "-"} />
+                    <InfoMiniCard title="캐릭터 레벨" value={character.character_level || "-"} />
+                    <InfoMiniCard title="전투력" value={character.combat_power || "-"} />
+                    <InfoMiniCard title="역할" value={character.role_hint || "딜러"} />
+                  </div>
+
+                  <div className="mt-4 text-sm text-gray-300 whitespace-pre-wrap">
+                    {character.character_intro || "소개 문구를 넣어 캐릭터를 꾸밀 수 있어."}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => toggleEditing(character.id, true)}
+                      className="bg-purple-600 px-4 py-2 rounded-xl text-sm font-black"
+                    >
+                      수정
+                    </button>
+                    <button
+                      onClick={() => deleteCharacter(character.id)}
+                      className="bg-red-500 px-4 py-2 rounded-xl text-sm font-black"
+                    >
+                      삭제
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <AdminInput label="캐릭터명" value={character.draft.character_name} onChange={(v: any) => updateDraft(character.id, "character_name", v)} />
+                    <AdminInput label="직업" value={character.draft.class_name} onChange={(v: any) => updateDraft(character.id, "class_name", v)} />
+                  </div>
+
+                  <div className="grid md:grid-cols-3 gap-3">
+                    <AdminInput label="아이템레벨" value={String(character.draft.item_level || "")} onChange={(v: any) => updateDraft(character.id, "item_level", v)} />
+                    <AdminInput label="캐릭터 레벨" value={String(character.draft.character_level || "")} onChange={(v: any) => updateDraft(character.id, "character_level", v)} />
+                    <AdminInput label="전투력" value={String(character.draft.combat_power || "")} onChange={(v: any) => updateDraft(character.id, "combat_power", v)} />
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <select
+                      value={character.draft.role_hint}
+                      onChange={(e) => updateDraft(character.id, "role_hint", e.target.value)}
+                      className="w-full bg-black border border-white/10 rounded-xl p-4"
+                    >
+                      <option value="딜러">딜러</option>
+                      <option value="서포터">서포터</option>
+                    </select>
+
+                    <select
+                      value={character.draft.badge_item_id || ""}
+                      onChange={(e) => updateDraft(character.id, "badge_item_id", e.target.value)}
+                      className="w-full bg-black border border-white/10 rounded-xl p-4"
+                    >
+                      <option value="">뱃지 미착용</option>
+                      {ownedBadges.map((badge) => (
+                        <option key={badge.badge_item_id} value={badge.badge_item_id}>
+                          {badge.badge_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-400">캐릭터 테마색</label>
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {BADGE_PRESET_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => updateDraft(character.id, "profile_theme", color)}
+                            className="w-8 h-8 rounded-full border-2"
+                            style={{ backgroundColor: color, borderColor: character.draft.profile_theme === color ? "#fff" : "transparent" }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <AdminInput label="직접 색상 입력" value={character.draft.profile_theme || ""} onChange={(v: any) => updateDraft(character.id, "profile_theme", v)} />
+                  </div>
+
+                  <textarea
+                    value={character.draft.character_intro || ""}
+                    onChange={(e) => updateDraft(character.id, "character_intro", e.target.value)}
+                    placeholder="캐릭터 소개 / 한줄 각오 / 컨셉 문구"
+                    className="w-full bg-black border border-white/10 rounded-xl p-4 min-h-[100px]"
+                  />
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => saveCharacterEdit(character)}
+                      className="bg-blue-500 px-4 py-3 rounded-xl font-black"
+                    >
+                      저장
+                    </button>
+                    <button
+                      onClick={() => toggleEditing(character.id, false)}
+                      className="bg-zinc-700 px-4 py-3 rounded-xl font-black"
+                    >
+                      취소
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -3241,7 +3521,7 @@ const GuildMembersPage = () => {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h1 className="text-3xl md:text-4xl font-black">길드 캐릭터</h1>
-          <p className="text-gray-400 mt-2">메인캐 / 부캐 / 템렙 / 최근 참여 레이드까지 한 번에 볼 수 있습니다.</p>
+          <p className="text-gray-400 mt-2">메인/부캐, 템렙, 캐릭터 레벨, 전투력, 최근 참여 레이드, 장착 뱃지까지 한 번에 볼 수 있습니다.</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -3269,7 +3549,7 @@ const GuildMembersPage = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredMembers.map((member: any) => (
-            <div key={member.id} className="rounded-[2rem] border border-white/10 bg-[#0d111c]/80 p-5 overflow-hidden">
+            <div key={member.id} className="rounded-[2rem] border border-white/10 bg-[#0d111c]/80 p-5 overflow-hidden" style={{ boxShadow: `0 0 0 1px ${(member.profile_theme || "#8b5cf6")}44 inset` }}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-4 min-w-0">
                   <img
@@ -3293,10 +3573,18 @@ const GuildMembersPage = () => {
                           서폿
                         </span>
                       )}
+                      {member.badge_name && (
+                        <span
+                          className="px-2 py-1 rounded-full text-[10px] font-black border"
+                          style={{ color: member.badge_color || "#c4b5fd", borderColor: member.badge_color || "#8b5cf6", backgroundColor: `${member.badge_color || "#8b5cf6"}22` }}
+                        >
+                          {member.badge_name}
+                        </span>
+                      )}
                     </div>
                     <div className="text-xl font-black truncate">{member.character_name}</div>
                     <div className="text-sm text-gray-400 truncate">{member.class_name}</div>
-                    <div className="mt-1 text-purple-300 font-black">Lv. {member.item_level}</div>
+                    <div className="mt-1 text-purple-300 font-black">아이템 Lv. {member.item_level}</div>
                   </div>
                 </div>
 
@@ -3307,10 +3595,16 @@ const GuildMembersPage = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3 mt-5">
+                <InfoMiniCard title="캐릭터 레벨" value={member.character_level || "-"} />
+                <InfoMiniCard title="전투력" value={member.combat_power || "-"} />
                 <InfoMiniCard title="최근 참여" value={member.last_raid_name || "기록 없음"} />
                 <InfoMiniCard title="최근 날짜" value={member.last_raid_date ? formatShortDate(member.last_raid_date) : "-"} />
                 <InfoMiniCard title="주간 참여" value={`${member.weekly_join_count || 0}회`} />
                 <InfoMiniCard title="참여율" value={`${member.participation_rate || 0}%`} />
+              </div>
+
+              <div className="mt-4 text-sm text-gray-300 whitespace-pre-wrap">
+                {member.character_intro || "등록된 캐릭터 소개가 없습니다."}
               </div>
             </div>
           ))}
@@ -3476,7 +3770,7 @@ const PointShopPage = ({ user, profile }: any) => {
   const fetchShop = async () => {
     setLoading(true);
     const [itemsRes, profileRes] = await Promise.all([
-      supabase.from("point_shop_items").select("*").eq("is_active", true).order("price", { ascending: true }),
+      supabase.from("point_shop_items").select("*").order("price", { ascending: true }),
       user ? supabase.from("profiles").select("points").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
     ]);
 
@@ -3498,6 +3792,7 @@ const PointShopPage = ({ user, profile }: any) => {
 
   const purchase = async (item: any) => {
     if (!user) return alert("로그인 후 사용 가능합니다.");
+    if (!isShopItemAvailable(item)) return alert("지금은 구매 가능한 시간이 아니야.");
     if (myPoint < item.price) return alert("포인트가 부족합니다.");
     if (!confirm(`${item.title} 구매 시 ${item.price}P가 차감됩니다. 진행할까요?`)) return;
 
@@ -3507,7 +3802,7 @@ const PointShopPage = ({ user, profile }: any) => {
     });
 
     if (error) return alert(error.message);
-    alert("구매 요청 완료");
+    alert(item.reward_type === "badge" ? "뱃지를 구매했어. 이제 마이룸에서 캐릭터에게 착용할 수 있어!" : "구매 요청 완료");
     fetchShop();
   };
 
@@ -3516,7 +3811,7 @@ const PointShopPage = ({ user, profile }: any) => {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h2 className="text-4xl font-black italic uppercase tracking-tight">Point Shop</h2>
-          <p className="text-gray-500 font-bold mt-2">출석 체크와 게시글 작성으로 모은 포인트를 사용할 수 있습니다.</p>
+          <p className="text-gray-500 font-bold mt-2">출석 체크와 게시글 작성으로 모은 포인트로 뱃지 등을 구매하고, 마이룸에서 캐릭터에 장착할 수 있습니다.</p>
         </div>
 
         <div className="rounded-[2rem] border border-purple-500/20 bg-purple-500/10 px-5 py-4">
@@ -3526,42 +3821,58 @@ const PointShopPage = ({ user, profile }: any) => {
       </div>
 
       {loading ? (
-        <div className="py-16 text-center text-gray-500">상점 불러오는 중...</div>
+        <div className="py-16 text-center text-gray-500">포인트샵 불러오는 중...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {items.map((item) => (
-            <div key={item.id} className="rounded-[2rem] border border-white/10 bg-[#0d111c]/80 p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-xl font-black">{item.title}</div>
-                  <div className="mt-2 text-sm text-gray-400 whitespace-pre-wrap">{item.description}</div>
+          {items.map((item) => {
+            const available = isShopItemAvailable(item);
+            return (
+              <div key={item.id} className="rounded-[2rem] border border-white/10 bg-[#0d111c]/80 p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-xl font-black">{item.title}</div>
+                      {item.reward_type === "badge" && (
+                        <span
+                          className="px-2 py-1 rounded-full text-[10px] font-black border"
+                          style={{ color: item.badge_color || "#c4b5fd", borderColor: item.badge_color || "#8b5cf6", backgroundColor: `${item.badge_color || "#8b5cf6"}22` }}
+                        >
+                          뱃지
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 text-sm text-gray-400 whitespace-pre-wrap">{item.description}</div>
+                    <div className="mt-3 text-xs text-gray-500">{getShopItemStatusText(item)}</div>
+                  </div>
+                  <ShoppingBag className="text-purple-300" />
                 </div>
-                <ShoppingBag className="text-purple-300" />
-              </div>
 
-              <div className="mt-5 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black">Price</div>
-                  <div className="text-2xl font-black text-yellow-300">{item.price} P</div>
+                <div className="mt-5 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black">Price</div>
+                    <div className="text-2xl font-black text-yellow-300">{item.price} P</div>
+                  </div>
+                  <button
+                    disabled={!available}
+                    onClick={() => purchase(item)}
+                    className="px-5 py-3 rounded-2xl bg-purple-600 font-black disabled:opacity-40"
+                  >
+                    {available ? "구매" : "구매 불가"}
+                  </button>
                 </div>
-                <button
-                  disabled={!item.is_active}
-                  onClick={() => purchase(item)}
-                  className="px-5 py-3 rounded-2xl bg-purple-600 font-black disabled:opacity-40"
-                >
-                  구매
-                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
 };
 
-const AdminNoticeManager = () => {
+const AdminNoticeManager = ({ user, profile }: any) => {
   const [notices, setNotices] = useState<any[]>([]);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
 
   useEffect(() => {
     fetchNotices();
@@ -3584,6 +3895,27 @@ const AdminNoticeManager = () => {
     setNotices(data || []);
   };
 
+  const createNotice = async () => {
+    if (!title.trim() || !content.trim()) return alert("공지 제목과 내용을 입력해줘.");
+
+    const { error } = await supabase.from("posts").insert({
+      title,
+      content,
+      category: "공지",
+      is_notice: true,
+      is_pinned: notices.length === 0,
+      author_id: user?.id || null,
+      author_name: profile?.nickname || "관리자",
+    });
+
+    if (error) return alert(error.message);
+
+    setTitle("");
+    setContent("");
+    fetchNotices();
+    alert("공지 작성 완료");
+  };
+
   const togglePin = async (id: string, nextValue: boolean) => {
     if (nextValue) {
       await supabase.from("posts").update({ is_pinned: false }).eq("is_notice", true);
@@ -3592,20 +3924,52 @@ const AdminNoticeManager = () => {
     fetchNotices();
   };
 
+  const deleteNotice = async (id: string) => {
+    if (!confirm("이 공지를 삭제할까요?")) return;
+    const { error } = await supabase.from("posts").delete().eq("id", id);
+    if (error) return alert(error.message);
+    fetchNotices();
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <h3 className="text-xl font-bold">공지 관리</h3>
 
-      {notices.map((notice) => (
-        <div key={notice.id} className="flex justify-between bg-black/40 p-4 rounded border border-white/10 gap-4">
-          <div>
-            <div>{notice.title}</div>
-            <div className="text-xs text-gray-400">{formatDateTime(notice.created_at)}</div>
-          </div>
+      <div className="space-y-3 border border-white/10 rounded-2xl p-5 bg-black/20">
+        <AdminInput label="공지 제목" value={title} onChange={setTitle} />
+        <textarea
+          className="w-full bg-black border border-white/10 rounded-2xl p-4 min-h-[140px]"
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="메인 상단에 보여줄 공지 내용을 입력해줘"
+        />
+        <button onClick={createNotice} className="px-5 py-3 rounded-xl bg-purple-600 font-black">
+          공지 작성
+        </button>
+      </div>
 
-          <button onClick={() => togglePin(notice.id, !notice.is_pinned)} className="px-4 py-2 rounded-xl border border-white/10">
-            {notice.is_pinned ? "고정 해제" : "상단 고정"}
-          </button>
+      {notices.length === 0 && (
+        <div className="text-gray-500">등록된 공지가 아직 없어.</div>
+      )}
+
+      {notices.map((notice) => (
+        <div key={notice.id} className="bg-black/40 p-4 rounded border border-white/10 gap-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="font-bold">{notice.title}</div>
+              <div className="text-xs text-gray-400 mt-1">{formatDateTime(notice.created_at)}</div>
+              <div className="text-sm text-gray-300 mt-3 whitespace-pre-wrap">{notice.content}</div>
+            </div>
+
+            <div className="flex flex-col gap-2 shrink-0">
+              <button onClick={() => togglePin(notice.id, !notice.is_pinned)} className="px-4 py-2 rounded-xl border border-white/10">
+                {notice.is_pinned ? "고정 해제" : "상단 고정"}
+              </button>
+              <button onClick={() => deleteNotice(notice.id)} className="px-4 py-2 rounded-xl bg-red-600 text-white">
+                삭제
+              </button>
+            </div>
+          </div>
         </div>
       ))}
     </div>
@@ -3616,6 +3980,10 @@ const AdminPointShopManager = () => {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [rewardType, setRewardType] = useState("badge");
+  const [badgeColor, setBadgeColor] = useState("#8b5cf6");
+  const [availableFrom, setAvailableFrom] = useState("");
+  const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
 
   useEffect(() => {
@@ -3623,7 +3991,7 @@ const AdminPointShopManager = () => {
   }, []);
 
   const fetchItems = async () => {
-    const { data, error } = await supabase.from("point_shop_items").select("*").order("price", { ascending: true });
+    const { data, error } = await supabase.from("point_shop_items").select("*").order("created_at", { ascending: false });
     if (error) {
       console.error(error);
       setItems([]);
@@ -3639,11 +4007,20 @@ const AdminPointShopManager = () => {
       description,
       price: toNumber(price),
       is_active: true,
+      reward_type: rewardType,
+      badge_name: rewardType === "badge" ? title : null,
+      badge_color: rewardType === "badge" ? badgeColor : null,
+      available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
+      available_to: availableTo ? new Date(availableTo).toISOString() : null,
     });
     if (error) return alert(error.message);
     setTitle("");
     setPrice("");
     setDescription("");
+    setRewardType("badge");
+    setBadgeColor("#8b5cf6");
+    setAvailableFrom("");
+    setAvailableTo("");
     fetchItems();
   };
 
@@ -3653,30 +4030,73 @@ const AdminPointShopManager = () => {
     fetchItems();
   };
 
+  const deleteItem = async (itemId: string) => {
+    if (!confirm("상품을 완전히 삭제할까요?")) return;
+    const { error } = await supabase.from("point_shop_items").delete().eq("id", itemId);
+    if (error) return alert(error.message);
+    fetchItems();
+  };
+
   return (
     <div className="space-y-6">
-      <h3 className="text-xl font-bold">포인트 상점 관리</h3>
+      <h3 className="text-xl font-bold">포인트샵 관리</h3>
 
       <div className="grid md:grid-cols-3 gap-4">
-        <input className="bg-black border border-white/10 rounded-2xl p-4" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="상품명" />
+        <input className="bg-black border border-white/10 rounded-2xl p-4" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="상품명 / 뱃지명" />
         <input className="bg-black border border-white/10 rounded-2xl p-4" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="가격" />
-        <button onClick={createItem} className="rounded-2xl bg-purple-600 font-black">상품 생성</button>
+        <select className="bg-black border border-white/10 rounded-2xl p-4" value={rewardType} onChange={(e) => setRewardType(e.target.value)}>
+          <option value="badge">뱃지</option>
+          <option value="general">일반 상품</option>
+        </select>
       </div>
 
       <textarea className="w-full bg-black border border-white/10 rounded-2xl p-4 min-h-[120px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="상품 설명" />
+
+      <div className="grid md:grid-cols-3 gap-4">
+        <div>
+          <label className="text-xs text-gray-400 mb-2 block">판매 시작 시간</label>
+          <input type="datetime-local" className="w-full bg-black border border-white/10 rounded-2xl p-4" value={availableFrom} onChange={(e) => setAvailableFrom(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-400 mb-2 block">판매 종료 시간</label>
+          <input type="datetime-local" className="w-full bg-black border border-white/10 rounded-2xl p-4" value={availableTo} onChange={(e) => setAvailableTo(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-gray-400 mb-2 block">뱃지 색상</label>
+          <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeColor} onChange={(e) => setBadgeColor(e.target.value)} />
+        </div>
+      </div>
+
+      <button onClick={createItem} className="rounded-2xl bg-purple-600 font-black px-6 py-4">상품 생성</button>
 
       <div className="space-y-4">
         {items.map((item) => (
           <div key={item.id} className="flex justify-between bg-black/40 p-4 rounded border border-white/10 gap-4">
             <div>
-              <div>{item.title}</div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="font-bold">{item.title}</div>
+                {item.reward_type === "badge" && (
+                  <span
+                    className="px-2 py-1 rounded-full text-[10px] font-black border"
+                    style={{ color: item.badge_color || "#c4b5fd", borderColor: item.badge_color || "#8b5cf6", backgroundColor: `${item.badge_color || "#8b5cf6"}22` }}
+                  >
+                    뱃지
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-gray-400">{item.description}</div>
               <div className="text-yellow-300 font-black mt-1">{item.price} P</div>
+              <div className="text-xs text-gray-500 mt-1">{getShopItemStatusText(item)}</div>
             </div>
 
-            <button onClick={() => toggleActive(item)} className={cn("px-4 py-2 rounded-xl font-black", item.is_active ? "bg-emerald-600" : "bg-zinc-700")}>
-              {item.is_active ? "판매중" : "비활성"}
-            </button>
+            <div className="flex flex-col gap-2">
+              <button onClick={() => toggleActive(item)} className={cn("px-4 py-2 rounded-xl font-black", item.is_active ? "bg-emerald-600" : "bg-zinc-700")}>
+                {item.is_active ? "판매중" : "비활성"}
+              </button>
+              <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-600 font-black">
+                삭제
+              </button>
+            </div>
           </div>
         ))}
       </div>
