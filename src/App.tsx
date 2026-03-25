@@ -603,22 +603,22 @@ export default function App() {
 
   init();
 
-  const {
-    data: { subscription },
-  } = supabase.auth.onAuthStateChange(async (_event, session) => {
-    try {
-      const currentUser = fetchedUser ?? null;
-      setUser(currentUser);
+const {
+  data: { subscription },
+} = supabase.auth.onAuthStateChange(async (_event, session) => {
+  try {
+    const currentUser = session?.user ?? null;
+    setUser(currentUser);
 
-      if (currentUser) {
-        await fetchProfile(currentUser.id);
-      } else {
-        setProfile(null);
-      }
-    } catch (error) {
-      console.error("Auth state change error:", error);
+    if (currentUser) {
+      await fetchProfile(currentUser.id);
+    } else {
+      setProfile(null);
     }
-  });
+  } catch (error) {
+    console.error("Auth state change error:", error);
+  }
+});
 
   return () => {
     mounted = false;
