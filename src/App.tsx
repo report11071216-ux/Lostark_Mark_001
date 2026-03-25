@@ -2549,7 +2549,6 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
                 <Trash2 size={16} />
               </button>
             </div>
-            );
           })}
         </div>
       </div>
