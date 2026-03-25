@@ -2957,24 +2957,32 @@ const MyRoom = ({ user, profile }: any) => {
     const { data, error } = await supabase
       .from("guild_members")
       .select("*")
-      .eq("user_id", user.id)
+      .or(`user_id.eq.${user.id},owner_id.eq.${user.id}`)
       .order("created_at", { ascending: true });
 
-    if (!error) setCharacters((data || []).map((item: any) => ({
-      ...item,
-      isEditing: false,
-      draft: {
-        character_name: item.character_name || "",
-        class_name: item.class_name || "",
-        item_level: item.item_level || "",
-        character_level: item.character_level || "",
-        combat_power: item.combat_power || "",
-        role_hint: item.role_hint || "딜러",
-        profile_theme: item.profile_theme || "#8b5cf6",
-        character_intro: item.character_intro || "",
-        badge_item_id: item.badge_item_id || "",
-      },
-    })));
+    if (error) {
+      console.error("fetchCharacters error:", error);
+      setCharacters([]);
+      return;
+    }
+
+    setCharacters(
+      (data || []).map((item: any) => ({
+        ...item,
+        isEditing: false,
+        draft: {
+          character_name: item.character_name || "",
+          class_name: item.class_name || "",
+          item_level: item.item_level || "",
+          character_level: item.character_level || "",
+          combat_power: item.combat_power || "",
+          role_hint: item.role_hint || "딜러",
+          profile_theme: item.profile_theme || item.theme_color || "#8b5cf6",
+          character_intro: item.character_intro || item.bio || "",
+          badge_item_id: item.badge_item_id || item.equipped_badge_id || "",
+        },
+      }))
+    );
   };
 
   const fetchOwnedBadges = async () => {
@@ -3049,7 +3057,9 @@ const MyRoom = ({ user, profile }: any) => {
       avatar_url: imageUrl,
       role_hint: roleHint,
       profile_theme: "#8b5cf6",
+      theme_color: "#8b5cf6",
       character_intro: "",
+      bio: "",
     });
 
     if (!error) {
@@ -3114,12 +3124,17 @@ const MyRoom = ({ user, profile }: any) => {
       combat_power: toNumber(character.draft.combat_power),
       role_hint: character.draft.role_hint || "딜러",
       profile_theme: character.draft.profile_theme || "#8b5cf6",
+      theme_color: character.draft.profile_theme || "#8b5cf6",
       character_intro: character.draft.character_intro || "",
+      bio: character.draft.character_intro || "",
       badge_item_id: character.draft.badge_item_id || null,
+      equipped_badge_id: character.draft.badge_item_id || null,
       badge_name: badge?.badge_name || null,
+      equipped_badge_label: badge?.badge_name || null,
       badge_color: badge?.badge_color || null,
       owner_nickname: profile.nickname,
       owner_id: user.id,
+      user_id: user.id,
     };
 
     const { error } = await supabase.from("guild_members").update(payload).eq("id", character.id);
@@ -3187,6 +3202,11 @@ const MyRoom = ({ user, profile }: any) => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+          {characters.length === 0 && (
+            <div className="md:col-span-2 rounded-2xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-gray-400">
+              아직 보이는 캐릭터가 없어. 기존 캐릭터가 있는데도 안 보이면 아래 SQL 백필을 한 번 실행해줘.
+            </div>
+          )}
           {characters.map((character) => (
             <div
               key={character.id}
