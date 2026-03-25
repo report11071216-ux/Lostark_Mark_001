@@ -18,17 +18,25 @@ import {
   Sparkles,
   Swords,
   Trophy,
+  BarChart3,
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error("Missing Supabase env:", {
+    VITE_SUPABASE_URL: !!supabaseUrl,
+    VITE_SUPABASE_ANON_KEY: !!supabaseKey,
+  });
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 type UserLike = any;
 type ProfileLike = any;
 type PostLike = any;
-type ContentLike = any;
 type ScheduleLike = any;
 type ParticipantLike = any;
 
@@ -50,6 +58,8 @@ const emptyRaidForm = {
   experience: "트라이",
   type: "raid",
 };
+
+const difficultyOptions = ["노말", "하드", "나이트메어"];
 
 const classNameByMode = (mode: string) => {
   if (mode === "anime") {
@@ -100,6 +110,24 @@ const getWeekdayIndexMondayStart = (date: Date) => {
   return day === 0 ? 6 : day - 1;
 };
 
+const formatMonthLabel = (year: number, month: number) =>
+  `${year}.${String(month + 1).padStart(2, "0")}`;
+
+const formatShortDate = (date: string) => {
+  const value = new Date(date);
+  if (Number.isNaN(value.getTime())) return date;
+  return value.toLocaleDateString("ko-KR");
+};
+
+const safeSingle = async (builder: any) => {
+  const { data, error } = await builder.maybeSingle();
+  if (error) {
+    console.error(error);
+    return null;
+  }
+  return data;
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<UserLike>(null);
@@ -110,59 +138,121 @@ export default function App() {
   const [settings, setSettings] = useState(defaultSettings);
 
   useEffect(() => {
-    const init = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    let mounted = true;
 
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
+    const init = async () => {
+      try {
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error("getSession error:", sessionError);
+        }
+
+        if (!mounted) return;
+
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+
+        const tasks: Promise<any>[] = [fetchInitialData()];
+
+        if (currentUser) {
+          tasks.push(fetchProfile(currentUser.id));
+        } else {
+          setProfile(null);
+        }
+
+        await Promise.allSettled(tasks);
+      } catch (error) {
+        console.error("App init error:", error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-      await fetchInitialData();
-      setLoading(false);
     };
 
     init();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      } else {
-        setProfile(null);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      try {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+
+        if (currentUser) {
+          await fetchProfile(currentUser.id);
+        } else {
+          setProfile(null);
+        }
+      } catch (error) {
+        console.error("Auth state change error:", error);
       }
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      mounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
-    if (data) setProfile(data);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("fetchProfile error:", error);
+        return;
+      }
+
+      if (data) setProfile(data);
+      else setProfile(null);
+    } catch (error) {
+      console.error("fetchProfile unexpected error:", error);
+    }
   };
 
   const fetchInitialData = async () => {
-    const { data: postsData } = await supabase
-      .from("posts")
-      .select("*")
-      .order("created_at", { ascending: false });
+    try {
+      const [postsRes, settingsRes] = await Promise.allSettled([
+        supabase.from("posts").select("*").order("created_at", { ascending: false }),
+        supabase.from("settings").select("*").limit(1).maybeSingle(),
+      ]);
 
-    const { data: settingsData } = await supabase
-      .from("settings")
-      .select("*")
-      .limit(1)
-      .single();
+      if (postsRes.status === "fulfilled") {
+        const { data, error } = postsRes.value;
+        if (error) {
+          console.error("posts fetch error:", error);
+        } else {
+          setPosts(data || []);
+        }
+      } else {
+        console.error("posts fetch failed:", postsRes.reason);
+      }
 
-    if (postsData) setPosts(postsData);
-    if (settingsData) {
-      setSettings({
-        guild_name: settingsData.guild_name ?? defaultSettings.guild_name,
-        guild_description:
-          settingsData.guild_description ?? defaultSettings.guild_description,
-      });
+      if (settingsRes.status === "fulfilled") {
+        const { data, error } = settingsRes.value;
+        if (error) {
+          console.error("settings fetch error:", error);
+        } else if (data) {
+          setSettings({
+            guild_name: data.guild_name ?? defaultSettings.guild_name,
+            guild_description:
+              data.guild_description ?? defaultSettings.guild_description,
+          });
+        }
+      } else {
+        console.error("settings fetch failed:", settingsRes.reason);
+      }
+    } catch (error) {
+      console.error("fetchInitialData unexpected error:", error);
     }
   };
 
@@ -235,23 +325,74 @@ export default function App() {
             )}
 
             {activeTab === "posts" && (
-              <PostBoard
-                posts={posts}
-                user={user}
-                profile={profile}
-                onRefresh={fetchInitialData}
-              />
+              <motion.div
+                key="posts"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <PostBoard
+                  posts={posts}
+                  user={user}
+                  profile={profile}
+                  onRefresh={fetchInitialData}
+                />
+              </motion.div>
             )}
-            {activeTab === "myroom" && <MyRoom user={user} profile={profile} />}
-            {activeTab === "guild" && <GuildMembersPage />}
+
+            {activeTab === "myroom" && (
+              <motion.div
+                key="myroom"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <MyRoom user={user} profile={profile} />
+              </motion.div>
+            )}
+
+            {activeTab === "guild" && (
+              <motion.div
+                key="guild"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <GuildMembersPage />
+              </motion.div>
+            )}
+
             {activeTab === "ranking" && (
-              <RankingPage user={user} profile={profile} />
+              <motion.div
+                key="ranking"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <RankingPage user={user} profile={profile} />
+              </motion.div>
             )}
+
             {activeTab === "admin" && profile?.role === "admin" && (
-              <AdminPanel settings={settings} setSettings={setSettings} />
+              <motion.div
+                key="admin"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <AdminPanel settings={settings} setSettings={setSettings} />
+              </motion.div>
             )}
+
             {(activeTab === "login" || activeTab === "signup") && (
-              <Auth key="auth" mode={activeTab} setMode={setActiveTab} />
+              <motion.div
+                key="auth"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <Auth mode={activeTab} setMode={setActiveTab} />
+              </motion.div>
             )}
           </AnimatePresence>
         </main>
@@ -337,7 +478,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
           </span>
         </div>
 
-        <div className="hidden md:flex gap-8">
+        <div className="hidden md:flex gap-8 items-center">
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -354,7 +495,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
           {user && (
             <button
               onClick={onLogout}
-              className="text-xs font-black text-gray-500 hover:text-red-400 uppercase tracking-widest transition-colors ml-4"
+              className="text-xs font-black text-gray-500 hover:text-red-400 uppercase tracking-widest transition-colors"
             >
               Logout
             </button>
@@ -385,7 +526,7 @@ const ImageUploader = ({
       if (!file) return;
 
       const fileExt = file.name.split(".").pop();
-      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+      const fileName = `${Math.random().toString(36).slice(2)}_${Date.now()}.${fileExt}`;
       const filePath = `${folder}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -415,11 +556,11 @@ const ImageUploader = ({
           accept="image/*"
           onChange={handleUpload}
           className="hidden"
-          id={`file-${label}`}
+          id={`file-${label.replace(/\s+/g, "-")}`}
           disabled={uploading}
         />
         <label
-          htmlFor={`file-${label}`}
+          htmlFor={`file-${label.replace(/\s+/g, "-")}`}
           className="flex items-center justify-center gap-3 w-full bg-black border border-white/10 p-4 rounded-2xl cursor-pointer hover:border-purple-500 transition-all text-xs font-black text-gray-500 group-hover:text-white"
         >
           {uploading ? (
@@ -486,16 +627,36 @@ const MainContentViewer = ({ type }: { type: string }) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (type === "클래스") {
-        const { data } = await supabase.from("class_infos").select("*").order("sub_class");
-        setItems(data || []);
-      } else {
-        const { data } = await supabase
-          .from("contents")
-          .select("*")
-          .eq("category", type)
-          .order("created_at", { ascending: false });
-        setItems(data || []);
+      try {
+        if (type === "클래스") {
+          const { data, error } = await supabase
+            .from("class_infos")
+            .select("*")
+            .order("sub_class");
+          if (error) {
+            console.error(error);
+            setItems([]);
+            return;
+          }
+          setItems(data || []);
+        } else {
+          const { data, error } = await supabase
+            .from("contents")
+            .select("*")
+            .eq("category", type)
+            .order("created_at", { ascending: false });
+
+          if (error) {
+            console.error(error);
+            setItems([]);
+            return;
+          }
+
+          setItems(data || []);
+        }
+      } catch (error) {
+        console.error("fetchData error:", error);
+        setItems([]);
       }
     };
 
@@ -554,19 +715,21 @@ const DetailPopup = ({ item, type, onClose }: any) => {
     if (type === "클래스") return;
 
     const fetchDetail = async () => {
-      const query = supabase
-        .from("content_details")
-        .select("*")
-        .eq("content_id", item.id);
+      try {
+        let query = supabase.from("content_details").select("*").eq("content_id", item.id);
 
-      if (type === "레이드") {
-        query.eq("difficulty", diff).eq("gate_num", gate);
-      } else {
-        query.eq("gate_num", 0);
+        if (type === "레이드") {
+          query = query.eq("difficulty", diff).eq("gate_num", gate);
+        } else {
+          query = query.eq("gate_num", 0);
+        }
+
+        const data = await safeSingle(query);
+        setDetails(data);
+      } catch (error) {
+        console.error("fetchDetail error:", error);
+        setDetails(null);
       }
-
-      const { data } = await query.maybeSingle();
-      setDetails(data);
     };
 
     fetchDetail();
@@ -624,7 +787,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
             </div>
 
             <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5 flex-wrap">
-              {["노말", "하드", "나이트메어"].map((d) => (
+              {difficultyOptions.map((d) => (
                 <button
                   key={d}
                   onClick={() => setDiff(d)}
@@ -709,6 +872,7 @@ const RaidCalendar = ({ user, profile }: any) => {
   const [selectedDate, setSelectedDate] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedRaid, setSelectedRaid] = useState<any>(null);
+  const [calendarLoading, setCalendarLoading] = useState(true);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -722,30 +886,52 @@ const RaidCalendar = ({ user, profile }: any) => {
   }, [year, month]);
 
   const fetchCalendarData = async () => {
-    const monthStart = formatDate(year, month, 1);
-    const monthEnd = formatDate(year, month, daysInMonth);
+    setCalendarLoading(true);
 
-    const { data: rData } = await supabase
-      .from("raid_schedules")
-      .select("*")
-      .gte("raid_date", monthStart)
-      .lte("raid_date", monthEnd)
-      .order("raid_date", { ascending: true })
-      .order("raid_time", { ascending: true });
+    try {
+      const monthStart = formatDate(year, month, 1);
+      const monthEnd = formatDate(year, month, daysInMonth);
 
-    const scheduleIds = (rData || []).map((r: any) => r.id);
-
-    let pData: any[] = [];
-    if (scheduleIds.length > 0) {
-      const { data } = await supabase
-        .from("raid_participants")
+      const { data: rData, error: raidError } = await supabase
+        .from("raid_schedules")
         .select("*")
-        .in("schedule_id", scheduleIds);
-      pData = data || [];
-    }
+        .gte("raid_date", monthStart)
+        .lte("raid_date", monthEnd)
+        .order("raid_date", { ascending: true })
+        .order("raid_time", { ascending: true });
 
-    setRaids(rData || []);
-    setParticipants(pData || []);
+      if (raidError) {
+        console.error("raid_schedules fetch error:", raidError);
+        setRaids([]);
+        setParticipants([]);
+        return;
+      }
+
+      const scheduleIds = (rData || []).map((r: any) => r.id);
+
+      let pData: any[] = [];
+      if (scheduleIds.length > 0) {
+        const { data, error: participantError } = await supabase
+          .from("raid_participants")
+          .select("*")
+          .in("schedule_id", scheduleIds);
+
+        if (participantError) {
+          console.error("raid_participants fetch error:", participantError);
+        } else {
+          pData = data || [];
+        }
+      }
+
+      setRaids(rData || []);
+      setParticipants(pData || []);
+    } catch (error) {
+      console.error("fetchCalendarData error:", error);
+      setRaids([]);
+      setParticipants([]);
+    } finally {
+      setCalendarLoading(false);
+    }
   };
 
   const monthStats = useMemo(() => {
@@ -758,6 +944,41 @@ const RaidCalendar = ({ user, profile }: any) => {
 
     return { totalRaids, totalParticipants, fullCount };
   }, [raids, participants]);
+
+  const monthlyCharacterStats = useMemo(() => {
+    const map = new Map<string, { nickname: string; count: number; raidCount: number }>();
+
+    participants.forEach((participant: any) => {
+      const nickname = (participant.character_name || "이름없음").trim();
+      const existing = map.get(nickname) || {
+        nickname,
+        count: 0,
+        raidCount: 0,
+      };
+
+      existing.count += 1;
+      map.set(nickname, existing);
+    });
+
+    raids.forEach((raid) => {
+      const raidParticipants = participants.filter((p: any) => p.schedule_id === raid.id);
+      const uniqueNicknames = Array.from(
+        new Set(raidParticipants.map((p: any) => (p.character_name || "이름없음").trim()))
+      );
+
+      uniqueNicknames.forEach((nickname) => {
+        const existing = map.get(nickname) || { nickname, count: 0, raidCount: 0 };
+        existing.raidCount += 1;
+        map.set(nickname, existing);
+      });
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.raidCount !== a.raidCount) return b.raidCount - a.raidCount;
+      if (b.count !== a.count) return b.count - a.count;
+      return a.nickname.localeCompare(b.nickname, "ko");
+    });
+  }, [participants, raids]);
 
   return (
     <section className="max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-white/5">
@@ -787,9 +1008,7 @@ const RaidCalendar = ({ user, profile }: any) => {
               <div className="text-[11px] text-purple-300 uppercase tracking-[0.3em] font-black mb-2">
                 Monthly View
               </div>
-              <h2 className="text-4xl font-black italic">
-                {year}.{String(month + 1).padStart(2, "0")}
-              </h2>
+              <h2 className="text-4xl font-black italic">{formatMonthLabel(year, month)}</h2>
             </div>
 
             <div className="grid grid-cols-3 gap-3 w-full md:w-auto">
@@ -801,95 +1020,180 @@ const RaidCalendar = ({ user, profile }: any) => {
         </SectionPanel>
 
         <SectionPanel
-          title="이번 달 포인트"
-          description="상태 뱃지와 카드 클릭으로 상세 참가 현황을 볼 수 있어."
+          title="월별 참여 랭킹"
+          description="이번 달 기준 캐릭터 닉네임별 참가 횟수와 참가 등록 수를 볼 수 있어."
         >
-          <div className="grid grid-cols-2 gap-3">
-            <InfoMiniCard title="클릭 카드" value="참가자 상세" />
-            <InfoMiniCard title="빠른 생성" value={profile?.role === "admin" ? "가능" : "관리자 전용"} />
-            <InfoMiniCard title="4인/8인" value="자동 슬롯 계산" />
-            <InfoMiniCard title="시청 모드" value="anime 지원" />
+          <div className="space-y-3">
+            {monthlyCharacterStats.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-center text-sm text-gray-500">
+                아직 이번 달 참여 데이터가 없어.
+              </div>
+            )}
+
+            {monthlyCharacterStats.slice(0, 6).map((item, index) => (
+              <div
+                key={item.nickname}
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4 flex items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-500/20 flex items-center justify-center text-sm font-black text-purple-300 shrink-0">
+                    #{index + 1}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-black truncate">{item.nickname}</div>
+                    <div className="text-xs text-gray-500">월간 레이드 참여 요약</div>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <div className="text-lg font-black text-white">{item.raidCount}회</div>
+                  <div className="text-xs text-gray-500">등록 {item.count}건</div>
+                </div>
+              </div>
+            ))}
           </div>
         </SectionPanel>
       </div>
 
-      <div className="bg-slate-950/55 rounded-[2rem] md:rounded-[3rem] border border-white/10 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.08)]">
-        <div className="grid grid-cols-7 text-center text-[10px] md:text-xs text-gray-500 border-b border-white/5 uppercase tracking-[0.2em]">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
-            <div key={dayLabel} className="p-4">
-              {dayLabel}
-            </div>
-          ))}
+      <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-6">
+        <div className="bg-slate-950/55 rounded-[2rem] md:rounded-[3rem] border border-white/10 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.08)]">
+          <div className="grid grid-cols-7 text-center text-[10px] md:text-xs text-gray-500 border-b border-white/5 uppercase tracking-[0.2em]">
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
+              <div key={dayLabel} className="p-4">
+                {dayLabel}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-[1px] bg-white/5">
+            {Array.from({ length: firstDayOffset }).map((_, i) => (
+              <div key={`empty-${i}`} className="bg-[#0a0a0a] min-h-[150px] md:min-h-[180px]" />
+            ))}
+
+            {days.map((day) => {
+              const dateStr = formatDate(year, month, day);
+              const dayRaids = raids.filter((raid) => raid.raid_date === dateStr);
+              const today = new Date();
+              const isToday = isSameDay(new Date(year, month, day), today);
+
+              return (
+                <div
+                  key={day}
+                  className={`min-h-[150px] md:min-h-[180px] p-3 border transition-all ${
+                    isToday
+                      ? "bg-purple-900/30 border-purple-500 shadow-lg shadow-purple-500/10"
+                      : "bg-[#0a0a0a] border-transparent"
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <div
+                        className={`text-sm font-black ${
+                          isToday ? "text-purple-300" : "text-gray-400"
+                        }`}
+                      >
+                        {day}
+                      </div>
+                      <div className="text-[10px] text-gray-600 uppercase tracking-widest">
+                        {DAY_LABELS[new Date(year, month, day).getDay()]}
+                      </div>
+                    </div>
+
+                    {profile?.role === "admin" && (
+                      <button
+                        onClick={() => {
+                          setSelectedDate(dateStr);
+                          setIsCreateOpen(true);
+                        }}
+                        className="text-purple-300 hover:text-white transition"
+                        title="레이드 생성"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {dayRaids.length === 0 && (
+                      <div className="text-[11px] text-gray-600 font-bold rounded-xl border border-dashed border-white/5 px-3 py-4 text-center">
+                        일정 없음
+                      </div>
+                    )}
+
+                    {dayRaids.map((raid) => (
+                      <RaidCard
+                        key={raid.id}
+                        raid={raid}
+                        parts={participants.filter((p) => p.schedule_id === raid.id)}
+                        onOpen={() => setSelectedRaid(raid)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-[1px] bg-white/5">
-          {Array.from({ length: firstDayOffset }).map((_, i) => (
-            <div key={`empty-${i}`} className="bg-[#0a0a0a] min-h-[150px] md:min-h-[180px]" />
-          ))}
-
-          {days.map((day) => {
-            const dateStr = formatDate(year, month, day);
-            const dayRaids = raids.filter((raid) => raid.raid_date === dateStr);
-            const today = new Date();
-            const isToday = isSameDay(new Date(year, month, day), today);
-
-            return (
-              <div
-                key={day}
-                className={`min-h-[150px] md:min-h-[180px] p-3 border transition-all ${
-                  isToday
-                    ? "bg-purple-900/30 border-purple-500 shadow-lg shadow-purple-500/10"
-                    : "bg-[#0a0a0a] border-transparent"
-                }`}
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div
-                      className={`text-sm font-black ${
-                        isToday ? "text-purple-300" : "text-gray-400"
-                      }`}
-                    >
-                      {day}
+        <SectionPanel
+          title="월별 통계 보드"
+          description="이번 달 참여 많이 한 캐릭터를 전체로 확인할 수 있어."
+        >
+          {calendarLoading ? (
+            <div className="py-12 text-center text-gray-500 font-bold">불러오는 중...</div>
+          ) : monthlyCharacterStats.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-gray-500">
+              집계할 참여 데이터가 없어.
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[620px] overflow-y-auto pr-1">
+              {monthlyCharacterStats.map((item, index) => (
+                <div
+                  key={item.nickname}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-11 w-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                        <BarChart3 size={16} className="text-purple-300" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-black truncate">
+                          #{index + 1} {item.nickname}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          월간 레이드 참여 횟수 {item.raidCount}회
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-[10px] text-gray-600 uppercase tracking-widest">
-                      {DAY_LABELS[new Date(year, month, day).getDay()]}
+
+                    <div className="text-right shrink-0">
+                      <div className="text-xl font-black text-purple-300">{item.raidCount}</div>
+                      <div className="text-[11px] text-gray-500">raid count</div>
                     </div>
                   </div>
 
-                  {profile?.role === "admin" && (
-                    <button
-                      onClick={() => {
-                        setSelectedDate(dateStr);
-                        setIsCreateOpen(true);
+                  <div className="mt-3 h-2 rounded-full bg-black/40 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-indigo-500"
+                      style={{
+                        width: `${
+                          monthlyCharacterStats[0]?.raidCount
+                            ? (item.raidCount / monthlyCharacterStats[0].raidCount) * 100
+                            : 0
+                        }%`,
                       }}
-                      className="text-purple-300 hover:text-white transition"
-                      title="레이드 생성"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  {dayRaids.length === 0 && (
-                    <div className="text-[11px] text-gray-600 font-bold rounded-xl border border-dashed border-white/5 px-3 py-4 text-center">
-                      일정 없음
-                    </div>
-                  )}
-
-                  {dayRaids.map((raid) => (
-                    <RaidCard
-                      key={raid.id}
-                      raid={raid}
-                      parts={participants.filter((p) => p.schedule_id === raid.id)}
-                      onOpen={() => setSelectedRaid(raid)}
                     />
-                  ))}
+                  </div>
+
+                  <div className="mt-3 text-xs text-gray-400">
+                    참가 등록 총 {item.count}건
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              ))}
+            </div>
+          )}
+        </SectionPanel>
       </div>
 
       <AnimatePresence>
@@ -908,6 +1212,7 @@ const RaidCalendar = ({ user, profile }: any) => {
             raid={selectedRaid}
             parts={participants.filter((p) => p.schedule_id === selectedRaid.id)}
             user={user}
+            profile={profile}
             onClose={() => setSelectedRaid(null)}
             onRefresh={async () => {
               await fetchCalendarData();
@@ -1015,13 +1320,24 @@ const CreateRaidModal = ({
 
   useEffect(() => {
     const fetchRaidList = async () => {
-      const { data } = await supabase
-        .from("contents")
-        .select("*")
-        .eq("category", "레이드")
-        .order("name", { ascending: true });
+      try {
+        const { data, error } = await supabase
+          .from("contents")
+          .select("*")
+          .eq("category", "레이드")
+          .order("name", { ascending: true });
 
-      setRaidList(data || []);
+        if (error) {
+          console.error(error);
+          setRaidList([]);
+          return;
+        }
+
+        setRaidList(data || []);
+      } catch (error) {
+        console.error("fetchRaidList error:", error);
+        setRaidList([]);
+      }
     };
 
     fetchRaidList();
@@ -1035,29 +1351,34 @@ const CreateRaidModal = ({
 
     setLoading(true);
 
-    const maxParticipants = form.raid_type === "4인" ? 4 : 8;
+    try {
+      const maxParticipants = form.type === "anime" ? 8 : form.raid_type === "4인" ? 4 : 8;
 
-    const { error } = await supabase.from("raid_schedules").insert({
-      raid_name: form.raid_name,
-      raid_date: date,
-      raid_time: form.raid_time,
-      difficulty: form.type === "anime" ? null : form.difficulty,
-      raid_type: form.type === "anime" ? "시청" : form.raid_type,
-      max_participants: form.type === "anime" ? 8 : maxParticipants,
-      type: form.type,
-      experience: form.type === "anime" ? null : form.experience,
-    });
+      const { error } = await supabase.from("raid_schedules").insert({
+        raid_name: form.raid_name,
+        raid_date: date,
+        raid_time: form.raid_time,
+        difficulty: form.type === "anime" ? null : form.difficulty,
+        raid_type: form.type === "anime" ? "시청" : form.raid_type,
+        max_participants: maxParticipants,
+        type: form.type,
+        experience: form.type === "anime" ? null : form.experience,
+      });
 
-    setLoading(false);
+      if (error) {
+        alert(error.message);
+        return;
+      }
 
-    if (error) {
-      alert(error.message);
-      return;
+      alert("일정 생성 완료");
+      onRefresh();
+      onClose();
+    } catch (error: any) {
+      console.error("create raid error:", error);
+      alert(error.message || "일정 생성 실패");
+    } finally {
+      setLoading(false);
     }
-
-    alert("일정 생성 완료");
-    onRefresh();
-    onClose();
   };
 
   return (
@@ -1129,7 +1450,7 @@ const CreateRaidModal = ({
                 onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
                 className="w-full p-4 bg-black border border-white/10 rounded-2xl"
               >
-                {["노말", "하드", "나이트메어"].map((difficulty) => (
+                {difficultyOptions.map((difficulty) => (
                   <option key={difficulty} value={difficulty}>
                     {difficulty}
                   </option>
@@ -1167,12 +1488,14 @@ const RaidDetailModal = ({
   raid,
   parts,
   user,
+  profile,
   onClose,
   onRefresh,
 }: {
   raid: any;
   parts: any[];
   user: any;
+  profile: any;
   onClose: () => void;
   onRefresh: () => void;
 }) => {
@@ -1185,26 +1508,21 @@ const RaidDetailModal = ({
   const colors = classNameByMode(raid.type);
 
   const handleDelete = async () => {
+    if (profile?.role !== "admin") {
+      alert("관리자만 삭제할 수 있어.");
+      return;
+    }
+
     const ok = confirm("일정을 삭제하시겠습니까?");
     if (!ok) return;
 
-    await supabase.from("raid_participants").delete().eq("schedule_id", raid.id);
-    await supabase.from("raid_schedules").delete().eq("id", raid.id);
-
-    onRefresh();
-  };
-
-  const handleLeave = async (participantId: string) => {
-    const ok = confirm("참여를 취소하시겠습니까?");
-    if (!ok) return;
-
-    const { error } = await supabase
-      .from("raid_participants")
-      .delete()
-      .eq("id", participantId);
-
-    if (!error) {
+    try {
+      await supabase.from("raid_participants").delete().eq("schedule_id", raid.id);
+      await supabase.from("raid_schedules").delete().eq("id", raid.id);
       onRefresh();
+    } catch (error) {
+      console.error(error);
+      alert("일정 삭제 실패");
     }
   };
 
@@ -1220,7 +1538,7 @@ const RaidDetailModal = ({
               <h3 className="text-3xl font-black">{raid.raid_name}</h3>
               <div className="flex flex-wrap gap-2 mt-3">
                 <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
-                  {raid.raid_date}
+                  {formatShortDate(raid.raid_date)}
                 </span>
                 <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
                   {raid.raid_time}
@@ -1267,36 +1585,12 @@ const RaidDetailModal = ({
               )}
 
               {parts.map((participant: any) => (
-                <div
+                <ParticipantItem
                   key={participant.id}
-                  className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
-                >
-                  <div>
-                    <div className="font-bold text-white">
-                      {participant.character_name}
-                    </div>
-                    <div className="text-sm text-gray-400 mt-1">
-                      {participant.class_name} · {participant.item_level}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs px-3 py-1 rounded-full ${
-                      participant.position === "서포터"
-                        ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20"
-                        : "bg-purple-500/15 text-purple-300 border border-purple-500/20"
-                    }`}>
-                      {participant.position || "참가"}
-                    </span>
-
-                    <button
-                      onClick={() => handleLeave(participant.id)}
-                      className="text-xs text-red-300 hover:text-red-200 font-bold"
-                    >
-                      취소
-                    </button>
-                  </div>
-                </div>
+                  participant={participant}
+                  canCancel={profile?.role === "admin"}
+                  onRefresh={onRefresh}
+                />
               ))}
             </div>
           </div>
@@ -1311,12 +1605,14 @@ const RaidDetailModal = ({
               </button>
             )}
 
-            <button
-              onClick={handleDelete}
-              className="flex-1 py-4 rounded-2xl font-black bg-red-600 hover:bg-red-700 transition"
-            >
-              🗑 일정 삭제
-            </button>
+            {profile?.role === "admin" && (
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-4 rounded-2xl font-black bg-red-600 hover:bg-red-700 transition"
+              >
+                🗑 일정 삭제
+              </button>
+            )}
 
             <button
               onClick={onClose}
@@ -1342,6 +1638,62 @@ const RaidDetailModal = ({
         )}
       </AnimatePresence>
     </ModalFrame>
+  );
+};
+
+const ParticipantItem = ({
+  participant,
+  canCancel,
+  onRefresh,
+}: {
+  participant: any;
+  canCancel: boolean;
+  onRefresh: () => void;
+}) => {
+  const handleLeave = async () => {
+    const ok = confirm("참여를 취소하시겠습니까?");
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from("raid_participants")
+      .delete()
+      .eq("id", participant.id);
+
+    if (!error) {
+      onRefresh();
+    } else {
+      alert(error.message || "취소 실패");
+    }
+  };
+
+  return (
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+      <div>
+        <div className="font-bold text-white">{participant.character_name}</div>
+        <div className="text-sm text-gray-400 mt-1">
+          {participant.class_name} · {participant.item_level}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <span className={`text-xs px-3 py-1 rounded-full ${
+          participant.position === "서포터"
+            ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20"
+            : "bg-purple-500/15 text-purple-300 border border-purple-500/20"
+        }`}>
+          {participant.position || "참가"}
+        </span>
+
+        {canCancel && (
+          <button
+            onClick={handleLeave}
+            className="text-xs text-red-300 hover:text-red-200 font-bold"
+          >
+            취소
+          </button>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -1372,6 +1724,15 @@ const JoinForm = ({
       return;
     }
 
+    const alreadyJoined = parts.some(
+      (item: any) => (item.character_name || "").trim() === nickname.trim()
+    );
+
+    if (alreadyJoined) {
+      alert("같은 닉네임이 이미 참가 중이야.");
+      return;
+    }
+
     if (raid.type !== "anime") {
       if (role === "딜러" && dealers >= capacity.dealerLimit) {
         alert("딜러 자리가 가득 찼습니다.");
@@ -1385,20 +1746,25 @@ const JoinForm = ({
 
     setSaving(true);
 
-    const { error } = await supabase.from("raid_participants").insert({
-      schedule_id: raid.id,
-      character_name: nickname,
-      item_level: level,
-      class_name: playerClass,
-      position: raid.type === "anime" ? "참가" : role,
-    });
+    try {
+      const { error } = await supabase.from("raid_participants").insert({
+        schedule_id: raid.id,
+        character_name: nickname,
+        item_level: level,
+        class_name: playerClass,
+        position: raid.type === "anime" ? "참가" : role,
+      });
 
-    setSaving(false);
-
-    if (!error) {
-      onSuccess();
-    } else {
+      if (!error) {
+        onSuccess();
+      } else {
+        alert(error.message || "참여 실패");
+      }
+    } catch (error: any) {
+      console.error("handleJoin error:", error);
       alert(error.message || "참여 실패");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1578,11 +1944,18 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   }, [isRaid]);
 
   const fetchList = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("contents")
       .select("*")
       .eq("category", isRaid ? "레이드" : "가디언 토벌")
       .order("name");
+
+    if (error) {
+      console.error(error);
+      setList([]);
+      return;
+    }
+
     setList(data || []);
   };
 
@@ -1598,15 +1971,15 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       gold: 0,
     };
 
-    const query = supabase.from("content_details").select("*").eq("content_id", item.id);
+    let query = supabase.from("content_details").select("*").eq("content_id", item.id);
 
     if (isRaid) {
-      query.eq("difficulty", difficulty).eq("gate_num", selectedGate);
+      query = query.eq("difficulty", difficulty).eq("gate_num", selectedGate);
     } else {
-      query.eq("gate_num", 0);
+      query = query.eq("gate_num", 0);
     }
 
-    const { data } = await query.maybeSingle();
+    const data = await safeSingle(query);
 
     setForm({
       ...baseForm,
@@ -1734,7 +2107,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
         />
 
         {isRaid && (
-          <div className="grid grid-cols-2 gap-4">
+          <>
             <div className="flex gap-2 flex-wrap">
               {[1, 2, 3, 4].map((gate) => (
                 <button
@@ -1753,15 +2126,17 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
             </div>
 
             <select
-              className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
+              className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold w-full"
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
             >
-              {["노말", "하드", "나이트메어"].map((d) => (
-                <option key={d}>{d}</option>
+              {difficultyOptions.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
               ))}
             </select>
-          </div>
+          </>
         )}
 
         <div className="grid grid-cols-2 gap-4">
@@ -1782,7 +2157,9 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
           >
             <option value="">계열 선택</option>
             {elementOptions.map((element) => (
-              <option key={element}>{element}</option>
+              <option key={element} value={element}>
+                {element}
+              </option>
             ))}
           </select>
 
@@ -1793,7 +2170,9 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
           >
             <option value="">속성 선택</option>
             {attributeOptions.map((attribute) => (
-              <option key={attribute}>{attribute}</option>
+              <option key={attribute} value={attribute}>
+                {attribute}
+              </option>
             ))}
           </select>
         </div>
@@ -1832,7 +2211,12 @@ const ClassContentEditor = () => {
   }, []);
 
   const fetchList = async () => {
-    const { data } = await supabase.from("class_infos").select("*").order("sub_class");
+    const { data, error } = await supabase.from("class_infos").select("*").order("sub_class");
+    if (error) {
+      console.error(error);
+      setList([]);
+      return;
+    }
     setList(data || []);
   };
 
@@ -1852,6 +2236,9 @@ const ClassContentEditor = () => {
     if (!error) {
       alert("저장 완료!");
       fetchList();
+      setForm({ root: "", sub: "", eng_job: "", link: "", image_url: "" });
+    } else {
+      alert(error.message);
     }
   };
 
@@ -1873,7 +2260,7 @@ const ClassContentEditor = () => {
         <div className="grid grid-cols-2 gap-2 max-h-[500px] overflow-y-auto pr-2">
           {list.map((item) => (
             <div
-              key={item.id}
+              key={item.id || item.sub_class}
               className="flex items-center justify-between bg-black/40 p-3 rounded-xl border border-white/5"
             >
               <span className="text-[10px] font-bold text-gray-400">{item.sub_class}</span>
@@ -2056,15 +2443,11 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
       return;
     }
 
-    const { error: pointError } = await supabase.rpc("add_points", {
+    await supabase.rpc("add_points", {
       p_user_id: user.id,
       p_points: 5,
       p_type: "post",
     });
-
-    if (pointError) {
-      console.error("포인트 지급 실패:", pointError.message);
-    }
 
     alert("게시글 작성 완료! +5 포인트 획득 🎉");
     onRefresh();
@@ -2271,11 +2654,12 @@ const MyRoom = ({ user, profile }: any) => {
     const fetchRankIcon = async () => {
       if (!profile?.rank_name) return;
 
-      const { data } = await supabase
-        .from("ranks")
-        .select("icon_url")
-        .eq("name", profile.rank_name)
-        .maybeSingle();
+      const data = await safeSingle(
+        supabase
+          .from("ranks")
+          .select("icon_url")
+          .eq("name", profile.rank_name)
+      );
 
       if (data?.icon_url) setRankIcon(data.icon_url);
     };
@@ -2343,7 +2727,7 @@ const MyRoom = ({ user, profile }: any) => {
           <InfoMiniCard title="랭크" value={profile.rank_name || "Seed"} />
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 items-center">
           <button onClick={handleAttendance} className="bg-green-600 px-5 py-3 rounded-xl font-black">
             출석 체크 (+10P)
           </button>
@@ -2499,10 +2883,16 @@ const GuildMembersPage = () => {
   }, []);
 
   const fetchMembers = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("guild_members")
       .select("*")
       .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      setMembers([]);
+      return;
+    }
 
     setMembers(data || []);
   };
@@ -2539,10 +2929,16 @@ const AdminCharacterManager = () => {
   }, []);
 
   const fetchChars = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("guild_members")
       .select("*")
       .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setChars([]);
+      return;
+    }
 
     setChars(data || []);
   };
@@ -2581,11 +2977,18 @@ const AdminRaidManager = () => {
   }, []);
 
   const fetchRaids = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("raid_schedules")
       .select("*")
       .order("raid_date")
       .order("raid_time");
+
+    if (error) {
+      console.error(error);
+      setRaids([]);
+      return;
+    }
+
     setRaids(data || []);
   };
 
@@ -2626,7 +3029,12 @@ const AdminUserManager = () => {
   }, []);
 
   const fetchUsers = async () => {
-    const { data } = await supabase.from("profiles").select("*");
+    const { data, error } = await supabase.from("profiles").select("*");
+    if (error) {
+      console.error(error);
+      setUsers([]);
+      return;
+    }
     setUsers(data || []);
   };
 
