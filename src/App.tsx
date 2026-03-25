@@ -1194,24 +1194,48 @@ const isFull = dealers >= dealerLimit && supports >= supportLimit
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+ <div className="rounded-2xl border border-white/10 bg-gradient-to-r from-violet-500/15 via-indigo-500/10 to-sky-500/15 p-4 mb-4">
+  <div className="flex items-start justify-between gap-3">
+    <div>
+      <div className="text-2xl font-black tracking-wide text-white">
+        {raid.raid_name}
+      </div>
+      <div className="mt-2 text-sm text-white/70">
+        {raid.raid_date} · {raid.raid_time}
+      </div>
+    </div>
 
-      <div className="bg-slate-950/75 border border-indigo-400/20 rounded-3xl p-6 w-[420px] backdrop-blur-2xl shadow-[0_0_60px_rgba(99,102,241,0.16)]">
+    <div className="text-right">
+      <div className="text-[11px] text-white/50 tracking-wider">모집 현황</div>
+      <div className="text-xl font-black text-violet-300">
+        {parts.length} / {raid.max_participants}
+      </div>
+    </div>
+  </div>
 
-        <div className="text-white text-lg font-bold mb-4">
-          {raid.raid_name}
-        </div>
+  <div className="mt-4 flex flex-wrap gap-2">
+    <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold">
+      {raid.raid_type}
+    </span>
 
-        <div className="text-sm text-gray-400 mb-2">
-          날짜 : {raid.raid_date}
-        </div>
+    {raid.experience && (
+      <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/20 text-xs font-bold text-emerald-300">
+        {raid.experience}
+      </span>
+    )}
 
-        <div className="text-sm text-gray-400 mb-2">
-          시간 : {raid.raid_time}
-        </div>
+    <span className="px-3 py-1 rounded-full bg-fuchsia-500/10 border border-fuchsia-400/20 text-xs font-bold text-fuchsia-300">
+      딜러 {dealers}/{dealerLimit}
+    </span>
 
-        <div className="text-sm text-gray-400 mb-4">
-딜러 {dealers}/{dealerLimit} | 서포터 {supports}/{supportLimit}
+    <span className="px-3 py-1 rounded-full bg-sky-500/10 border border-sky-400/20 text-xs font-bold text-sky-300">
+      서포터 {supports}/{supportLimit}
+    </span>
+
+    <span className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-xs font-bold">
+      빈자리 {raid.max_participants - parts.length}
+    </span>
+  </div>
 </div>
 
         <div className="space-y-2 max-h-[200px] overflow-y-auto mb-4">
