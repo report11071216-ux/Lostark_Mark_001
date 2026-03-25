@@ -62,121 +62,113 @@ export default function App() {
     setProfile(null);
     setActiveTab('home');
   };
-if (loading) {
+  if (loading) {
+    return (
+      <div className="min-h-screen relative overflow-hidden bg-[#05070d] flex items-center justify-center text-purple-400 font-bold italic">
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.20),_transparent_30%),radial-gradient(circle_at_20%_80%,_rgba(168,85,247,0.16),_transparent_26%),radial-gradient(circle_at_80%_30%,_rgba(59,130,246,0.14),_transparent_22%)]" />
+          <div
+            className="absolute inset-0 opacity-[0.14]"
+            style={{
+              backgroundImage:
+                "radial-gradient(rgba(255,255,255,0.9) 0.8px, transparent 0.8px)",
+              backgroundSize: "28px 28px",
+            }}
+          />
+          <div className="absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
+          <div className="absolute top-[18%] right-[6%] h-[360px] w-[360px] rounded-full bg-fuchsia-500/16 blur-3xl" />
+          <div className="absolute bottom-[-120px] left-[28%] h-[520px] w-[520px] rounded-full bg-sky-500/16 blur-3xl" />
+        </div>
+
+        <div className="relative z-10">INXX SYSTEM LOADING...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#05070d] flex items-center justify-center text-purple-400 font-bold italic">
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.14),_transparent_32%),radial-gradient(circle_at_20%_80%,_rgba(168,85,247,0.12),_transparent_28%),radial-gradient(circle_at_80%_30%,_rgba(59,130,246,0.10),_transparent_24%)]" />
+    <div className="min-h-screen relative overflow-hidden bg-[#05070d] text-white font-sans selection:bg-purple-500/30">
+      {/* 우주/성운 배경 */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.20),_transparent_30%),radial-gradient(circle_at_20%_80%,_rgba(168,85,247,0.16),_transparent_26%),radial-gradient(circle_at_80%_30%,_rgba(59,130,246,0.14),_transparent_22%)]" />
+
         <div
-          className="absolute inset-0 opacity-[0.08]"
+          className="absolute inset-0 opacity-[0.14]"
           style={{
             backgroundImage:
-              "radial-gradient(rgba(255,255,255,0.8) 0.7px, transparent 0.7px)",
-            backgroundSize: "26px 26px",
+              "radial-gradient(rgba(255,255,255,0.9) 0.8px, transparent 0.8px)",
+            backgroundSize: "28px 28px",
           }}
         />
+
+        <div className="absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
+        <div className="absolute top-[18%] right-[6%] h-[360px] w-[360px] rounded-full bg-fuchsia-500/16 blur-3xl" />
+        <div className="absolute bottom-[-120px] left-[28%] h-[520px] w-[520px] rounded-full bg-sky-500/16 blur-3xl" />
       </div>
-      INXX SYSTEM LOADING...
-    </div>
-  )
-}
-return (
-  <div className="min-h-screen relative overflow-hidden bg-[#05070d] text-white font-sans selection:bg-purple-500/30">
-    {/* 우주/성운 배경 */}
-    <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.20),_transparent_30%),radial-gradient(circle_at_20%_80%,_rgba(168,85,247,0.16),_transparent_26%),radial-gradient(circle_at_80%_30%,_rgba(59,130,246,0.14),_transparent_22%)]" />
 
-      <div
-        className="absolute inset-0 opacity-[0.14]"
-        style={{
-          backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.9) 0.8px, transparent 0.8px)",
-          backgroundSize: "28px 28px",
-        }}
-      />
+      {/* 실제 페이지 내용 */}
+      <div className="relative z-10">
+        {profile?.role === 'admin' && (
+          <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-purple-900 to-red-900 text-[10px] font-black py-1 text-center tracking-[0.3em] uppercase">
+            👑 Administrator Session Active
+          </div>
+        )}
 
-      <div className="absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
-      <div className="absolute top-[18%] right-[6%] h-[360px] w-[360px] rounded-full bg-fuchsia-500/16 blur-3xl" />
-      <div className="absolute bottom-[-120px] left-[28%] h-[520px] w-[520px] rounded-full bg-sky-500/16 blur-3xl" />
-    </div>
+        <Navbar activeTab={activeTab} setActiveTab={setActiveTab} user={user} profile={profile} onLogout={handleLogout} />
 
-    {/* 실제 페이지 내용 */}
-    <div className="relative z-10">
-      {/* 여기 아래에 기존 네 페이지 전체 내용을 그대로 넣어 */}
-      {/* 예: nav, main, section, modal, footer 등 전부 */}
+        <main className={profile?.role === 'admin' ? "pt-20" : "pt-16"}>
+          <AnimatePresence mode="wait">
+            {activeTab === 'home' && (
+              <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <RaidCalendar user={user} />
+                <div className="max-w-7xl mx-auto px-6 mb-12">
+                  <div className="flex justify-center gap-12 border-b border-white/5 pb-6">
+                    {['레이드', '가디언 토벌', '클래스'].map(t => (
+                      <button
+                        key={t}
+                        onClick={() => setContentView(t)}
+                        className={`text-xl font-black italic uppercase transition-all ${
+                          contentView === t
+                            ? 'text-purple-500 scale-110 underline underline-offset-8'
+                            : 'text-gray-600 hover:text-gray-400'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
 
-      {/* 예시
-      <nav>...</nav>
-      <main>...</main>
-      */}
-    </div>
-  </div>
-)
-}
-
-    {/* 실제 페이지 내용 */}
-    <div className="relative z-10">
-      {/* 여기 아래에 기존 네 페이지 전체 내용 */}
-
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} user={user} profile={profile} onLogout={handleLogout} />
-      
-      <main className={profile?.role === 'admin' ? "pt-20" : "pt-16"}>
-        <AnimatePresence mode="wait">
-          {activeTab === 'home' && (
-            <motion.div key="home" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}>
-              <RaidCalendar user={user} />
-              <div className="max-w-7xl mx-auto px-6 mb-12">
-                <div className="flex justify-center gap-12 border-b border-white/5 pb-6">
-             {['레이드', '가디언 토벌', '클래스'].map(t => (
-  <button
-    key={t}
-    onClick={() => setContentView(t)}
-    className={`text-xl font-black italic uppercase transition-all ${
-      contentView === t
-        ? 'text-purple-500 scale-110 underline underline-offset-8'
-        : 'text-gray-600 hover:text-gray-400'
-    }`}
-  >
-    {t}
-  </button>
-))}
-
-{profile?.is_admin && (
-  <>
-    {['길드 설정','캐릭터 관리','레이드 관리','회원 관리'].map(t => (
-      <button
-        key={t}
-        onClick={() => setContentView(t)}
-        className={`text-xl font-black italic uppercase transition-all ${
-          contentView === t
-            ? 'text-red-500 scale-110 underline underline-offset-8'
-            : 'text-gray-600 hover:text-gray-400'
-        }`}
-      >
-        {t}
-      </button>
-    ))}
-  </>
-)}
+                    {profile?.is_admin && (
+                      <>
+                        {['길드 설정', '캐릭터 관리', '레이드 관리', '회원 관리'].map(t => (
+                          <button
+                            key={t}
+                            onClick={() => setContentView(t)}
+                            className={`text-xl font-black italic uppercase transition-all ${
+                              contentView === t
+                                ? 'text-red-500 scale-110 underline underline-offset-8'
+                                : 'text-gray-600 hover:text-gray-400'
+                            }`}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <MainContentViewer type={contentView} />
-             
-            </motion.div>
-          )}
 
-          {activeTab === 'posts' && <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} />}
-          {activeTab === 'myroom' && <MyRoom user={user} profile={profile} />}
-          {activeTab === 'guild' && (
-  <GuildMembersPage user={user} />
-)}
-          {activeTab === 'ranking' && (
-  <RankingPage user={user} profile={profile} />
-)}
-          {activeTab === 'admin' && profile?.role === 'admin' && <AdminPanel settings={settings} setSettings={setSettings} />}
-          {(activeTab === 'login' || activeTab === 'signup') && <Auth key="auth" mode={activeTab} setMode={setActiveTab} />}
-        </AnimatePresence>
-      </main>
+                <MainContentViewer type={contentView} />
+              </motion.div>
+            )}
+
+            {activeTab === 'posts' && <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} />}
+            {activeTab === 'myroom' && <MyRoom user={user} profile={profile} />}
+            {activeTab === 'guild' && <GuildMembersPage user={user} />}
+            {activeTab === 'ranking' && <RankingPage user={user} profile={profile} />}
+            {activeTab === 'admin' && profile?.role === 'admin' && <AdminPanel settings={settings} setSettings={setSettings} />}
+            {(activeTab === 'login' || activeTab === 'signup') && <Auth key="auth" mode={activeTab} setMode={setActiveTab} />}
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   );
 }
