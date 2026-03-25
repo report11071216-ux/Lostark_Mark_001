@@ -80,27 +80,29 @@ if (loading) {
     </div>
   )
 }
-  
-  return (
+ return (
   <div className="min-h-screen relative overflow-hidden bg-[#05070d] text-white font-sans selection:bg-purple-500/30">
     {/* 우주/성운 배경 */}
-    <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.14),_transparent_32%),radial-gradient(circle_at_20%_80%,_rgba(168,85,247,0.12),_transparent_28%),radial-gradient(circle_at_80%_30%,_rgba(59,130,246,0.10),_transparent_24%)]" />
+    <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.20),_transparent_30%),radial-gradient(circle_at_20%_80%,_rgba(168,85,247,0.16),_transparent_26%),radial-gradient(circle_at_80%_30%,_rgba(59,130,246,0.14),_transparent_22%)]" />
 
       <div
-        className="absolute inset-0 opacity-[0.08]"
+        className="absolute inset-0 opacity-[0.14]"
         style={{
           backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.8) 0.7px, transparent 0.7px)",
-          backgroundSize: "26px 26px",
-          backgroundPosition: "0 0, 13px 13px",
+            "radial-gradient(rgba(255,255,255,0.9) 0.8px, transparent 0.8px)",
+          backgroundSize: "28px 28px",
         }}
       />
 
-      <div className="absolute -top-24 left-[8%] w-[420px] h-[420px] rounded-full bg-indigo-500/10 blur-3xl" />
-      <div className="absolute top-[18%] right-[6%] w-[360px] h-[360px] rounded-full bg-fuchsia-500/10 blur-3xl" />
-      <div className="absolute bottom-[-120px] left-[28%] w-[520px] h-[520px] rounded-full bg-sky-500/10 blur-3xl" />
+      <div className="absolute -top-24 left-[8%] w-[420px] h-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
+      <div className="absolute top-[18%] right-[6%] w-[360px] h-[360px] rounded-full bg-fuchsia-500/16 blur-3xl" />
+      <div className="absolute bottom-[-120px] left-[28%] w-[520px] h-[520px] rounded-full bg-sky-500/16 blur-3xl" />
     </div>
+
+    {/* 실제 페이지 내용 */}
+    <div className="relative z-10">
+      {/* 여기 아래에 기존 네 페이지 전체 내용 */}
 
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} user={user} profile={profile} onLogout={handleLogout} />
       
