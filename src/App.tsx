@@ -1257,33 +1257,66 @@ className="w-full py-3 rounded-xl font-bold bg-gray-700 hover:bg-gray-600 transi
 }
 
 
+const handleJoin = async () => {
+  const trimmedNickname = nickname.trim()
+  const trimmedClass = playerClass.trim()
+  const trimmedLevel = level.trim()
 
-const JoinForm = ({ raid, onClose, onSuccess }: any) => {
-
-  const [nickname,setNickname] = useState("")
-  const [level,setLevel] = useState("")
-  const [playerClass,setPlayerClass] = useState("")
-  const [role,setRole] = useState("딜러")
-
-  const handleJoin = async () => {
-
-    const { error } = await supabase
-      .from("raid_participants")
-      .insert({
-        schedule_id: raid.id,
-        character_name: nickname,
-        item_level: level,
-        class_name: playerClass,
-        position: role
-      })
-
-    if(!error){
-      onSuccess()
-    } else {
-      alert("참여 실패")
-    }
-
+  if (!trimmedNickname) {
+    alert("닉네임을 입력해주세요.")
+    return
   }
+
+  if (!trimmedLevel) {
+    alert("아이템 레벨을 입력해주세요.")
+    return
+  }
+
+  if (!trimmedClass) {
+    alert("클래스를 입력해주세요.")
+    return
+  }
+
+  // 1) 같은 일정에 같은 캐릭터가 이미 참가했는지 확인
+  const { data: existingParticipant, error: checkError } = await supabase
+    .from("raid_participants")
+    .select("id")
+    .eq("schedule_id", raid.id)
+    .eq("character_name", trimmedNickname)
+    .maybeSingle()
+
+  if (checkError) {
+    console.error("중복 참가 확인 실패:", checkError)
+    alert("참가 확인 중 오류가 발생했습니다.")
+    return
+  }
+
+  if (existingParticipant) {
+    alert("이미 이 캐릭터로 신청한 일정입니다.")
+    return
+  }
+
+  // 2) 중복이 아니면 참가 등록
+  const { error } = await supabase
+    .from("raid_participants")
+    .insert({
+      schedule_id: raid.id,
+      character_name: trimmedNickname,
+      item_level: trimmedLevel,
+      class_name: trimmedClass,
+      position: role
+    })
+
+  if (!error) {
+    alert("참가 신청 완료!")
+    onSuccess()
+    onClose()
+  } else {
+    console.error("참여 실패:", error)
+    alert("참여 실패")
+  }
+}
+
 
   return (
 
