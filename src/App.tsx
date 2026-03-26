@@ -658,7 +658,7 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                 길드 공지사항
               </h2>
               <p className="mt-2 text-gray-400">
-                공지사.
+                공지사항.
               </p>
             </div>
 
