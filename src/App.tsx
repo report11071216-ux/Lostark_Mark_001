@@ -535,6 +535,39 @@ const getWeaponTheme = (weapon: any) => {
   return WEAPON_RARITY_THEMES[rarity] || WEAPON_RARITY_THEMES.common;
 };
 
+const formatProbabilityText = (value: any) => {
+  const num = Number(value ?? 0);
+  if (!Number.isFinite(num) || num <= 0) return "0%";
+  const normalized = Math.round(num * 100) / 100;
+  return `${normalized % 1 === 0 ? normalized.toFixed(0) : normalized.toFixed(2)}%`;
+};
+
+const getProbabilityNumber = (value: any) => {
+  const num = Number(value ?? 0);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const isRareOrBetterWeapon = (rarity: any) => {
+  const normalized = normalizeWeaponRarity(rarity);
+  return normalized === "rare" || normalized === "epic" || normalized === "legendary";
+};
+
+const buildEqualProbabilityMap = (ids: string[]) => {
+  if (!Array.isArray(ids) || ids.length === 0) return {} as Record<string, string>;
+  const base = Math.floor((100 / ids.length) * 100) / 100;
+  let consumed = 0;
+  const next: Record<string, string> = {};
+  ids.forEach((id, index) => {
+    const value = index === ids.length - 1 ? Math.max(0, Math.round((100 - consumed) * 100) / 100) : base;
+    consumed += value;
+    next[String(id)] = value.toFixed(2);
+  });
+  return next;
+};
+
+const getProbabilityTotal = (map: Record<string, string | number>, ids: string[]) =>
+  ids.reduce((sum, id) => sum + getProbabilityNumber(map?.[String(id)]), 0);
+
 const isWeaponGachaAvailable = (item: any) => {
   const now = Date.now();
   const from = item?.available_from ? new Date(item.available_from).getTime() : null;
@@ -5139,6 +5172,7 @@ const AdminUserManager = () => {
 };
 
 
+
 const PointShopPage = ({ user, profile }: any) => {
   const [items, setItems] = useState<any[]>([]);
   const [gachaProducts, setGachaProducts] = useState<any[]>([]);
@@ -5146,7 +5180,8 @@ const PointShopPage = ({ user, profile }: any) => {
   const [myPoint, setMyPoint] = useState(0);
   const [loading, setLoading] = useState(true);
   const [shopTab, setShopTab] = useState<"badge" | "gacha">("badge");
-  const [drawResult, setDrawResult] = useState<any>(null);
+  const [drawSession, setDrawSession] = useState<any>(null);
+  const [drawingProductId, setDrawingProductId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchShop();
@@ -5188,7 +5223,7 @@ const PointShopPage = ({ user, profile }: any) => {
     if (productIds.length > 0) {
       const { data: rewardRows, error: rewardError } = await client
         .from("weapon_gacha_reward_items")
-        .select("id, product_id, weight, weapon_id, is_featured, weapon_parts(id, name, description, image_url, rarity, is_active)")
+        .select("id, product_id, weight, probability, weapon_id, is_featured, weapon_parts(id, name, description, image_url, rarity, is_active)")
         .in("product_id", productIds);
 
       if (rewardError) {
@@ -5202,9 +5237,19 @@ const PointShopPage = ({ user, profile }: any) => {
           grouped[productId].push({
             ...row.weapon_parts,
             weight: row.weight,
+            probability: getProbabilityNumber(row.probability),
             is_featured: row.is_featured,
           });
         });
+
+        Object.keys(grouped).forEach((key) => {
+          grouped[key] = grouped[key].sort((a: any, b: any) => {
+            const probabilityDiff = getProbabilityNumber(b.probability) - getProbabilityNumber(a.probability);
+            if (probabilityDiff !== 0) return probabilityDiff;
+            return String(a.name || "").localeCompare(String(b.name || ""), "ko");
+          });
+        });
+
         setGachaRewards(grouped);
       }
     } else {
@@ -5230,24 +5275,51 @@ const PointShopPage = ({ user, profile }: any) => {
     fetchShop();
   };
 
-  const drawWeaponGacha = async (product: any) => {
+  const drawWeaponGacha = async (product: any, drawCount = 1) => {
     if (!user) return alert("로그인 후 사용 가능합니다.");
     if (!isWeaponGachaAvailable(product)) return alert("지금은 판매 시간이 아니야.");
-    if (myPoint < Number(product.price || 0)) return alert("포인트가 부족합니다.");
-    if (!confirm(`${product.title} 뽑기를 진행할까요? ${product.price}P가 차감됩니다.`)) return;
+
+    const totalCost = Number(product.price || 0) * drawCount;
+    if (myPoint < totalCost) return alert("포인트가 부족합니다.");
+
+    const confirmText =
+      drawCount === 10
+        ? `${product.title} 10회 뽑기를 진행할까요? 총 ${totalCost}P가 차감되고, 10회 내 Rare 이상 1개 보장이 적용됩니다.`
+        : `${product.title} 뽑기를 진행할까요? ${totalCost}P가 차감됩니다.`;
+
+    if (!confirm(confirmText)) return;
 
     const client = getSupabaseOrThrow();
-    const { data, error } = await client.rpc("draw_weapon_gacha", {
+    setDrawingProductId(String(product.id));
+
+    const { data, error } = await client.rpc("draw_weapon_gacha_pack", {
       p_user_id: user.id,
       p_product_id: product.id,
+      p_draw_count: drawCount,
     });
+
+    setDrawingProductId(null);
 
     if (error) {
       alert(error.message);
       return;
     }
 
-    setDrawResult(data);
+    const results = Array.isArray(data?.results)
+      ? data.results
+      : data
+      ? [data]
+      : [];
+
+    setDrawSession({
+      ...data,
+      results,
+      draw_count: Number(data?.draw_count || drawCount),
+      total_cost: Number(data?.total_cost || totalCost),
+      duplicate_refund_total: Number(data?.duplicate_refund_total || 0),
+      pity_applied_count: Number(data?.pity_applied_count || 0),
+      rare_or_better_count: results.filter((item: any) => isRareOrBetterWeapon(item?.rarity)).length,
+    });
     await fetchShop();
   };
 
@@ -5256,7 +5328,7 @@ const PointShopPage = ({ user, profile }: any) => {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h2 className="text-4xl font-black italic uppercase tracking-tight">Point Shop</h2>
-          <p className="text-gray-500 font-bold mt-2">기존 뱃지 상품은 유지하고, 무기 파츠 뽑기를 따로 추가했어. 새로고침이 느려져도 포인트샵 자체는 독립적으로 빠르게 불러오도록 구성했어.</p>
+          <p className="text-gray-500 font-bold mt-2">기존 뱃지 상품은 유지하고, 무기 파츠 뽑기는 확률/보장/10회 뽑기까지 보이도록 강화했어. 새로고침이 느려져도 포인트샵 자체는 독립적으로 빠르게 불러오도록 구성했어.</p>
         </div>
 
         <div className="rounded-[2rem] border border-purple-500/20 bg-purple-500/10 px-5 py-4">
@@ -5382,6 +5454,10 @@ const PointShopPage = ({ user, profile }: any) => {
             const available = isWeaponGachaAvailable(product);
             const rewards = gachaRewards[String(product.id)] || [];
             const featured = rewards.find((item: any) => item.is_featured) || rewards[0];
+            const probabilityTotal = rewards.reduce((sum: number, item: any) => sum + getProbabilityNumber(item?.probability), 0);
+            const rarePool = rewards.filter((item: any) => isRareOrBetterWeapon(item?.rarity));
+            const drawBusy = drawingProductId === String(product.id);
+
             return (
               <div
                 key={product.id}
@@ -5398,6 +5474,9 @@ const PointShopPage = ({ user, profile }: any) => {
                         </span>
                         <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
                           {getWeaponGachaStatusText(product)}
+                        </span>
+                        <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
+                          10회 내 Rare+ 보장
                         </span>
                       </div>
                       <div className="mt-4 text-2xl font-black leading-tight break-words">{product.title}</div>
@@ -5420,48 +5499,93 @@ const PointShopPage = ({ user, profile }: any) => {
                         <div className="min-w-0">
                           <div className="text-lg font-black truncate">{featured?.name || "무기 파츠 구성 준비 중"}</div>
                           <div className="mt-1 text-sm text-white/70 line-clamp-2">{featured?.description || "관리자 페이지에서 무기를 선택하면 여기 미리보기가 채워져."}</div>
-                          {featured && (
-                            <div className="mt-2 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: getWeaponTheme(featured).text, borderColor: getWeaponTheme(featured).border, background: getWeaponTheme(featured).background }}>
-                              {getWeaponTheme(featured).label}
-                            </div>
-                          )}
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {featured && (
+                              <div className="inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: getWeaponTheme(featured).text, borderColor: getWeaponTheme(featured).border, background: getWeaponTheme(featured).background }}>
+                                {getWeaponTheme(featured).label}
+                              </div>
+                            )}
+                            {featured && (
+                              <div className="inline-flex px-2 py-1 rounded-full text-[10px] font-black border border-white/10 bg-white/5 text-white/75">
+                                확률 {formatProbabilityText(featured?.probability)}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">포함 무기</div>
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">포함 무기 확률</div>
+                      <div className="text-xs text-white/55">총합 {formatProbabilityText(probabilityTotal)}</div>
+                    </div>
+                    <div className="mt-3 space-y-2">
                       {rewards.length === 0 ? (
                         <div className="text-sm text-gray-500">등록된 무기 보상이 없습니다.</div>
                       ) : (
                         rewards.slice(0, 6).map((weapon: any, index: number) => (
-                          <div key={`${product.id}-weapon-${weapon.id || index}`} className="px-3 py-2 rounded-xl border bg-black/20 text-xs font-black" style={{ borderColor: getWeaponTheme(weapon).border, color: getWeaponTheme(weapon).text }}>
-                            {weapon.name}
+                          <div key={`${product.id}-weapon-${weapon.id || index}`} className="flex items-center justify-between gap-3 rounded-xl border bg-black/20 px-3 py-2" style={{ borderColor: getWeaponTheme(weapon).border }}>
+                            <div className="min-w-0 flex items-center gap-2">
+                              <WeaponImage weapon={weapon} className="h-10 w-10 rounded-xl" />
+                              <div className="min-w-0">
+                                <div className="text-sm font-black truncate">{weapon.name}</div>
+                                <div className="text-[11px]" style={{ color: getWeaponTheme(weapon).text }}>
+                                  {getWeaponTheme(weapon).label}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="shrink-0 text-sm font-black text-white/85">{formatProbabilityText(weapon.probability)}</div>
                           </div>
                         ))
                       )}
                     </div>
+                    {rewards.length > 6 && (
+                      <div className="mt-2 text-xs text-white/45">+{rewards.length - 6}개 무기 더 포함</div>
+                    )}
+                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/70">
+                        중복 무기 환불 <span className="font-black text-white">1P</span>
+                      </div>
+                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/70">
+                        Rare+ 후보 <span className="font-black text-white">{rarePool.length}개</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="mt-5 flex items-center justify-between gap-4">
+                  <div className="mt-5 flex items-end justify-between gap-4">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.24em] text-white/40 font-black">Price</div>
                       <div className="text-3xl font-black">{product.price}P</div>
+                      <div className="mt-1 text-xs text-white/45">10회 {Number(product.price || 0) * 10}P</div>
                     </div>
-                    <button
-                      disabled={!available || !user}
-                      onClick={() => drawWeaponGacha(product)}
-                      className={cn(
-                        "px-5 py-3 rounded-2xl font-black transition-all",
-                        available && user
-                          ? "bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-600/25"
-                          : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                      )}
-                    >
-                      {user ? (available ? "뽑기하기" : "판매 종료") : "로그인 필요"}
-                    </button>
+                    <div className="grid gap-2 shrink-0">
+                      <button
+                        disabled={!available || !user || drawBusy}
+                        onClick={() => drawWeaponGacha(product, 1)}
+                        className={cn(
+                          "px-5 py-3 rounded-2xl font-black transition-all",
+                          available && user && !drawBusy
+                            ? "bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-600/25"
+                            : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                        )}
+                      >
+                        {drawBusy ? "처리 중..." : user ? (available ? "1회 뽑기" : "판매 종료") : "로그인 필요"}
+                      </button>
+                      <button
+                        disabled={!available || !user || drawBusy}
+                        onClick={() => drawWeaponGacha(product, 10)}
+                        className={cn(
+                          "px-5 py-3 rounded-2xl font-black transition-all",
+                          available && user && !drawBusy
+                            ? "bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/25"
+                            : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                        )}
+                      >
+                        {drawBusy ? "처리 중..." : user ? (available ? "10회 뽑기" : "판매 종료") : "로그인 필요"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -5471,26 +5595,83 @@ const PointShopPage = ({ user, profile }: any) => {
       )}
 
       <AnimatePresence>
-        {drawResult && (
-          <ModalFrame onClose={() => setDrawResult(null)}>
-            <div className="max-w-xl mx-auto rounded-[2.5rem] border border-white/10 bg-[#0b1020] p-8 relative overflow-hidden">
+        {drawSession && (
+          <ModalFrame onClose={() => setDrawSession(null)}>
+            <div className="max-w-5xl mx-auto rounded-[2.5rem] border border-white/10 bg-[#0b1020] p-8 relative overflow-hidden">
               <div className="absolute inset-0 opacity-80 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.14), rgba(168,85,247,0.2) 42%, rgba(2,6,23,0.96))" }} />
-              <div className="relative z-10 text-center">
-                <div className="text-[10px] uppercase tracking-[0.32em] text-fuchsia-300 font-black">Weapon Gacha Result</div>
-                <div className="mt-4 flex justify-center">
-                  <WeaponImage weapon={drawResult} className="h-28 w-28 rounded-[2rem]" />
+              <div className="relative z-10">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.32em] text-fuchsia-300 font-black">Weapon Gacha Result</div>
+                    <div className="mt-3 text-3xl font-black">{drawSession?.product_title || "무기 뽑기 결과"}</div>
+                    <div className="mt-2 text-sm text-white/70">
+                      총 {drawSession?.draw_count || drawSession?.results?.length || 0}회 / 사용 {drawSession?.total_cost || 0}P / 중복 환불 {drawSession?.duplicate_refund_total || 0}P
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="px-3 py-1 rounded-full text-xs font-black border border-white/10 bg-white/5 text-white/75">
+                        Rare+ 획득 {drawSession?.rare_or_better_count || 0}개
+                      </span>
+                      <span className="px-3 py-1 rounded-full text-xs font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
+                        보장 발동 {drawSession?.pity_applied_count || 0}회
+                      </span>
+                    </div>
+                  </div>
+
+                  {drawSession?.results?.[0] && (
+                    <div className="rounded-[1.6rem] border border-white/10 bg-black/25 px-5 py-4 min-w-[220px]">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">대표 결과</div>
+                      <div className="mt-4 flex items-center gap-3">
+                        <WeaponImage weapon={drawSession.results[0]} className="h-16 w-16 rounded-[1.2rem]" />
+                        <div className="min-w-0">
+                          <div className="font-black truncate">{drawSession.results[0]?.weapon_name || drawSession.results[0]?.name}</div>
+                          <div className="text-xs mt-1" style={{ color: getWeaponTheme({ rarity: drawSession.results[0]?.rarity }).text }}>
+                            {getWeaponTheme({ rarity: drawSession.results[0]?.rarity }).label}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="mt-5 text-3xl font-black">{drawResult?.weapon_name || drawResult?.name || "무기 파츠"}</div>
-                <div className="mt-3 inline-flex px-3 py-1 rounded-full text-xs font-black border" style={{ color: getWeaponTheme({ rarity: drawResult?.rarity }).text, borderColor: getWeaponTheme({ rarity: drawResult?.rarity }).border, background: getWeaponTheme({ rarity: drawResult?.rarity }).background }}>
-                  {getWeaponTheme({ rarity: drawResult?.rarity }).label}
+
+                <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-5 gap-3 max-h-[55vh] overflow-y-auto pr-1">
+                  {(drawSession?.results || []).map((result: any, index: number) => {
+                    const theme = getWeaponTheme({ rarity: result?.rarity });
+                    return (
+                      <div
+                        key={`${result?.weapon_id || result?.id || "result"}-${index}`}
+                        className="rounded-[1.6rem] border p-4 relative overflow-hidden"
+                        style={{ borderColor: theme.border, background: theme.background, boxShadow: `0 0 22px ${theme.glow}` }}
+                      >
+                        {result?.pity_applied && (
+                          <div className="absolute top-3 right-3 px-2 py-1 rounded-full text-[10px] font-black border border-fuchsia-400/35 bg-fuchsia-500/15 text-fuchsia-200">
+                            보장
+                          </div>
+                        )}
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">#{index + 1}</div>
+                        <div className="mt-3 flex justify-center">
+                          <WeaponImage weapon={result} className="h-20 w-20 rounded-[1.3rem]" />
+                        </div>
+                        <div className="mt-4 text-sm font-black leading-tight break-words">{result?.weapon_name || result?.name || "무기 파츠"}</div>
+                        <div className="mt-2 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
+                          {theme.label}
+                        </div>
+                        <div className="mt-3 text-xs text-white/70 line-clamp-2">
+                          {result?.duplicate ? "중복 무기 · 1P 환불" : result?.description || "새 무기 파츠를 획득했어."}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="mt-4 text-sm text-white/75 whitespace-pre-wrap">
-                  {drawResult?.duplicate
-                    ? `중복 무기가 나와서 보상 포인트 ${drawResult?.refund_points || 0}P를 돌려줬어.`
-                    : drawResult?.message || "새 무기 파츠를 획득했어. 마이룸에서 캐릭터에게 장착해봐."}
+
+                <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-black/25 p-4 text-sm text-white/75">
+                  {drawSession?.pity_applied_count > 0
+                    ? `이번 결과에서는 보장 시스템이 ${drawSession.pity_applied_count}회 발동했어.`
+                    : "이번 결과는 일반 확률 기준으로 진행됐어."}
+                  {drawSession?.duplicate_refund_total > 0 && ` 중복 무기 환불 ${drawSession.duplicate_refund_total}P도 바로 반영했어.`}
                 </div>
+
                 <button
-                  onClick={() => setDrawResult(null)}
+                  onClick={() => setDrawSession(null)}
                   className="mt-6 px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 font-black"
                 >
                   확인
@@ -5503,6 +5684,8 @@ const PointShopPage = ({ user, profile }: any) => {
     </div>
   );
 };
+
+
 
 const AdminPointShopManager = () => {
   const [title, setTitle] = useState("");
@@ -5533,6 +5716,7 @@ const AdminPointShopManager = () => {
   const [gachaAvailableTo, setGachaAvailableTo] = useState("");
   const [selectedWeaponIds, setSelectedWeaponIds] = useState<string[]>([]);
   const [featuredWeaponId, setFeaturedWeaponId] = useState("");
+  const [gachaProbabilityMap, setGachaProbabilityMap] = useState<Record<string, string>>(buildEqualProbabilityMap([]));
   const [gachaProducts, setGachaProducts] = useState<any[]>([]);
   const [gachaRewardMap, setGachaRewardMap] = useState<Record<string, any[]>>({});
 
@@ -5578,6 +5762,7 @@ const AdminPointShopManager = () => {
       setGachaRewardMap({});
       return;
     }
+
     const products = data || [];
     setGachaProducts(products);
 
@@ -5589,7 +5774,7 @@ const AdminPointShopManager = () => {
 
     const { data: rewardRows, error: rewardError } = await client
       .from("weapon_gacha_reward_items")
-      .select("id, product_id, weight, is_featured, weapon_id, weapon_parts(id, name, description, image_url, rarity)")
+      .select("id, product_id, weight, probability, is_featured, weapon_id, weapon_parts(id, name, description, image_url, rarity)")
       .in("product_id", productIds);
 
     if (rewardError) {
@@ -5605,9 +5790,19 @@ const AdminPointShopManager = () => {
       grouped[key].push({
         ...row.weapon_parts,
         is_featured: row.is_featured,
+        probability: getProbabilityNumber(row.probability),
         weight: row.weight,
       });
     });
+
+    Object.keys(grouped).forEach((key) => {
+      grouped[key] = grouped[key].sort((a: any, b: any) => {
+        const probabilityDiff = getProbabilityNumber(b.probability) - getProbabilityNumber(a.probability);
+        if (probabilityDiff !== 0) return probabilityDiff;
+        return String(a.name || "").localeCompare(String(b.name || ""), "ko");
+      });
+    });
+
     setGachaRewardMap(grouped);
   };
 
@@ -5666,9 +5861,44 @@ const AdminPointShopManager = () => {
     fetchWeaponParts();
   };
 
+  const totalProbability = getProbabilityTotal(gachaProbabilityMap, selectedWeaponIds);
+  const isProbabilityValid = selectedWeaponIds.length > 0 && Math.abs(totalProbability - 100) < 0.02;
+
+  const handleWeaponSelectionChange = (weaponId: string, checked: boolean) => {
+    const next = checked
+      ? Array.from(new Set([...selectedWeaponIds, String(weaponId)]))
+      : selectedWeaponIds.filter((id) => String(id) !== String(weaponId));
+
+    setSelectedWeaponIds(next);
+    setGachaProbabilityMap(buildEqualProbabilityMap(next));
+
+    if (!checked && featuredWeaponId === String(weaponId)) {
+      setFeaturedWeaponId(next[0] || "");
+    } else if (checked && !featuredWeaponId) {
+      setFeaturedWeaponId(String(weaponId));
+    }
+  };
+
+  const updateProbability = (weaponId: string, value: string) => {
+    setGachaProbabilityMap((prev) => ({
+      ...prev,
+      [String(weaponId)]: value,
+    }));
+  };
+
   const createGachaProduct = async () => {
     if (!gachaTitle.trim() || !gachaPrice) return alert("뽑기 이름과 가격을 입력하세요.");
     if (selectedWeaponIds.length === 0) return alert("뽑기 보상으로 들어갈 무기를 하나 이상 선택하세요.");
+
+    const invalidWeapon = selectedWeaponIds.find((weaponId) => getProbabilityNumber(gachaProbabilityMap[weaponId]) <= 0);
+    if (invalidWeapon) {
+      const invalidMeta = weaponParts.find((item: any) => String(item.id) === String(invalidWeapon));
+      return alert(`${invalidMeta?.name || "선택한 무기"}의 확률을 0보다 크게 입력해줘.`);
+    }
+
+    if (!isProbabilityValid) {
+      return alert(`확률 총합이 100%가 되어야 해. 현재 총합은 ${formatProbabilityText(totalProbability)}야.`);
+    }
 
     const client = getSupabaseOrThrow();
     const { data: inserted, error } = await client
@@ -5682,18 +5912,24 @@ const AdminPointShopManager = () => {
         is_active: true,
         available_from: gachaAvailableFrom ? new Date(gachaAvailableFrom).toISOString() : null,
         available_to: gachaAvailableTo ? new Date(gachaAvailableTo).toISOString() : null,
+        guaranteed_rare_within: 10,
+        duplicate_refund_points: 1,
       })
       .select("*")
       .single();
 
     if (error) return alert(error.message);
 
-    const rewardRows = selectedWeaponIds.map((weaponId) => ({
-      product_id: inserted.id,
-      weapon_id: weaponId,
-      weight: 1,
-      is_featured: featuredWeaponId ? featuredWeaponId === weaponId : selectedWeaponIds[0] === weaponId,
-    }));
+    const rewardRows = selectedWeaponIds.map((weaponId) => {
+      const probability = getProbabilityNumber(gachaProbabilityMap[weaponId]);
+      return {
+        product_id: inserted.id,
+        weapon_id: weaponId,
+        weight: Math.max(1, Math.round(probability * 100)),
+        probability,
+        is_featured: featuredWeaponId ? featuredWeaponId === weaponId : selectedWeaponIds[0] === weaponId,
+      };
+    });
 
     const { error: rewardError } = await client.from("weapon_gacha_reward_items").insert(rewardRows);
     if (rewardError) return alert(rewardError.message);
@@ -5707,6 +5943,7 @@ const AdminPointShopManager = () => {
     setGachaAvailableTo("");
     setSelectedWeaponIds([]);
     setFeaturedWeaponId("");
+    setGachaProbabilityMap(buildEqualProbabilityMap([]));
     fetchGachaProducts();
   };
 
@@ -5765,8 +6002,19 @@ const AdminPointShopManager = () => {
   };
 
   const previewTheme = getBadgeVisualTheme(previewItem);
-  const gachaPreviewWeapons = weaponParts.filter((item: any) => selectedWeaponIds.includes(String(item.id)));
-  const gachaFeaturedPreview = gachaPreviewWeapons.find((item: any) => String(item.id) === featuredWeaponId) || gachaPreviewWeapons[0];
+  const previewHighlights = getShopItemHighlights(previewItem);
+  const gachaPreviewWeapons = weaponParts
+    .filter((item: any) => selectedWeaponIds.includes(String(item.id)))
+    .map((item: any) => ({
+      ...item,
+      probability: getProbabilityNumber(gachaProbabilityMap[String(item.id)]),
+    }))
+    .sort((a: any, b: any) => getProbabilityNumber(b.probability) - getProbabilityNumber(a.probability));
+
+  const gachaFeaturedPreview =
+    gachaPreviewWeapons.find((item: any) => String(item.id) === featuredWeaponId) ||
+    gachaPreviewWeapons[0] ||
+    null;
 
   return (
     <div className="space-y-10">
@@ -5854,10 +6102,8 @@ const AdminPointShopManager = () => {
                 <div className="min-w-0">
                   <div className="text-lg font-black truncate">{previewItem.title}</div>
                   <div className="text-sm text-white/70">{previewTheme.label}</div>
-                  <div className="mt-2">
-                    <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: previewTheme.chipText, borderColor: previewTheme.chipBorder, background: previewTheme.chipBackground }}>
-                      길드 카드 적용
-                    </span>
+                  <div className="mt-2 inline-flex px-3 py-1 rounded-full text-xs font-black border" style={{ color: previewTheme.chipText, borderColor: previewTheme.chipBorder, background: previewTheme.chipBackground }}>
+                    카드 이펙트 적용
                   </div>
                 </div>
               </div>
@@ -5865,8 +6111,8 @@ const AdminPointShopManager = () => {
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 relative overflow-hidden">
-            <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: rewardType === "badge" ? previewTheme.cardBackground : "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92) 52%, rgba(2,6,23,0.96))" }} />
-            <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: rewardType === "badge" ? previewTheme.aura : "radial-gradient(circle at top right, rgba(168,85,247,0.18), transparent 42%)" }} />
+            <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: previewTheme.cardBackground }} />
+            <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: previewTheme.aura }} />
             <div className="relative z-10">
               <div className="text-[10px] uppercase tracking-[0.28em] font-black text-white/70">Point Shop Live Preview</div>
               <div className="mt-4 flex items-start justify-between gap-4">
@@ -5888,8 +6134,14 @@ const AdminPointShopManager = () => {
               </div>
 
               <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                <div className="text-sm font-bold text-white/85">{previewTheme.label} 길드 카드</div>
-                <div className="mt-3 text-sm text-white/70 whitespace-pre-wrap">{previewItem.description}</div>
+                <div className="text-sm font-bold text-white/85">상품 포인트 미리보기</div>
+                <div className="mt-3 space-y-2">
+                  {previewHighlights.map((line, index) => (
+                    <div key={`preview-highlight-${index}`} className="text-sm text-white/75">
+                      • {line}
+                    </div>
+                  ))}
+                </div>
                 <div className="mt-4 text-3xl font-black">{previewItem.price}P</div>
               </div>
             </div>
@@ -5948,7 +6200,7 @@ const AdminPointShopManager = () => {
           <div>
             <div className="text-[10px] uppercase tracking-[0.28em] font-black text-sky-300">Weapon Gacha Builder</div>
             <div className="mt-2 text-2xl font-black">무기 뽑기 상품 생성</div>
-            <div className="text-sm text-gray-400 mt-1">포인트샵에서 바로 뽑기할 수 있는 상품과 LIVE PREVIEW를 함께 구성할 수 있어.</div>
+            <div className="text-sm text-gray-400 mt-1">무기별 확률 직접 입력, 중복 환불 1P, 10회 내 Rare 이상 보장을 포함한 뽑기 상품을 만들 수 있어.</div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
@@ -5977,56 +6229,100 @@ const AdminPointShopManager = () => {
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <div className="text-sm font-black">포함 무기 선택</div>
-            <div className="text-xs text-gray-400 mt-1">체크한 무기들이 실제 뽑기 보상으로 들어가.</div>
-            <div className="mt-4 grid md:grid-cols-2 gap-3 max-h-[320px] overflow-y-auto pr-1">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-black">포함 무기 선택</div>
+                <div className="text-xs text-gray-400 mt-1">체크 후 확률(%)을 직접 입력해줘. 총합은 반드시 100%여야 해.</div>
+              </div>
+              <div className={cn(
+                "px-3 py-2 rounded-xl text-xs font-black border",
+                isProbabilityValid ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200" : "border-rose-500/30 bg-rose-500/15 text-rose-200"
+              )}>
+                총합 {formatProbabilityText(totalProbability)}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 max-h-[420px] overflow-y-auto pr-1">
               {weaponParts.map((weapon: any) => {
                 const checked = selectedWeaponIds.includes(String(weapon.id));
                 const theme = getWeaponTheme(weapon);
                 return (
-                  <label
+                  <div
                     key={weapon.id}
-                    className="rounded-2xl border p-3 cursor-pointer"
+                    className="rounded-2xl border p-4"
                     style={{
                       borderColor: checked ? theme.border : "rgba(255,255,255,0.08)",
                       background: checked ? theme.background : "rgba(255,255,255,0.03)",
                     }}
                   >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          const next = new Set(selectedWeaponIds);
-                          if (e.target.checked) next.add(String(weapon.id));
-                          else next.delete(String(weapon.id));
-                          const nextArray = Array.from(next);
-                          setSelectedWeaponIds(nextArray);
-                          if (!featuredWeaponId || !nextArray.includes(featuredWeaponId)) {
-                            setFeaturedWeaponId(nextArray[0] || "");
-                          }
-                        }}
-                      />
-                      <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl" />
-                      <div className="min-w-0">
-                        <div className="font-black truncate">{weapon.name}</div>
-                        <div className="text-xs mt-1" style={{ color: theme.text }}>{theme.label}</div>
+                    <div className="grid md:grid-cols-[auto,1fr,140px,110px] gap-3 items-center">
+                      <div className="flex items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => handleWeaponSelectionChange(String(weapon.id), e.target.checked)}
+                        />
                       </div>
+
+                      <div className="flex items-center gap-3 min-w-0">
+                        <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl" />
+                        <div className="min-w-0">
+                          <div className="font-black truncate">{weapon.name}</div>
+                          <div className="text-xs mt-1" style={{ color: theme.text }}>{theme.label}</div>
+                          <div className="text-xs text-gray-400 mt-1 line-clamp-1">{weapon.description || "길드탭 캐릭터 카드 장착 파츠"}</div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.2em] font-black text-white/45">확률(%)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          disabled={!checked}
+                          value={checked ? gachaProbabilityMap[String(weapon.id)] || "" : ""}
+                          onChange={(e) => updateProbability(String(weapon.id), e.target.value)}
+                          className="mt-2 w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-sm font-black disabled:opacity-40"
+                          placeholder="0.00"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={!checked}
+                        onClick={() => setFeaturedWeaponId(String(weapon.id))}
+                        className={cn(
+                          "px-3 py-2 rounded-xl text-xs font-black border transition disabled:opacity-40",
+                          featuredWeaponId === String(weapon.id)
+                            ? "border-amber-400/40 bg-amber-500/15 text-amber-200"
+                            : "border-white/10 bg-white/5 text-white/70"
+                        )}
+                      >
+                        {featuredWeaponId === String(weapon.id) ? "대표 무기" : "대표 지정"}
+                      </button>
                     </div>
-                  </label>
+                  </div>
                 );
               })}
             </div>
-          </div>
 
-          <div>
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">대표 무기 지정</label>
-            <select className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl" value={featuredWeaponId} onChange={(e) => setFeaturedWeaponId(e.target.value)}>
-              <option value="">자동 선택</option>
-              {gachaPreviewWeapons.map((weapon: any) => (
-                <option key={weapon.id} value={weapon.id}>{weapon.name}</option>
-              ))}
-            </select>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setGachaProbabilityMap(buildEqualProbabilityMap(selectedWeaponIds))}
+                disabled={selectedWeaponIds.length === 0}
+                className="px-3 py-2 rounded-xl text-xs font-black border border-white/10 bg-white/5 disabled:opacity-40"
+              >
+                균등 분배
+              </button>
+              <div className="px-3 py-2 rounded-xl text-xs font-black border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-200">
+                중복 무기 환불 1P
+              </div>
+              <div className="px-3 py-2 rounded-xl text-xs font-black border border-amber-500/30 bg-amber-500/10 text-amber-200">
+                10회 내 Rare 이상 1개 보장
+              </div>
+            </div>
           </div>
 
           <button
@@ -6055,6 +6351,9 @@ const AdminPointShopManager = () => {
                           available_to: gachaAvailableTo ? new Date(gachaAvailableTo).toISOString() : null,
                         })}
                       </span>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-200">
+                        10회 Rare+ 보장
+                      </span>
                     </div>
                     <div className="mt-4 text-2xl font-black leading-tight break-words">{gachaTitle || "신규 무기 뽑기"}</div>
                     <div className="mt-2 text-sm text-white/75">{gachaPromoText || "전설 무기 등장 확률 UP / 대표 문구 미리보기"}</div>
@@ -6072,89 +6371,184 @@ const AdminPointShopManager = () => {
                       <div className="text-lg font-black truncate">{gachaFeaturedPreview?.name || "선택된 무기 없음"}</div>
                       <div className="mt-2 text-sm text-white/70 line-clamp-2">{gachaFeaturedPreview?.description || "왼쪽에서 보상 무기를 선택하면 라이브 프리뷰가 채워져."}</div>
                       {gachaFeaturedPreview && (
-                        <div className="mt-2 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: getWeaponTheme(gachaFeaturedPreview).text, borderColor: getWeaponTheme(gachaFeaturedPreview).border, background: getWeaponTheme(gachaFeaturedPreview).background }}>
-                          {getWeaponTheme(gachaFeaturedPreview).label}
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <div className="inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: getWeaponTheme(gachaFeaturedPreview).text, borderColor: getWeaponTheme(gachaFeaturedPreview).border, background: getWeaponTheme(gachaFeaturedPreview).background }}>
+                            {getWeaponTheme(gachaFeaturedPreview).label}
+                          </div>
+                          <div className="inline-flex px-2 py-1 rounded-full text-[10px] font-black border border-white/10 bg-white/5 text-white/75">
+                            확률 {formatProbabilityText(gachaFeaturedPreview?.probability)}
+                          </div>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
 
+                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">확률 요약</div>
+                    <div className={cn(
+                      "text-xs font-black",
+                      isProbabilityValid ? "text-emerald-300" : "text-rose-300"
+                    )}>
+                      총합 {formatProbabilityText(totalProbability)}
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {gachaPreviewWeapons.length === 0 ? (
+                      <div className="text-sm text-gray-500">선택된 무기가 없어요.</div>
+                    ) : (
+                      gachaPreviewWeapons.slice(0, 6).map((weapon: any) => (
+                        <div key={`preview-${weapon.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <WeaponImage weapon={weapon} className="h-10 w-10 rounded-xl" />
+                            <div className="truncate text-sm font-black">{weapon.name}</div>
+                          </div>
+                          <div className="text-sm font-black">{formatProbabilityText(weapon.probability)}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
                 <div className="mt-5 text-3xl font-black">{toNumber(gachaPrice) || 900}P</div>
+                <div className="mt-1 text-sm text-white/55">10회 {Math.max(1, toNumber(gachaPrice) || 900) * 10}P · 중복 환불 1P</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <SectionPanel title="현재 등록된 무기 뽑기" description="판매 중인 뽑기 상품과 구성 무기를 빠르게 확인할 수 있어.">
-        <div className="grid lg:grid-cols-2 gap-4">
-          {gachaProducts.map((product: any) => (
-            <div key={product.id} className="rounded-2xl border border-white/10 bg-black/20 p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-xl font-black">{product.title}</div>
-                  <div className="text-sm text-gray-400 mt-1">{product.promo_text || product.description || "-"}</div>
-                  <div className="mt-3 text-xs text-gray-500">{getWeaponGachaStatusText(product)}</div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-2xl font-black text-sky-300">{product.price}P</div>
-                  <div className="text-xs text-gray-500">무기 뽑기</div>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(gachaRewardMap[String(product.id)] || []).map((weapon: any) => (
-                  <div key={`${product.id}-${weapon.id}`} className="px-3 py-2 rounded-xl border text-xs font-black" style={{ borderColor: getWeaponTheme(weapon).border, color: getWeaponTheme(weapon).text }}>
-                    {weapon.name}
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 flex gap-2">
-                <button onClick={() => toggleGachaActive(product)} className="px-4 py-2 rounded-xl bg-white/10 font-black text-sm">
-                  {product.is_active ? "비활성화" : "활성화"}
-                </button>
-                <button onClick={() => deleteGachaProduct(product.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
-                  삭제
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </SectionPanel>
-
-      <SectionPanel title="등록된 무기 파츠" description="무기 파츠는 마이룸 장착과 길드탭 표시의 원본 데이터야.">
+      <SectionPanel title="현재 등록된 무기 파츠" description="뽑기 구성에 들어갈 실제 무기 목록이야.">
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {weaponParts.map((weapon: any) => (
-            <div key={weapon.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <div className="flex items-start gap-3">
-                <WeaponImage weapon={weapon} className="h-16 w-16 rounded-[1.4rem]" />
-                <div className="min-w-0">
-                  <div className="font-black">{weapon.name}</div>
-                  <div className="mt-1 text-xs" style={{ color: getWeaponTheme(weapon).text }}>{getWeaponTheme(weapon).label}</div>
-                  <div className="mt-2 text-xs text-gray-400 line-clamp-3">{weapon.description || "설명이 없습니다."}</div>
+          {weaponParts.map((weapon: any) => {
+            const theme = getWeaponTheme(weapon);
+            return (
+              <div key={weapon.id} className="rounded-[2rem] border p-5" style={{ borderColor: theme.border, background: theme.background }}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <WeaponImage weapon={weapon} className="h-14 w-14 rounded-[1.2rem]" />
+                    <div className="min-w-0">
+                      <div className="font-black truncate">{weapon.name}</div>
+                      <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
+                        {theme.label}
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => deleteWeaponPart(weapon.id)} className="shrink-0 px-3 py-2 rounded-xl bg-red-500/85 text-white text-xs font-black">
+                    삭제
+                  </button>
                 </div>
+                <div className="mt-4 text-sm text-white/70 whitespace-pre-wrap">{weapon.description || "설명이 아직 없습니다."}</div>
               </div>
-              <button onClick={() => deleteWeaponPart(weapon.id)} className="mt-4 px-3 py-2 rounded-xl bg-red-500/85 text-xs font-black">
-                삭제
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </SectionPanel>
 
-      <SectionPanel title="현재 등록된 뱃지 상품" description="기존 포인트샵 뱃지 상품은 그대로 유지돼.">
+      <SectionPanel title="현재 등록된 무기 뽑기" description="확률 설정, 보장, 중복 환불까지 포함된 실제 판매 뽑기 상품 목록이야.">
+        <div className="grid lg:grid-cols-2 gap-4">
+          {gachaProducts.map((product: any) => {
+            const rewards = gachaRewardMap[String(product.id)] || [];
+            const featured = rewards.find((item: any) => item.is_featured) || rewards[0];
+            const productProbabilityTotal = rewards.reduce((sum: number, reward: any) => sum + getProbabilityNumber(reward.probability), 0);
+
+            return (
+              <div key={product.id} className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                        Weapon Gacha
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
+                        {getWeaponGachaStatusText(product)}
+                      </span>
+                    </div>
+                    <div className="mt-3 text-xl font-black break-words">{product.title}</div>
+                    <div className="mt-2 text-sm text-white/70">{product.promo_text || product.description || "무기 파츠 뽑기 상품"}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-2xl font-black text-sky-300">{product.price}P</div>
+                    <div className="text-xs text-gray-500">10회 {Number(product.price || 0) * 10}P</div>
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">대표 보상</div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <WeaponImage weapon={featured} className="h-16 w-16 rounded-[1.2rem]" />
+                    <div className="min-w-0">
+                      <div className="font-black truncate">{featured?.name || "대표 무기 없음"}</div>
+                      <div className="mt-1 text-xs text-white/60">{featured ? `${getWeaponTheme(featured).label} · ${formatProbabilityText(featured.probability)}` : "보상 정보 없음"}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">보상 확률</div>
+                    <div className="text-xs text-white/55">총합 {formatProbabilityText(productProbabilityTotal)}</div>
+                  </div>
+                  <div className="mt-3 space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                    {rewards.map((reward: any) => (
+                      <div key={`${product.id}-${reward.id || reward.name}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <WeaponImage weapon={reward} className="h-10 w-10 rounded-xl" />
+                          <div className="min-w-0">
+                            <div className="text-sm font-black truncate">{reward.name}</div>
+                            <div className="text-[11px]" style={{ color: getWeaponTheme(reward).text }}>
+                              {getWeaponTheme(reward).label}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-sm font-black">{formatProbabilityText(reward.probability)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="px-3 py-2 rounded-xl text-xs font-black border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-200">
+                    10회 내 Rare 이상 1개 보장
+                  </div>
+                  <div className="px-3 py-2 rounded-xl text-xs font-black border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">
+                    중복 환불 1P
+                  </div>
+                </div>
+
+                <div className="mt-4 flex gap-2">
+                  <button onClick={() => toggleGachaActive(product)} className="px-4 py-2 rounded-xl bg-white/10 font-black text-sm">
+                    {product.is_active ? "비활성화" : "활성화"}
+                  </button>
+                  <button onClick={() => deleteGachaProduct(product.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
+                    삭제
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </SectionPanel>
+
+      <SectionPanel title="현재 등록된 포인트샵 뱃지" description="기존 뱃지 상품도 그대로 관리할 수 있어.">
         <div className="grid md:grid-cols-2 gap-4">
-          {items.map((item) => {
+          {items.map((item: any) => {
             const badgeTheme = getBadgeVisualTheme(item);
             return (
-              <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-5">
-                <div className="flex items-start justify-between gap-3">
+              <div key={item.id} className="rounded-[2rem] border p-5" style={{ borderColor: badgeTheme.cardBorder, background: badgeTheme.cardBackground, boxShadow: badgeTheme.cardShadow }}>
+                <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="text-xl font-black">{item.title}</div>
-                    <div className="text-sm text-gray-400 mt-1">{item.description || "설명 없음"}</div>
-                    <div className="mt-3 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}>
-                      {getShopItemStatusText(item)}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                        Badge Item
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}>
+                        {getShopItemStatusText(item)}
+                      </span>
                     </div>
+                    <div className="mt-3 text-xl font-black break-words">{item.title}</div>
+                    <div className="mt-2 text-sm text-white/70">{getShopMoodLine(item)}</div>
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-2xl font-black text-purple-300">{item.price}P</div>
@@ -6177,4 +6571,3 @@ const AdminPointShopManager = () => {
     </div>
   );
 };
-
