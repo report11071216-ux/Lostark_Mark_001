@@ -658,7 +658,7 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                 길드 공지사항
               </h2>
               <p className="mt-2 text-gray-400">
-                히어로 섹션 대신 최신 공지와 고정 공지를 바로 보이게 했어.
+                공지사.
               </p>
             </div>
 
@@ -1786,12 +1786,12 @@ const RaidCalendar = ({ user, profile }: any) => {
 
         <SectionPanel
           title="월별 참여 랭킹"
-          description="이번 달 기준 캐릭터 닉네임별 참가 횟수와 참가 등록 수를 볼 수 있어."
+          description="이번 달 기준 캐릭터 참가횟수 확인."
         >
           <div className="space-y-3">
             {monthlyCharacterStats.length === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-center text-sm text-gray-500">
-                아직 이번 달 참여 데이터가 없어.
+                아직 이번 달 참여 데이터가 없습니다.
               </div>
             )}
 
