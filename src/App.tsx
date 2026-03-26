@@ -551,6 +551,13 @@ const normalizeEnhancementLevel = (value: any) => {
 
 const getEnhancementDisplay = (value: any) => `+${normalizeEnhancementLevel(value)}`;
 
+const getEnhancedWeaponName = (name: string, level: any) => {
+  const trimmedName = String(name || "").trim();
+  if (!trimmedName) return "";
+  const normalizedLevel = normalizeEnhancementLevel(level);
+  return normalizedLevel > 0 ? `${trimmedName} ${getEnhancementDisplay(normalizedLevel)}` : trimmedName;
+};
+
 const getEnhancementBaseRate = (level: number) => {
   if (level < 5) return 90;
   if (level < 10) return 75;
@@ -5508,7 +5515,7 @@ const GuildMembersPage = () => {
                       <div className="mt-3 flex items-center gap-3">
                         <WeaponImage weapon={{ image_url: member.equipped_weapon_image_url, rarity: member.equipped_weapon_rarity }} className="h-14 w-14 rounded-2xl" />
                         <div className="min-w-0">
-                          <div className="font-black truncate">{member.equipped_weapon_name}</div>
+                          <div className="font-black truncate">{getEnhancedWeaponName(member.equipped_weapon_name, member.equipped_weapon_level)}</div>
                           <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: weaponTheme.text, borderColor: weaponTheme.border, background: weaponTheme.background }}>
                             {weaponTheme.label}
                           </div>
