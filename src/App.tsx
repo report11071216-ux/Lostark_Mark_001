@@ -3699,7 +3699,15 @@ const MyRoom = ({ user, profile }: any) => {
   const [characters, setCharacters] = useState<any[]>([]);
   const [ownedBadges, setOwnedBadges] = useState<any[]>([]);
   const [ownedWeapons, setOwnedWeapons] = useState<any[]>([]);
+  const [expandedWeaponPanels, setExpandedWeaponPanels] = useState<Record<string, boolean>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
+
+  const toggleWeaponPanel = (characterId: string) => {
+    setExpandedWeaponPanels((prev) => ({
+      ...prev,
+      [characterId]: !prev[characterId],
+    }));
+  };
 
   const handleAttendance = async () => {
     const today = new Date().toISOString().split("T")[0];
@@ -4412,70 +4420,117 @@ const MyRoom = ({ user, profile }: any) => {
                   </div>
 
                   <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                      <div>
-                        <div className="text-xs text-gray-400 uppercase tracking-widest">장비 파츠 [무기]</div>
-                        {character.equipped_weapon_name ? (
-                          <div className="mt-2 flex items-center gap-3">
-                            <WeaponImage weapon={{ image_url: character.equipped_weapon_image_url, rarity: character.equipped_weapon_rarity }} className="h-12 w-12 rounded-2xl" />
-                            <div>
-                              <div className="font-black">{character.equipped_weapon_name}</div>
-                              <div className="text-xs text-gray-400">{getWeaponTheme({ rarity: character.equipped_weapon_rarity }).label}</div>
-                            </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleWeaponPanel(character.id)}
+                      className="w-full text-left"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs text-gray-400 uppercase tracking-widest">장비 파츠 [무기]</div>
+                            <span className="inline-flex px-2 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] font-black text-gray-300">
+                              {ownedWeapons.length}개 보유
+                            </span>
                           </div>
-                        ) : (
-                          <div className="mt-2 text-sm text-gray-500">아직 장착한 무기가 없습니다.</div>
-                        )}
-                      </div>
-                      {character.equipped_weapon_name && (
-                        <button
-                          onClick={() => clearWeaponFromCharacter(character)}
-                          className="px-3 py-2 rounded-xl bg-zinc-800 text-xs font-black text-white"
-                        >
-                          무기 해제
-                        </button>
-                      )}
-                    </div>
 
-                    <div className="mt-4 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-                      {ownedWeapons.length === 0 ? (
-                        <div className="text-sm text-gray-500 md:col-span-2 xl:col-span-3">보유한 무기 파츠가 없습니다.</div>
-                      ) : (
-                        ownedWeapons.map((weapon: any) => {
-                          const theme = getWeaponTheme(weapon);
-                          const isEquipped = String(character.equipped_weapon_id || "") === String(weapon.weapon_id || weapon.id || "");
-                          return (
-                            <div
-                              key={`${character.id}-${weapon.weapon_id || weapon.id}-${weapon.created_at || weapon.name}`}
-                              className="rounded-2xl border p-3 bg-black/20"
-                              style={{ borderColor: isEquipped ? theme.border : "rgba(255,255,255,0.08)", boxShadow: isEquipped ? `0 0 20px ${theme.glow}` : "none" }}
-                            >
-                              <div className="flex items-start gap-3">
-                                <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl" />
-                                <div className="min-w-0 flex-1">
-                                  <div className="font-black truncate">{weapon.name}</div>
-                                  <div className="text-[11px] mt-1 inline-flex px-2 py-1 rounded-full border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
-                                    {theme.label}
-                                  </div>
-                                  <div className="mt-2 text-xs text-gray-400 line-clamp-2">
-                                    {weapon.description || "길드탭 캐릭터 카드 장착 파츠"}
-                                  </div>
-                                  <button
-                                    onClick={() => equipWeaponToCharacter(character, weapon)}
-                                    className={cn(
-                                      "mt-3 w-full px-3 py-2 rounded-xl text-xs font-black transition",
-                                      isEquipped ? "bg-emerald-600 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"
-                                    )}
-                                  >
-                                    {isEquipped ? "장착 중" : "이 무기 장착"}
-                                  </button>
+                          {character.equipped_weapon_name ? (
+                            <div className="mt-2 flex items-center gap-3 min-w-0">
+                              <WeaponImage weapon={{ image_url: character.equipped_weapon_image_url, rarity: character.equipped_weapon_rarity }} className="h-12 w-12 rounded-2xl shrink-0" />
+                              <div className="min-w-0">
+                                <div className="font-black truncate">{character.equipped_weapon_name}</div>
+                                <div className="text-xs text-gray-400">
+                                  현재 장착 중 · {getWeaponTheme({ rarity: character.equipped_weapon_rarity }).label}
                                 </div>
                               </div>
                             </div>
-                          );
-                        })
+                          ) : (
+                            <div className="mt-2 text-sm text-gray-500">아직 장착한 무기가 없습니다.</div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {character.equipped_weapon_name && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                clearWeaponFromCharacter(character);
+                              }}
+                              className="px-3 py-2 rounded-xl bg-zinc-800 text-xs font-black text-white"
+                            >
+                              무기 해제
+                            </button>
+                          )}
+                          <div
+                            className={cn(
+                              "flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 transition-transform",
+                              expandedWeaponPanels[character.id] ? "rotate-90" : "rotate-0"
+                            )}
+                          >
+                            <ChevronRight size={18} />
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+
+                    {!expandedWeaponPanels[character.id] && ownedWeapons.length > 0 && (
+                      <div className="mt-3 text-xs text-gray-500">
+                        눌러서 보유 무기 목록을 펼치고 바로 장착할 수 있어.
+                      </div>
+                    )}
+
+                    <AnimatePresence initial={false}>
+                      {expandedWeaponPanels[character.id] && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="mt-4 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+                            {ownedWeapons.length === 0 ? (
+                              <div className="text-sm text-gray-500 md:col-span-2 xl:col-span-3">보유한 무기 파츠가 없습니다.</div>
+                            ) : (
+                              ownedWeapons.map((weapon: any) => {
+                                const theme = getWeaponTheme(weapon);
+                                const isEquipped = String(character.equipped_weapon_id || "") === String(weapon.weapon_id || weapon.id || "");
+                                return (
+                                  <div
+                                    key={`${character.id}-${weapon.weapon_id || weapon.id}-${weapon.created_at || weapon.name}`}
+                                    className="rounded-2xl border p-3 bg-black/20"
+                                    style={{ borderColor: isEquipped ? theme.border : "rgba(255,255,255,0.08)", boxShadow: isEquipped ? `0 0 20px ${theme.glow}` : "none" }}
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl shrink-0" />
+                                      <div className="min-w-0 flex-1">
+                                        <div className="font-black truncate">{weapon.name}</div>
+                                        <div className="text-[11px] mt-1 inline-flex px-2 py-1 rounded-full border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
+                                          {theme.label}
+                                        </div>
+                                        <div className="mt-2 text-xs text-gray-400 line-clamp-2">
+                                          {weapon.description || "길드탭 캐릭터 카드 장착 파츠"}
+                                        </div>
+                                        <button
+                                          onClick={() => equipWeaponToCharacter(character, weapon)}
+                                          className={cn(
+                                            "mt-3 w-full px-3 py-2 rounded-xl text-xs font-black transition",
+                                            isEquipped ? "bg-emerald-600 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"
+                                          )}
+                                        >
+                                          {isEquipped ? "장착 중" : "이 무기 장착"}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </motion.div>
                       )}
-                    </div>
+                    </AnimatePresence>
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
