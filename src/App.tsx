@@ -535,6 +535,66 @@ const getWeaponTheme = (weapon: any) => {
   return WEAPON_RARITY_THEMES[rarity] || WEAPON_RARITY_THEMES.common;
 };
 
+const ENHANCEMENT_MAX_LEVEL = 25;
+
+const getTodayKey = () => {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
+
+const normalizeEnhancementLevel = (value: any) => {
+  const parsed = Number(value ?? 0);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.min(ENHANCEMENT_MAX_LEVEL, Math.max(0, Math.floor(parsed)));
+};
+
+const getEnhancementDisplay = (value: any) => `+${normalizeEnhancementLevel(value)}`;
+
+const getEnhancementBaseRate = (level: number) => {
+  if (level < 5) return 90;
+  if (level < 10) return 75;
+  if (level < 15) return 60;
+  if (level < 20) return 45;
+  if (level < 23) return 35;
+  return 25;
+};
+
+const getEnhancementSuccessRate = (level: any, bonusRate = 0) => {
+  const normalizedLevel = normalizeEnhancementLevel(level);
+  const normalizedBonus = Number(bonusRate ?? 0);
+  const rate = getEnhancementBaseRate(normalizedLevel) + (Number.isFinite(normalizedBonus) ? normalizedBonus : 0);
+  return Math.min(100, Math.max(5, Math.round(rate * 100) / 100));
+};
+
+const getEnhancementItemEffectText = (item: any) => {
+  const rate = Number(item?.enhance_bonus_rate ?? item?.bonus_rate ?? 0);
+  if (!Number.isFinite(rate) || rate <= 0) return "강화 확률 보정 없음";
+  return `강화 확률 +${rate}%`;
+};
+
+const getShopRewardTypeLabel = (item: any) => {
+  if (item?.reward_type === "enhance_stone") return "Enhance Stone";
+  if (item?.reward_type === "badge") return "Badge Item";
+  return "Point Item";
+};
+
+const getPointShopCardBackground = (item: any, badgeTheme: any) => {
+  if (item?.reward_type === "badge") return badgeTheme.cardBackground;
+  if (item?.reward_type === "enhance_stone") {
+    return "linear-gradient(135deg, rgba(251,191,36,0.18), rgba(168,85,247,0.18), rgba(15,23,42,0.96) 58%, rgba(2,6,23,0.98))";
+  }
+  return "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92) 52%, rgba(2,6,23,0.96))";
+};
+
+const getPointShopAuraBackground = (item: any, badgeTheme: any) => {
+  if (item?.reward_type === "badge") return badgeTheme.aura;
+  if (item?.reward_type === "enhance_stone") {
+    return "radial-gradient(circle at top right, rgba(251,191,36,0.22), transparent 40%), radial-gradient(circle at bottom left, rgba(168,85,247,0.16), transparent 44%)";
+  }
+  return "radial-gradient(circle at top right, rgba(168,85,247,0.18), transparent 42%)";
+};
+
 const formatProbabilityText = (value: any) => {
   const num = Number(value ?? 0);
   if (!Number.isFinite(num) || num <= 0) return "0%";
@@ -771,7 +831,12 @@ const getShopItemHighlights = (item: any) => {
     highlights.push(`장착 시 길드 카드에 ${theme.label} 그라데이션 적용`);
   }
 
-  if (item?.badge_name || item?.title) {
+  if (item?.reward_type === "enhance_stone") {
+    highlights.push(`강화 보조 효과 · ${getEnhancementItemEffectText(item)}`);
+    highlights.push("마이룸 강화 시 최고 등급 강화석 자동 사용");
+  }
+
+  if (item?.reward_type === "badge" && (item?.badge_name || item?.title)) {
     highlights.push(`획득 뱃지명 · ${item?.badge_name || item?.title}`);
   }
 
@@ -790,6 +855,10 @@ const getShopMoodLine = (item: any) => {
   if (item?.reward_type === "badge") {
     const theme = getBadgeVisualTheme(item);
     return `${theme.label}로 길드 카드 분위기를 바로 바꿔주는 커스텀 뱃지`;
+  }
+
+  if (item?.reward_type === "enhance_stone") {
+    return `${getEnhancementItemEffectText(item)} 효과를 가진 무기 강화 보조 아이템`;
   }
 
   return item?.description?.trim()
@@ -3846,6 +3915,9 @@ const MyRoom = ({ user, profile }: any) => {
   const [characters, setCharacters] = useState<any[]>([]);
   const [ownedBadges, setOwnedBadges] = useState<any[]>([]);
   const [ownedWeapons, setOwnedWeapons] = useState<any[]>([]);
+  const [ownedEnhanceItems, setOwnedEnhanceItems] = useState<any[]>([]);
+  const [myPoint, setMyPoint] = useState(0);
+  const [enhancingCharacterId, setEnhancingCharacterId] = useState<string | null>(null);
   const [expandedWeaponPanels, setExpandedWeaponPanels] = useState<Record<string, boolean>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
 
@@ -4007,13 +4079,56 @@ const MyRoom = ({ user, profile }: any) => {
         const meta = weaponMap.get(String(item.weapon_id || "")) || {};
         return {
           ...item,
+          inventory_id: item.id,
           name: item.weapon_name || meta.name || "무기 파츠",
           description: item.description || meta.description || "",
           image_url: item.weapon_image_url || meta.image_url || item.image_url || "",
           rarity: item.rarity || meta.rarity || "common",
+          enhancement_level: normalizeEnhancementLevel(item.enhancement_level),
+          last_enhanced_on: item.last_enhanced_on || null,
         };
       })
     );
+  }, [user?.id]);
+
+  const fetchOwnedEnhanceItems = useCallback(async () => {
+    if (!user?.id) return;
+    const client = getSupabaseOrThrow();
+    try {
+      const { data, error } = await client
+        .from("user_owned_enhance_items")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("bonus_rate", { ascending: false });
+
+      if (error) {
+        console.error("fetchOwnedEnhanceItems error:", error);
+        setOwnedEnhanceItems([]);
+        return;
+      }
+
+      setOwnedEnhanceItems(
+        (data || []).map((item: any) => ({
+          ...item,
+          quantity: Math.max(0, Number(item.quantity || 0)),
+          bonus_rate: Number(item.bonus_rate || item.enhance_bonus_rate || 0),
+        }))
+      );
+    } catch (error) {
+      console.error("fetchOwnedEnhanceItems unexpected error:", error);
+      setOwnedEnhanceItems([]);
+    }
+  }, [user?.id]);
+
+  const fetchMyPoint = useCallback(async () => {
+    if (!user?.id) return;
+    const client = getSupabaseOrThrow();
+    const { data, error } = await client.from("profiles").select("points").eq("id", user.id).maybeSingle();
+    if (error) {
+      console.error("fetchMyPoint error:", error);
+      return;
+    }
+    setMyPoint(Number(data?.points || 0));
   }, [user?.id]);
 
   useEffect(() => {
@@ -4035,8 +4150,10 @@ const MyRoom = ({ user, profile }: any) => {
       fetchCharacters();
       fetchOwnedBadges();
       fetchOwnedWeapons();
+      fetchOwnedEnhanceItems();
+      fetchMyPoint();
     }
-  }, [profile, user, fetchOwnedBadges, fetchOwnedWeapons]);
+  }, [profile, user, fetchOwnedBadges, fetchOwnedWeapons, fetchOwnedEnhanceItems, fetchMyPoint]);
 
   const usedBadgeIds = useMemo(() => {
     const used = new Set<string>();
@@ -4053,9 +4170,12 @@ const MyRoom = ({ user, profile }: any) => {
     const client = getSupabaseOrThrow();
     const payload = {
       equipped_weapon_id: weapon?.weapon_id || weapon?.id || null,
+      equipped_weapon_inventory_id: weapon?.inventory_id || weapon?.id || null,
       equipped_weapon_name: weapon?.name || weapon?.weapon_name || null,
       equipped_weapon_image_url: weapon?.image_url || weapon?.weapon_image_url || null,
       equipped_weapon_rarity: weapon?.rarity || "common",
+      equipped_weapon_level: normalizeEnhancementLevel(weapon?.enhancement_level),
+      equipped_weapon_last_enhanced_on: weapon?.last_enhanced_on || null,
     };
 
     const { error } = await client.from("guild_members").update(payload).eq("id", character.id);
@@ -4075,9 +4195,12 @@ const MyRoom = ({ user, profile }: any) => {
       .from("guild_members")
       .update({
         equipped_weapon_id: null,
+        equipped_weapon_inventory_id: null,
         equipped_weapon_name: null,
         equipped_weapon_image_url: null,
         equipped_weapon_rarity: null,
+        equipped_weapon_level: 0,
+        equipped_weapon_last_enhanced_on: null,
       })
       .eq("id", character.id);
 
@@ -4087,6 +4210,127 @@ const MyRoom = ({ user, profile }: any) => {
     }
 
     await fetchCharacters();
+  };
+
+  const enhanceEquippedWeapon = async (character: any) => {
+    if (!user?.id) return alert("로그인 후 사용 가능합니다.");
+    if (!character?.equipped_weapon_name) return alert("먼저 장착한 무기가 있어야 해.");
+    const currentLevel = normalizeEnhancementLevel(character?.equipped_weapon_level);
+    if (currentLevel >= ENHANCEMENT_MAX_LEVEL) {
+      alert("이미 최대 강화 단계야.");
+      return;
+    }
+
+    const inventoryWeapon =
+      ownedWeapons.find((item: any) => String(item.inventory_id || item.id || "") === String(character.equipped_weapon_inventory_id || "")) ||
+      ownedWeapons.find((item: any) => String(item.weapon_id || item.id || "") === String(character.equipped_weapon_id || ""));
+
+    if (!inventoryWeapon) {
+      alert("장착 무기 인벤토리 정보를 찾지 못했어. 무기를 다시 장착한 뒤 시도해줘.");
+      return;
+    }
+
+    const today = getTodayKey();
+    const lastEnhancedOn = String(
+      inventoryWeapon.last_enhanced_on || character.equipped_weapon_last_enhanced_on || ""
+    ).slice(0, 10);
+
+    if (lastEnhancedOn === today) {
+      alert("이 무기는 오늘 이미 강화했어. 내일 다시 시도해줘.");
+      return;
+    }
+
+    if (myPoint < 1) {
+      alert("강화에는 1포인트가 필요해.");
+      return;
+    }
+
+    const availableStone = ownedEnhanceItems
+      .filter((item: any) => Number(item.quantity || 0) > 0)
+      .sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0] || null;
+
+    const bonusRate = Number(availableStone?.bonus_rate || 0);
+    const successRate = getEnhancementSuccessRate(currentLevel, bonusRate);
+    const confirmLines = [
+      `${character.character_name}의 ${character.equipped_weapon_name}을(를) 강화할까요?`,
+      `현재 단계: ${getEnhancementDisplay(currentLevel)} / 최대 ${ENHANCEMENT_MAX_LEVEL}강`,
+      `기본 비용: 1P`,
+      availableStone
+        ? `사용 강화석: ${availableStone.item_name || availableStone.title || "강화석"} (${getEnhancementItemEffectText(availableStone)})`
+        : "사용 강화석: 없음",
+      `최종 성공 확률: ${successRate}%`,
+      "실패해도 강화 수치는 유지됩니다.",
+    ];
+
+    if (!confirm(confirmLines.join("\n"))) return;
+
+    const client = getSupabaseOrThrow();
+    setEnhancingCharacterId(String(character.id));
+
+    const nextPoint = Math.max(0, myPoint - 1);
+    const { error: pointError } = await client.from("profiles").update({ points: nextPoint }).eq("id", user.id);
+    if (pointError) {
+      setEnhancingCharacterId(null);
+      alert(pointError.message);
+      return;
+    }
+
+    if (availableStone) {
+      const nextQuantity = Math.max(0, Number(availableStone.quantity || 0) - 1);
+      const { error: stoneError } = await client
+        .from("user_owned_enhance_items")
+        .update({ quantity: nextQuantity })
+        .eq("id", availableStone.id)
+        .eq("user_id", user.id);
+
+      if (stoneError) {
+        setEnhancingCharacterId(null);
+        alert(stoneError.message);
+        return;
+      }
+    }
+
+    const isSuccess = Math.random() * 100 < successRate;
+    const nextLevel = isSuccess ? Math.min(ENHANCEMENT_MAX_LEVEL, currentLevel + 1) : currentLevel;
+
+    const { error: weaponError } = await client
+      .from("user_owned_weapons")
+      .update({
+        enhancement_level: nextLevel,
+        last_enhanced_on: today,
+      })
+      .eq("id", inventoryWeapon.inventory_id || inventoryWeapon.id)
+      .eq("user_id", user.id);
+
+    if (weaponError) {
+      setEnhancingCharacterId(null);
+      alert(`${weaponError.message}\n\n강화 컬럼 SQL을 먼저 적용해줘.`);
+      return;
+    }
+
+    const { error: characterError } = await client
+      .from("guild_members")
+      .update({
+        equipped_weapon_inventory_id: inventoryWeapon.inventory_id || inventoryWeapon.id,
+        equipped_weapon_level: nextLevel,
+        equipped_weapon_last_enhanced_on: today,
+      })
+      .eq("id", character.id);
+
+    setEnhancingCharacterId(null);
+
+    if (characterError) {
+      alert(`${characterError.message}\n\n길드 캐릭터 무기 강화 컬럼 SQL을 먼저 적용해줘.`);
+      return;
+    }
+
+    await Promise.all([fetchCharacters(), fetchOwnedWeapons(), fetchOwnedEnhanceItems(), fetchMyPoint()]);
+
+    alert(
+      isSuccess
+        ? `강화 성공! ${character.equipped_weapon_name} ${getEnhancementDisplay(currentLevel)} → ${getEnhancementDisplay(nextLevel)}`
+        : `강화 실패. 하지만 ${character.equipped_weapon_name}의 강화 수치는 ${getEnhancementDisplay(currentLevel)}로 유지됐어.`
+    );
   };
 
   const deleteCharacter = async (id: string) => {
@@ -4585,7 +4829,12 @@ const MyRoom = ({ user, profile }: any) => {
                             <div className="mt-2 flex items-center gap-3 min-w-0">
                               <WeaponImage weapon={{ image_url: character.equipped_weapon_image_url, rarity: character.equipped_weapon_rarity }} className="h-12 w-12 rounded-2xl shrink-0" />
                               <div className="min-w-0">
-                                <div className="font-black truncate">{character.equipped_weapon_name}</div>
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="font-black truncate">{character.equipped_weapon_name}</div>
+                                  <span className="inline-flex px-2 py-1 rounded-full border border-amber-400/30 bg-amber-500/10 text-[10px] font-black text-amber-200 shrink-0">
+                                    {getEnhancementDisplay(character.equipped_weapon_level)}
+                                  </span>
+                                </div>
                                 <div className="text-xs text-gray-400">
                                   현재 장착 중 · {getWeaponTheme({ rarity: character.equipped_weapon_rarity }).label}
                                 </div>
@@ -4623,7 +4872,7 @@ const MyRoom = ({ user, profile }: any) => {
 
                     {!expandedWeaponPanels[character.id] && ownedWeapons.length > 0 && (
                       <div className="mt-3 text-xs text-gray-500">
-                        눌러서 보유 무기 목록을 펼치고 바로 장착할 수 있어.
+                        눌러서 보유 무기 목록을 펼치고 장착하거나, 현재 무기를 하루 1회 강화할 수 있어. 현재 보유 포인트 {myPoint}P · 강화석 {ownedEnhanceItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}개
                       </div>
                     )}
 
@@ -4636,23 +4885,90 @@ const MyRoom = ({ user, profile }: any) => {
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden"
                         >
+                          {character.equipped_weapon_name && (
+                            <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
+                              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                                <div className="min-w-0">
+                                  <div className="text-[10px] uppercase tracking-[0.24em] text-amber-200/80 font-black">Weapon Enhance</div>
+                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <span className="text-lg font-black">{character.equipped_weapon_name}</span>
+                                    <span className="inline-flex px-2.5 py-1 rounded-full border border-amber-300/30 bg-black/20 text-xs font-black text-amber-100">
+                                      {getEnhancementDisplay(character.equipped_weapon_level)}
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 text-sm text-amber-50/80">
+                                    성공 확률 {getEnhancementSuccessRate(character.equipped_weapon_level, (ownedEnhanceItems.filter((item: any) => Number(item.quantity || 0) > 0).sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0]?.bonus_rate) || 0)}%
+                                    {ownedEnhanceItems.some((item: any) => Number(item.quantity || 0) > 0) && ` · 최고 강화석 자동 사용 (${getEnhancementItemEffectText(ownedEnhanceItems.filter((item: any) => Number(item.quantity || 0) > 0).sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0])})`}
+                                  </div>
+                                  <div className="mt-1 text-xs text-amber-100/60">
+                                    실패 시 강화 수치 유지 · 1회 시도당 1P 소모 · 최대 {ENHANCEMENT_MAX_LEVEL}강
+                                  </div>
+                                  {String(character.equipped_weapon_last_enhanced_on || "").slice(0, 10) === getTodayKey() && (
+                                    <div className="mt-2 text-xs text-rose-200">오늘은 이미 이 무기를 강화했어.</div>
+                                  )}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => enhanceEquippedWeapon(character)}
+                                  disabled={
+                                    enhancingCharacterId === String(character.id) ||
+                                    normalizeEnhancementLevel(character.equipped_weapon_level) >= ENHANCEMENT_MAX_LEVEL ||
+                                    String(character.equipped_weapon_last_enhanced_on || "").slice(0, 10) === getTodayKey()
+                                  }
+                                  className={cn(
+                                    "px-4 py-3 rounded-xl text-sm font-black transition whitespace-nowrap",
+                                    enhancingCharacterId === String(character.id) ||
+                                      normalizeEnhancementLevel(character.equipped_weapon_level) >= ENHANCEMENT_MAX_LEVEL ||
+                                      String(character.equipped_weapon_last_enhanced_on || "").slice(0, 10) === getTodayKey()
+                                      ? "bg-zinc-700 text-zinc-300"
+                                      : "bg-amber-500 text-black hover:bg-amber-400"
+                                  )}
+                                >
+                                  {enhancingCharacterId === String(character.id) ? "강화 중..." : "오늘의 강화 시도"}
+                                </button>
+                              </div>
+
+                              {ownedEnhanceItems.length > 0 && (
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                  {ownedEnhanceItems
+                                    .filter((item: any) => Number(item.quantity || 0) > 0)
+                                    .sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))
+                                    .map((item: any) => (
+                                      <div key={item.id} className="px-3 py-2 rounded-xl border border-white/10 bg-black/20 text-xs">
+                                        <span className="font-black text-white">{item.item_name || item.title || "강화석"}</span>
+                                        <span className="text-amber-200 ml-2">{getEnhancementItemEffectText(item)}</span>
+                                        <span className="text-gray-400 ml-2">x{item.quantity}</span>
+                                      </div>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           <div className="mt-4 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
                             {ownedWeapons.length === 0 ? (
                               <div className="text-sm text-gray-500 md:col-span-2 xl:col-span-3">보유한 무기 파츠가 없습니다.</div>
                             ) : (
                               ownedWeapons.map((weapon: any) => {
                                 const theme = getWeaponTheme(weapon);
-                                const isEquipped = String(character.equipped_weapon_id || "") === String(weapon.weapon_id || weapon.id || "");
+                                const isEquipped =
+                                  String(character.equipped_weapon_inventory_id || "") === String(weapon.inventory_id || weapon.id || "") ||
+                                  String(character.equipped_weapon_id || "") === String(weapon.weapon_id || weapon.id || "");
                                 return (
                                   <div
-                                    key={`${character.id}-${weapon.weapon_id || weapon.id}-${weapon.created_at || weapon.name}`}
+                                    key={`${character.id}-${weapon.inventory_id || weapon.weapon_id || weapon.id}-${weapon.created_at || weapon.name}`}
                                     className="rounded-2xl border p-3 bg-black/20"
                                     style={{ borderColor: isEquipped ? theme.border : "rgba(255,255,255,0.08)", boxShadow: isEquipped ? `0 0 20px ${theme.glow}` : "none" }}
                                   >
                                     <div className="flex items-start gap-3">
                                       <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl shrink-0" />
                                       <div className="min-w-0 flex-1">
-                                        <div className="font-black truncate">{weapon.name}</div>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <div className="font-black truncate">{weapon.name}</div>
+                                          <span className="inline-flex px-2 py-1 rounded-full border border-amber-400/30 bg-amber-500/10 text-[10px] font-black text-amber-200 shrink-0">
+                                            {getEnhancementDisplay(weapon.enhancement_level)}
+                                          </span>
+                                        </div>
                                         <div className="text-[11px] mt-1 inline-flex px-2 py-1 rounded-full border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
                                           {theme.label}
                                         </div>
@@ -5375,13 +5691,14 @@ const AdminUserManager = () => {
 
 
 
+
 const PointShopPage = ({ user, profile }: any) => {
   const [items, setItems] = useState<any[]>([]);
   const [gachaProducts, setGachaProducts] = useState<any[]>([]);
   const [gachaRewards, setGachaRewards] = useState<Record<string, any[]>>({});
   const [myPoint, setMyPoint] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [shopTab, setShopTab] = useState<"badge" | "gacha">("badge");
+  const [shopTab, setShopTab] = useState<"badge" | "enhance" | "gacha">("badge");
   const [drawSession, setDrawSession] = useState<any>(null);
   const [drawingProductId, setDrawingProductId] = useState<string | null>(null);
 
@@ -5467,6 +5784,53 @@ const PointShopPage = ({ user, profile }: any) => {
     if (myPoint < item.price) return alert("포인트가 부족합니다.");
     if (!confirm(`${item.title} 구매 시 ${item.price}P가 차감됩니다. 진행할까요?`)) return;
 
+    const client = getSupabaseOrThrow();
+
+    if (item.reward_type === "enhance_stone") {
+      const nextPoint = Math.max(0, myPoint - Number(item.price || 0));
+      const { error: pointError } = await client.from("profiles").update({ points: nextPoint }).eq("id", user.id);
+      if (pointError) return alert(pointError.message);
+
+      const { data: existingRow, error: inventoryReadError } = await client
+        .from("user_owned_enhance_items")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("shop_item_id", item.id)
+        .maybeSingle();
+
+      if (inventoryReadError) {
+        return alert(`${inventoryReadError.message}\n\n강화석 인벤토리 SQL을 먼저 적용해줘.`);
+      }
+
+      if (existingRow?.id) {
+        const { error: inventoryUpdateError } = await client
+          .from("user_owned_enhance_items")
+          .update({
+            quantity: Number(existingRow.quantity || 0) + 1,
+            item_name: item.title,
+            bonus_rate: Number(item.enhance_bonus_rate || 0),
+          })
+          .eq("id", existingRow.id)
+          .eq("user_id", user.id);
+
+        if (inventoryUpdateError) return alert(inventoryUpdateError.message);
+      } else {
+        const { error: inventoryInsertError } = await client.from("user_owned_enhance_items").insert({
+          user_id: user.id,
+          shop_item_id: item.id,
+          item_name: item.title,
+          bonus_rate: Number(item.enhance_bonus_rate || 0),
+          quantity: 1,
+        });
+
+        if (inventoryInsertError) return alert(`${inventoryInsertError.message}\n\n강화석 인벤토리 SQL을 먼저 적용해줘.`);
+      }
+
+      alert(`${item.title} 구매 완료! 마이룸에서 강화 시 자동으로 사용돼.`);
+      fetchShop();
+      return;
+    }
+
     const { error } = await supabase.rpc("purchase_shop_item", {
       p_user_id: user.id,
       p_item_id: item.id,
@@ -5525,12 +5889,124 @@ const PointShopPage = ({ user, profile }: any) => {
     await fetchShop();
   };
 
+  const badgeItems = items.filter((item) => item.reward_type === "badge");
+  const enhanceItems = items.filter((item) => item.reward_type === "enhance_stone");
+
+  const renderShopCards = (shopItems: any[], emptyText: string) => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      {shopItems.length === 0 && (
+        <div className="lg:col-span-2 xl:col-span-3 rounded-[2rem] border border-dashed border-white/10 bg-black/20 px-6 py-14 text-center text-gray-500">
+          {emptyText}
+        </div>
+      )}
+
+      {shopItems.map((item) => {
+        const available = isShopItemAvailable(item);
+        const badgeTheme = getBadgeVisualTheme(item);
+        const highlights = getShopItemHighlights(item);
+        const moodLine = getShopMoodLine(item);
+        const cardBackground = getPointShopCardBackground(item, badgeTheme);
+        const auraBackground = getPointShopAuraBackground(item, badgeTheme);
+
+        return (
+          <div
+            key={item.id}
+            className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
+          >
+            <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: cardBackground }} />
+            <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: auraBackground }} />
+            <div className="relative z-10 flex flex-col h-full">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                      {getShopRewardTypeLabel(item)}
+                    </span>
+                    <span
+                      className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border"
+                      style={{
+                        color: item.reward_type === "badge" ? badgeTheme.chipText : item.reward_type === "enhance_stone" ? "#fde68a" : "#c4b5fd",
+                        borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : item.reward_type === "enhance_stone" ? "rgba(250,204,21,0.35)" : "rgba(196,181,253,0.45)",
+                        background: item.reward_type === "badge" ? badgeTheme.chipBackground : item.reward_type === "enhance_stone" ? "rgba(245,158,11,0.16)" : "rgba(139,92,246,0.16)",
+                      }}
+                    >
+                      {getShopItemStatusText(item)}
+                    </span>
+                  </div>
+                  <div className="mt-4 text-2xl font-black leading-tight break-words">{item.title}</div>
+                  <div className="mt-2 text-sm text-white/70">{moodLine}</div>
+                </div>
+                <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center backdrop-blur-md">
+                  <ShoppingBag className="text-white/80" />
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">Live Card Mood</div>
+                    <div className="mt-1 text-sm font-bold text-white/85">
+                      {item.reward_type === "badge"
+                        ? `${badgeTheme.label} 길드 카드`
+                        : item.reward_type === "enhance_stone"
+                        ? "무기 강화 보조 아이템"
+                        : "포인트샵 대표 상품 카드"}
+                    </div>
+                  </div>
+                  {item.reward_type === "enhance_stone" && (
+                    <span className="px-3 py-1 rounded-full text-xs font-black border border-amber-400/30 bg-amber-500/10 text-amber-200">
+                      {getEnhancementItemEffectText(item)}
+                    </span>
+                  )}
+                  {item.reward_type !== "enhance_stone" && (
+                    <span
+                      className="px-3 py-1 rounded-full text-xs font-black border"
+                      style={{
+                        color: item.reward_type === "badge" ? badgeTheme.chipText : "#ddd6fe",
+                        borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(221,214,254,0.35)",
+                        background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(139,92,246,0.16)",
+                      }}
+                    >
+                      {item.reward_type === "badge" ? "카드 이펙트 적용" : "포인트샵 아이템"}
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {highlights.map((line, index) => (
+                    <div key={`${item.id}-highlight-${index}`} className="text-sm text-white/75">
+                      • {line}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex items-end justify-between gap-4">
+                  <div className="text-3xl font-black">{item.price}P</div>
+                  <button
+                    onClick={() => purchase(item)}
+                    disabled={!available || !user}
+                    className={cn(
+                      "px-4 py-3 rounded-xl font-black text-sm transition",
+                      available && user ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-zinc-800 text-zinc-400 cursor-not-allowed"
+                    )}
+                  >
+                    {available ? (user ? "구매하기" : "로그인 필요") : "구매 불가"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="max-w-7xl mx-auto py-24 px-6 text-left">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h2 className="text-4xl font-black italic uppercase tracking-tight">Point Shop</h2>
-          <p className="text-gray-500 font-bold mt-2">가챠 상품.</p>
+          <p className="text-gray-500 font-bold mt-2">뱃지, 강화석, 무기 가챠 상품.</p>
         </div>
 
         <div className="rounded-[2rem] border border-purple-500/20 bg-purple-500/10 px-5 py-4">
@@ -5542,11 +6018,12 @@ const PointShopPage = ({ user, profile }: any) => {
       <div className="flex flex-wrap gap-2 mb-8">
         {[
           ["badge", "뱃지 상점"],
+          ["enhance", "강화석 상점"],
           ["gacha", "무기 가챠"],
         ].map(([key, label]) => (
           <button
             key={key}
-            onClick={() => setShopTab(key as "badge" | "gacha")}
+            onClick={() => setShopTab(key as "badge" | "enhance" | "gacha")}
             className={cn(
               "px-4 py-2 rounded-full text-sm font-black border transition",
               shopTab === key ? "bg-purple-600 border-purple-500 text-white" : "bg-white/5 border-white/10 text-gray-400"
@@ -5560,345 +6037,206 @@ const PointShopPage = ({ user, profile }: any) => {
       {loading ? (
         <div className="py-16 text-center text-gray-500">포인트샵 불러오는 중...</div>
       ) : shopTab === "badge" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {items.map((item) => {
-            const available = isShopItemAvailable(item);
-            const badgeTheme = getBadgeVisualTheme(item);
-            const highlights = getShopItemHighlights(item);
-            const moodLine = getShopMoodLine(item);
-
-            return (
-              <div
-                key={item.id}
-                className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
-              >
-                <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: item.reward_type === "badge" ? badgeTheme.cardBackground : "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92) 52%, rgba(2,6,23,0.96))" }} />
-                <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: item.reward_type === "badge" ? badgeTheme.aura : "radial-gradient(circle at top right, rgba(168,85,247,0.18), transparent 42%)" }} />
-                <div className="relative z-10 flex flex-col h-full">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
-                          {item.reward_type === "badge" ? "Badge Item" : "Point Item"}
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: item.reward_type === "badge" ? badgeTheme.chipText : "#c4b5fd", borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(196,181,253,0.45)", background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(139,92,246,0.16)" }}>
-                          {getShopItemStatusText(item)}
-                        </span>
-                      </div>
-                      <div className="mt-4 text-2xl font-black leading-tight break-words">{item.title}</div>
-                      <div className="mt-2 text-sm text-white/70">{moodLine}</div>
-                    </div>
-                    <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center backdrop-blur-md">
-                      <ShoppingBag className="text-white/80" />
-                    </div>
-                  </div>
-
-                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">Live Card Mood</div>
-                        <div className="mt-1 text-sm font-bold text-white/85">{item.reward_type === "badge" ? `${badgeTheme.label} 길드 카드` : "포인트샵 대표 상품 카드"}</div>
-                      </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: item.reward_type === "badge" ? badgeTheme.chipText : "#ddd6fe", borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(221,214,254,0.35)", background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(139,92,246,0.16)" }}>
-                        {item.price}P
-                      </span>
-                    </div>
-
-                    <div className="mt-4 h-24 rounded-[1.3rem] border border-white/10 overflow-hidden relative" style={{ background: item.reward_type === "badge" ? badgeTheme.cardBackground : "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92))" }}>
-                      <div className="absolute inset-0 opacity-60" style={{ background: item.reward_type === "badge" ? badgeTheme.aura : "radial-gradient(circle at top right, rgba(168,85,247,0.22), transparent 46%)" }} />
-                      <div className="relative h-full flex items-center justify-between px-4">
-                        <div>
-                          <div className="text-lg font-black">{item.badge_name || item.title}</div>
-                          <div className="text-xs text-white/60 mt-1">길드탭 캐릭터 카드 미리보기</div>
-                        </div>
-                        <div className="h-12 w-12 rounded-2xl border border-white/10 bg-black/25" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">상품 설명</div>
-                    <div className="mt-3 space-y-2">
-                      {highlights.map((line, index) => (
-                        <div key={`${item.id}-highlight-${index}`} className="text-sm text-white/75">
-                          • {line}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex items-center justify-between gap-4">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/40 font-black">Price</div>
-                      <div className="text-3xl font-black">{item.price}P</div>
-                    </div>
-                    <button
-                      disabled={!available || !user}
-                      onClick={() => purchase(item)}
-                      className={cn(
-                        "px-5 py-3 rounded-2xl font-black transition-all",
-                        available && user
-                          ? "bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/25"
-                          : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                      )}
-                    >
-                      {user ? (available ? "구매하기" : "판매 종료") : "로그인 필요"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        renderShopCards(badgeItems, "아직 등록된 뱃지 상품이 없습니다.")
+      ) : shopTab === "enhance" ? (
+        renderShopCards(enhanceItems, "아직 등록된 강화석 상품이 없습니다.")
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {gachaProducts.map((product: any) => {
-            const available = isWeaponGachaAvailable(product);
-            const rewards = gachaRewards[String(product.id)] || [];
-            const featured = rewards.find((item: any) => item.is_featured) || rewards[0];
-            const probabilityTotal = rewards.reduce((sum: number, item: any) => sum + getProbabilityNumber(item?.probability), 0);
-            const rarePool = rewards.filter((item: any) => isRareOrBetterWeapon(item?.rarity));
-            const drawBusy = drawingProductId === String(product.id);
+        <div className="space-y-8">
+          {gachaProducts.length === 0 && (
+            <div className="rounded-[2rem] border border-dashed border-white/10 bg-black/20 px-6 py-14 text-center text-gray-500">
+              아직 등록된 무기 가챠 상품이 없습니다.
+            </div>
+          )}
 
-            return (
-              <div
-                key={product.id}
-                className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
-              >
-                <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(76,29,149,0.3) 52%, rgba(2,6,23,0.96))" }} />
-                <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: "radial-gradient(circle at top right, rgba(250,204,21,0.18), transparent 28%), radial-gradient(circle at bottom left, rgba(59,130,246,0.18), transparent 32%)" }} />
-                <div className="relative z-10 flex flex-col h-full">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap gap-2 items-center">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
-                          Weapon Gacha
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
-                          {getWeaponGachaStatusText(product)}
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
-                          10회 내 Rare+ 보장
-                        </span>
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {gachaProducts.map((product: any) => {
+              const available = isWeaponGachaAvailable(product);
+              const rewards = gachaRewards[String(product.id)] || [];
+              const featured = rewards.find((item: any) => item.is_featured) || rewards[0];
+              const probabilityTotal = rewards.reduce((sum: number, item: any) => sum + getProbabilityNumber(item?.probability), 0);
+              const rarePool = rewards.filter((item: any) => isRareOrBetterWeapon(item?.rarity));
+              const drawBusy = drawingProductId === String(product.id);
+
+              return (
+                <div
+                  key={product.id}
+                  className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
+                >
+                  <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(76,29,149,0.3) 52%, rgba(2,6,23,0.96))" }} />
+                  <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: "radial-gradient(circle at top right, rgba(250,204,21,0.18), transparent 42%)" }} />
+                  <div className="relative z-10 flex flex-col h-full">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                            Weapon Gacha
+                          </span>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
+                            {getWeaponGachaStatusText(product)}
+                          </span>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
+                            10회 내 Rare+ 보장
+                          </span>
+                        </div>
+                        <div className="mt-4 text-2xl font-black leading-tight break-words">{product.title}</div>
+                        <div className="mt-2 text-sm text-white/75">{product.promo_text || product.description || "무기 파츠를 랜덤으로 획득할 수 있는 가챠 상품"}</div>
                       </div>
-                      <div className="mt-4 text-2xl font-black leading-tight break-words">{product.title}</div>
-                      <div className="mt-2 text-sm text-white/75">{product.promo_text || product.description || "무기 파츠를 랜덤 획득할 수 있는 길드 전용 뽑기"}</div>
+                      <div className="h-16 w-16 rounded-[1.4rem] border border-white/10 bg-black/25 flex items-center justify-center overflow-hidden">
+                        {featured ? <WeaponImage weapon={featured} className="h-16 w-16 rounded-[1.4rem]" /> : <ShoppingBag className="text-white/80" />}
+                      </div>
                     </div>
-                    <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center backdrop-blur-md overflow-hidden">
-                      {product.image_url ? (
-                        <img src={product.image_url} className="w-full h-full object-cover" />
-                      ) : (
-                        <Swords className="text-white/80" />
-                      )}
-                    </div>
-                  </div>
 
-                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">대표 보상 / Live Preview</div>
-                    <div className="mt-4 rounded-[1.3rem] border border-white/10 overflow-hidden relative bg-black/20 p-4">
-                      <div className="flex items-center gap-4">
-                        <WeaponImage weapon={featured} className="h-20 w-20 rounded-[1.4rem]" />
-                        <div className="min-w-0">
-                          <div className="text-lg font-black truncate">{featured?.name || "무기 파츠 구성 준비 중"}</div>
-                          <div className="mt-1 text-sm text-white/70 line-clamp-2">{featured?.description || "무기 이미지."}</div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {featured && (
-                              <div className="inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: getWeaponTheme(featured).text, borderColor: getWeaponTheme(featured).border, background: getWeaponTheme(featured).background }}>
-                                {getWeaponTheme(featured).label}
-                              </div>
-                            )}
-                            {featured && (
-                              <div className="inline-flex px-2 py-1 rounded-full text-[10px] font-black border border-white/10 bg-white/5 text-white/75">
-                                확률 {formatProbabilityText(featured?.probability)}
-                              </div>
-                            )}
+                    <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">Reward Pool</div>
+                          <div className="mt-1 text-sm font-bold text-white/85">
+                            총 {rewards.length}종 · Rare 이상 {rarePool.length}종 · 합계 {formatProbabilityText(probabilityTotal)}
                           </div>
                         </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-black">{product.price}P</div>
+                          <div className="text-xs text-gray-500">1회 기준</div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
 
-                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">포함 무기 확률</div>
-                      <div className="text-xs text-white/55">총합 {formatProbabilityText(probabilityTotal)}</div>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {rewards.length === 0 ? (
-                        <div className="text-sm text-gray-500">등록된 무기 보상이 없습니다.</div>
-                      ) : (
-                        rewards.slice(0, 6).map((weapon: any, index: number) => (
-                          <div key={`${product.id}-weapon-${weapon.id || index}`} className="flex items-center justify-between gap-3 rounded-xl border bg-black/20 px-3 py-2" style={{ borderColor: getWeaponTheme(weapon).border }}>
-                            <div className="min-w-0 flex items-center gap-2">
-                              <WeaponImage weapon={weapon} className="h-10 w-10 rounded-xl" />
-                              <div className="min-w-0">
-                                <div className="text-sm font-black truncate">{weapon.name}</div>
-                                <div className="text-[11px]" style={{ color: getWeaponTheme(weapon).text }}>
-                                  {getWeaponTheme(weapon).label}
+                      <div className="mt-4 space-y-2 max-h-56 overflow-y-auto pr-1">
+                        {rewards.length === 0 && (
+                          <div className="text-sm text-gray-500">등록된 보상 무기가 없습니다.</div>
+                        )}
+                        {rewards.map((item: any, index: number) => {
+                          const theme = getWeaponTheme(item);
+                          return (
+                            <div
+                              key={`${product.id}-${item.id || item.name}-${index}`}
+                              className="rounded-2xl border border-white/10 bg-black/25 px-3 py-3 flex items-center gap-3"
+                            >
+                              <WeaponImage weapon={item} className="h-12 w-12 rounded-2xl shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <div className="font-black truncate">{item.name || "무기 파츠"}</div>
+                                  {item.is_featured && (
+                                    <span className="px-2 py-1 rounded-full text-[10px] font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
+                                      Featured
+                                    </span>
+                                  )}
+                                  <span
+                                    className="px-2 py-1 rounded-full text-[10px] font-black border"
+                                    style={{ color: theme.text, borderColor: theme.border, background: theme.background }}
+                                  >
+                                    {theme.label}
+                                  </span>
                                 </div>
+                                <div className="mt-1 text-xs text-gray-400">{item.description || "길드 캐릭터 카드 장착용 무기 파츠"}</div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <div className="text-sm font-black">{formatProbabilityText(item.probability)}</div>
+                                <div className="text-[11px] text-gray-500">가챠 확률</div>
                               </div>
                             </div>
-                            <div className="shrink-0 text-sm font-black text-white/85">{formatProbabilityText(weapon.probability)}</div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    {rewards.length > 6 && (
-                      <div className="mt-2 text-xs text-white/45">+{rewards.length - 6}개 무기 더 포함</div>
-                    )}
-                    <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/70">
-                        중복 무기 환불 <span className="font-black text-white">1P</span>
+                          );
+                        })}
                       </div>
-                      <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white/70">
-                        Rare+ 후보 <span className="font-black text-white">{rarePool.length}개</span>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <button
+                          onClick={() => drawWeaponGacha(product, 1)}
+                          disabled={!available || drawBusy || !user}
+                          className={cn(
+                            "px-4 py-3 rounded-xl font-black text-sm transition",
+                            available && !drawBusy && user ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-zinc-800 text-zinc-400 cursor-not-allowed"
+                          )}
+                        >
+                          {drawBusy ? "처리 중..." : "1회 뽑기"}
+                        </button>
+                        <button
+                          onClick={() => drawWeaponGacha(product, 10)}
+                          disabled={!available || drawBusy || !user}
+                          className={cn(
+                            "px-4 py-3 rounded-xl font-black text-sm transition",
+                            available && !drawBusy && user ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-zinc-800 text-zinc-400 cursor-not-allowed"
+                          )}
+                        >
+                          {drawBusy ? "처리 중..." : "10회 뽑기"}
+                        </button>
                       </div>
                     </div>
                   </div>
+                </div>
+              );
+            })}
+          </div>
 
-                  <div className="mt-5 flex items-end justify-between gap-4">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/40 font-black">Price</div>
-                      <div className="text-3xl font-black">{product.price}P</div>
-                      <div className="mt-1 text-xs text-white/45">10회 {Number(product.price || 0) * 10}P</div>
-                    </div>
-                    <div className="grid gap-2 shrink-0">
-                      <button
-                        disabled={!available || !user || drawBusy}
-                        onClick={() => drawWeaponGacha(product, 1)}
-                        className={cn(
-                          "px-5 py-3 rounded-2xl font-black transition-all",
-                          available && user && !drawBusy
-                            ? "bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-600/25"
-                            : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                        )}
-                      >
-                        {drawBusy ? "처리 중..." : user ? (available ? "1회 뽑기" : "판매 종료") : "로그인 필요"}
-                      </button>
-                      <button
-                        disabled={!available || !user || drawBusy}
-                        onClick={() => drawWeaponGacha(product, 10)}
-                        className={cn(
-                          "px-5 py-3 rounded-2xl font-black transition-all",
-                          available && user && !drawBusy
-                            ? "bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/25"
-                            : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                        )}
-                      >
-                        {drawBusy ? "처리 중..." : user ? (available ? "10회 뽑기" : "판매 종료") : "로그인 필요"}
-                      </button>
-                    </div>
+          {drawSession && (
+            <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6">
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-purple-300 font-black">Latest Draw Result</div>
+                  <div className="mt-2 text-2xl font-black">{drawSession.product_title || "무기 가챠 결과"}</div>
+                  <div className="mt-1 text-sm text-gray-400">
+                    총 {drawSession.draw_count}회 · 사용 {drawSession.total_cost}P · Rare 이상 {drawSession.rare_or_better_count}개
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <AnimatePresence>
-        {drawSession && (
-          <ModalFrame onClose={() => setDrawSession(null)}>
-            <div className="max-w-5xl mx-auto rounded-[2.5rem] border border-white/10 bg-[#0b1020] p-8 relative overflow-hidden">
-              <div className="absolute inset-0 opacity-80 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.14), rgba(168,85,247,0.2) 42%, rgba(2,6,23,0.96))" }} />
-              <div className="relative z-10">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.32em] text-fuchsia-300 font-black">Weapon Gacha Result</div>
-                    <div className="mt-3 text-3xl font-black">{drawSession?.product_title || "무기 뽑기 결과"}</div>
-                    <div className="mt-2 text-sm text-white/70">
-                      총 {drawSession?.draw_count || drawSession?.results?.length || 0}회 / 사용 {drawSession?.total_cost || 0}P / 중복 환불 {drawSession?.duplicate_refund_total || 0}P
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <span className="px-3 py-1 rounded-full text-xs font-black border border-white/10 bg-white/5 text-white/75">
-                        Rare+ 획득 {drawSession?.rare_or_better_count || 0}개
-                      </span>
-                      <span className="px-3 py-1 rounded-full text-xs font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
-                        보장 발동 {drawSession?.pity_applied_count || 0}회
-                      </span>
-                    </div>
-                  </div>
-
-                  {drawSession?.results?.[0] && (
-                    <div className="rounded-[1.6rem] border border-white/10 bg-black/25 px-5 py-4 min-w-[220px]">
-                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">대표 결과</div>
-                      <div className="mt-4 flex items-center gap-3">
-                        <WeaponImage weapon={drawSession.results[0]} className="h-16 w-16 rounded-[1.2rem]" />
-                        <div className="min-w-0">
-                          <div className="font-black truncate">{drawSession.results[0]?.weapon_name || drawSession.results[0]?.name}</div>
-                          <div className="text-xs mt-1" style={{ color: getWeaponTheme({ rarity: drawSession.results[0]?.rarity }).text }}>
-                            {getWeaponTheme({ rarity: drawSession.results[0]?.rarity }).label}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-5 gap-3 max-h-[55vh] overflow-y-auto pr-1">
-                  {(drawSession?.results || []).map((result: any, index: number) => {
-                    const theme = getWeaponTheme({ rarity: result?.rarity });
-                    return (
-                      <div
-                        key={`${result?.weapon_id || result?.id || "result"}-${index}`}
-                        className="rounded-[1.6rem] border p-4 relative overflow-hidden"
-                        style={{ borderColor: theme.border, background: theme.background, boxShadow: `0 0 22px ${theme.glow}` }}
-                      >
-                        {result?.pity_applied && (
-                          <div className="absolute top-3 right-3 px-2 py-1 rounded-full text-[10px] font-black border border-fuchsia-400/35 bg-fuchsia-500/15 text-fuchsia-200">
-                            보장
-                          </div>
-                        )}
-                        <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">#{index + 1}</div>
-                        <div className="mt-3 flex justify-center">
-                          <WeaponImage weapon={result} className="h-20 w-20 rounded-[1.3rem]" />
-                        </div>
-                        <div className="mt-4 text-sm font-black leading-tight break-words">{result?.weapon_name || result?.name || "무기 파츠"}</div>
-                        <div className="mt-2 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
-                          {theme.label}
-                        </div>
-                        <div className="mt-3 text-xs text-white/70 line-clamp-2">
-                          {result?.duplicate ? "중복 무기 · 1P 환불" : result?.description || "새 무기 파츠를 획득했어."}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-black/25 p-4 text-sm text-white/75">
-                  {drawSession?.pity_applied_count > 0
-                    ? `이번 결과에서는 보장 시스템이 ${drawSession.pity_applied_count}회 발동했어.`
-                    : "이번 결과는 일반 확률 기준으로 진행됐어."}
-                  {drawSession?.duplicate_refund_total > 0 && ` 중복 무기 환불 ${drawSession.duplicate_refund_total}P도 바로 반영했어.`}
-                </div>
-
                 <button
                   onClick={() => setDrawSession(null)}
-                  className="mt-6 px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 font-black"
+                  className="px-4 py-2 rounded-xl bg-white/10 text-sm font-black"
                 >
-                  확인
+                  결과 닫기
                 </button>
               </div>
+
+              <div className="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {(drawSession.results || []).map((item: any, index: number) => {
+                  const theme = getWeaponTheme(item);
+                  return (
+                    <div
+                      key={`draw-result-${index}`}
+                      className="rounded-[1.5rem] border p-4 bg-black/30"
+                      style={{ borderColor: theme.border, boxShadow: `0 0 24px ${theme.glow}` }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <WeaponImage weapon={item} className="h-14 w-14 rounded-2xl shrink-0" />
+                        <div className="min-w-0">
+                          <div className="font-black truncate">{item.name || item.weapon_name || "무기 파츠"}</div>
+                          <div
+                            className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-black border"
+                            style={{ color: theme.text, borderColor: theme.border, background: theme.background }}
+                          >
+                            {theme.label}
+                          </div>
+                          <div className="mt-2 text-xs text-gray-400 line-clamp-2">
+                            {item.description || "새로운 무기 파츠를 획득했습니다."}
+                          </div>
+                          {item.is_duplicate && (
+                            <div className="mt-2 text-xs text-amber-300">
+                              중복 보상 · 환급 {drawSession.duplicate_refund_points || 0}P
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </ModalFrame>
-        )}
-      </AnimatePresence>
+          )}
+        </div>
+      )}
     </div>
   );
 };
-
-
 
 const AdminPointShopManager = () => {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [rewardType, setRewardType] = useState("badge");
+  const [rewardType, setRewardType] = useState<"badge" | "enhance_stone">("badge");
   const [badgeColor, setBadgeColor] = useState("#8b5cf6");
   const [badgeCardEffect, setBadgeCardEffect] = useState<BadgeEffectKey>("violet");
   const [badgeGradientFrom, setBadgeGradientFrom] = useState(BADGE_CARD_EFFECT_PRESETS.violet.from);
   const [badgeGradientTo, setBadgeGradientTo] = useState(BADGE_CARD_EFFECT_PRESETS.violet.to);
   const [badgeGlowColor, setBadgeGlowColor] = useState(BADGE_CARD_EFFECT_PRESETS.violet.glow);
+  const [enhanceBonusRate, setEnhanceBonusRate] = useState("5");
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
@@ -6008,7 +6346,7 @@ const AdminPointShopManager = () => {
     setGachaRewardMap(grouped);
   };
 
-  const resetBadgeForm = () => {
+  const resetItemForm = () => {
     setTitle("");
     setPrice("");
     setDescription("");
@@ -6018,13 +6356,15 @@ const AdminPointShopManager = () => {
     setBadgeGradientFrom(BADGE_CARD_EFFECT_PRESETS.violet.from);
     setBadgeGradientTo(BADGE_CARD_EFFECT_PRESETS.violet.to);
     setBadgeGlowColor(BADGE_CARD_EFFECT_PRESETS.violet.glow);
+    setEnhanceBonusRate("5");
     setAvailableFrom("");
     setAvailableTo("");
   };
 
   const createItem = async () => {
     if (!title.trim() || !price) return alert("상품명과 가격을 입력하세요.");
-    const { error } = await supabase.from("point_shop_items").insert({
+
+    const payload = {
       title,
       description,
       price: toNumber(price),
@@ -6036,11 +6376,14 @@ const AdminPointShopManager = () => {
       badge_gradient_from: rewardType === "badge" ? badgeGradientFrom : null,
       badge_gradient_to: rewardType === "badge" ? badgeGradientTo : null,
       badge_glow_color: rewardType === "badge" ? badgeGlowColor : null,
+      enhance_bonus_rate: rewardType === "enhance_stone" ? Number(enhanceBonusRate || 0) : 0,
       available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
       available_to: availableTo ? new Date(availableTo).toISOString() : null,
-    });
-    if (error) return alert(error.message);
-    resetBadgeForm();
+    };
+
+    const { error } = await supabase.from("point_shop_items").insert(payload);
+    if (error) return alert(`${error.message}\n\n강화석 컬럼 SQL을 먼저 적용해줘.`);
+    resetItemForm();
     fetchItems();
   };
 
@@ -6186,11 +6529,13 @@ const AdminPointShopManager = () => {
   };
 
   const previewItem = {
-    title: title || "신규 뱃지 상품",
+    title: title || (rewardType === "badge" ? "신규 뱃지 상품" : "초급 강화석"),
     badge_name: title || "신규 뱃지 상품",
     description:
       description ||
-      "길드 카드에 특별한 분위기를 더하는 뱃지 상품입니다.\n구매 직후 마이룸에서 착용할 수 있습니다.",
+      (rewardType === "badge"
+        ? "길드 카드에 특별한 분위기를 더하는 뱃지 상품입니다.\n구매 직후 마이룸에서 착용할 수 있습니다."
+        : "마이룸에서 무기 강화 시 자동으로 사용되는 강화 보조 아이템입니다."),
     price: toNumber(price) || 500,
     reward_type: rewardType,
     badge_color: badgeColor,
@@ -6198,6 +6543,7 @@ const AdminPointShopManager = () => {
     badge_gradient_from: badgeGradientFrom,
     badge_gradient_to: badgeGradientTo,
     badge_glow_color: badgeGlowColor,
+    enhance_bonus_rate: rewardType === "enhance_stone" ? Number(enhanceBonusRate || 0) : 0,
     is_active: true,
     available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
     available_to: availableTo ? new Date(availableTo).toISOString() : null,
@@ -6205,6 +6551,9 @@ const AdminPointShopManager = () => {
 
   const previewTheme = getBadgeVisualTheme(previewItem);
   const previewHighlights = getShopItemHighlights(previewItem);
+  const previewCardBackground = getPointShopCardBackground(previewItem, previewTheme);
+  const previewAuraBackground = getPointShopAuraBackground(previewItem, previewTheme);
+
   const gachaPreviewWeapons = weaponParts
     .filter((item: any) => selectedWeaponIds.includes(String(item.id)))
     .map((item: any) => ({
@@ -6213,24 +6562,43 @@ const AdminPointShopManager = () => {
     }))
     .sort((a: any, b: any) => getProbabilityNumber(b.probability) - getProbabilityNumber(a.probability));
 
-  const gachaFeaturedPreview =
-    gachaPreviewWeapons.find((item: any) => String(item.id) === featuredWeaponId) ||
-    gachaPreviewWeapons[0] ||
-    null;
-
   return (
     <div className="space-y-10">
       <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
         <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-purple-300">Badge Product Builder</div>
-            <div className="mt-2 text-2xl font-black">포인트샵 뱃지 상품 생성</div>
-            <div className="text-sm text-gray-400 mt-1">기존 뱃지 상품은 그대로 유지하면서 카드 그라데이션까지 같이 만들 수 있어.</div>
+            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-purple-300">Point Shop Item Builder</div>
+            <div className="mt-2 text-2xl font-black">포인트샵 상품 생성</div>
+            <div className="text-sm text-gray-400 mt-1">뱃지 상품과 강화석 상품을 같은 관리 화면에서 만들 수 있어.</div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <AdminInput label="상품명" value={title} onChange={setTitle} placeholder={rewardType === "badge" ? "예: 여왕의 빛 뱃지" : "예: 고급 강화석"} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">상품 타입</label>
+              <select
+                className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
+                value={rewardType}
+                onChange={(e) => setRewardType(e.target.value as "badge" | "enhance_stone")}
+              >
+                <option value="badge">뱃지 상품</option>
+                <option value="enhance_stone">강화석 상품</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            <AdminInput label="상품명" value={title} onChange={setTitle} placeholder="예: 여왕의 빛 뱃지" />
             <AdminInput label="가격(포인트)" value={price} onChange={setPrice} placeholder="예: 800" />
+            {rewardType === "enhance_stone" ? (
+              <AdminInput label="강화확률 증가 효과(%)" value={enhanceBonusRate} onChange={setEnhanceBonusRate} placeholder="예: 7" />
+            ) : (
+              <div>
+                <label className="text-xs text-gray-400 mb-2 block">대표 색상</label>
+                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeColor} onChange={(e) => setBadgeColor(e.target.value)} />
+              </div>
+            )}
           </div>
 
           <div>
@@ -6239,45 +6607,44 @@ const AdminPointShopManager = () => {
               className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-purple-500 font-bold text-sm text-white min-h-[120px]"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="상품 설명 / 구매 욕구 자극 문구"
+              placeholder={rewardType === "badge" ? "상품 설명 / 구매 욕구 자극 문구" : "예: 무기 강화 시 성공 확률을 높여주는 보조 아이템"}
             />
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-gray-400 mb-2 block">대표 색상</label>
-              <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeColor} onChange={(e) => setBadgeColor(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 mb-2 block">카드 이펙트 프리셋</label>
-              <select
-                className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
-                value={badgeCardEffect}
-                onChange={(e) => setBadgeCardEffect(e.target.value as BadgeEffectKey)}
-              >
-                {Object.entries(BADGE_CARD_EFFECT_PRESETS).map(([key, value]) => (
-                  <option key={key} value={key}>
-                    {value.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-xs text-gray-400 mb-2 block">그라데이션 시작</label>
-              <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientFrom} onChange={(e) => setBadgeGradientFrom(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 mb-2 block">그라데이션 끝</label>
-              <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientTo} onChange={(e) => setBadgeGradientTo(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 mb-2 block">글로우 색상</label>
-              <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGlowColor} onChange={(e) => setBadgeGlowColor(e.target.value)} />
-            </div>
-          </div>
+          {rewardType === "badge" && (
+            <>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 mb-2 block">카드 이펙트 프리셋</label>
+                  <select
+                    className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
+                    value={badgeCardEffect}
+                    onChange={(e) => setBadgeCardEffect(e.target.value as BadgeEffectKey)}
+                  >
+                    {Object.entries(BADGE_CARD_EFFECT_PRESETS).map(([key, value]) => (
+                      <option key={key} value={key}>
+                        {value.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-400 mb-2 block">시작</label>
+                    <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientFrom} onChange={(e) => setBadgeGradientFrom(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-2 block">끝</label>
+                    <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientTo} onChange={(e) => setBadgeGradientTo(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-2 block">글로우</label>
+                    <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGlowColor} onChange={(e) => setBadgeGlowColor(e.target.value)} />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="grid md:grid-cols-2 gap-4">
             <AdminInput label="판매 시작" type="datetime-local" value={availableFrom} onChange={setAvailableFrom} />
@@ -6288,24 +6655,25 @@ const AdminPointShopManager = () => {
             onClick={createItem}
             className="w-full bg-purple-600 p-4 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all"
           >
-            뱃지 상품 생성
+            {rewardType === "badge" ? "뱃지 상품 생성" : "강화석 상품 생성"}
           </button>
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-[2rem] border p-5 relative overflow-hidden" style={{ background: previewTheme.cardBackground, borderColor: previewTheme.cardBorder, boxShadow: previewTheme.cardShadow }}>
-            <div className="absolute inset-0 pointer-events-none" style={{ background: previewTheme.aura }} />
+          <div className="rounded-[2rem] border p-5 relative overflow-hidden" style={{ background: rewardType === "badge" ? previewTheme.cardBackground : "linear-gradient(135deg, rgba(251,191,36,0.16), rgba(139,92,246,0.16), rgba(15,23,42,0.94))", borderColor: rewardType === "badge" ? previewTheme.cardBorder : "rgba(250,204,21,0.28)", boxShadow: rewardType === "badge" ? previewTheme.cardShadow : "0 0 0 1px rgba(250,204,21,0.12) inset, 0 24px 48px rgba(250,204,21,0.12)" }}>
+            <div className="absolute inset-0 pointer-events-none" style={{ background: rewardType === "badge" ? previewTheme.aura : "radial-gradient(circle at top right, rgba(250,204,21,0.22), transparent 40%)" }} />
             <div className="relative z-10">
-              <div className="text-[10px] uppercase tracking-[0.28em] font-black" style={{ color: previewTheme.chipText }}>
-                Guild Card Live Preview
+              <div className="text-[10px] uppercase tracking-[0.28em] font-black" style={{ color: rewardType === "badge" ? previewTheme.chipText : "#fde68a" }}>
+                {rewardType === "badge" ? "Guild Card Live Preview" : "Enhance Item Preview"}
               </div>
               <div className="mt-4 flex items-center gap-4">
-                <div className="h-16 w-16 rounded-2xl bg-black/25 border border-white/10" />
+                <div className="h-16 w-16 rounded-2xl bg-black/25 border border-white/10 flex items-center justify-center">
+                  <ShoppingBag className="text-white/80" />
+                </div>
                 <div className="min-w-0">
                   <div className="text-lg font-black truncate">{previewItem.title}</div>
-                  <div className="text-sm text-white/70">{previewTheme.label}</div>
-                  <div className="mt-2 inline-flex px-3 py-1 rounded-full text-xs font-black border" style={{ color: previewTheme.chipText, borderColor: previewTheme.chipBorder, background: previewTheme.chipBackground }}>
-                    카드 이펙트 적용
+                  <div className="text-sm text-white/70">
+                    {rewardType === "badge" ? previewTheme.label : getEnhancementItemEffectText(previewItem)}
                   </div>
                 </div>
               </div>
@@ -6313,17 +6681,17 @@ const AdminPointShopManager = () => {
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 relative overflow-hidden">
-            <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: previewTheme.cardBackground }} />
-            <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: previewTheme.aura }} />
+            <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: previewCardBackground }} />
+            <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: previewAuraBackground }} />
             <div className="relative z-10">
               <div className="text-[10px] uppercase tracking-[0.28em] font-black text-white/70">Point Shop Live Preview</div>
               <div className="mt-4 flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
-                      Badge Item
+                      {getShopRewardTypeLabel(previewItem)}
                     </span>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: previewTheme.chipText, borderColor: previewTheme.chipBorder, background: previewTheme.chipBackground }}>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: rewardType === "badge" ? previewTheme.chipText : "#fde68a", borderColor: rewardType === "badge" ? previewTheme.chipBorder : "rgba(250,204,21,0.35)", background: rewardType === "badge" ? previewTheme.chipBackground : "rgba(245,158,11,0.16)" }}>
                       {getShopItemStatusText(previewItem)}
                     </span>
                   </div>
@@ -6378,398 +6746,258 @@ const AdminPointShopManager = () => {
               className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-fuchsia-500 font-bold text-sm text-white min-h-[120px]"
               value={weaponDescription}
               onChange={(e) => setWeaponDescription(e.target.value)}
-              placeholder="길드탭에 보여줄 무기 소개 문구"
+              placeholder="길드 캐릭터 카드에 표시될 무기 설명"
             />
           </div>
 
-          <ImageUploader label="무기 이미지" onUpload={setWeaponImageUrl} bucket="guild-images" folder="weapons" />
-          {weaponImageUrl && (
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <div className="text-xs text-gray-400 mb-3">무기 이미지 미리보기</div>
-              <WeaponImage weapon={{ image_url: weaponImageUrl, rarity: weaponRarity }} className="h-24 w-24 rounded-[1.5rem]" />
-            </div>
-          )}
+          <AdminInput label="무기 이미지 URL" value={weaponImageUrl} onChange={setWeaponImageUrl} placeholder="https://..." />
 
-          <button
-            onClick={createWeaponPart}
-            className="w-full bg-fuchsia-600 p-4 rounded-2xl font-black uppercase hover:bg-fuchsia-500 transition-all"
-          >
-            무기 파츠 저장
+          <button onClick={createWeaponPart} className="w-full bg-fuchsia-600 p-4 rounded-2xl font-black uppercase hover:bg-fuchsia-500 transition-all">
+            무기 파츠 등록
           </button>
-        </div>
 
-        <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-sky-300">Weapon Gacha Builder</div>
-            <div className="mt-2 text-2xl font-black">무기 뽑기 상품 생성</div>
-            <div className="text-sm text-gray-400 mt-1">무기별 확률 직접 입력, 중복 환불 1P, 10회 내 Rare 이상 보장을 포함한 뽑기 상품을 만들 수 있어.</div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <AdminInput label="뽑기 이름" value={gachaTitle} onChange={setGachaTitle} placeholder="예: 심연 무기 뽑기" />
-            <AdminInput label="가격(포인트)" value={gachaPrice} onChange={setGachaPrice} placeholder="예: 1200" />
-          </div>
-
-          <div>
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">설명</label>
-            <textarea
-              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-sky-500 font-bold text-sm text-white min-h-[120px]"
-              value={gachaDescription}
-              onChange={(e) => setGachaDescription(e.target.value)}
-              placeholder="뽑기 상세 설명"
-            />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <AdminInput label="대표 문구" value={gachaPromoText} onChange={setGachaPromoText} placeholder="예: 전설 무기 등장 확률 UP" />
-            <ImageUploader label="뽑기 대표 이미지" onUpload={setGachaImageUrl} bucket="guild-images" folder="gacha" />
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <AdminInput label="판매 시작" type="datetime-local" value={gachaAvailableFrom} onChange={setGachaAvailableFrom} />
-            <AdminInput label="상품 판매 기한" type="datetime-local" value={gachaAvailableTo} onChange={setGachaAvailableTo} />
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-black">포함 무기 선택</div>
-                <div className="text-xs text-gray-400 mt-1">체크 후 확률(%)을 직접 입력해줘. 총합은 반드시 100%여야 해.</div>
-              </div>
-              <div className={cn(
-                "px-3 py-2 rounded-xl text-xs font-black border",
-                isProbabilityValid ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-200" : "border-rose-500/30 bg-rose-500/15 text-rose-200"
-              )}>
-                총합 {formatProbabilityText(totalProbability)}
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 max-h-[420px] overflow-y-auto pr-1">
+          <SectionPanel title="등록된 무기 파츠" description="가챠 보상과 마이룸 장착에 쓰이는 무기 목록">
+            <div className="space-y-3">
               {weaponParts.map((weapon: any) => {
-                const checked = selectedWeaponIds.includes(String(weapon.id));
                 const theme = getWeaponTheme(weapon);
                 return (
-                  <div
-                    key={weapon.id}
-                    className="rounded-2xl border p-4"
-                    style={{
-                      borderColor: checked ? theme.border : "rgba(255,255,255,0.08)",
-                      background: checked ? theme.background : "rgba(255,255,255,0.03)",
-                    }}
-                  >
-                    <div className="grid md:grid-cols-[auto,1fr,140px,110px] gap-3 items-center">
-                      <div className="flex items-center justify-center">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(e) => handleWeaponSelectionChange(String(weapon.id), e.target.checked)}
-                        />
+                  <div key={weapon.id} className="rounded-2xl border border-white/10 bg-black/30 p-4 flex items-center gap-4">
+                    <WeaponImage weapon={weapon} className="h-14 w-14 rounded-2xl shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="font-black truncate">{weapon.name}</div>
+                        <span className="px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
+                          {theme.label}
+                        </span>
                       </div>
+                      <div className="mt-1 text-sm text-gray-400">{weapon.description || "설명 없음"}</div>
+                    </div>
+                    <button onClick={() => deleteWeaponPart(weapon.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
+                      삭제
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </SectionPanel>
+        </div>
 
-                      <div className="flex items-center gap-3 min-w-0">
-                        <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl" />
-                        <div className="min-w-0">
-                          <div className="font-black truncate">{weapon.name}</div>
-                          <div className="text-xs mt-1" style={{ color: theme.text }}>{theme.label}</div>
-                          <div className="text-xs text-gray-400 mt-1 line-clamp-1">{weapon.description || "길드탭 캐릭터 카드 장착 파츠"}</div>
-                        </div>
-                      </div>
+        <div className="space-y-6">
+          <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.28em] font-black text-sky-300">Weapon Gacha Builder</div>
+              <div className="mt-2 text-2xl font-black">무기 가챠 상품 생성</div>
+              <div className="text-sm text-gray-400 mt-1">원하는 무기 파츠를 선택하고 확률을 지정해 가챠 상품을 만든다.</div>
+            </div>
 
-                      <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] font-black text-white/45">확률(%)</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.01"
-                          disabled={!checked}
-                          value={checked ? gachaProbabilityMap[String(weapon.id)] || "" : ""}
-                          onChange={(e) => updateProbability(String(weapon.id), e.target.value)}
-                          className="mt-2 w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-sm font-black disabled:opacity-40"
-                          placeholder="0.00"
-                        />
-                      </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <AdminInput label="뽑기명" value={gachaTitle} onChange={setGachaTitle} placeholder="예: 월광 무기 가챠" />
+              <AdminInput label="가격(포인트)" value={gachaPrice} onChange={setGachaPrice} placeholder="예: 120" />
+            </div>
 
-                      <button
-                        type="button"
-                        disabled={!checked}
-                        onClick={() => setFeaturedWeaponId(String(weapon.id))}
-                        className={cn(
-                          "px-3 py-2 rounded-xl text-xs font-black border transition disabled:opacity-40",
-                          featuredWeaponId === String(weapon.id)
-                            ? "border-amber-400/40 bg-amber-500/15 text-amber-200"
-                            : "border-white/10 bg-white/5 text-white/70"
+            <div>
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">설명</label>
+              <textarea
+                className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-sky-500 font-bold text-sm text-white min-h-[110px]"
+                value={gachaDescription}
+                onChange={(e) => setGachaDescription(e.target.value)}
+                placeholder="가챠 상세 설명"
+              />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <AdminInput label="대표 이미지 URL" value={gachaImageUrl} onChange={setGachaImageUrl} placeholder="https://..." />
+              <AdminInput label="프로모션 문구" value={gachaPromoText} onChange={setGachaPromoText} placeholder="예: 10회 내 Rare 이상 1개 보장" />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <AdminInput label="판매 시작" type="datetime-local" value={gachaAvailableFrom} onChange={setGachaAvailableFrom} />
+              <AdminInput label="판매 종료" type="datetime-local" value={gachaAvailableTo} onChange={setGachaAvailableTo} />
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="text-sm font-black mb-3">보상 무기 선택</div>
+              <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
+                {weaponParts.map((weapon: any) => {
+                  const selected = selectedWeaponIds.includes(String(weapon.id));
+                  return (
+                    <label key={weapon.id} className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={(e) => handleWeaponSelectionChange(String(weapon.id), e.target.checked)}
+                        className="mt-1"
+                      />
+                      <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-black truncate">{weapon.name}</div>
+                        <div className="text-xs text-gray-400 mt-1">{weapon.description || "설명 없음"}</div>
+                        {selected && (
+                          <div className="grid grid-cols-2 gap-3 mt-3">
+                            <AdminInput
+                              label="확률(%)"
+                              value={gachaProbabilityMap[String(weapon.id)] || ""}
+                              onChange={(value: string) => updateProbability(String(weapon.id), value)}
+                              placeholder="예: 12.5"
+                            />
+                            <div>
+                              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">대표 무기 여부</label>
+                              <button
+                                type="button"
+                                onClick={() => setFeaturedWeaponId(String(weapon.id))}
+                                className={cn(
+                                  "mt-3 w-full h-[58px] rounded-2xl border font-black text-sm",
+                                  featuredWeaponId === String(weapon.id) ? "bg-fuchsia-600 border-fuchsia-500 text-white" : "bg-black border-white/10 text-gray-400"
+                                )}
+                              >
+                                {featuredWeaponId === String(weapon.id) ? "대표 무기" : "대표로 설정"}
+                              </button>
+                            </div>
+                          </div>
                         )}
-                      >
-                        {featuredWeaponId === String(weapon.id) ? "대표 무기" : "대표 지정"}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              <div className={cn("mt-4 text-sm font-black", isProbabilityValid ? "text-emerald-300" : "text-amber-300")}>
+                확률 총합: {formatProbabilityText(totalProbability)}
+              </div>
+            </div>
+
+            <button onClick={createGachaProduct} className="w-full bg-sky-600 p-4 rounded-2xl font-black uppercase hover:bg-sky-500 transition-all">
+              무기 가챠 생성
+            </button>
+
+            {gachaPreviewWeapons.length > 0 && (
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="text-sm font-black mb-3">가챠 보상 미리보기</div>
+                <div className="space-y-3">
+                  {gachaPreviewWeapons.map((weapon: any) => (
+                    <div key={`preview-${weapon.id}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-3">
+                      <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-black truncate">{weapon.name}</div>
+                        <div className="text-xs text-gray-400">{formatProbabilityText(weapon.probability)}</div>
+                      </div>
+                      {featuredWeaponId === String(weapon.id) && (
+                        <span className="px-2 py-1 rounded-full text-[10px] font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
+                          Featured
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <SectionPanel title="등록된 포인트샵 상품" description="뱃지와 강화석 상품을 함께 관리할 수 있어.">
+            <div className="space-y-4">
+              {items.map((item) => {
+                const badgeTheme = getBadgeVisualTheme(item);
+                return (
+                  <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-[#0b1020] p-5 relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: getPointShopCardBackground(item, badgeTheme) }} />
+                    <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: getPointShopAuraBackground(item, badgeTheme) }} />
+                    <div className="relative z-10 flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                            {getShopRewardTypeLabel(item)}
+                          </span>
+                          <span
+                            className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border"
+                            style={{
+                              color: item.reward_type === "badge" ? badgeTheme.chipText : "#fde68a",
+                              borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(250,204,21,0.35)",
+                              background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(245,158,11,0.16)",
+                            }}
+                          >
+                            {item.reward_type === "enhance_stone" ? getEnhancementItemEffectText(item) : getShopItemStatusText(item)}
+                          </span>
+                        </div>
+                        <div className="mt-3 text-xl font-black break-words">{item.title}</div>
+                        <div className="mt-2 text-sm text-white/70">{getShopMoodLine(item)}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-2xl font-black text-purple-300">{item.price}P</div>
+                        <div className="text-xs text-gray-500">{item.reward_type === "badge" ? "뱃지 상품" : "강화석 상품"}</div>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <button onClick={() => toggleActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-black text-sm">
+                        {item.is_active ? "비활성화" : "활성화"}
+                      </button>
+                      <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
+                        삭제
                       </button>
                     </div>
                   </div>
                 );
               })}
             </div>
+          </SectionPanel>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setGachaProbabilityMap(buildEqualProbabilityMap(selectedWeaponIds))}
-                disabled={selectedWeaponIds.length === 0}
-                className="px-3 py-2 rounded-xl text-xs font-black border border-white/10 bg-white/5 disabled:opacity-40"
-              >
-                균등 분배
-              </button>
-              <div className="px-3 py-2 rounded-xl text-xs font-black border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-200">
-                중복 무기 환불 1P
-              </div>
-              <div className="px-3 py-2 rounded-xl text-xs font-black border border-amber-500/30 bg-amber-500/10 text-amber-200">
-                10회 내 Rare 이상 1개 보장
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={createGachaProduct}
-            className="w-full bg-sky-600 p-4 rounded-2xl font-black uppercase hover:bg-sky-500 transition-all"
-          >
-            무기 뽑기 상품 생성
-          </button>
-
-          <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
-            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-white/70">Weapon Gacha Live Preview</div>
-            <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-[#09111f] p-5 relative overflow-hidden">
-              <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(168,85,247,0.24) 52%, rgba(2,6,23,0.96))" }} />
-              <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: "radial-gradient(circle at top right, rgba(250,204,21,0.2), transparent 26%)" }} />
-              <div className="relative z-10">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
-                        Weapon Gacha
-                      </span>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
-                        {getWeaponGachaStatusText({
-                          is_active: true,
-                          available_from: gachaAvailableFrom ? new Date(gachaAvailableFrom).toISOString() : null,
-                          available_to: gachaAvailableTo ? new Date(gachaAvailableTo).toISOString() : null,
-                        })}
-                      </span>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-200">
-                        10회 Rare+ 보장
-                      </span>
-                    </div>
-                    <div className="mt-4 text-2xl font-black leading-tight break-words">{gachaTitle || "신규 무기 뽑기"}</div>
-                    <div className="mt-2 text-sm text-white/75">{gachaPromoText || "전설 무기 등장 확률 UP / 대표 문구 미리보기"}</div>
-                  </div>
-                  <div className="h-16 w-16 rounded-[1.2rem] border border-white/10 bg-black/25 overflow-hidden flex items-center justify-center">
-                    {gachaImageUrl ? <img src={gachaImageUrl} className="w-full h-full object-cover" /> : <Swords className="text-white/80" />}
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">대표 보상 미리보기</div>
-                  <div className="mt-4 flex items-center gap-4">
-                    <WeaponImage weapon={gachaFeaturedPreview} className="h-20 w-20 rounded-[1.4rem]" />
-                    <div className="min-w-0">
-                      <div className="text-lg font-black truncate">{gachaFeaturedPreview?.name || "선택된 무기 없음"}</div>
-                      <div className="mt-2 text-sm text-white/70 line-clamp-2">{gachaFeaturedPreview?.description || "왼쪽에서 보상 무기를 선택하면 라이브 프리뷰가 채워져."}</div>
-                      {gachaFeaturedPreview && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <div className="inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: getWeaponTheme(gachaFeaturedPreview).text, borderColor: getWeaponTheme(gachaFeaturedPreview).border, background: getWeaponTheme(gachaFeaturedPreview).background }}>
-                            {getWeaponTheme(gachaFeaturedPreview).label}
-                          </div>
-                          <div className="inline-flex px-2 py-1 rounded-full text-[10px] font-black border border-white/10 bg-white/5 text-white/75">
-                            확률 {formatProbabilityText(gachaFeaturedPreview?.probability)}
-                          </div>
+          <SectionPanel title="등록된 무기 가챠 상품" description="가챠 상품과 연결된 무기 확률을 함께 확인.">
+            <div className="space-y-4">
+              {gachaProducts.map((item: any) => {
+                const rewards = gachaRewardMap[String(item.id)] || [];
+                return (
+                  <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-[#0b1020] p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                            Weapon Gacha
+                          </span>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
+                            {getWeaponGachaStatusText(item)}
+                          </span>
                         </div>
-                      )}
+                        <div className="mt-3 text-xl font-black break-words">{item.title}</div>
+                        <div className="mt-2 text-sm text-white/70">{item.promo_text || item.description || "설명 없음"}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-2xl font-black text-sky-300">{item.price}P</div>
+                        <div className="text-xs text-gray-500">보상 {rewards.length}종</div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">확률 요약</div>
-                    <div className={cn(
-                      "text-xs font-black",
-                      isProbabilityValid ? "text-emerald-300" : "text-rose-300"
-                    )}>
-                      총합 {formatProbabilityText(totalProbability)}
-                    </div>
-                  </div>
-                  <div className="mt-3 space-y-2">
-                    {gachaPreviewWeapons.length === 0 ? (
-                      <div className="text-sm text-gray-500">선택된 무기가 없어요.</div>
-                    ) : (
-                      gachaPreviewWeapons.slice(0, 6).map((weapon: any) => (
-                        <div key={`preview-${weapon.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <WeaponImage weapon={weapon} className="h-10 w-10 rounded-xl" />
-                            <div className="truncate text-sm font-black">{weapon.name}</div>
+                    {rewards.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        {rewards.map((reward: any, index: number) => (
+                          <div key={`${item.id}-reward-${index}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3">
+                            <WeaponImage weapon={reward} className="h-10 w-10 rounded-xl shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <div className="font-black truncate">{reward.name}</div>
+                              <div className="text-xs text-gray-400">{formatProbabilityText(reward.probability)}</div>
+                            </div>
+                            {reward.is_featured && (
+                              <span className="px-2 py-1 rounded-full text-[10px] font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
+                                Featured
+                              </span>
+                            )}
                           </div>
-                          <div className="text-sm font-black">{formatProbabilityText(weapon.probability)}</div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
-                  </div>
-                </div>
 
-                <div className="mt-5 text-3xl font-black">{toNumber(gachaPrice) || 900}P</div>
-                <div className="mt-1 text-sm text-white/55">10회 {Math.max(1, toNumber(gachaPrice) || 900) * 10}P · 중복 환불 1P</div>
-              </div>
+                    <div className="mt-4 flex gap-2">
+                      <button onClick={() => toggleGachaActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-black text-sm">
+                        {item.is_active ? "비활성화" : "활성화"}
+                      </button>
+                      <button onClick={() => deleteGachaProduct(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </SectionPanel>
         </div>
       </div>
-
-      <SectionPanel title="현재 등록된 무기 파츠" description="뽑기 구성에 들어갈 실제 무기 목록이야.">
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {weaponParts.map((weapon: any) => {
-            const theme = getWeaponTheme(weapon);
-            return (
-              <div key={weapon.id} className="rounded-[2rem] border p-5" style={{ borderColor: theme.border, background: theme.background }}>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <WeaponImage weapon={weapon} className="h-14 w-14 rounded-[1.2rem]" />
-                    <div className="min-w-0">
-                      <div className="font-black truncate">{weapon.name}</div>
-                      <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
-                        {theme.label}
-                      </div>
-                    </div>
-                  </div>
-                  <button onClick={() => deleteWeaponPart(weapon.id)} className="shrink-0 px-3 py-2 rounded-xl bg-red-500/85 text-white text-xs font-black">
-                    삭제
-                  </button>
-                </div>
-                <div className="mt-4 text-sm text-white/70 whitespace-pre-wrap">{weapon.description || "설명이 아직 없습니다."}</div>
-              </div>
-            );
-          })}
-        </div>
-      </SectionPanel>
-
-      <SectionPanel title="현재 등록된 무기 뽑기" description="확률 설정, 보장, 중복 환불까지 포함된 실제 판매 뽑기 상품 목록이야.">
-        <div className="grid lg:grid-cols-2 gap-4">
-          {gachaProducts.map((product: any) => {
-            const rewards = gachaRewardMap[String(product.id)] || [];
-            const featured = rewards.find((item: any) => item.is_featured) || rewards[0];
-            const productProbabilityTotal = rewards.reduce((sum: number, reward: any) => sum + getProbabilityNumber(reward.probability), 0);
-
-            return (
-              <div key={product.id} className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
-                        Weapon Gacha
-                      </span>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
-                        {getWeaponGachaStatusText(product)}
-                      </span>
-                    </div>
-                    <div className="mt-3 text-xl font-black break-words">{product.title}</div>
-                    <div className="mt-2 text-sm text-white/70">{product.promo_text || product.description || "무기 파츠 뽑기 상품"}</div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-2xl font-black text-sky-300">{product.price}P</div>
-                    <div className="text-xs text-gray-500">10회 {Number(product.price || 0) * 10}P</div>
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">대표 보상</div>
-                  <div className="mt-3 flex items-center gap-3">
-                    <WeaponImage weapon={featured} className="h-16 w-16 rounded-[1.2rem]" />
-                    <div className="min-w-0">
-                      <div className="font-black truncate">{featured?.name || "대표 무기 없음"}</div>
-                      <div className="mt-1 text-xs text-white/60">{featured ? `${getWeaponTheme(featured).label} · ${formatProbabilityText(featured.probability)}` : "보상 정보 없음"}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">보상 확률</div>
-                    <div className="text-xs text-white/55">총합 {formatProbabilityText(productProbabilityTotal)}</div>
-                  </div>
-                  <div className="mt-3 space-y-2 max-h-[240px] overflow-y-auto pr-1">
-                    {rewards.map((reward: any) => (
-                      <div key={`${product.id}-${reward.id || reward.name}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/25 px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <WeaponImage weapon={reward} className="h-10 w-10 rounded-xl" />
-                          <div className="min-w-0">
-                            <div className="text-sm font-black truncate">{reward.name}</div>
-                            <div className="text-[11px]" style={{ color: getWeaponTheme(reward).text }}>
-                              {getWeaponTheme(reward).label}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-sm font-black">{formatProbabilityText(reward.probability)}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <div className="px-3 py-2 rounded-xl text-xs font-black border border-fuchsia-500/30 bg-fuchsia-500/10 text-fuchsia-200">
-                    10회 내 Rare 이상 1개 보장
-                  </div>
-                  <div className="px-3 py-2 rounded-xl text-xs font-black border border-emerald-500/30 bg-emerald-500/10 text-emerald-200">
-                    중복 환불 1P
-                  </div>
-                </div>
-
-                <div className="mt-4 flex gap-2">
-                  <button onClick={() => toggleGachaActive(product)} className="px-4 py-2 rounded-xl bg-white/10 font-black text-sm">
-                    {product.is_active ? "비활성화" : "활성화"}
-                  </button>
-                  <button onClick={() => deleteGachaProduct(product.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
-                    삭제
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </SectionPanel>
-
-      <SectionPanel title="현재 등록된 포인트샵 뱃지" description="기존 뱃지 상품도 그대로 관리할 수 있어.">
-        <div className="grid md:grid-cols-2 gap-4">
-          {items.map((item: any) => {
-            const badgeTheme = getBadgeVisualTheme(item);
-            return (
-              <div key={item.id} className="rounded-[2rem] border p-5" style={{ borderColor: badgeTheme.cardBorder, background: badgeTheme.cardBackground, boxShadow: badgeTheme.cardShadow }}>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
-                        Badge Item
-                      </span>
-                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}>
-                        {getShopItemStatusText(item)}
-                      </span>
-                    </div>
-                    <div className="mt-3 text-xl font-black break-words">{item.title}</div>
-                    <div className="mt-2 text-sm text-white/70">{getShopMoodLine(item)}</div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-2xl font-black text-purple-300">{item.price}P</div>
-                    <div className="text-xs text-gray-500">뱃지 상품</div>
-                  </div>
-                </div>
-                <div className="mt-4 flex gap-2">
-                  <button onClick={() => toggleActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-black text-sm">
-                    {item.is_active ? "비활성화" : "활성화"}
-                  </button>
-                  <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
-                    삭제
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </SectionPanel>
     </div>
   );
 };
