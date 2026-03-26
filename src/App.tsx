@@ -2394,6 +2394,7 @@ const RaidDetailModal = ({
           <JoinForm
             raid={raid}
             parts={parts}
+            user={user}
             onClose={() => setShowJoin(false)}
             onSuccess={() => {
               setShowJoin(false);
@@ -2465,14 +2466,19 @@ const ParticipantItem = ({
 const JoinForm = ({
   raid,
   parts,
+  user,
   onClose,
   onSuccess,
 }: {
   raid: any;
   parts: any[];
+  user: any;
   onClose: () => void;
   onSuccess: () => void;
 }) => {
+  const [myCharacters, setMyCharacters] = useState<any[]>([]);
+  const [characterLoading, setCharacterLoading] = useState(false);
+  const [selectedCharacterId, setSelectedCharacterId] = useState("");
   const [nickname, setNickname] = useState("");
   const [level, setLevel] = useState("");
   const [playerClass, setPlayerClass] = useState("");
@@ -2483,9 +2489,107 @@ const JoinForm = ({
   const dealers = parts.filter((p: any) => p.position === "딜러").length;
   const supports = parts.filter((p: any) => p.position === "서포터").length;
 
+  const applyCharacterToForm = useCallback((character: any) => {
+    if (!character) return;
+
+    setSelectedCharacterId(String(character.id || ""));
+    setNickname(character.character_name || "");
+    setLevel(String(character.item_level || ""));
+    setPlayerClass(character.class_name || "");
+    setRole(character.role_hint === "서포터" ? "서포터" : "딜러");
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchMyCharacters = async () => {
+      if (!user?.id) {
+        if (mounted) {
+          setMyCharacters([]);
+          setSelectedCharacterId("");
+        }
+        return;
+      }
+
+      setCharacterLoading(true);
+
+      try {
+        const client = getSupabaseOrThrow();
+        const { data, error } = await client
+          .from("guild_members")
+          .select("*")
+          .or(`user_id.eq.${user.id},owner_id.eq.${user.id}`)
+          .order("is_main", { ascending: false })
+          .order("item_level", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: true });
+
+        if (error) {
+          console.error("JoinForm fetchMyCharacters error:", error);
+          if (mounted) {
+            setMyCharacters([]);
+            setSelectedCharacterId("");
+          }
+          return;
+        }
+
+        const nextCharacters = data || [];
+
+        if (!mounted) return;
+
+        setMyCharacters(nextCharacters);
+
+        if (nextCharacters.length > 0) {
+          const preferred =
+            nextCharacters.find((item: any) => Boolean(item.is_main)) ||
+            nextCharacters[0];
+
+          applyCharacterToForm(preferred);
+        } else {
+          setSelectedCharacterId("");
+          setNickname("");
+          setLevel("");
+          setPlayerClass("");
+          setRole("딜러");
+        }
+      } catch (error) {
+        console.error("JoinForm fetchMyCharacters unexpected error:", error);
+        if (mounted) {
+          setMyCharacters([]);
+          setSelectedCharacterId("");
+        }
+      } finally {
+        if (mounted) setCharacterLoading(false);
+      }
+    };
+
+    fetchMyCharacters();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user, applyCharacterToForm]);
+
+  const handleCharacterChange = (id: string) => {
+    setSelectedCharacterId(id);
+    const selected = myCharacters.find((item: any) => String(item.id) === id);
+    if (selected) {
+      applyCharacterToForm(selected);
+    }
+  };
+
   const handleJoin = async () => {
+    if (!user?.id) {
+      alert("로그인 후 참여할 수 있어.");
+      return;
+    }
+
+    if (myCharacters.length === 0) {
+      alert("마이룸에 등록된 캐릭터가 없어. 먼저 캐릭터를 등록해줘.");
+      return;
+    }
+
     if (!nickname || !level || !playerClass) {
-      alert("닉네임, 아이템 레벨, 클래스를 모두 입력하세요.");
+      alert("캐릭터 정보가 비어 있어. 마이룸 캐릭터를 다시 선택해줘.");
       return;
     }
 
@@ -2494,7 +2598,7 @@ const JoinForm = ({
     );
 
     if (alreadyJoined) {
-      alert("같은 닉네임이 이미 참가 중이야.");
+      alert("같은 캐릭터가 이미 참가 중이야.");
       return;
     }
 
@@ -2514,9 +2618,9 @@ const JoinForm = ({
     try {
       const { error } = await supabase.from("raid_participants").insert({
         schedule_id: raid.id,
-        character_name: nickname,
+        character_name: nickname.trim(),
         item_level: level,
-        class_name: playerClass,
+        class_name: playerClass.trim(),
         position: raid.type === "anime" ? "참가" : role,
       });
 
@@ -2537,11 +2641,48 @@ const JoinForm = ({
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[220] p-4">
       <div className="bg-[#111827] p-6 rounded-[2rem] w-full max-w-md space-y-4 border border-white/10 backdrop-blur-2xl shadow-[0_0_40px_rgba(59,130,246,0.10)]">
         <div className="flex items-center justify-between">
-          <div className="text-white font-black text-xl">레이드 참여</div>
+          <div>
+            <div className="text-white font-black text-xl">레이드 참여</div>
+            <div className="text-xs text-gray-400 mt-1">마이룸 캐릭터를 선택하면 정보가 자동 입력돼.</div>
+          </div>
           <button onClick={onClose} className="text-gray-500 hover:text-white">
             <X size={20} />
           </button>
         </div>
+
+        <div className="space-y-3 text-left w-full">
+          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">
+            내 캐릭터 선택
+          </label>
+          <select
+            value={selectedCharacterId}
+            onChange={(e) => handleCharacterChange(e.target.value)}
+            disabled={characterLoading || myCharacters.length === 0}
+            className="w-full p-4 bg-black border border-white/10 rounded-2xl text-white disabled:opacity-60"
+          >
+            {characterLoading && <option value="">마이룸 캐릭터 불러오는 중...</option>}
+            {!characterLoading && myCharacters.length === 0 && (
+              <option value="">등록된 캐릭터 없음</option>
+            )}
+            {!characterLoading &&
+              myCharacters.map((character: any) => (
+                <option key={character.id} value={String(character.id)}>
+                  {character.character_name} · {character.class_name} · {character.item_level || 0}
+                </option>
+              ))}
+          </select>
+        </div>
+
+        {myCharacters.length > 0 && selectedCharacterId && (
+          <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 px-4 py-3 text-sm">
+            <div className="font-black text-purple-200">
+              {nickname} · {playerClass}
+            </div>
+            <div className="mt-1 text-xs text-purple-100/80">
+              아이템 레벨 {level || "-"} · 역할 {raid.type === "anime" ? "참가" : role}
+            </div>
+          </div>
+        )}
 
         <AdminInput label="닉네임" value={nickname} onChange={setNickname} />
         <AdminInput label="아이템 레벨" value={level} onChange={setLevel} />
@@ -2558,11 +2699,17 @@ const JoinForm = ({
           </select>
         )}
 
+        {myCharacters.length === 0 && !characterLoading && (
+          <div className="rounded-2xl border border-dashed border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            마이룸에 등록된 캐릭터가 없어. 마이룸에서 캐릭터를 먼저 만들어줘.
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3 pt-2">
           <button
             onClick={handleJoin}
-            disabled={saving}
-            className="w-full bg-green-600 py-3 rounded-2xl font-black"
+            disabled={saving || characterLoading || myCharacters.length === 0}
+            className="w-full bg-green-600 py-3 rounded-2xl font-black disabled:opacity-50"
           >
             {saving ? "참가 중..." : "참가"}
           </button>
