@@ -60,6 +60,31 @@ const withTimeout = async <T,>(promise: Promise<T>, ms = 12000): Promise<T> => {
   ]);
 };
 
+
+const CACHE_KEYS = {
+  posts: "inxx_cache_posts_v2",
+  settings: "inxx_cache_settings_v2",
+};
+
+const readCache = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    console.error("cache read failed:", error);
+    return fallback;
+  }
+};
+
+const writeCache = (key: string, value: unknown) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error("cache write failed:", error);
+  }
+};
+
 const getSupabaseOrThrow = () => {
   if (!supabase) {
     throw new Error(supabaseConfigError || "Supabase client is not initialized.");
@@ -178,22 +203,156 @@ const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
 
-const normalizeEquippedBadges = (input: any): Array<{ badge_item_id: string; badge_name: string; badge_color?: string | null }> => {
+type BadgeEffectKey = "none" | "violet" | "sunset" | "ocean" | "emerald" | "rose" | "gold";
+
+type BadgeLike = {
+  badge_item_id: string;
+  badge_name: string;
+  badge_color?: string | null;
+  badge_card_effect?: BadgeEffectKey | string | null;
+  badge_gradient_from?: string | null;
+  badge_gradient_to?: string | null;
+  badge_glow_color?: string | null;
+};
+
+const normalizeBadgeEffectKey = (value: any): BadgeEffectKey => {
+  const normalized = String(value || "none").trim().toLowerCase();
+  if (["violet", "sunset", "ocean", "emerald", "rose", "gold"].includes(normalized)) {
+    return normalized as BadgeEffectKey;
+  }
+  return "none";
+};
+
+const hexToRgba = (hex: string | null | undefined, alpha = 1) => {
+  const raw = String(hex || "").trim().replace("#", "");
+  const normalized =
+    raw.length === 3
+      ? raw.split("").map((char) => char + char).join("")
+      : raw.length === 6
+      ? raw
+      : "8b5cf6";
+
+  const num = Number.parseInt(normalized, 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const BADGE_CARD_EFFECT_PRESETS: Record<
+  BadgeEffectKey,
+  {
+    label: string;
+    from: string;
+    to: string;
+    glow: string;
+    accent: string;
+  }
+> = {
+  none: {
+    label: "효과 없음",
+    from: "#0f172a",
+    to: "#111827",
+    glow: "#8b5cf6",
+    accent: "#c4b5fd",
+  },
+  violet: {
+    label: "바이올렛 오라",
+    from: "#7c3aed",
+    to: "#312e81",
+    glow: "#a78bfa",
+    accent: "#ddd6fe",
+  },
+  sunset: {
+    label: "선셋 플레어",
+    from: "#fb7185",
+    to: "#f59e0b",
+    glow: "#fdba74",
+    accent: "#ffe4e6",
+  },
+  ocean: {
+    label: "오션 웨이브",
+    from: "#06b6d4",
+    to: "#2563eb",
+    glow: "#67e8f9",
+    accent: "#cffafe",
+  },
+  emerald: {
+    label: "에메랄드 미스트",
+    from: "#10b981",
+    to: "#065f46",
+    glow: "#6ee7b7",
+    accent: "#d1fae5",
+  },
+  rose: {
+    label: "로즈 블룸",
+    from: "#ec4899",
+    to: "#be185d",
+    glow: "#f9a8d4",
+    accent: "#fce7f3",
+  },
+  gold: {
+    label: "골드 라이트",
+    from: "#f59e0b",
+    to: "#b45309",
+    glow: "#fcd34d",
+    accent: "#fef3c7",
+  },
+};
+
+const getBadgeVisualTheme = (badge: any) => {
+  const effectKey = normalizeBadgeEffectKey(badge?.badge_card_effect);
+  const preset = BADGE_CARD_EFFECT_PRESETS[effectKey] || BADGE_CARD_EFFECT_PRESETS.none;
+  const from = badge?.badge_gradient_from || badge?.gradient_from || preset.from;
+  const to = badge?.badge_gradient_to || badge?.gradient_to || preset.to;
+  const glow = badge?.badge_glow_color || badge?.glow_color || badge?.badge_color || preset.glow;
+  const accent = badge?.badge_color || preset.accent;
+
+  return {
+    effectKey,
+    label: preset.label,
+    from,
+    to,
+    glow,
+    accent,
+    chipBackground: `linear-gradient(135deg, ${hexToRgba(from, 0.28)}, ${hexToRgba(to, 0.2)})`,
+    chipBorder: hexToRgba(glow, 0.58),
+    chipText: accent,
+    cardBackground: `linear-gradient(135deg, ${hexToRgba(from, 0.3)} 0%, ${hexToRgba(to, 0.22)} 42%, rgba(15, 23, 42, 0.94) 100%)`,
+    cardBorder: hexToRgba(glow, 0.5),
+    cardShadow: `0 0 0 1px ${hexToRgba(glow, 0.16)} inset, 0 24px 48px ${hexToRgba(glow, 0.16)}`,
+    aura: `radial-gradient(circle at top right, ${hexToRgba(glow, 0.3)} 0%, transparent 58%)`,
+  };
+};
+
+const normalizeEquippedBadges = (input: any): BadgeLike[] => {
   if (!input) return [];
   if (Array.isArray(input)) {
     return input
       .map((item: any) => {
         if (!item) return null;
         if (typeof item === "string") {
-          return { badge_item_id: item, badge_name: item, badge_color: null };
+          return {
+            badge_item_id: item,
+            badge_name: item,
+            badge_color: null,
+            badge_card_effect: "none",
+            badge_gradient_from: null,
+            badge_gradient_to: null,
+            badge_glow_color: null,
+          };
         }
         return {
           badge_item_id: String(item.badge_item_id || item.id || item.badge_name || ""),
           badge_name: item.badge_name || item.name || item.label || "뱃지",
           badge_color: item.badge_color || item.color || null,
+          badge_card_effect: item.badge_card_effect || item.card_effect || "none",
+          badge_gradient_from: item.badge_gradient_from || item.gradient_from || null,
+          badge_gradient_to: item.badge_gradient_to || item.gradient_to || null,
+          badge_glow_color: item.badge_glow_color || item.glow_color || null,
         };
       })
-      .filter(Boolean) as Array<{ badge_item_id: string; badge_name: string; badge_color?: string | null }>;
+      .filter(Boolean) as BadgeLike[];
   }
 
   if (typeof input === "string") {
@@ -201,7 +360,15 @@ const normalizeEquippedBadges = (input: any): Array<{ badge_item_id: string; bad
       return normalizeEquippedBadges(JSON.parse(input));
     } catch {
       return input.trim()
-        ? [{ badge_item_id: input, badge_name: input, badge_color: null }]
+        ? [{
+            badge_item_id: input,
+            badge_name: input,
+            badge_color: null,
+            badge_card_effect: "none",
+            badge_gradient_from: null,
+            badge_gradient_to: null,
+            badge_glow_color: null,
+          }]
         : [];
     }
   }
@@ -209,15 +376,46 @@ const normalizeEquippedBadges = (input: any): Array<{ badge_item_id: string; bad
   return [];
 };
 
-const getCharacterBadges = (character: any) => {
+const getCharacterBadges = (character: any): BadgeLike[] => {
   const equipped = normalizeEquippedBadges(character?.equipped_badges);
-  if (equipped.length > 0) return equipped;
+  const topLevelBadgeTheme = {
+    badge_card_effect: character?.badge_card_effect || "none",
+    badge_gradient_from: character?.badge_gradient_from || null,
+    badge_gradient_to: character?.badge_gradient_to || null,
+    badge_glow_color: character?.badge_glow_color || null,
+  };
+
+  if (equipped.length > 0) {
+    return equipped.map((badge: any, index: number) => ({
+      ...badge,
+      badge_card_effect:
+        badge?.badge_card_effect ||
+        badge?.card_effect ||
+        (index === 0 ? topLevelBadgeTheme.badge_card_effect : "none"),
+      badge_gradient_from:
+        badge?.badge_gradient_from ||
+        badge?.gradient_from ||
+        (index === 0 ? topLevelBadgeTheme.badge_gradient_from : null),
+      badge_gradient_to:
+        badge?.badge_gradient_to ||
+        badge?.gradient_to ||
+        (index === 0 ? topLevelBadgeTheme.badge_gradient_to : null),
+      badge_glow_color:
+        badge?.badge_glow_color ||
+        badge?.glow_color ||
+        (index === 0 ? topLevelBadgeTheme.badge_glow_color : null),
+    }));
+  }
 
   if (Array.isArray(character?.equipped_badge_names) && character.equipped_badge_names.length > 0) {
     return character.equipped_badge_names.map((name: string, index: number) => ({
       badge_item_id: `${name}-${index}`,
       badge_name: name,
       badge_color: null,
+      badge_card_effect: index === 0 ? topLevelBadgeTheme.badge_card_effect : "none",
+      badge_gradient_from: index === 0 ? topLevelBadgeTheme.badge_gradient_from : null,
+      badge_gradient_to: index === 0 ? topLevelBadgeTheme.badge_gradient_to : null,
+      badge_glow_color: index === 0 ? topLevelBadgeTheme.badge_glow_color : null,
     }));
   }
 
@@ -227,11 +425,34 @@ const getCharacterBadges = (character: any) => {
         badge_item_id: String(character.badge_item_id || character.equipped_badge_id || character.badge_name),
         badge_name: character.badge_name,
         badge_color: character.badge_color || null,
+        badge_card_effect: character?.badge_card_effect || "none",
+        badge_gradient_from: character?.badge_gradient_from || null,
+        badge_gradient_to: character?.badge_gradient_to || null,
+        badge_glow_color: character?.badge_glow_color || null,
       },
     ];
   }
 
   return [];
+};
+
+const getPrimaryBadgeTheme = (character: any) => {
+  const badges = getCharacterBadges(character);
+  const primaryBadge =
+    badges.find((badge: any) => normalizeBadgeEffectKey(badge?.badge_card_effect) !== "none") ||
+    badges[0] || {
+      badge_color: character?.profile_theme || character?.theme_color || "#8b5cf6",
+      badge_card_effect: "none",
+      badge_gradient_from: character?.profile_theme || character?.theme_color || "#8b5cf6",
+      badge_gradient_to: "#1f2937",
+      badge_glow_color: character?.profile_theme || character?.theme_color || "#8b5cf6",
+    };
+
+  const theme = getBadgeVisualTheme(primaryBadge);
+  return {
+    primaryBadge,
+    theme,
+  };
 };
 
 const uploadGuildImage = async (file: File, userId: string) => {
@@ -417,7 +638,8 @@ export default function App() {
   const [posts, setPosts] = useState<PostLike[]>([]);
   const [settings, setSettings] = useState(defaultSettings);
 
-  useEffect(() => {
+
+useEffect(() => {
   let mounted = true;
 
   if (!supabase) {
@@ -427,66 +649,92 @@ export default function App() {
     };
   }
 
-  const bootstrap = async () => {
+  const cachedPosts = readCache<PostLike[]>(CACHE_KEYS.posts, []);
+  const cachedSettings = readCache<typeof defaultSettings>(CACHE_KEYS.settings, defaultSettings);
+
+  if (cachedPosts.length > 0) {
+    setPosts(cachedPosts);
+  }
+
+  if (cachedSettings) {
+    setSettings({
+      guild_name: cachedSettings.guild_name ?? defaultSettings.guild_name,
+      guild_description: cachedSettings.guild_description ?? defaultSettings.guild_description,
+    });
+  }
+
+  const init = async () => {
+    const client = getSupabaseOrThrow();
+    const loadingGuard = window.setTimeout(() => {
+      if (mounted) {
+        setLoading(false);
+      }
+    }, 1200);
+
     try {
-      const client = getSupabaseOrThrow();
+      let currentUser: any = null;
 
       try {
-        const sessionResult = await withTimeout(client.auth.getSession(), 4000);
-        const currentUser = sessionResult?.data?.session?.user ?? null;
+        const sessionResult = await withTimeout(client.auth.getSession(), 2500);
+        const sessionError = sessionResult.error;
 
-        if (!mounted) return;
-
-        setUser(currentUser);
-
-        if (currentUser) {
-          fetchProfile(currentUser.id).catch((error) =>
-            console.error("initial fetchProfile error:", error)
-          );
-        } else {
-          setProfile(null);
+        if (sessionError) {
+          console.error("getSession error:", sessionError);
         }
+
+        currentUser = sessionResult.data.session?.user ?? null;
       } catch (error) {
         console.error("getSession timeout or failure:", error);
-        if (!mounted) return;
-        setUser(null);
+        currentUser = null;
+      }
+
+      if (!mounted) return;
+
+      setUser(currentUser);
+
+      if (currentUser) {
+        void fetchProfile(currentUser.id);
+      } else {
         setProfile(null);
       }
 
-      fetchInitialData().catch((error) =>
-        console.error("initial fetchInitialData error:", error)
-      );
+      void fetchInitialData();
 
       if (mounted) {
         setBootError(null);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("App init error:", error);
+
       if (mounted) {
         setBootError(null);
       }
     } finally {
+      window.clearTimeout(loadingGuard);
+
       if (mounted) {
         setLoading(false);
       }
     }
   };
 
-  bootstrap();
+  init();
 
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange(async (_event, session) => {
+  } = supabase.auth.onAuthStateChange(async (event, session) => {
     try {
       const currentUser = session?.user ?? null;
-      if (!mounted) return;
-
       setUser(currentUser);
 
       if (currentUser) {
-        await fetchProfile(currentUser.id);
+        void fetchProfile(currentUser.id);
       } else {
         setProfile(null);
+      }
+
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
+        void fetchInitialData();
       }
     } catch (error) {
       console.error("Auth state change error:", error);
@@ -498,6 +746,7 @@ export default function App() {
     subscription?.unsubscribe();
   };
 }, []);
+
  
 
   const fetchProfile = async (userId: string) => {
@@ -521,43 +770,49 @@ export default function App() {
     }
   };
 
-  const fetchInitialData = async () => {
-    try {
-      const client = getSupabaseOrThrow();
-      const [postsRes, settingsRes] = await Promise.allSettled([
-        withTimeout(client.from("posts").select("*").order("created_at", { ascending: false }), 10000),
-        withTimeout(client.from("settings").select("*").limit(1).maybeSingle(), 10000),
-      ]);
 
-      if (postsRes.status === "fulfilled") {
-        const { data, error } = postsRes.value;
-        if (error) {
-          console.error("posts fetch error:", error);
-        } else {
-          setPosts(data || []);
-        }
-      } else {
-        console.error("posts fetch failed:", postsRes.reason);
-      }
+const fetchInitialData = async () => {
+  try {
+    const client = getSupabaseOrThrow();
 
-      if (settingsRes.status === "fulfilled") {
-        const { data, error } = settingsRes.value;
-        if (error) {
-          console.error("settings fetch error:", error);
-        } else if (data) {
-          setSettings({
-            guild_name: data.guild_name ?? defaultSettings.guild_name,
-            guild_description:
-              data.guild_description ?? defaultSettings.guild_description,
-          });
-        }
-      } else {
-        console.error("settings fetch failed:", settingsRes.reason);
+    const [postsRes, settingsRes] = await Promise.allSettled([
+      client.from("posts").select("*").order("created_at", { ascending: false }),
+      client.from("settings").select("*").limit(1).maybeSingle(),
+    ]);
+
+    if (postsRes.status === "fulfilled") {
+      const { data, error } = postsRes.value;
+      if (error) {
+        console.error("posts fetch error:", error);
+      } else if (Array.isArray(data)) {
+        setPosts(data);
+        writeCache(CACHE_KEYS.posts, data);
       }
-    } catch (error) {
-      console.error("fetchInitialData unexpected error:", error);
+    } else {
+      console.error("posts fetch failed:", postsRes.reason);
     }
-  };
+
+    if (settingsRes.status === "fulfilled") {
+      const { data, error } = settingsRes.value;
+      if (error) {
+        console.error("settings fetch error:", error);
+      } else if (data) {
+        const nextSettings = {
+          guild_name: data.guild_name ?? defaultSettings.guild_name,
+          guild_description:
+            data.guild_description ?? defaultSettings.guild_description,
+        };
+
+        setSettings(nextSettings);
+        writeCache(CACHE_KEYS.settings, nextSettings);
+      }
+    } else {
+      console.error("settings fetch failed:", settingsRes.reason);
+    }
+  } catch (error) {
+    console.error("fetchInitialData unexpected error:", error);
+  }
+};
 
   const handleLogout = async () => {
     const client = getSupabaseOrThrow();
@@ -2644,9 +2899,14 @@ const ClassContentEditor = () => {
 };
 
 
+
 const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
   const [tab, setTab] = useState("all");
   const [showWriteModal, setShowWriteModal] = useState(false);
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, any[]>>({});
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [openCommentPosts, setOpenCommentPosts] = useState<Record<string, boolean>>({});
+  const [commentsEnabled, setCommentsEnabled] = useState(true);
 
   const visiblePosts = useMemo(() => {
     const pinned = posts
@@ -2662,24 +2922,139 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
     return merged;
   }, [posts, tab]);
 
+  const fetchComments = useCallback(async () => {
+    if (!posts || posts.length === 0) {
+      setCommentsByPost({});
+      return;
+    }
+
+    try {
+      const client = getSupabaseOrThrow();
+      const postIds = posts.map((post: any) => post.id).filter(Boolean);
+
+      if (postIds.length === 0) {
+        setCommentsByPost({});
+        return;
+      }
+
+      const { data, error } = await client
+        .from("post_comments")
+        .select("*")
+        .in("post_id", postIds)
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        console.error("post_comments fetch error:", error);
+        setCommentsEnabled(false);
+        setCommentsByPost({});
+        return;
+      }
+
+      const grouped = (data || []).reduce((acc: Record<string, any[]>, item: any) => {
+        const key = String(item.post_id);
+        acc[key] = acc[key] || [];
+        acc[key].push(item);
+        return acc;
+      }, {});
+
+      setCommentsEnabled(true);
+      setCommentsByPost(grouped);
+    } catch (error) {
+      console.error("fetchComments error:", error);
+      setCommentsEnabled(false);
+      setCommentsByPost({});
+    }
+  }, [posts]);
+
+  useEffect(() => {
+    void fetchComments();
+  }, [fetchComments]);
+
   const handleDelete = async (postId: string) => {
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-    const { error } = await supabase.from("posts").delete().eq("id", postId);
-    if (error) return alert(error.message);
-    onRefresh();
+    if (!confirm("정말 게시글을 삭제할까요? 연결된 댓글도 함께 사라질 수 있어요.")) return;
+
+    try {
+      const client = getSupabaseOrThrow();
+      try {
+        await client.from("post_comments").delete().eq("post_id", postId);
+      } catch (commentDeleteError) {
+        console.error("post_comments delete skipped:", commentDeleteError);
+      }
+      const { error } = await client.from("posts").delete().eq("id", postId);
+      if (error) return alert(error.message);
+      onRefresh();
+      void fetchComments();
+    } catch (error: any) {
+      alert(error?.message || "게시글 삭제 중 오류가 발생했어요.");
+    }
   };
 
   const togglePin = async (post: any) => {
     if (profile?.role !== "admin") return;
     if (!post.is_notice) return alert("공지글만 고정 가능합니다.");
 
+    const client = getSupabaseOrThrow();
+
     if (!post.is_pinned) {
-      await supabase.from("posts").update({ is_pinned: false }).eq("is_notice", true).eq("is_pinned", true);
+      await client.from("posts").update({ is_pinned: false }).eq("is_notice", true).eq("is_pinned", true);
     }
 
-    const { error } = await supabase.from("posts").update({ is_pinned: !post.is_pinned }).eq("id", post.id);
+    const { error } = await client.from("posts").update({ is_pinned: !post.is_pinned }).eq("id", post.id);
     if (error) return alert(error.message);
     onRefresh();
+  };
+
+  const submitComment = async (postId: string) => {
+    if (!user) return alert("로그인 후 댓글을 작성할 수 있어요.");
+    if (!commentsEnabled) return alert("댓글 기능용 SQL이 아직 적용되지 않았어요.");
+    const content = (commentDrafts[postId] || "").trim();
+    if (!content) return alert("댓글 내용을 입력해줘.");
+
+    try {
+      const client = getSupabaseOrThrow();
+      const payload = {
+        post_id: postId,
+        content,
+        user_id: user.id,
+        author: profile?.nickname || "Anonymous",
+        author_name: profile?.nickname || "Anonymous",
+      };
+
+      const { error } = await client.from("post_comments").insert([payload]);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      await client.rpc("add_points", {
+        p_user_id: user.id,
+        p_points: 5,
+        p_type: "comment",
+      });
+
+      setCommentDrafts((prev) => ({ ...prev, [postId]: "" }));
+      setOpenCommentPosts((prev) => ({ ...prev, [postId]: true }));
+      await fetchComments();
+      alert("댓글 작성 완료! +5 포인트 획득 🎉");
+    } catch (error: any) {
+      alert(error?.message || "댓글 등록 중 오류가 발생했어요.");
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm("댓글을 삭제할까요?")) return;
+
+    try {
+      const client = getSupabaseOrThrow();
+      const { error } = await client.from("post_comments").delete().eq("id", commentId);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+      await fetchComments();
+    } catch (error: any) {
+      alert(error?.message || "댓글 삭제 중 오류가 발생했어요.");
+    }
   };
 
   if (!user) {
@@ -2699,7 +3074,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h2 className="text-4xl font-black italic uppercase tracking-tighter">Bulletin Board</h2>
-          <p className="text-gray-500 font-bold mt-2">공지, 일반글, 댓글, 이미지 첨부까지 한 번에 관리합니다.</p>
+          <p className="text-gray-500 font-bold mt-2">게시글 작성 +5P, 댓글 작성 +5P, 이미지 첨부와 공지 고정까지 한 번에 관리합니다.</p>
         </div>
 
         <div className="flex flex-wrap gap-2 items-center">
@@ -2722,79 +3097,140 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
 
           <button
             onClick={() => setShowWriteModal(true)}
-            className="ml-auto inline-flex items-center gap-2 px-5 py-3 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-black uppercase transition-all shadow-lg"
+            className="ml-1 h-12 w-12 rounded-2xl bg-purple-600 hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 flex items-center justify-center"
+            title="글 작성"
           >
-            <Plus size={16} />
-            글쓰기
+            <Plus size={20} />
           </button>
         </div>
       </div>
 
+      {!commentsEnabled && (
+        <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+          댓글 테이블이 아직 없어서 댓글 기능이 비활성화돼 있어. 함께 전달한 SQL 파일을 먼저 적용해줘.
+        </div>
+      )}
+
       <div className="space-y-4">
         {visiblePosts.length === 0 && (
-          <div className="rounded-[2rem] border border-dashed border-white/10 bg-white/5 p-10 text-center text-gray-400">
-            아직 게시글이 없습니다. 첫 글을 남겨보세요.
+          <div className="rounded-[2rem] border border-dashed border-white/10 bg-white/5 p-10 text-center text-gray-500">
+            아직 게시글이 없습니다.
           </div>
         )}
 
-        {visiblePosts.map((post: any) => (
-          <div
-            key={post.id}
-            className={cn(
-              "group p-6 md:p-8 rounded-[2rem] border transition-all relative overflow-hidden",
-              post.is_pinned ? "border-amber-500/30 bg-amber-500/10" : post.is_notice ? "border-purple-500/30 bg-purple-500/10" : "border-white/10 bg-white/5"
-            )}
-          >
-            <div className="flex justify-between items-start mb-4 gap-4">
-              <div className="flex flex-wrap items-center gap-2">
-                {post.is_pinned && (
-                  <span className="px-2 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-300 border border-rose-500/20 inline-flex items-center gap-1">
-                    <Pin size={11} />
-                    고정
+        {visiblePosts.map((post: any) => {
+          const postComments = commentsByPost[String(post.id)] || [];
+          const commentsOpen = Boolean(openCommentPosts[post.id]) || postComments.length > 0;
+
+          return (
+            <div
+              key={post.id}
+              className={cn(
+                "group p-6 md:p-8 rounded-[2rem] border transition-all relative overflow-hidden",
+                post.is_pinned ? "border-amber-500/30 bg-amber-500/10" : post.is_notice ? "border-purple-500/30 bg-purple-500/10" : "border-white/10 bg-white/5"
+              )}
+            >
+              <div className="flex justify-between items-start mb-4 gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  {post.is_pinned && (
+                    <span className="px-2 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-300 border border-rose-500/20">
+                      PINNED
+                    </span>
+                  )}
+                  {post.is_notice ? (
+                    <span className="px-2 py-1 rounded-full text-[10px] font-black bg-purple-500/15 text-purple-300 border border-purple-500/20">
+                      공지
+                    </span>
+                  ) : (
+                    <span className="px-2 py-1 rounded-full text-[10px] font-black bg-white/10 text-gray-300 border border-white/10">
+                      {post.category || "자유"}
+                    </span>
+                  )}
+                  <span className="text-[10px] text-gray-500 font-black uppercase">
+                    {formatDateTime(post.created_at)}
                   </span>
-                )}
-                {post.is_notice ? (
-                  <span className="px-2 py-1 rounded-full text-[10px] font-black bg-purple-500/15 text-purple-300 border border-purple-500/20">공지</span>
-                ) : (
-                  <span className="text-purple-500 text-[10px] font-black uppercase italic">
-                    {post.category || "자유"}
-                  </span>
-                )}
-                <span className="text-[10px] text-gray-500 font-black uppercase">{formatDateTime(post.created_at)}</span>
+                </div>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  {profile?.role === "admin" && post.is_notice && (
+                    <button onClick={() => togglePin(post)} className="text-[11px] text-amber-300 font-black">
+                      {post.is_pinned ? "고정 해제" : "고정"}
+                    </button>
+                  )}
+                  {(profile?.role === "admin" || user?.id === post.user_id) && (
+                    <button onClick={() => handleDelete(post.id)} className="text-gray-600 hover:text-red-500 transition-colors">
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                {profile?.role === "admin" && (
-                  <button onClick={() => togglePin(post)} className="text-xs px-3 py-2 rounded-xl border border-white/10 bg-black/30 hover:border-amber-400/40">
-                    {post.is_pinned ? "고정 해제" : "고정"}
-                  </button>
-                )}
-                {(profile?.role === "admin" || user?.id === post.user_id) && (
-                  <button onClick={() => handleDelete(post.id)} className="text-gray-600 hover:text-red-500 transition-colors">
-                    <Trash2 size={16} />
-                  </button>
-                )}
+              {post.image_url && (
+                <img src={post.image_url} className="w-full h-56 md:h-72 object-cover rounded-2xl mb-5 border border-white/5" />
+              )}
+
+              <h3 className="text-2xl font-black text-white mb-3">{post.title}</h3>
+              <p className="text-gray-300 text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
+
+              <div className="flex flex-wrap justify-between items-center gap-3 text-[10px] text-gray-500 font-black uppercase">
+                <span>{post.author_name || post.author || "-"}</span>
+                <button
+                  onClick={() => setOpenCommentPosts((prev) => ({ ...prev, [post.id]: !Boolean(prev[post.id]) }))}
+                  className="px-3 py-2 rounded-full border border-white/10 bg-black/20 text-gray-300 hover:border-purple-500/40"
+                >
+                  댓글 {postComments.length}개 {commentsOpen ? "닫기" : "열기"}
+                </button>
               </div>
+
+              {commentsOpen && (
+                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4 space-y-4">
+                  <div className="space-y-3">
+                    {postComments.length === 0 && (
+                      <div className="text-sm text-gray-500">아직 댓글이 없습니다.</div>
+                    )}
+
+                    {postComments.map((comment: any) => (
+                      <div key={comment.id} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-black text-white">{comment.author_name || comment.author || "-"}</div>
+                            <div className="text-[10px] text-gray-500 uppercase mt-1">{formatDateTime(comment.created_at)}</div>
+                          </div>
+
+                          {(profile?.role === "admin" || user?.id === comment.user_id) && (
+                            <button
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="text-gray-500 hover:text-red-400"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                        <div className="mt-3 text-sm text-gray-300 whitespace-pre-wrap">{comment.content}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <textarea
+                      value={commentDrafts[post.id] || ""}
+                      onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [post.id]: e.target.value }))}
+                      placeholder="댓글을 입력하면 +5 포인트가 지급돼요."
+                      className="flex-1 bg-black border border-white/10 rounded-2xl p-4 min-h-[96px]"
+                    />
+                    <button
+                      onClick={() => submitComment(post.id)}
+                      className="md:w-36 bg-purple-600 px-5 py-4 rounded-2xl font-black text-sm hover:bg-purple-500 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Send size={16} />
+                      댓글 작성
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-
-            {post.image_url && (
-              <img src={post.image_url} className="w-full h-48 object-cover rounded-2xl mb-4 border border-white/5" />
-            )}
-
-            <h3 className="text-2xl font-black text-white mb-3">{post.title}</h3>
-            <p className="text-gray-300 text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
-
-            <div className="flex justify-between items-center text-[10px] text-gray-500 font-black uppercase">
-              <span>{post.author_name || post.author || "-"}</span>
-            </div>
-
-            <PostCommentsSection
-              post={post}
-              user={user}
-              profile={profile}
-            />
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <AnimatePresence>
@@ -2802,9 +3238,9 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
           <PostWriteModal
             user={user}
             profile={profile}
-            onRefresh={() => {
-              onRefresh();
-              setShowWriteModal(false);
+            onRefresh={async () => {
+              await onRefresh();
+              await fetchComments();
             }}
             onClose={() => setShowWriteModal(false)}
           />
@@ -2814,94 +3250,157 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
   );
 };
 
+
+
 const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("자유");
   const [imgUrl, setImgUrl] = useState("");
+  const [isNotice, setIsNotice] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const handlePost = async () => {
-    if (!title || !content) {
+    if (!title.trim() || !content.trim()) {
       alert("제목과 내용을 입력하세요.");
       return;
     }
 
-    const { error } = await supabase.from("posts").insert([
-      {
-        title,
-        content,
-        category,
-        image_url: imgUrl,
-        author: profile?.nickname || "Anonymous",
-        author_name: profile?.nickname || "Anonymous",
-        author_id: user.id,
-        user_id: user.id,
-      },
-    ]);
+    try {
+      setSubmitting(true);
+      const client = getSupabaseOrThrow();
 
-    if (error) {
-      alert(error.message);
-      return;
+      const { data, error } = await client
+        .from("posts")
+        .insert([
+          {
+            title: title.trim(),
+            content: content.trim(),
+            category: isNotice ? "공지" : category,
+            image_url: imgUrl || null,
+            author: profile?.nickname || "Anonymous",
+            author_name: profile?.nickname || "Anonymous",
+            user_id: user.id,
+            author_id: user.id,
+            is_notice: Boolean(isNotice),
+            is_pinned: profile?.role === "admin" ? Boolean(isNotice && isPinned) : false,
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      if (profile?.role === "admin" && isNotice && isPinned) {
+        await client
+          .from("posts")
+          .update({ is_pinned: false })
+          .neq("id", data.id)
+          .eq("is_notice", true)
+          .eq("is_pinned", true);
+      }
+
+      if (!isNotice) {
+        await client.rpc("add_points", {
+          p_user_id: user.id,
+          p_points: 5,
+          p_type: "post",
+        });
+      }
+
+      alert(isNotice ? "공지 작성 완료!" : "게시글 작성 완료! +5 포인트 획득 🎉");
+      await onRefresh();
+      onClose();
+    } catch (err: any) {
+      alert(err?.message || "게시글 작성 중 오류가 발생했어요.");
+    } finally {
+      setSubmitting(false);
     }
-
-    await supabase.rpc("add_points", {
-      p_user_id: user.id,
-      p_points: 5,
-      p_type: "post",
-    });
-
-    alert("게시글 작성 완료! +5 포인트 획득 🎉");
-    onRefresh();
-    onClose();
   };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left">
-      <div className="bg-[#111] border border-white/10 p-10 rounded-[3rem] w-full max-w-2xl shadow-2xl relative">
+      <div className="bg-[#111] border border-white/10 p-6 md:p-10 rounded-[3rem] w-full max-w-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
         <button onClick={onClose} className="absolute top-8 right-8 text-white/50 hover:text-white">
           <X />
         </button>
-        <h3 className="text-3xl font-black italic uppercase text-purple-500 mb-8">
+        <h3 className="text-3xl font-black italic uppercase text-purple-500 mb-3">
           Create New Post
         </h3>
+        <p className="text-sm text-gray-500 mb-8">일반 글은 작성 시 +5포인트, 댓글도 +5포인트가 지급됩니다.</p>
 
         <div className="space-y-5">
-          <select
-            className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            {["자유", "공략", "스크린샷", "MVP", "커스터마이징 및 의상", "수집형 포인트"].map((tab) => (
-              <option key={tab} value={tab}>
-                {tab}
-              </option>
-            ))}
-          </select>
+          <div className="grid md:grid-cols-2 gap-4">
+            <select
+              className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              disabled={isNotice}
+            >
+              {["자유", "공략", "수집형 포인트", "스크린샷", "MVP", "커스터마이징 및 의상"].map((tab) => (
+                <option key={tab} value={tab}>
+                  {tab}
+                </option>
+              ))}
+            </select>
+
+            {profile?.role === "admin" ? (
+              <div className="flex flex-wrap gap-3">
+                <label className="flex items-center gap-2 px-4 rounded-2xl border border-white/10 bg-black">
+                  <input type="checkbox" checked={isNotice} onChange={(e) => setIsNotice(e.target.checked)} />
+                  공지글
+                </label>
+                <label className="flex items-center gap-2 px-4 rounded-2xl border border-white/10 bg-black">
+                  <input
+                    type="checkbox"
+                    checked={isPinned}
+                    onChange={(e) => setIsPinned(e.target.checked)}
+                    disabled={!isNotice}
+                  />
+                  상단 고정
+                </label>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-sm text-gray-400">
+                일반 게시글을 작성할 수 있어요.
+              </div>
+            )}
+          </div>
 
           <input
             className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold"
-            placeholder="TITLE"
+            placeholder="제목"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
 
           <textarea
             className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold h-40"
-            placeholder="CONTENT"
+            placeholder="내용"
             value={content}
             onChange={(e) => setContent(e.target.value)}
           />
 
-          <ImageUploader label="Attach Image" onUpload={(url) => setImgUrl(url)} />
+          <ImageUploader label="게시판 이미지 첨부" onUpload={(url) => setImgUrl(url)} />
 
-          {imgUrl && <div className="text-[10px] text-purple-500 font-bold">✓ Image Ready</div>}
+          {imgUrl && (
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
+              <div className="text-xs text-gray-400 mb-2">첨부 이미지 미리보기</div>
+              <img src={imgUrl} className="w-full h-56 object-cover rounded-2xl" />
+            </div>
+          )}
 
           <button
             onClick={handlePost}
-            className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all flex items-center justify-center gap-2"
+            disabled={submitting}
+            className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Send size={18} />
-            Publish
+            {submitting ? "등록 중..." : "Publish"}
           </button>
         </div>
       </div>
@@ -2909,135 +3408,6 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
   );
 };
 
-
-const PostCommentsSection = ({ post, user, profile }: any) => {
-  const [comments, setComments] = useState<any[]>([]);
-  const [comment, setComment] = useState("");
-  const [loadingComments, setLoadingComments] = useState(false);
-
-  const fetchComments = useCallback(async () => {
-    if (!post?.id) return;
-    setLoadingComments(true);
-    try {
-      const { data, error } = await supabase
-        .from("post_comments")
-        .select("*")
-        .eq("post_id", post.id)
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("post_comments fetch error:", error);
-        setComments([]);
-        return;
-      }
-
-      setComments(data || []);
-    } catch (error) {
-      console.error("post_comments unexpected error:", error);
-      setComments([]);
-    } finally {
-      setLoadingComments(false);
-    }
-  }, [post?.id]);
-
-  useEffect(() => {
-    fetchComments();
-  }, [fetchComments]);
-
-  const handleComment = async () => {
-    if (!user) return alert("로그인 후 댓글 작성이 가능합니다.");
-    if (!comment.trim()) return;
-
-    const payload = {
-      post_id: post.id,
-      user_id: user.id,
-      author_id: user.id,
-      author_name: profile?.nickname || "Anonymous",
-      content: comment.trim(),
-    };
-
-    const { error } = await supabase.from("post_comments").insert(payload);
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    await supabase.rpc("add_points", {
-      p_user_id: user.id,
-      p_points: 5,
-      p_type: "comment",
-    });
-
-    setComment("");
-    fetchComments();
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    if (!confirm("댓글을 삭제하시겠습니까?")) return;
-
-    const { error } = await supabase.from("post_comments").delete().eq("id", commentId);
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    fetchComments();
-  };
-
-  return (
-    <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <div className="text-sm font-black text-white">댓글</div>
-        <div className="text-[11px] text-gray-500 font-black">{comments.length}개</div>
-      </div>
-
-      <div className="space-y-3">
-        {loadingComments ? (
-          <div className="text-sm text-gray-500">댓글 불러오는 중...</div>
-        ) : comments.length === 0 ? (
-          <div className="text-sm text-gray-500">첫 댓글을 남겨보세요.</div>
-        ) : (
-          comments.map((item: any) => (
-            <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="text-xs font-black text-purple-300">{item.author_name || "Anonymous"}</div>
-                <div className="flex items-center gap-2">
-                  <div className="text-[10px] text-gray-500">{formatDateTime(item.created_at)}</div>
-                  {(profile?.role === "admin" || user?.id === item.user_id) && (
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteComment(item.id)}
-                      className="text-[10px] text-red-400 hover:text-red-300"
-                    >
-                      삭제
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="text-sm text-gray-300 whitespace-pre-wrap">{item.content}</div>
-            </div>
-          ))
-        )}
-      </div>
-
-      <div className="mt-4 flex flex-col md:flex-row gap-3">
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder="댓글을 입력하면 5포인트를 획득합니다."
-          className="flex-1 bg-black border border-white/10 rounded-2xl p-4 min-h-[90px]"
-        />
-        <button
-          type="button"
-          onClick={handleComment}
-          className="md:self-end bg-purple-600 hover:bg-purple-500 px-5 py-4 rounded-2xl font-black text-sm"
-        >
-          댓글 등록
-        </button>
-      </div>
-    </div>
-  );
-};
 
 const Auth = ({ mode, setMode }: any) => {
   const [email, setEmail] = useState("");
@@ -3137,6 +3507,7 @@ const Auth = ({ mode, setMode }: any) => {
   );
 };
 
+
 const MyRoom = ({ user, profile }: any) => {
   const [rankIcon, setRankIcon] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
@@ -3145,9 +3516,9 @@ const MyRoom = ({ user, profile }: any) => {
   const [itemLevel, setItemLevel] = useState("");
   const [characterLevel, setCharacterLevel] = useState("");
   const [combatPower, setCombatPower] = useState("");
+  const [roleHint, setRoleHint] = useState("딜러");
   const [birthday, setBirthday] = useState("");
   const [mbti, setMbti] = useState("");
-  const [roleHint, setRoleHint] = useState("딜러");
   const [characters, setCharacters] = useState<any[]>([]);
   const [ownedBadges, setOwnedBadges] = useState<any[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -3207,6 +3578,8 @@ const MyRoom = ({ user, profile }: any) => {
             character_level: item.character_level || "",
             combat_power: item.combat_power || "",
             role_hint: item.role_hint || "딜러",
+            birthday: item.birthday || "",
+            mbti: item.mbti || "",
             profile_theme: item.profile_theme || item.theme_color || "#8b5cf6",
             character_intro: item.character_intro || item.bio || "",
             equipped_badge_ids: equippedBadges.map((badge: any) => String(badge.badge_item_id)),
@@ -3216,57 +3589,53 @@ const MyRoom = ({ user, profile }: any) => {
     );
   };
 
-  const fetchOwnedBadges = async () => {
+  const fetchOwnedBadges = useCallback(async () => {
     const client = getSupabaseOrThrow();
     const { data, error } = await client
       .from("user_owned_badges")
-      .select("id, badge_item_id, badge_name, badge_color")
+      .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
-    if (!error) setOwnedBadges(data || []);
-  };
-
-  const deleteOwnedBadge = async (badge: any) => {
-    const inUse = characters.some((character: any) =>
-      getCharacterBadges(character).some((item: any) => String(item.badge_item_id) === String(badge.badge_item_id))
-    );
-
-    if (inUse) {
-      alert("현재 캐릭터에 장착 중인 뱃지입니다. 먼저 착용 해제 후 삭제해주세요.");
+    if (error) {
+      console.error("fetchOwnedBadges error:", error);
+      setOwnedBadges([]);
       return;
     }
 
-    if (!confirm(`[${badge.badge_name}] 뱃지를 정말 삭제할까요? 삭제 후 복구할 수 없습니다.`)) return;
+    const badgeItemIds = Array.from(
+      new Set((data || []).map((item: any) => String(item.badge_item_id || "")).filter(Boolean))
+    );
 
-    try {
-      const rpcRes = await supabase.rpc("delete_user_badge", {
-        p_user_id: user.id,
-        p_badge_item_id: badge.badge_item_id,
-      });
+    let itemMap = new Map<string, any>();
+    if (badgeItemIds.length > 0) {
+      const { data: itemRows, error: itemError } = await client
+        .from("point_shop_items")
+        .select("id, badge_name, badge_color, badge_card_effect, badge_gradient_from, badge_gradient_to, badge_glow_color")
+        .in("id", badgeItemIds);
 
-      if (rpcRes.error && !String(rpcRes.error.message || "").includes("function")) {
-        throw rpcRes.error;
+      if (itemError) {
+        console.error("point_shop_items badge meta fetch error:", itemError);
+      } else {
+        itemMap = new Map((itemRows || []).map((item: any) => [String(item.id), item]));
       }
-
-      if (rpcRes.error) {
-        const fallback = await supabase
-          .from("user_owned_badges")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("badge_item_id", badge.badge_item_id);
-
-        if (fallback.error) throw fallback.error;
-      }
-
-      await fetchOwnedBadges();
-      await fetchCharacters();
-      alert("뱃지를 삭제했습니다.");
-    } catch (error: any) {
-      console.error("deleteOwnedBadge error:", error);
-      alert(error?.message || "뱃지 삭제에 실패했습니다.");
     }
-  };
+
+    setOwnedBadges(
+      (data || []).map((badge: any) => {
+        const itemMeta = itemMap.get(String(badge.badge_item_id || "")) || {};
+        return {
+          ...badge,
+          badge_name: badge.badge_name || itemMeta.badge_name || "뱃지",
+          badge_color: badge.badge_color || itemMeta.badge_color || "#8b5cf6",
+          badge_card_effect: badge.badge_card_effect || itemMeta.badge_card_effect || "none",
+          badge_gradient_from: badge.badge_gradient_from || itemMeta.badge_gradient_from || null,
+          badge_gradient_to: badge.badge_gradient_to || itemMeta.badge_gradient_to || null,
+          badge_glow_color: badge.badge_glow_color || itemMeta.badge_glow_color || null,
+        };
+      })
+    );
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchRankIcon = async () => {
@@ -3287,12 +3656,92 @@ const MyRoom = ({ user, profile }: any) => {
       fetchCharacters();
       fetchOwnedBadges();
     }
-  }, [profile, user]);
+  }, [profile, user, fetchOwnedBadges]);
+
+  const usedBadgeIds = useMemo(() => {
+    const used = new Set<string>();
+    characters.forEach((character: any) => {
+      getCharacterBadges(character).forEach((badge: any) => {
+        if (badge?.badge_item_id) used.add(String(badge.badge_item_id));
+      });
+    });
+    return used;
+  }, [characters]);
 
   const deleteCharacter = async (id: string) => {
     if (!confirm("캐릭터 삭제할까요?")) return;
     const { error } = await supabase.from("guild_members").delete().eq("id", id);
     if (!error) fetchCharacters();
+  };
+
+  const deleteOwnedBadge = async (badge: any) => {
+    const badgeItemId = String(badge.badge_item_id || badge.id || "");
+    if (!badgeItemId) {
+      alert("삭제할 뱃지 정보를 찾지 못했어.");
+      return;
+    }
+
+    if (usedBadgeIds.has(badgeItemId)) {
+      alert("이 뱃지는 현재 캐릭터가 착용 중이야. 먼저 장착 해제 후 삭제해줘.");
+      return;
+    }
+
+    if (!confirm(`정말 "${badge.badge_name}" 뱃지를 삭제할까요? 삭제 후 복구되지 않을 수 있어요.`)) return;
+
+    const client = getSupabaseOrThrow();
+
+    try {
+      const { data: rpcDeleted, error: rpcError } = await client.rpc("delete_user_badge", {
+        p_user_id: user.id,
+        p_badge_item_id: badgeItemId,
+      });
+
+      if (!rpcError && rpcDeleted) {
+        alert("뱃지를 삭제했어.");
+        await fetchOwnedBadges();
+        return;
+      }
+
+      if (rpcError) {
+        console.error("delete_user_badge rpc error:", rpcError);
+      }
+    } catch (rpcUnexpectedError) {
+      console.error("delete_user_badge rpc unexpected error:", rpcUnexpectedError);
+    }
+
+    const tryDelete = async (table: string, matcher: (query: any) => any) => {
+      try {
+        const { error } = await matcher(client.from(table).delete());
+        return !error;
+      } catch (error) {
+        return false;
+      }
+    };
+
+    let deleted = false;
+
+    if (badge.id) {
+      deleted = await tryDelete("user_badges", (q) => q.eq("id", badge.id).eq("user_id", user.id));
+      if (!deleted) deleted = await tryDelete("user_owned_badges", (q) => q.eq("id", badge.id).eq("user_id", user.id));
+    }
+
+    if (!deleted) {
+      deleted = await tryDelete("user_badges", (q) => q.eq("user_id", user.id).eq("badge_item_id", badgeItemId));
+    }
+    if (!deleted) {
+      deleted = await tryDelete("user_owned_badges", (q) => q.eq("user_id", user.id).eq("badge_item_id", badgeItemId));
+    }
+    if (!deleted && badge.badge_code) {
+      deleted = await tryDelete("user_badges", (q) => q.eq("user_id", user.id).eq("badge_code", badge.badge_code));
+    }
+
+    if (!deleted) {
+      alert("뱃지 삭제에 실패했어. 함께 보낸 SQL 파일 적용 후 다시 시도해줘.");
+      return;
+    }
+
+    alert("뱃지를 삭제했어.");
+    await fetchOwnedBadges();
   };
 
   const saveCharacter = async () => {
@@ -3323,10 +3772,10 @@ const MyRoom = ({ user, profile }: any) => {
       item_level: toNumber(itemLevel),
       character_level: toNumber(characterLevel),
       combat_power: toNumber(combatPower),
-      birthday: birthday || null,
-      mbti: mbti.trim().toUpperCase() || null,
       avatar_url: imageUrl,
       role_hint: roleHint,
+      birthday: birthday || null,
+      mbti: (mbti || "").toUpperCase() || null,
       profile_theme: "#8b5cf6",
       theme_color: "#8b5cf6",
       character_intro: "",
@@ -3340,9 +3789,9 @@ const MyRoom = ({ user, profile }: any) => {
       setItemLevel("");
       setCharacterLevel("");
       setCombatPower("");
+      setRoleHint("딜러");
       setBirthday("");
       setMbti("");
-      setRoleHint("딜러");
       setImageFile(null);
       fetchCharacters();
       setShowRegister(false);
@@ -3365,9 +3814,9 @@ const MyRoom = ({ user, profile }: any) => {
                     item_level: item.item_level || "",
                     character_level: item.character_level || "",
                     combat_power: item.combat_power || "",
+                    role_hint: item.role_hint || "딜러",
                     birthday: item.birthday || "",
                     mbti: item.mbti || "",
-                    role_hint: item.role_hint || "딜러",
                     profile_theme: item.profile_theme || "#8b5cf6",
                     character_intro: item.character_intro || "",
                     avatar_url: item.avatar_url || "",
@@ -3418,9 +3867,9 @@ const MyRoom = ({ user, profile }: any) => {
       item_level: toNumber(character.draft.item_level),
       character_level: toNumber(character.draft.character_level),
       combat_power: toNumber(character.draft.combat_power),
-      birthday: character.draft.birthday || null,
-      mbti: (character.draft.mbti || "").trim().toUpperCase() || null,
       role_hint: character.draft.role_hint || "딜러",
+      birthday: character.draft.birthday || null,
+      mbti: (character.draft.mbti || "").toUpperCase() || null,
       profile_theme: character.draft.profile_theme || "#8b5cf6",
       theme_color: character.draft.profile_theme || "#8b5cf6",
       character_intro: character.draft.character_intro || "",
@@ -3432,10 +3881,18 @@ const MyRoom = ({ user, profile }: any) => {
       badge_name: selectedBadges[0]?.badge_name || null,
       equipped_badge_label: selectedBadges[0]?.badge_name || null,
       badge_color: selectedBadges[0]?.badge_color || null,
+      badge_card_effect: selectedBadges[0]?.badge_card_effect || "none",
+      badge_gradient_from: selectedBadges[0]?.badge_gradient_from || null,
+      badge_gradient_to: selectedBadges[0]?.badge_gradient_to || null,
+      badge_glow_color: selectedBadges[0]?.badge_glow_color || null,
       equipped_badges: selectedBadges.map((badge: any) => ({
         badge_item_id: badge.badge_item_id,
         badge_name: badge.badge_name,
         badge_color: badge.badge_color || null,
+        badge_card_effect: badge.badge_card_effect || "none",
+        badge_gradient_from: badge.badge_gradient_from || null,
+        badge_gradient_to: badge.badge_gradient_to || null,
+        badge_glow_color: badge.badge_glow_color || null,
       })),
       owner_nickname: profile.nickname,
       owner_id: user.id,
@@ -3477,55 +3934,51 @@ const MyRoom = ({ user, profile }: any) => {
           {rankIcon && <img src={rankIcon} className="w-20 h-20 object-contain" />}
         </div>
 
-        <div className="rounded-3xl border border-white/10 bg-black/20 p-5">
+        <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
-              <div className="text-lg font-black">보유 뱃지 관리</div>
-              <div className="text-sm text-gray-400">착용하지 않은 뱃지는 여기서 바로 삭제할 수 있어.</div>
+              <div className="text-xl font-black">보유 뱃지 관리</div>
+              <div className="text-sm text-gray-400">착용 중이 아닌 뱃지는 여기서 삭제할 수 있어.</div>
             </div>
-            <div className="text-xs text-gray-500">{ownedBadges.length}개 보유</div>
           </div>
 
           {ownedBadges.length === 0 ? (
-            <div className="text-sm text-gray-500">보유 중인 뱃지가 없습니다.</div>
+            <div className="text-sm text-gray-500">보유한 뱃지가 없습니다.</div>
           ) : (
-            <div className="flex flex-wrap gap-3">
-              {ownedBadges.map((badge) => {
-                const inUse = characters.some((character: any) =>
-                  getCharacterBadges(character).some((item: any) => String(item.badge_item_id) === String(badge.badge_item_id))
-                );
-
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {ownedBadges.map((badge: any) => {
+                const theme = getBadgeVisualTheme(badge);
+                const isUsed = usedBadgeIds.has(String(badge.badge_item_id));
                 return (
                   <div
-                    key={`${badge.badge_item_id}-${badge.id}`}
-                    className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 min-w-[220px]"
+                    key={`${badge.badge_item_id}-${badge.id || badge.created_at || badge.badge_name}`}
+                    className="rounded-2xl border p-4"
+                    style={{
+                      background: theme.cardBackground,
+                      borderColor: theme.cardBorder,
+                      boxShadow: theme.cardShadow,
+                    }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div
-                          className="text-sm font-black"
-                          style={{ color: badge.badge_color || "#c4b5fd" }}
-                        >
-                          {badge.badge_name}
-                        </div>
-                        <div className="text-[11px] text-gray-500 mt-1">
-                          {inUse ? "장착 중" : "미착용"}
+                        <div className="font-black">{badge.badge_name}</div>
+                        <div className="text-xs mt-1" style={{ color: theme.chipText }}>
+                          {theme.label}
                         </div>
                       </div>
-
                       <button
-                        type="button"
-                        disabled={inUse}
                         onClick={() => deleteOwnedBadge(badge)}
+                        disabled={isUsed}
                         className={cn(
                           "px-3 py-2 rounded-xl text-xs font-black transition",
-                          inUse
-                            ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                            : "bg-red-500/15 text-red-300 hover:bg-red-500/25"
+                          isUsed ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" : "bg-red-500/85 hover:bg-red-500 text-white"
                         )}
                       >
                         삭제
                       </button>
+                    </div>
+                    <div className="mt-3 text-xs text-gray-300">
+                      {isUsed ? "현재 캐릭터가 착용 중인 뱃지" : "미착용 뱃지 · 삭제 가능"}
                     </div>
                   </div>
                 );
@@ -3546,8 +3999,8 @@ const MyRoom = ({ user, profile }: any) => {
               <AdminInput label="전투력" value={combatPower} onChange={setCombatPower} />
             </div>
             <div className="grid md:grid-cols-2 gap-3">
-              <AdminInput label="생일" value={birthday} onChange={setBirthday} placeholder="예: 03-14 또는 2000-03-14" />
-              <AdminInput label="MBTI" value={mbti} onChange={setMbti} placeholder="예: INFP" />
+              <AdminInput label="생일" type="date" value={birthday} onChange={setBirthday} />
+              <AdminInput label="MBTI" value={mbti} onChange={(value: string) => setMbti(String(value || "").toUpperCase().slice(0, 4))} placeholder="예: INFP" />
             </div>
             <select
               value={roleHint}
@@ -3584,16 +4037,20 @@ const MyRoom = ({ user, profile }: any) => {
               아직 보이는 캐릭터가 없어. 기존 캐릭터가 있는데도 안 보이면 아래 SQL 백필을 한 번 실행해줘.
             </div>
           )}
-          {characters.map((character) => (
+          {characters.map((character) => {
+            const { theme } = getPrimaryBadgeTheme(character);
+            return (
             <div
               key={character.id}
-              className="p-4 rounded-2xl border"
+              className="p-4 rounded-2xl border relative overflow-hidden"
               style={{
-                background: "rgba(0,0,0,0.35)",
-                borderColor: character.profile_theme || "#ffffff22",
-                boxShadow: `0 0 0 1px ${character.profile_theme || "#ffffff11"} inset`,
+                background: theme.cardBackground,
+                borderColor: theme.cardBorder,
+                boxShadow: theme.cardShadow,
               }}
             >
+              <div className="absolute inset-0 pointer-events-none opacity-90" style={{ background: theme.aura }} />
+              <div className="relative z-10">
               {character.avatar_url && (
                 <img
                   src={character.avatar_url || character.image_url}
@@ -3610,19 +4067,23 @@ const MyRoom = ({ user, profile }: any) => {
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
                       {getCharacterBadges(character).length > 0 ? (
-                        getCharacterBadges(character).map((badge: any, index: number) => (
+                        getCharacterBadges(character).map((badge: any, index: number) => {
+                          const badgeTheme = getBadgeVisualTheme(badge);
+                          return (
                           <span
                             key={`${badge.badge_item_id}-${index}`}
                             className="px-3 py-1 rounded-full text-xs font-black"
                             style={{
-                              backgroundColor: `${badge.badge_color || "#8b5cf6"}33`,
-                              color: badge.badge_color || "#c4b5fd",
-                              border: `1px solid ${badge.badge_color || "#8b5cf6"}`,
+                              background: badgeTheme.chipBackground,
+                              color: badgeTheme.chipText,
+                              border: `1px solid ${badgeTheme.chipBorder}`,
+                              boxShadow: `0 0 16px ${hexToRgba(badgeTheme.glow, 0.18)}`,
                             }}
                           >
                             {badge.badge_name}
                           </span>
-                        ))
+                        );
+                        })
                       ) : null}
                     </div>
                   </div>
@@ -3632,7 +4093,7 @@ const MyRoom = ({ user, profile }: any) => {
                     <InfoMiniCard title="캐릭터 레벨" value={character.character_level || "-"} />
                     <InfoMiniCard title="전투력" value={character.combat_power || "-"} />
                     <InfoMiniCard title="역할" value={character.role_hint || "딜러"} />
-                    <InfoMiniCard title="생일" value={character.birthday || "-"} />
+                    <InfoMiniCard title="생일" value={character.birthday ? formatShortDate(character.birthday) : "-"} />
                     <InfoMiniCard title="MBTI" value={character.mbti || "-"} />
                   </div>
 
@@ -3677,7 +4138,11 @@ const MyRoom = ({ user, profile }: any) => {
                       <option value="딜러">딜러</option>
                       <option value="서포터">서포터</option>
                     </select>
+                    <AdminInput label="생일" type="date" value={character.draft.birthday || ""} onChange={(v: any) => updateDraft(character.id, "birthday", v)} />
+                  </div>
 
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <AdminInput label="MBTI" value={character.draft.mbti || ""} onChange={(v: any) => updateDraft(character.id, "mbti", String(v || "").toUpperCase().slice(0, 4))} placeholder="예: ENFJ" />
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                       <div className="text-xs text-gray-400 mb-3">착용 뱃지 (복수 선택 가능)</div>
                       <div className="flex flex-wrap gap-2">
@@ -3710,6 +4175,7 @@ const MyRoom = ({ user, profile }: any) => {
                                 style={{ color: badge.badge_color || "#c4b5fd" }}
                               >
                                 {badge.badge_name}
+                                {normalizeBadgeEffectKey(badge.badge_card_effect) !== "none" ? ` · ${getBadgeVisualTheme(badge).label}` : ""}
                               </span>
                             </label>
                           );
@@ -3810,8 +4276,10 @@ const MyRoom = ({ user, profile }: any) => {
                   </div>
                 </div>
               )}
+              </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
     </div>
@@ -3966,6 +4434,7 @@ const RankingPage = ({ user, profile }: any) => {
   );
 };
 
+
 const GuildMembersPage = () => {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -4069,8 +4538,20 @@ const GuildMembersPage = () => {
         <div className="text-center text-gray-500 py-10">길드원 불러오는 중...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {filteredMembers.map((member: any) => (
-            <div key={member.id} className="rounded-[2rem] border border-white/10 bg-[#0d111c]/80 p-5 overflow-hidden" style={{ boxShadow: `0 0 0 1px ${(member.profile_theme || "#8b5cf6")}44 inset` }}>
+          {filteredMembers.map((member: any) => {
+            const { theme } = getPrimaryBadgeTheme(member);
+            return (
+            <div
+              key={member.id}
+              className="rounded-[2rem] border p-5 overflow-hidden relative"
+              style={{
+                background: theme.cardBackground,
+                borderColor: theme.cardBorder,
+                boxShadow: theme.cardShadow,
+              }}
+            >
+              <div className="absolute inset-0 pointer-events-none" style={{ background: theme.aura }} />
+              <div className="relative z-10">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-4 min-w-0">
                   <img
@@ -4094,19 +4575,23 @@ const GuildMembersPage = () => {
                           서폿
                         </span>
                       )}
-                      {getCharacterBadges(member).map((badge: any, index: number) => (
+                      {getCharacterBadges(member).map((badge: any, index: number) => {
+                        const badgeTheme = getBadgeVisualTheme(badge);
+                        return (
                         <span
                           key={`${badge.badge_item_id}-${index}`}
                           className="px-2 py-1 rounded-full text-[10px] font-black border"
                           style={{
-                            color: badge.badge_color || "#c4b5fd",
-                            borderColor: badge.badge_color || "#8b5cf6",
-                            backgroundColor: `${badge.badge_color || "#8b5cf6"}22`,
+                            color: badgeTheme.chipText,
+                            borderColor: badgeTheme.chipBorder,
+                            background: badgeTheme.chipBackground,
+                            boxShadow: `0 0 14px ${hexToRgba(badgeTheme.glow, 0.14)}`,
                           }}
                         >
                           {badge.badge_name}
                         </span>
-                      ))}
+                      );
+                      })}
                     </div>
                     <div className="text-xl font-black truncate">{member.character_name}</div>
                     <div className="text-sm text-gray-400 truncate">{member.class_name}</div>
@@ -4123,7 +4608,7 @@ const GuildMembersPage = () => {
               <div className="grid grid-cols-2 gap-3 mt-5">
                 <InfoMiniCard title="캐릭터 레벨" value={member.character_level || "-"} />
                 <InfoMiniCard title="전투력" value={member.combat_power || "-"} />
-                <InfoMiniCard title="생일" value={member.birthday || "-"} />
+                <InfoMiniCard title="생일" value={member.birthday ? formatShortDate(member.birthday) : "-"} />
                 <InfoMiniCard title="MBTI" value={member.mbti || "-"} />
                 <InfoMiniCard title="최근 참여" value={member.last_raid_name || "기록 없음"} />
                 <InfoMiniCard title="최근 날짜" value={member.last_raid_date ? formatShortDate(member.last_raid_date) : "-"} />
@@ -4136,8 +4621,10 @@ const GuildMembersPage = () => {
                   {member.character_intro}
                 </div>
               )}
+              </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>
@@ -4512,6 +4999,10 @@ const AdminPointShopManager = () => {
   const [description, setDescription] = useState("");
   const [rewardType, setRewardType] = useState("badge");
   const [badgeColor, setBadgeColor] = useState("#8b5cf6");
+  const [badgeCardEffect, setBadgeCardEffect] = useState<BadgeEffectKey>("violet");
+  const [badgeGradientFrom, setBadgeGradientFrom] = useState(BADGE_CARD_EFFECT_PRESETS.violet.from);
+  const [badgeGradientTo, setBadgeGradientTo] = useState(BADGE_CARD_EFFECT_PRESETS.violet.to);
+  const [badgeGlowColor, setBadgeGlowColor] = useState(BADGE_CARD_EFFECT_PRESETS.violet.glow);
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
@@ -4519,6 +5010,13 @@ const AdminPointShopManager = () => {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  useEffect(() => {
+    const preset = BADGE_CARD_EFFECT_PRESETS[badgeCardEffect] || BADGE_CARD_EFFECT_PRESETS.violet;
+    setBadgeGradientFrom(preset.from);
+    setBadgeGradientTo(preset.to);
+    setBadgeGlowColor(preset.glow);
+  }, [badgeCardEffect]);
 
   const fetchItems = async () => {
     const { data, error } = await supabase.from("point_shop_items").select("*").order("created_at", { ascending: false });
@@ -4528,6 +5026,20 @@ const AdminPointShopManager = () => {
       return;
     }
     setItems(data || []);
+  };
+
+  const resetForm = () => {
+    setTitle("");
+    setPrice("");
+    setDescription("");
+    setRewardType("badge");
+    setBadgeColor("#8b5cf6");
+    setBadgeCardEffect("violet");
+    setBadgeGradientFrom(BADGE_CARD_EFFECT_PRESETS.violet.from);
+    setBadgeGradientTo(BADGE_CARD_EFFECT_PRESETS.violet.to);
+    setBadgeGlowColor(BADGE_CARD_EFFECT_PRESETS.violet.glow);
+    setAvailableFrom("");
+    setAvailableTo("");
   };
 
   const createItem = async () => {
@@ -4540,17 +5052,15 @@ const AdminPointShopManager = () => {
       reward_type: rewardType,
       badge_name: rewardType === "badge" ? title : null,
       badge_color: rewardType === "badge" ? badgeColor : null,
+      badge_card_effect: rewardType === "badge" ? badgeCardEffect : "none",
+      badge_gradient_from: rewardType === "badge" ? badgeGradientFrom : null,
+      badge_gradient_to: rewardType === "badge" ? badgeGradientTo : null,
+      badge_glow_color: rewardType === "badge" ? badgeGlowColor : null,
       available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
       available_to: availableTo ? new Date(availableTo).toISOString() : null,
     });
     if (error) return alert(error.message);
-    setTitle("");
-    setPrice("");
-    setDescription("");
-    setRewardType("badge");
-    setBadgeColor("#8b5cf6");
-    setAvailableFrom("");
-    setAvailableTo("");
+    resetForm();
     fetchItems();
   };
 
@@ -4566,6 +5076,14 @@ const AdminPointShopManager = () => {
     if (error) return alert(error.message);
     fetchItems();
   };
+
+  const previewTheme = getBadgeVisualTheme({
+    badge_color: badgeColor,
+    badge_card_effect: badgeCardEffect,
+    badge_gradient_from: badgeGradientFrom,
+    badge_gradient_to: badgeGradientTo,
+    badge_glow_color: badgeGlowColor,
+  });
 
   return (
     <div className="space-y-6">
@@ -4592,34 +5110,112 @@ const AdminPointShopManager = () => {
           <input type="datetime-local" className="w-full bg-black border border-white/10 rounded-2xl p-4" value={availableTo} onChange={(e) => setAvailableTo(e.target.value)} />
         </div>
         <div>
-          <label className="text-xs text-gray-400 mb-2 block">뱃지 색상</label>
+          <label className="text-xs text-gray-400 mb-2 block">뱃지 대표 색상</label>
           <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeColor} onChange={(e) => setBadgeColor(e.target.value)} />
         </div>
       </div>
 
+      {rewardType === "badge" && (
+        <div className="grid lg:grid-cols-[1.1fr,0.9fr] gap-6">
+          <div className="rounded-[2rem] border border-white/10 bg-black/30 p-5 space-y-4">
+            <div className="text-sm font-black">길드 캐릭터 카드 이펙트</div>
+
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">프리셋</label>
+              <select
+                className="w-full bg-black border border-white/10 rounded-2xl p-4"
+                value={badgeCardEffect}
+                onChange={(e) => setBadgeCardEffect(normalizeBadgeEffectKey(e.target.value))}
+              >
+                {Object.entries(BADGE_CARD_EFFECT_PRESETS)
+                  .filter(([key]) => key !== "none")
+                  .map(([key, preset]) => (
+                    <option key={key} value={key}>
+                      {preset.label}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs text-gray-400 mb-2 block">그라데이션 시작색</label>
+                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientFrom} onChange={(e) => setBadgeGradientFrom(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-2 block">그라데이션 끝색</label>
+                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientTo} onChange={(e) => setBadgeGradientTo(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-2 block">글로우 색상</label>
+                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGlowColor} onChange={(e) => setBadgeGlowColor(e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border p-5 relative overflow-hidden" style={{ background: previewTheme.cardBackground, borderColor: previewTheme.cardBorder, boxShadow: previewTheme.cardShadow }}>
+            <div className="absolute inset-0 pointer-events-none" style={{ background: previewTheme.aura }} />
+            <div className="relative z-10">
+              <div className="text-[10px] uppercase tracking-[0.28em] font-black" style={{ color: previewTheme.chipText }}>
+                Live Preview
+              </div>
+              <div className="mt-4 flex items-center gap-4">
+                <div className="h-16 w-16 rounded-2xl bg-black/25 border border-white/10" />
+                <div className="min-w-0">
+                  <div className="text-lg font-black truncate">{title || "새 뱃지"}</div>
+                  <div className="text-sm text-white/70">{previewTheme.label}</div>
+                  <div className="mt-2">
+                    <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: previewTheme.chipText, borderColor: previewTheme.chipBorder, background: previewTheme.chipBackground }}>
+                      길드 카드 적용
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <button onClick={createItem} className="rounded-2xl bg-purple-600 font-black px-6 py-4">상품 생성</button>
 
       <div className="space-y-4">
-        {items.map((item) => (
-          <div key={item.id} className="flex justify-between bg-black/40 p-4 rounded border border-white/10 gap-4">
-            <div>
+        {items.map((item) => {
+          const badgeTheme = getBadgeVisualTheme(item);
+          return (
+          <div key={item.id} className="flex flex-col lg:flex-row justify-between bg-black/40 p-4 rounded border border-white/10 gap-4">
+            <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="font-bold">{item.title}</div>
                 {item.reward_type === "badge" && (
                   <span
                     className="px-2 py-1 rounded-full text-[10px] font-black border"
-                    style={{ color: item.badge_color || "#c4b5fd", borderColor: item.badge_color || "#8b5cf6", backgroundColor: `${item.badge_color || "#8b5cf6"}22` }}
+                    style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}
                   >
-                    뱃지
+                    뱃지 · {badgeTheme.label}
                   </span>
                 )}
               </div>
-              <div className="text-xs text-gray-400">{item.description}</div>
+              <div className="text-xs text-gray-400 mt-1 whitespace-pre-wrap">{item.description}</div>
               <div className="text-yellow-300 font-black mt-1">{item.price} P</div>
               <div className="text-xs text-gray-500 mt-1">{getShopItemStatusText(item)}</div>
+
+              {item.reward_type === "badge" && (
+                <div className="mt-4 rounded-[1.25rem] border p-4 relative overflow-hidden" style={{ background: badgeTheme.cardBackground, borderColor: badgeTheme.cardBorder, boxShadow: badgeTheme.cardShadow }}>
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: badgeTheme.aura }} />
+                  <div className="relative z-10 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-black">캐릭터 카드 미리보기</div>
+                      <div className="text-xs text-white/70">길드탭 카드에 바로 적용될 효과</div>
+                    </div>
+                    <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}>
+                      {item.badge_name || item.title}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-row lg:flex-col gap-2">
               <button onClick={() => toggleActive(item)} className={cn("px-4 py-2 rounded-xl font-black", item.is_active ? "bg-emerald-600" : "bg-zinc-700")}>
                 {item.is_active ? "판매중" : "비활성"}
               </button>
@@ -4628,7 +5224,8 @@ const AdminPointShopManager = () => {
               </button>
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
     </div>
   );
