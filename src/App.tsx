@@ -1,6 +1,6 @@
 
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield,
@@ -178,22 +178,157 @@ const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
 
-const normalizeEquippedBadges = (input: any): Array<{ badge_item_id: string; badge_name: string; badge_color?: string | null }> => {
+
+type BadgeEffectKey = "none" | "violet" | "sunset" | "ocean" | "emerald" | "rose" | "gold";
+
+type BadgeLike = {
+  badge_item_id: string;
+  badge_name: string;
+  badge_color?: string | null;
+  badge_card_effect?: BadgeEffectKey | string | null;
+  badge_gradient_from?: string | null;
+  badge_gradient_to?: string | null;
+  badge_glow_color?: string | null;
+};
+
+const normalizeBadgeEffectKey = (value: any): BadgeEffectKey => {
+  const normalized = String(value || "none").trim().toLowerCase();
+  if (["violet", "sunset", "ocean", "emerald", "rose", "gold"].includes(normalized)) {
+    return normalized as BadgeEffectKey;
+  }
+  return "none";
+};
+
+const hexToRgba = (hex: string | null | undefined, alpha = 1) => {
+  const raw = String(hex || "").trim().replace("#", "");
+  const normalized =
+    raw.length === 3
+      ? raw.split("").map((char) => char + char).join("")
+      : raw.length === 6
+      ? raw
+      : "8b5cf6";
+
+  const num = Number.parseInt(normalized, 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+const BADGE_CARD_EFFECT_PRESETS: Record<
+  BadgeEffectKey,
+  {
+    label: string;
+    from: string;
+    to: string;
+    glow: string;
+    accent: string;
+  }
+> = {
+  none: {
+    label: "효과 없음",
+    from: "#0f172a",
+    to: "#111827",
+    glow: "#8b5cf6",
+    accent: "#c4b5fd",
+  },
+  violet: {
+    label: "바이올렛 오라",
+    from: "#7c3aed",
+    to: "#312e81",
+    glow: "#a78bfa",
+    accent: "#ddd6fe",
+  },
+  sunset: {
+    label: "선셋 플레어",
+    from: "#fb7185",
+    to: "#f59e0b",
+    glow: "#fdba74",
+    accent: "#ffe4e6",
+  },
+  ocean: {
+    label: "오션 웨이브",
+    from: "#06b6d4",
+    to: "#2563eb",
+    glow: "#67e8f9",
+    accent: "#cffafe",
+  },
+  emerald: {
+    label: "에메랄드 미스트",
+    from: "#10b981",
+    to: "#065f46",
+    glow: "#6ee7b7",
+    accent: "#d1fae5",
+  },
+  rose: {
+    label: "로즈 블룸",
+    from: "#ec4899",
+    to: "#be185d",
+    glow: "#f9a8d4",
+    accent: "#fce7f3",
+  },
+  gold: {
+    label: "골드 라이트",
+    from: "#f59e0b",
+    to: "#b45309",
+    glow: "#fcd34d",
+    accent: "#fef3c7",
+  },
+};
+
+const getBadgeVisualTheme = (badge: any) => {
+  const effectKey = normalizeBadgeEffectKey(badge?.badge_card_effect);
+  const preset = BADGE_CARD_EFFECT_PRESETS[effectKey] || BADGE_CARD_EFFECT_PRESETS.none;
+  const from = badge?.badge_gradient_from || badge?.gradient_from || preset.from;
+  const to = badge?.badge_gradient_to || badge?.gradient_to || preset.to;
+  const glow = badge?.badge_glow_color || badge?.glow_color || badge?.badge_color || preset.glow;
+  const accent = badge?.badge_color || preset.accent;
+
+  return {
+    effectKey,
+    label: preset.label,
+    from,
+    to,
+    glow,
+    accent,
+    chipBackground: `linear-gradient(135deg, ${hexToRgba(from, 0.28)}, ${hexToRgba(to, 0.2)})`,
+    chipBorder: hexToRgba(glow, 0.58),
+    chipText: accent,
+    cardBackground: `linear-gradient(135deg, ${hexToRgba(from, 0.3)} 0%, ${hexToRgba(to, 0.22)} 42%, rgba(15, 23, 42, 0.94) 100%)`,
+    cardBorder: hexToRgba(glow, 0.5),
+    cardShadow: `0 0 0 1px ${hexToRgba(glow, 0.16)} inset, 0 24px 48px ${hexToRgba(glow, 0.16)}`,
+    aura: `radial-gradient(circle at top right, ${hexToRgba(glow, 0.3)} 0%, transparent 58%)`,
+  };
+};
+
+const normalizeEquippedBadges = (input: any): BadgeLike[] => {
   if (!input) return [];
   if (Array.isArray(input)) {
     return input
       .map((item: any) => {
         if (!item) return null;
         if (typeof item === "string") {
-          return { badge_item_id: item, badge_name: item, badge_color: null };
+          return {
+            badge_item_id: item,
+            badge_name: item,
+            badge_color: null,
+            badge_card_effect: "none",
+            badge_gradient_from: null,
+            badge_gradient_to: null,
+            badge_glow_color: null,
+          };
         }
         return {
           badge_item_id: String(item.badge_item_id || item.id || item.badge_name || ""),
           badge_name: item.badge_name || item.name || item.label || "뱃지",
           badge_color: item.badge_color || item.color || null,
+          badge_card_effect: item.badge_card_effect || item.card_effect || "none",
+          badge_gradient_from: item.badge_gradient_from || item.gradient_from || null,
+          badge_gradient_to: item.badge_gradient_to || item.gradient_to || null,
+          badge_glow_color: item.badge_glow_color || item.glow_color || null,
         };
       })
-      .filter(Boolean) as Array<{ badge_item_id: string; badge_name: string; badge_color?: string | null }>;
+      .filter(Boolean) as BadgeLike[];
   }
 
   if (typeof input === "string") {
@@ -201,7 +336,15 @@ const normalizeEquippedBadges = (input: any): Array<{ badge_item_id: string; bad
       return normalizeEquippedBadges(JSON.parse(input));
     } catch {
       return input.trim()
-        ? [{ badge_item_id: input, badge_name: input, badge_color: null }]
+        ? [{
+            badge_item_id: input,
+            badge_name: input,
+            badge_color: null,
+            badge_card_effect: "none",
+            badge_gradient_from: null,
+            badge_gradient_to: null,
+            badge_glow_color: null,
+          }]
         : [];
     }
   }
@@ -209,15 +352,46 @@ const normalizeEquippedBadges = (input: any): Array<{ badge_item_id: string; bad
   return [];
 };
 
-const getCharacterBadges = (character: any) => {
+const getCharacterBadges = (character: any): BadgeLike[] => {
   const equipped = normalizeEquippedBadges(character?.equipped_badges);
-  if (equipped.length > 0) return equipped;
+  const topLevelBadgeTheme = {
+    badge_card_effect: character?.badge_card_effect || "none",
+    badge_gradient_from: character?.badge_gradient_from || null,
+    badge_gradient_to: character?.badge_gradient_to || null,
+    badge_glow_color: character?.badge_glow_color || null,
+  };
+
+  if (equipped.length > 0) {
+    return equipped.map((badge: any, index: number) => ({
+      ...badge,
+      badge_card_effect:
+        badge?.badge_card_effect ||
+        badge?.card_effect ||
+        (index === 0 ? topLevelBadgeTheme.badge_card_effect : "none"),
+      badge_gradient_from:
+        badge?.badge_gradient_from ||
+        badge?.gradient_from ||
+        (index === 0 ? topLevelBadgeTheme.badge_gradient_from : null),
+      badge_gradient_to:
+        badge?.badge_gradient_to ||
+        badge?.gradient_to ||
+        (index === 0 ? topLevelBadgeTheme.badge_gradient_to : null),
+      badge_glow_color:
+        badge?.badge_glow_color ||
+        badge?.glow_color ||
+        (index === 0 ? topLevelBadgeTheme.badge_glow_color : null),
+    }));
+  }
 
   if (Array.isArray(character?.equipped_badge_names) && character.equipped_badge_names.length > 0) {
     return character.equipped_badge_names.map((name: string, index: number) => ({
       badge_item_id: `${name}-${index}`,
       badge_name: name,
       badge_color: null,
+      badge_card_effect: index === 0 ? topLevelBadgeTheme.badge_card_effect : "none",
+      badge_gradient_from: index === 0 ? topLevelBadgeTheme.badge_gradient_from : null,
+      badge_gradient_to: index === 0 ? topLevelBadgeTheme.badge_gradient_to : null,
+      badge_glow_color: index === 0 ? topLevelBadgeTheme.badge_glow_color : null,
     }));
   }
 
@@ -227,11 +401,34 @@ const getCharacterBadges = (character: any) => {
         badge_item_id: String(character.badge_item_id || character.equipped_badge_id || character.badge_name),
         badge_name: character.badge_name,
         badge_color: character.badge_color || null,
+        badge_card_effect: character?.badge_card_effect || "none",
+        badge_gradient_from: character?.badge_gradient_from || null,
+        badge_gradient_to: character?.badge_gradient_to || null,
+        badge_glow_color: character?.badge_glow_color || null,
       },
     ];
   }
 
   return [];
+};
+
+const getPrimaryBadgeTheme = (character: any) => {
+  const badges = getCharacterBadges(character);
+  const primaryBadge =
+    badges.find((badge: any) => normalizeBadgeEffectKey(badge?.badge_card_effect) !== "none") ||
+    badges[0] || {
+      badge_color: character?.profile_theme || character?.theme_color || "#8b5cf6",
+      badge_card_effect: "none",
+      badge_gradient_from: character?.profile_theme || character?.theme_color || "#8b5cf6",
+      badge_gradient_to: "#1f2937",
+      badge_glow_color: character?.profile_theme || character?.theme_color || "#8b5cf6",
+    };
+
+  const theme = getBadgeVisualTheme(primaryBadge);
+  return {
+    primaryBadge,
+    theme,
+  };
 };
 
 const uploadGuildImage = async (file: File, userId: string) => {
@@ -486,7 +683,7 @@ export default function App() {
     data: { subscription },
   } = supabase.auth.onAuthStateChange(async (_event, session) => {
     try {
-      const currentUser = fetchedUser ?? null;
+      const currentUser = session?.user ?? null;
       setUser(currentUser);
 
       if (currentUser) {
@@ -3154,16 +3351,53 @@ const MyRoom = ({ user, profile }: any) => {
     );
   };
 
-  const fetchOwnedBadges = async () => {
+  const fetchOwnedBadges = useCallback(async () => {
     const client = getSupabaseOrThrow();
     const { data, error } = await client
       .from("user_owned_badges")
-      .select("id, badge_item_id, badge_name, badge_color")
+      .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
-    if (!error) setOwnedBadges(data || []);
-  };
+    if (error) {
+      console.error("fetchOwnedBadges error:", error);
+      setOwnedBadges([]);
+      return;
+    }
+
+    const badgeItemIds = Array.from(
+      new Set((data || []).map((item: any) => String(item.badge_item_id || "")).filter(Boolean))
+    );
+
+    let itemMap = new Map<string, any>();
+    if (badgeItemIds.length > 0) {
+      const { data: itemRows, error: itemError } = await client
+        .from("point_shop_items")
+        .select("id, badge_name, badge_color, badge_card_effect, badge_gradient_from, badge_gradient_to, badge_glow_color")
+        .in("id", badgeItemIds);
+
+      if (itemError) {
+        console.error("point_shop_items badge meta fetch error:", itemError);
+      } else {
+        itemMap = new Map((itemRows || []).map((item: any) => [String(item.id), item]));
+      }
+    }
+
+    setOwnedBadges(
+      (data || []).map((badge: any) => {
+        const itemMeta = itemMap.get(String(badge.badge_item_id || "")) || {};
+        return {
+          ...badge,
+          badge_name: badge.badge_name || itemMeta.badge_name || "뱃지",
+          badge_color: badge.badge_color || itemMeta.badge_color || "#8b5cf6",
+          badge_card_effect: badge.badge_card_effect || itemMeta.badge_card_effect || "none",
+          badge_gradient_from: badge.badge_gradient_from || itemMeta.badge_gradient_from || null,
+          badge_gradient_to: badge.badge_gradient_to || itemMeta.badge_gradient_to || null,
+          badge_glow_color: badge.badge_glow_color || itemMeta.badge_glow_color || null,
+        };
+      })
+    );
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchRankIcon = async () => {
@@ -3184,7 +3418,7 @@ const MyRoom = ({ user, profile }: any) => {
       fetchCharacters();
       fetchOwnedBadges();
     }
-  }, [profile, user]);
+  }, [profile, user, fetchOwnedBadges]);
 
   const deleteCharacter = async (id: string) => {
     if (!confirm("캐릭터 삭제할까요?")) return;
@@ -3321,10 +3555,18 @@ const MyRoom = ({ user, profile }: any) => {
       badge_name: selectedBadges[0]?.badge_name || null,
       equipped_badge_label: selectedBadges[0]?.badge_name || null,
       badge_color: selectedBadges[0]?.badge_color || null,
+      badge_card_effect: selectedBadges[0]?.badge_card_effect || "none",
+      badge_gradient_from: selectedBadges[0]?.badge_gradient_from || null,
+      badge_gradient_to: selectedBadges[0]?.badge_gradient_to || null,
+      badge_glow_color: selectedBadges[0]?.badge_glow_color || null,
       equipped_badges: selectedBadges.map((badge: any) => ({
         badge_item_id: badge.badge_item_id,
         badge_name: badge.badge_name,
         badge_color: badge.badge_color || null,
+        badge_card_effect: badge.badge_card_effect || "none",
+        badge_gradient_from: badge.badge_gradient_from || null,
+        badge_gradient_to: badge.badge_gradient_to || null,
+        badge_glow_color: badge.badge_glow_color || null,
       })),
       owner_nickname: profile.nickname,
       owner_id: user.id,
@@ -3412,16 +3654,20 @@ const MyRoom = ({ user, profile }: any) => {
               아직 보이는 캐릭터가 없어. 기존 캐릭터가 있는데도 안 보이면 아래 SQL 백필을 한 번 실행해줘.
             </div>
           )}
-          {characters.map((character) => (
+          {characters.map((character) => {
+            const { theme } = getPrimaryBadgeTheme(character);
+            return (
             <div
               key={character.id}
-              className="p-4 rounded-2xl border"
+              className="p-4 rounded-2xl border relative overflow-hidden"
               style={{
-                background: "rgba(0,0,0,0.35)",
-                borderColor: character.profile_theme || "#ffffff22",
-                boxShadow: `0 0 0 1px ${character.profile_theme || "#ffffff11"} inset`,
+                background: theme.cardBackground,
+                borderColor: theme.cardBorder,
+                boxShadow: theme.cardShadow,
               }}
             >
+              <div className="absolute inset-0 pointer-events-none opacity-90" style={{ background: theme.aura }} />
+              <div className="relative z-10">
               {character.avatar_url && (
                 <img
                   src={character.avatar_url || character.image_url}
@@ -3438,19 +3684,23 @@ const MyRoom = ({ user, profile }: any) => {
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
                       {getCharacterBadges(character).length > 0 ? (
-                        getCharacterBadges(character).map((badge: any, index: number) => (
+                        getCharacterBadges(character).map((badge: any, index: number) => {
+                          const badgeTheme = getBadgeVisualTheme(badge);
+                          return (
                           <span
                             key={`${badge.badge_item_id}-${index}`}
                             className="px-3 py-1 rounded-full text-xs font-black"
                             style={{
-                              backgroundColor: `${badge.badge_color || "#8b5cf6"}33`,
-                              color: badge.badge_color || "#c4b5fd",
-                              border: `1px solid ${badge.badge_color || "#8b5cf6"}`,
+                              background: badgeTheme.chipBackground,
+                              color: badgeTheme.chipText,
+                              border: `1px solid ${badgeTheme.chipBorder}`,
+                              boxShadow: `0 0 16px ${hexToRgba(badgeTheme.glow, 0.18)}`,
                             }}
                           >
                             {badge.badge_name}
                           </span>
-                        ))
+                        );
+                        })
                       ) : null}
                     </div>
                   </div>
@@ -3536,6 +3786,7 @@ const MyRoom = ({ user, profile }: any) => {
                                 style={{ color: badge.badge_color || "#c4b5fd" }}
                               >
                                 {badge.badge_name}
+                                {normalizeBadgeEffectKey(badge.badge_card_effect) !== "none" ? ` · ${getBadgeVisualTheme(badge).label}` : ""}
                               </span>
                             </label>
                           );
@@ -3636,8 +3887,10 @@ const MyRoom = ({ user, profile }: any) => {
                   </div>
                 </div>
               )}
+              </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
     </div>
@@ -3895,8 +4148,20 @@ const GuildMembersPage = () => {
         <div className="text-center text-gray-500 py-10">길드원 불러오는 중...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {filteredMembers.map((member: any) => (
-            <div key={member.id} className="rounded-[2rem] border border-white/10 bg-[#0d111c]/80 p-5 overflow-hidden" style={{ boxShadow: `0 0 0 1px ${(member.profile_theme || "#8b5cf6")}44 inset` }}>
+          {filteredMembers.map((member: any) => {
+            const { theme } = getPrimaryBadgeTheme(member);
+            return (
+            <div
+              key={member.id}
+              className="rounded-[2rem] border p-5 overflow-hidden relative"
+              style={{
+                background: theme.cardBackground,
+                borderColor: theme.cardBorder,
+                boxShadow: theme.cardShadow,
+              }}
+            >
+              <div className="absolute inset-0 pointer-events-none" style={{ background: theme.aura }} />
+              <div className="relative z-10">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-4 min-w-0">
                   <img
@@ -3920,19 +4185,23 @@ const GuildMembersPage = () => {
                           서폿
                         </span>
                       )}
-                      {getCharacterBadges(member).map((badge: any, index: number) => (
+                      {getCharacterBadges(member).map((badge: any, index: number) => {
+                        const badgeTheme = getBadgeVisualTheme(badge);
+                        return (
                         <span
                           key={`${badge.badge_item_id}-${index}`}
                           className="px-2 py-1 rounded-full text-[10px] font-black border"
                           style={{
-                            color: badge.badge_color || "#c4b5fd",
-                            borderColor: badge.badge_color || "#8b5cf6",
-                            backgroundColor: `${badge.badge_color || "#8b5cf6"}22`,
+                            color: badgeTheme.chipText,
+                            borderColor: badgeTheme.chipBorder,
+                            background: badgeTheme.chipBackground,
+                            boxShadow: `0 0 14px ${hexToRgba(badgeTheme.glow, 0.14)}`,
                           }}
                         >
                           {badge.badge_name}
                         </span>
-                      ))}
+                      );
+                      })}
                     </div>
                     <div className="text-xl font-black truncate">{member.character_name}</div>
                     <div className="text-sm text-gray-400 truncate">{member.class_name}</div>
@@ -3960,8 +4229,10 @@ const GuildMembersPage = () => {
                   {member.character_intro}
                 </div>
               )}
+              </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
     </div>
@@ -4186,20 +4457,46 @@ const PointShopPage = ({ user, profile }: any) => {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="text-xl font-black">{item.title}</div>
-                      {item.reward_type === "badge" && (
+                      {item.reward_type === "badge" && (() => {
+                        const badgeTheme = getBadgeVisualTheme(item);
+                        return (
                         <span
                           className="px-2 py-1 rounded-full text-[10px] font-black border"
-                          style={{ color: item.badge_color || "#c4b5fd", borderColor: item.badge_color || "#8b5cf6", backgroundColor: `${item.badge_color || "#8b5cf6"}22` }}
+                          style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}
                         >
-                          뱃지
+                          뱃지 · {badgeTheme.label}
                         </span>
-                      )}
+                      );
+                      })()}
                     </div>
                     <div className="mt-2 text-sm text-gray-400 whitespace-pre-wrap">{item.description}</div>
                     <div className="mt-3 text-xs text-gray-500">{getShopItemStatusText(item)}</div>
                   </div>
                   <ShoppingBag className="text-purple-300" />
                 </div>
+
+                {item.reward_type === "badge" && (() => {
+                  const badgeTheme = getBadgeVisualTheme(item);
+                  return (
+                  <div className="mt-5 rounded-[1.5rem] border p-4 relative overflow-hidden" style={{ background: badgeTheme.cardBackground, borderColor: badgeTheme.cardBorder, boxShadow: badgeTheme.cardShadow }}>
+                    <div className="absolute inset-0 pointer-events-none" style={{ background: badgeTheme.aura }} />
+                    <div className="relative z-10">
+                      <div className="text-[10px] uppercase tracking-[0.25em] font-black" style={{ color: badgeTheme.chipText }}>
+                        Guild Card Preview
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-lg font-black">INXX 길드카드</div>
+                          <div className="text-xs text-gray-200/80">뱃지 착용 시 적용될 카드 느낌</div>
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}>
+                          {item.badge_name || item.title}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+                })()}
 
                 <div className="mt-5 flex items-center justify-between gap-4">
                   <div>
@@ -4330,12 +4627,17 @@ const AdminNoticeManager = ({ user, profile }: any) => {
   );
 };
 
+
 const AdminPointShopManager = () => {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [rewardType, setRewardType] = useState("badge");
   const [badgeColor, setBadgeColor] = useState("#8b5cf6");
+  const [badgeCardEffect, setBadgeCardEffect] = useState<BadgeEffectKey>("violet");
+  const [badgeGradientFrom, setBadgeGradientFrom] = useState(BADGE_CARD_EFFECT_PRESETS.violet.from);
+  const [badgeGradientTo, setBadgeGradientTo] = useState(BADGE_CARD_EFFECT_PRESETS.violet.to);
+  const [badgeGlowColor, setBadgeGlowColor] = useState(BADGE_CARD_EFFECT_PRESETS.violet.glow);
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
@@ -4343,6 +4645,13 @@ const AdminPointShopManager = () => {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  useEffect(() => {
+    const preset = BADGE_CARD_EFFECT_PRESETS[badgeCardEffect] || BADGE_CARD_EFFECT_PRESETS.violet;
+    setBadgeGradientFrom(preset.from);
+    setBadgeGradientTo(preset.to);
+    setBadgeGlowColor(preset.glow);
+  }, [badgeCardEffect]);
 
   const fetchItems = async () => {
     const { data, error } = await supabase.from("point_shop_items").select("*").order("created_at", { ascending: false });
@@ -4352,6 +4661,20 @@ const AdminPointShopManager = () => {
       return;
     }
     setItems(data || []);
+  };
+
+  const resetForm = () => {
+    setTitle("");
+    setPrice("");
+    setDescription("");
+    setRewardType("badge");
+    setBadgeColor("#8b5cf6");
+    setBadgeCardEffect("violet");
+    setBadgeGradientFrom(BADGE_CARD_EFFECT_PRESETS.violet.from);
+    setBadgeGradientTo(BADGE_CARD_EFFECT_PRESETS.violet.to);
+    setBadgeGlowColor(BADGE_CARD_EFFECT_PRESETS.violet.glow);
+    setAvailableFrom("");
+    setAvailableTo("");
   };
 
   const createItem = async () => {
@@ -4364,17 +4687,15 @@ const AdminPointShopManager = () => {
       reward_type: rewardType,
       badge_name: rewardType === "badge" ? title : null,
       badge_color: rewardType === "badge" ? badgeColor : null,
+      badge_card_effect: rewardType === "badge" ? badgeCardEffect : "none",
+      badge_gradient_from: rewardType === "badge" ? badgeGradientFrom : null,
+      badge_gradient_to: rewardType === "badge" ? badgeGradientTo : null,
+      badge_glow_color: rewardType === "badge" ? badgeGlowColor : null,
       available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
       available_to: availableTo ? new Date(availableTo).toISOString() : null,
     });
     if (error) return alert(error.message);
-    setTitle("");
-    setPrice("");
-    setDescription("");
-    setRewardType("badge");
-    setBadgeColor("#8b5cf6");
-    setAvailableFrom("");
-    setAvailableTo("");
+    resetForm();
     fetchItems();
   };
 
@@ -4390,6 +4711,14 @@ const AdminPointShopManager = () => {
     if (error) return alert(error.message);
     fetchItems();
   };
+
+  const previewTheme = getBadgeVisualTheme({
+    badge_color: badgeColor,
+    badge_card_effect: badgeCardEffect,
+    badge_gradient_from: badgeGradientFrom,
+    badge_gradient_to: badgeGradientTo,
+    badge_glow_color: badgeGlowColor,
+  });
 
   return (
     <div className="space-y-6">
@@ -4416,34 +4745,112 @@ const AdminPointShopManager = () => {
           <input type="datetime-local" className="w-full bg-black border border-white/10 rounded-2xl p-4" value={availableTo} onChange={(e) => setAvailableTo(e.target.value)} />
         </div>
         <div>
-          <label className="text-xs text-gray-400 mb-2 block">뱃지 색상</label>
+          <label className="text-xs text-gray-400 mb-2 block">뱃지 대표 색상</label>
           <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeColor} onChange={(e) => setBadgeColor(e.target.value)} />
         </div>
       </div>
 
+      {rewardType === "badge" && (
+        <div className="grid lg:grid-cols-[1.1fr,0.9fr] gap-6">
+          <div className="rounded-[2rem] border border-white/10 bg-black/30 p-5 space-y-4">
+            <div className="text-sm font-black">길드 캐릭터 카드 이펙트</div>
+
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">프리셋</label>
+              <select
+                className="w-full bg-black border border-white/10 rounded-2xl p-4"
+                value={badgeCardEffect}
+                onChange={(e) => setBadgeCardEffect(normalizeBadgeEffectKey(e.target.value))}
+              >
+                {Object.entries(BADGE_CARD_EFFECT_PRESETS)
+                  .filter(([key]) => key !== "none")
+                  .map(([key, preset]) => (
+                    <option key={key} value={key}>
+                      {preset.label}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs text-gray-400 mb-2 block">그라데이션 시작색</label>
+                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientFrom} onChange={(e) => setBadgeGradientFrom(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-2 block">그라데이션 끝색</label>
+                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientTo} onChange={(e) => setBadgeGradientTo(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-2 block">글로우 색상</label>
+                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGlowColor} onChange={(e) => setBadgeGlowColor(e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border p-5 relative overflow-hidden" style={{ background: previewTheme.cardBackground, borderColor: previewTheme.cardBorder, boxShadow: previewTheme.cardShadow }}>
+            <div className="absolute inset-0 pointer-events-none" style={{ background: previewTheme.aura }} />
+            <div className="relative z-10">
+              <div className="text-[10px] uppercase tracking-[0.28em] font-black" style={{ color: previewTheme.chipText }}>
+                Live Preview
+              </div>
+              <div className="mt-4 flex items-center gap-4">
+                <div className="h-16 w-16 rounded-2xl bg-black/25 border border-white/10" />
+                <div className="min-w-0">
+                  <div className="text-lg font-black truncate">{title || "새 뱃지"}</div>
+                  <div className="text-sm text-white/70">{previewTheme.label}</div>
+                  <div className="mt-2">
+                    <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: previewTheme.chipText, borderColor: previewTheme.chipBorder, background: previewTheme.chipBackground }}>
+                      길드 카드 적용
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <button onClick={createItem} className="rounded-2xl bg-purple-600 font-black px-6 py-4">상품 생성</button>
 
       <div className="space-y-4">
-        {items.map((item) => (
-          <div key={item.id} className="flex justify-between bg-black/40 p-4 rounded border border-white/10 gap-4">
-            <div>
+        {items.map((item) => {
+          const badgeTheme = getBadgeVisualTheme(item);
+          return (
+          <div key={item.id} className="flex flex-col lg:flex-row justify-between bg-black/40 p-4 rounded border border-white/10 gap-4">
+            <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="font-bold">{item.title}</div>
                 {item.reward_type === "badge" && (
                   <span
                     className="px-2 py-1 rounded-full text-[10px] font-black border"
-                    style={{ color: item.badge_color || "#c4b5fd", borderColor: item.badge_color || "#8b5cf6", backgroundColor: `${item.badge_color || "#8b5cf6"}22` }}
+                    style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}
                   >
-                    뱃지
+                    뱃지 · {badgeTheme.label}
                   </span>
                 )}
               </div>
-              <div className="text-xs text-gray-400">{item.description}</div>
+              <div className="text-xs text-gray-400 mt-1 whitespace-pre-wrap">{item.description}</div>
               <div className="text-yellow-300 font-black mt-1">{item.price} P</div>
               <div className="text-xs text-gray-500 mt-1">{getShopItemStatusText(item)}</div>
+
+              {item.reward_type === "badge" && (
+                <div className="mt-4 rounded-[1.25rem] border p-4 relative overflow-hidden" style={{ background: badgeTheme.cardBackground, borderColor: badgeTheme.cardBorder, boxShadow: badgeTheme.cardShadow }}>
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: badgeTheme.aura }} />
+                  <div className="relative z-10 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-black">캐릭터 카드 미리보기</div>
+                      <div className="text-xs text-white/70">길드탭 카드에 바로 적용될 효과</div>
+                    </div>
+                    <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}>
+                      {item.badge_name || item.title}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-row lg:flex-col gap-2">
               <button onClick={() => toggleActive(item)} className={cn("px-4 py-2 rounded-xl font-black", item.is_active ? "bg-emerald-600" : "bg-zinc-700")}>
                 {item.is_active ? "판매중" : "비활성"}
               </button>
@@ -4452,7 +4859,8 @@ const AdminPointShopManager = () => {
               </button>
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
     </div>
   );
