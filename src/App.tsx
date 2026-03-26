@@ -480,6 +480,110 @@ const createPreviewUrl = (file: File | null, fallback?: string | null) => {
 };
 
 
+type WeaponRarityKey = "common" | "rare" | "epic" | "legendary";
+
+const WEAPON_RARITY_THEMES: Record<
+  WeaponRarityKey,
+  {
+    label: string;
+    border: string;
+    background: string;
+    text: string;
+    glow: string;
+  }
+> = {
+  common: {
+    label: "Common",
+    border: "rgba(148, 163, 184, 0.34)",
+    background: "linear-gradient(135deg, rgba(148,163,184,0.18), rgba(15,23,42,0.58))",
+    text: "#e5e7eb",
+    glow: "rgba(148,163,184,0.18)",
+  },
+  rare: {
+    label: "Rare",
+    border: "rgba(59, 130, 246, 0.42)",
+    background: "linear-gradient(135deg, rgba(59,130,246,0.18), rgba(15,23,42,0.58))",
+    text: "#bfdbfe",
+    glow: "rgba(59,130,246,0.22)",
+  },
+  epic: {
+    label: "Epic",
+    border: "rgba(168, 85, 247, 0.44)",
+    background: "linear-gradient(135deg, rgba(168,85,247,0.2), rgba(15,23,42,0.6))",
+    text: "#e9d5ff",
+    glow: "rgba(168,85,247,0.24)",
+  },
+  legendary: {
+    label: "Legendary",
+    border: "rgba(245, 158, 11, 0.5)",
+    background: "linear-gradient(135deg, rgba(245,158,11,0.24), rgba(120,53,15,0.4), rgba(15,23,42,0.72))",
+    text: "#fde68a",
+    glow: "rgba(245,158,11,0.26)",
+  },
+};
+
+const normalizeWeaponRarity = (value: any): WeaponRarityKey => {
+  const normalized = String(value || "common").trim().toLowerCase();
+  if (["common", "rare", "epic", "legendary"].includes(normalized)) {
+    return normalized as WeaponRarityKey;
+  }
+  return "common";
+};
+
+const getWeaponTheme = (weapon: any) => {
+  const rarity = normalizeWeaponRarity(weapon?.rarity);
+  return WEAPON_RARITY_THEMES[rarity] || WEAPON_RARITY_THEMES.common;
+};
+
+const isWeaponGachaAvailable = (item: any) => {
+  const now = Date.now();
+  const from = item?.available_from ? new Date(item.available_from).getTime() : null;
+  const to = item?.available_to ? new Date(item.available_to).getTime() : null;
+  if (!item?.is_active) return false;
+  if (from && now < from) return false;
+  if (to && now > to) return false;
+  return true;
+};
+
+const getWeaponGachaStatusText = (item: any) => {
+  if (!item?.is_active) return "판매 중지";
+  const now = Date.now();
+  const from = item?.available_from ? new Date(item.available_from).getTime() : null;
+  const to = item?.available_to ? new Date(item.available_to).getTime() : null;
+  if (from && now < from) return `오픈 예정 · ${formatDateTime(item.available_from)}`;
+  if (to && now > to) return "판매 종료";
+  if (from || to) {
+    return `판매 기간 · ${item.available_from ? formatDateTime(item.available_from) : "즉시"} ~ ${item.available_to ? formatDateTime(item.available_to) : "상시"}`;
+  }
+  return "상시 판매";
+};
+
+const WeaponImage = ({
+  weapon,
+  className = "h-12 w-12 rounded-xl",
+}: {
+  weapon: any;
+  className?: string;
+}) => {
+  const theme = getWeaponTheme(weapon);
+  return weapon?.image_url ? (
+    <img
+      src={weapon.image_url}
+      className={`${className} object-cover border`}
+      style={{ borderColor: theme.border, boxShadow: `0 0 18px ${theme.glow}` }}
+    />
+  ) : (
+    <div
+      className={`${className} flex items-center justify-center border`}
+      style={{ background: theme.background, borderColor: theme.border, boxShadow: `0 0 18px ${theme.glow}` }}
+    >
+      <Swords size={18} style={{ color: theme.text }} />
+    </div>
+  );
+};
+
+
+
 const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: ProfileLike }) => {
   const [notices, setNotices] = useState<PostLike[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3561,6 +3665,7 @@ const MyRoom = ({ user, profile }: any) => {
   const [mbti, setMbti] = useState("");
   const [characters, setCharacters] = useState<any[]>([]);
   const [ownedBadges, setOwnedBadges] = useState<any[]>([]);
+  const [ownedWeapons, setOwnedWeapons] = useState<any[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
   const handleAttendance = async () => {
@@ -3677,6 +3782,52 @@ const MyRoom = ({ user, profile }: any) => {
     );
   }, [user?.id]);
 
+
+  const fetchOwnedWeapons = useCallback(async () => {
+    if (!user?.id) return;
+    const client = getSupabaseOrThrow();
+    const { data, error } = await client
+      .from("user_owned_weapons")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("fetchOwnedWeapons error:", error);
+      setOwnedWeapons([]);
+      return;
+    }
+
+    const weaponIds = Array.from(new Set((data || []).map((item: any) => String(item.weapon_id || "")).filter(Boolean)));
+    let weaponMap = new Map<string, any>();
+
+    if (weaponIds.length > 0) {
+      const { data: weaponRows, error: weaponError } = await client
+        .from("weapon_parts")
+        .select("id, name, description, image_url, rarity, is_active")
+        .in("id", weaponIds);
+
+      if (weaponError) {
+        console.error("weapon_parts fetch error:", weaponError);
+      } else {
+        weaponMap = new Map((weaponRows || []).map((item: any) => [String(item.id), item]));
+      }
+    }
+
+    setOwnedWeapons(
+      (data || []).map((item: any) => {
+        const meta = weaponMap.get(String(item.weapon_id || "")) || {};
+        return {
+          ...item,
+          name: item.weapon_name || meta.name || "무기 파츠",
+          description: item.description || meta.description || "",
+          image_url: item.weapon_image_url || meta.image_url || item.image_url || "",
+          rarity: item.rarity || meta.rarity || "common",
+        };
+      })
+    );
+  }, [user?.id]);
+
   useEffect(() => {
     const fetchRankIcon = async () => {
       if (!profile?.rank_name) return;
@@ -3695,8 +3846,9 @@ const MyRoom = ({ user, profile }: any) => {
       fetchRankIcon();
       fetchCharacters();
       fetchOwnedBadges();
+      fetchOwnedWeapons();
     }
-  }, [profile, user, fetchOwnedBadges]);
+  }, [profile, user, fetchOwnedBadges, fetchOwnedWeapons]);
 
   const usedBadgeIds = useMemo(() => {
     const used = new Set<string>();
@@ -3707,6 +3859,47 @@ const MyRoom = ({ user, profile }: any) => {
     });
     return used;
   }, [characters]);
+
+
+  const equipWeaponToCharacter = async (character: any, weapon: any) => {
+    const client = getSupabaseOrThrow();
+    const payload = {
+      equipped_weapon_id: weapon?.weapon_id || weapon?.id || null,
+      equipped_weapon_name: weapon?.name || weapon?.weapon_name || null,
+      equipped_weapon_image_url: weapon?.image_url || weapon?.weapon_image_url || null,
+      equipped_weapon_rarity: weapon?.rarity || "common",
+    };
+
+    const { error } = await client.from("guild_members").update(payload).eq("id", character.id);
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    await fetchCharacters();
+    alert(`${character.character_name}에게 ${payload.equipped_weapon_name || "무기"}를 장착했어.`);
+  };
+
+  const clearWeaponFromCharacter = async (character: any) => {
+    if (!confirm(`${character.character_name}의 장착 무기를 해제할까요?`)) return;
+    const client = getSupabaseOrThrow();
+    const { error } = await client
+      .from("guild_members")
+      .update({
+        equipped_weapon_id: null,
+        equipped_weapon_name: null,
+        equipped_weapon_image_url: null,
+        equipped_weapon_rarity: null,
+      })
+      .eq("id", character.id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    await fetchCharacters();
+  };
 
   const deleteCharacter = async (id: string) => {
     if (!confirm("캐릭터 삭제할까요?")) return;
@@ -4027,6 +4220,49 @@ const MyRoom = ({ user, profile }: any) => {
           )}
         </div>
 
+
+        <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5 mt-5">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div>
+              <div className="text-xl font-black">보유 무기 파츠</div>
+              <div className="text-sm text-gray-400">뽑기로 획득한 무기는 아래에서 확인하고 각 캐릭터에 장착할 수 있어.</div>
+            </div>
+            <div className="px-3 py-2 rounded-xl bg-white/5 text-sm font-black text-gray-300">
+              {ownedWeapons.length}개 보유
+            </div>
+          </div>
+
+          {ownedWeapons.length === 0 ? (
+            <div className="text-sm text-gray-500">아직 보유한 무기 파츠가 없습니다. 포인트샵 무기 뽑기에서 획득해봐.</div>
+          ) : (
+            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {ownedWeapons.map((weapon: any) => {
+                const theme = getWeaponTheme(weapon);
+                return (
+                  <div
+                    key={`${weapon.weapon_id || weapon.id}-${weapon.created_at || weapon.name}`}
+                    className="rounded-2xl border p-4 bg-black/25"
+                    style={{ borderColor: theme.border, boxShadow: `0 0 18px ${theme.glow}` }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <WeaponImage weapon={weapon} className="h-14 w-14 rounded-2xl" />
+                      <div className="min-w-0">
+                        <div className="font-black truncate">{weapon.name}</div>
+                        <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
+                          {theme.label}
+                        </div>
+                        <div className="mt-2 text-xs text-gray-400 line-clamp-2">
+                          {weapon.description || "길드탭 캐릭터 카드에 표시되는 장비 파츠"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {showRegister && (
           <div className="space-y-3 border border-white/10 rounded-2xl p-5 bg-black/20">
             <div className="grid md:grid-cols-2 gap-3">
@@ -4137,8 +4373,76 @@ const MyRoom = ({ user, profile }: any) => {
                     <InfoMiniCard title="MBTI" value={character.mbti || "-"} />
                   </div>
 
+
                   <div className="mt-4 text-sm text-gray-300 whitespace-pre-wrap">
                     {character.character_intro || "소개 문구를 넣어 캐릭터를 꾸밀 수 있어."}
+                  </div>
+
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <div>
+                        <div className="text-xs text-gray-400 uppercase tracking-widest">장비 파츠 [무기]</div>
+                        {character.equipped_weapon_name ? (
+                          <div className="mt-2 flex items-center gap-3">
+                            <WeaponImage weapon={{ image_url: character.equipped_weapon_image_url, rarity: character.equipped_weapon_rarity }} className="h-12 w-12 rounded-2xl" />
+                            <div>
+                              <div className="font-black">{character.equipped_weapon_name}</div>
+                              <div className="text-xs text-gray-400">{getWeaponTheme({ rarity: character.equipped_weapon_rarity }).label}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-sm text-gray-500">아직 장착한 무기가 없습니다.</div>
+                        )}
+                      </div>
+                      {character.equipped_weapon_name && (
+                        <button
+                          onClick={() => clearWeaponFromCharacter(character)}
+                          className="px-3 py-2 rounded-xl bg-zinc-800 text-xs font-black text-white"
+                        >
+                          무기 해제
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="mt-4 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {ownedWeapons.length === 0 ? (
+                        <div className="text-sm text-gray-500 md:col-span-2 xl:col-span-3">보유한 무기 파츠가 없습니다.</div>
+                      ) : (
+                        ownedWeapons.map((weapon: any) => {
+                          const theme = getWeaponTheme(weapon);
+                          const isEquipped = String(character.equipped_weapon_id || "") === String(weapon.weapon_id || weapon.id || "");
+                          return (
+                            <div
+                              key={`${character.id}-${weapon.weapon_id || weapon.id}-${weapon.created_at || weapon.name}`}
+                              className="rounded-2xl border p-3 bg-black/20"
+                              style={{ borderColor: isEquipped ? theme.border : "rgba(255,255,255,0.08)", boxShadow: isEquipped ? `0 0 20px ${theme.glow}` : "none" }}
+                            >
+                              <div className="flex items-start gap-3">
+                                <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="font-black truncate">{weapon.name}</div>
+                                  <div className="text-[11px] mt-1 inline-flex px-2 py-1 rounded-full border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
+                                    {theme.label}
+                                  </div>
+                                  <div className="mt-2 text-xs text-gray-400 line-clamp-2">
+                                    {weapon.description || "길드탭 캐릭터 카드 장착 파츠"}
+                                  </div>
+                                  <button
+                                    onClick={() => equipWeaponToCharacter(character, weapon)}
+                                    className={cn(
+                                      "mt-3 w-full px-3 py-2 rounded-xl text-xs font-black transition",
+                                      isEquipped ? "bg-emerald-600 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"
+                                    )}
+                                  >
+                                    {isEquipped ? "장착 중" : "이 무기 장착"}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -4475,6 +4779,7 @@ const RankingPage = ({ user, profile }: any) => {
 };
 
 
+
 const GuildMembersPage = () => {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -4519,10 +4824,10 @@ const GuildMembersPage = () => {
       const overviewMap = new Map(overviewRows.map((row: any) => [row.id, row]));
       const merged = (liveRows.length > 0 ? liveRows : overviewRows).map((row: any) => {
         const overview = overviewMap.get(row.id) || {};
-        const base = { ...overview, ...row };
+        const baseRow = { ...overview, ...row };
         return {
-          ...base,
-          equipped_badges: getCharacterBadges(base),
+          ...baseRow,
+          equipped_badges: getCharacterBadges(baseRow),
         };
       });
 
@@ -4551,7 +4856,7 @@ const GuildMembersPage = () => {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h1 className="text-3xl md:text-4xl font-black">길드 캐릭터</h1>
-          <p className="text-gray-400 mt-2">메인/부캐, 템렙, 캐릭터 레벨, 전투력, 생일, MBTI, 최근 참여 레이드, 장착 뱃지까지 한 번에 볼 수 있습니다.</p>
+          <p className="text-gray-400 mt-2">메인/부캐, 템렙, 캐릭터 레벨, 전투력, 생일, MBTI, 장착 뱃지와 장비 파츠 [무기]까지 한 번에 볼 수 있습니다.</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -4580,90 +4885,108 @@ const GuildMembersPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredMembers.map((member: any) => {
             const { theme } = getPrimaryBadgeTheme(member);
+            const weaponTheme = getWeaponTheme({ rarity: member.equipped_weapon_rarity });
             return (
-            <div
-              key={member.id}
-              className="rounded-[2rem] border p-5 overflow-hidden relative"
-              style={{
-                background: theme.cardBackground,
-                borderColor: theme.cardBorder,
-                boxShadow: theme.cardShadow,
-              }}
-            >
-              <div className="absolute inset-0 pointer-events-none" style={{ background: theme.aura }} />
-              <div className="relative z-10">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex gap-4 min-w-0">
-                  <img
-                    src={member.avatar_url || member.image_url || "https://placehold.co/120x120?text=INXX"}
-                    className="h-20 w-20 rounded-2xl object-cover border border-white/10"
-                  />
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {member.is_main ? (
-                        <span className="px-2 py-1 rounded-full text-[10px] font-black bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 inline-flex items-center gap-1">
-                          <Crown size={11} />
-                          MAIN
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 rounded-full text-[10px] font-black bg-white/10 text-gray-300 border border-white/10">
-                          부캐
-                        </span>
-                      )}
-                      {member.role_hint === "서포터" && (
-                        <span className="px-2 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
-                          서폿
-                        </span>
-                      )}
-                      {getCharacterBadges(member).map((badge: any, index: number) => {
-                        const badgeTheme = getBadgeVisualTheme(badge);
-                        return (
-                        <span
-                          key={`${badge.badge_item_id}-${index}`}
-                          className="px-2 py-1 rounded-full text-[10px] font-black border"
-                          style={{
-                            color: badgeTheme.chipText,
-                            borderColor: badgeTheme.chipBorder,
-                            background: badgeTheme.chipBackground,
-                            boxShadow: `0 0 14px ${hexToRgba(badgeTheme.glow, 0.14)}`,
-                          }}
-                        >
-                          {badge.badge_name}
-                        </span>
-                      );
-                      })}
+              <div
+                key={member.id}
+                className="rounded-[2rem] border p-5 overflow-hidden relative"
+                style={{
+                  background: theme.cardBackground,
+                  borderColor: theme.cardBorder,
+                  boxShadow: theme.cardShadow,
+                }}
+              >
+                <div className="absolute inset-0 pointer-events-none" style={{ background: theme.aura }} />
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex gap-4 min-w-0">
+                      <img
+                        src={member.avatar_url || member.image_url || "https://placehold.co/120x120?text=INXX"}
+                        className="h-20 w-20 rounded-2xl object-cover border border-white/10"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {member.is_main ? (
+                            <span className="px-2 py-1 rounded-full text-[10px] font-black bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 inline-flex items-center gap-1">
+                              <Crown size={11} />
+                              MAIN
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 rounded-full text-[10px] font-black bg-white/10 text-gray-300 border border-white/10">
+                              부캐
+                            </span>
+                          )}
+                          {member.role_hint === "서포터" && (
+                            <span className="px-2 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+                              서폿
+                            </span>
+                          )}
+                          {getCharacterBadges(member).map((badge: any, index: number) => {
+                            const badgeTheme = getBadgeVisualTheme(badge);
+                            return (
+                              <span
+                                key={`${badge.badge_item_id}-${index}`}
+                                className="px-2 py-1 rounded-full text-[10px] font-black border"
+                                style={{
+                                  color: badgeTheme.chipText,
+                                  borderColor: badgeTheme.chipBorder,
+                                  background: badgeTheme.chipBackground,
+                                  boxShadow: `0 0 14px ${hexToRgba(badgeTheme.glow, 0.14)}`,
+                                }}
+                              >
+                                {badge.badge_name}
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <div className="text-xl font-black truncate">{member.character_name}</div>
+                        <div className="text-sm text-gray-300/80 truncate">{member.class_name}</div>
+                        <div className="mt-1 text-purple-200 font-black">아이템 Lv. {member.item_level}</div>
+                      </div>
                     </div>
-                    <div className="text-xl font-black truncate">{member.character_name}</div>
-                    <div className="text-sm text-gray-400 truncate">{member.class_name}</div>
-                    <div className="mt-1 text-purple-300 font-black">아이템 Lv. {member.item_level}</div>
+
+                    <div className="text-right shrink-0">
+                      <div className="text-[10px] text-white/50 uppercase tracking-widest">Owner</div>
+                      <div className="text-sm font-bold">{member.owner_nickname || "-"}</div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="text-right shrink-0">
-                  <div className="text-[10px] text-gray-500 uppercase tracking-widest">Owner</div>
-                  <div className="text-sm font-bold">{member.owner_nickname || "-"}</div>
+                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">장비 파츠 [무기]</div>
+                    {member.equipped_weapon_name ? (
+                      <div className="mt-3 flex items-center gap-3">
+                        <WeaponImage weapon={{ image_url: member.equipped_weapon_image_url, rarity: member.equipped_weapon_rarity }} className="h-14 w-14 rounded-2xl" />
+                        <div className="min-w-0">
+                          <div className="font-black truncate">{member.equipped_weapon_name}</div>
+                          <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: weaponTheme.text, borderColor: weaponTheme.border, background: weaponTheme.background }}>
+                            {weaponTheme.label}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 text-sm text-gray-500">장착한 무기가 없습니다.</div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mt-5">
+                    <InfoMiniCard title="캐릭터 레벨" value={member.character_level || "-"} />
+                    <InfoMiniCard title="전투력" value={member.combat_power || "-"} />
+                    <InfoMiniCard title="생일" value={member.birthday ? formatShortDate(member.birthday) : "-"} />
+                    <InfoMiniCard title="MBTI" value={member.mbti || "-"} />
+                    <InfoMiniCard title="최근 참여" value={member.last_raid_name || "기록 없음"} />
+                    <InfoMiniCard title="최근 날짜" value={member.last_raid_date ? formatShortDate(member.last_raid_date) : "-"} />
+                    <InfoMiniCard title="주간 참여" value={`${member.weekly_join_count || 0}회`} />
+                    <InfoMiniCard title="참여율" value={`${member.participation_rate || 0}%`} />
+                  </div>
+
+                  {member.character_intro && (
+                    <div className="mt-4 text-sm text-gray-300 whitespace-pre-wrap border-t border-white/5 pt-4">
+                      {member.character_intro}
+                    </div>
+                  )}
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3 mt-5">
-                <InfoMiniCard title="캐릭터 레벨" value={member.character_level || "-"} />
-                <InfoMiniCard title="전투력" value={member.combat_power || "-"} />
-                <InfoMiniCard title="생일" value={member.birthday ? formatShortDate(member.birthday) : "-"} />
-                <InfoMiniCard title="MBTI" value={member.mbti || "-"} />
-                <InfoMiniCard title="최근 참여" value={member.last_raid_name || "기록 없음"} />
-                <InfoMiniCard title="최근 날짜" value={member.last_raid_date ? formatShortDate(member.last_raid_date) : "-"} />
-                <InfoMiniCard title="주간 참여" value={`${member.weekly_join_count || 0}회`} />
-                <InfoMiniCard title="참여율" value={`${member.participation_rate || 0}%`} />
-              </div>
-
-              {member.character_intro && (
-                <div className="mt-4 text-sm text-gray-300 whitespace-pre-wrap border-t border-white/5 pt-4">
-                  {member.character_intro}
-                </div>
-              )}
-              </div>
-            </div>
-          );
+            );
           })}
         </div>
       )}
@@ -4815,10 +5138,15 @@ const AdminUserManager = () => {
   );
 };
 
+
 const PointShopPage = ({ user, profile }: any) => {
   const [items, setItems] = useState<any[]>([]);
+  const [gachaProducts, setGachaProducts] = useState<any[]>([]);
+  const [gachaRewards, setGachaRewards] = useState<Record<string, any[]>>({});
   const [myPoint, setMyPoint] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [shopTab, setShopTab] = useState<"badge" | "gacha">("badge");
+  const [drawResult, setDrawResult] = useState<any>(null);
 
   useEffect(() => {
     fetchShop();
@@ -4826,22 +5154,61 @@ const PointShopPage = ({ user, profile }: any) => {
 
   const fetchShop = async () => {
     setLoading(true);
-    const [itemsRes, profileRes] = await Promise.all([
-      supabase.from("point_shop_items").select("*").order("price", { ascending: true }),
-      user ? supabase.from("profiles").select("points").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+    const client = getSupabaseOrThrow();
+
+    const [itemsRes, profileRes, gachaRes] = await Promise.allSettled([
+      client.from("point_shop_items").select("*").order("price", { ascending: true }),
+      user ? client.from("profiles").select("points").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null } as any),
+      client.from("weapon_gacha_products").select("*").order("created_at", { ascending: false }),
     ]);
 
-    if ((itemsRes as any).error) {
-      console.error((itemsRes as any).error);
-      setItems([]);
+    if (itemsRes.status === "fulfilled" && !(itemsRes.value as any).error) {
+      setItems((itemsRes.value as any).data || []);
     } else {
-      setItems((itemsRes as any).data || []);
+      console.error("point shop items fetch failed:", itemsRes.status === "fulfilled" ? (itemsRes.value as any).error : itemsRes.reason);
+      setItems([]);
     }
 
-    if ((profileRes as any)?.data) {
-      setMyPoint((profileRes as any).data.points || 0);
+    if (profileRes.status === "fulfilled" && (profileRes.value as any)?.data) {
+      setMyPoint((profileRes.value as any).data.points || 0);
     } else {
       setMyPoint(0);
+    }
+
+    let nextGachas: any[] = [];
+    if (gachaRes.status === "fulfilled" && !(gachaRes.value as any).error) {
+      nextGachas = (gachaRes.value as any).data || [];
+      setGachaProducts(nextGachas);
+    } else {
+      console.error("weapon_gacha_products fetch failed:", gachaRes.status === "fulfilled" ? (gachaRes.value as any).error : gachaRes.reason);
+      setGachaProducts([]);
+    }
+
+    const productIds = nextGachas.map((item: any) => item.id).filter(Boolean);
+    if (productIds.length > 0) {
+      const { data: rewardRows, error: rewardError } = await client
+        .from("weapon_gacha_reward_items")
+        .select("id, product_id, weight, weapon_id, is_featured, weapon_parts(id, name, description, image_url, rarity, is_active)")
+        .in("product_id", productIds);
+
+      if (rewardError) {
+        console.error("weapon_gacha_reward_items fetch error:", rewardError);
+        setGachaRewards({});
+      } else {
+        const grouped: Record<string, any[]> = {};
+        (rewardRows || []).forEach((row: any) => {
+          const productId = String(row.product_id);
+          if (!grouped[productId]) grouped[productId] = [];
+          grouped[productId].push({
+            ...row.weapon_parts,
+            weight: row.weight,
+            is_featured: row.is_featured,
+          });
+        });
+        setGachaRewards(grouped);
+      }
+    } else {
+      setGachaRewards({});
     }
 
     setLoading(false);
@@ -4863,12 +5230,33 @@ const PointShopPage = ({ user, profile }: any) => {
     fetchShop();
   };
 
+  const drawWeaponGacha = async (product: any) => {
+    if (!user) return alert("로그인 후 사용 가능합니다.");
+    if (!isWeaponGachaAvailable(product)) return alert("지금은 판매 시간이 아니야.");
+    if (myPoint < Number(product.price || 0)) return alert("포인트가 부족합니다.");
+    if (!confirm(`${product.title} 뽑기를 진행할까요? ${product.price}P가 차감됩니다.`)) return;
+
+    const client = getSupabaseOrThrow();
+    const { data, error } = await client.rpc("draw_weapon_gacha", {
+      p_user_id: user.id,
+      p_product_id: product.id,
+    });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    setDrawResult(data);
+    await fetchShop();
+  };
+
   return (
     <div className="max-w-7xl mx-auto py-24 px-6 text-left">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h2 className="text-4xl font-black italic uppercase tracking-tight">Point Shop</h2>
-          <p className="text-gray-500 font-bold mt-2">텍스트만 보이는 상점이 아니라, 길드 카드에 적용될 분위기까지 바로 보이도록 상품 카드를 강화했어.</p>
+          <p className="text-gray-500 font-bold mt-2">기존 뱃지 상품은 유지하고, 무기 파츠 뽑기를 따로 추가했어. 새로고침이 느려져도 포인트샵 자체는 독립적으로 빠르게 불러오도록 구성했어.</p>
         </div>
 
         <div className="rounded-[2rem] border border-purple-500/20 bg-purple-500/10 px-5 py-4">
@@ -4877,9 +5265,27 @@ const PointShopPage = ({ user, profile }: any) => {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2 mb-8">
+        {[
+          ["badge", "뱃지 상점"],
+          ["gacha", "무기 뽑기"],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => setShopTab(key as "badge" | "gacha")}
+            className={cn(
+              "px-4 py-2 rounded-full text-sm font-black border transition",
+              shopTab === key ? "bg-purple-600 border-purple-500 text-white" : "bg-white/5 border-white/10 text-gray-400"
+            )}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <div className="py-16 text-center text-gray-500">포인트샵 불러오는 중...</div>
-      ) : (
+      ) : shopTab === "badge" ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {items.map((item) => {
             const available = isShopItemAvailable(item);
@@ -4919,54 +5325,142 @@ const PointShopPage = ({ user, profile }: any) => {
                         <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">Live Card Mood</div>
                         <div className="mt-1 text-sm font-bold text-white/85">{item.reward_type === "badge" ? `${badgeTheme.label} 길드 카드` : "포인트샵 대표 상품 카드"}</div>
                       </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: item.reward_type === "badge" ? badgeTheme.chipText : "#ddd6fe", borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(221,214,254,0.35)", background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(124,58,237,0.18)" }}>
-                        {item.badge_name || item.title}
+                      <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: item.reward_type === "badge" ? badgeTheme.chipText : "#ddd6fe", borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(221,214,254,0.35)", background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(139,92,246,0.16)" }}>
+                        {item.price}P
                       </span>
                     </div>
 
-                    <div className="mt-4 rounded-[1.35rem] border p-4 relative overflow-hidden" style={{ background: item.reward_type === "badge" ? badgeTheme.cardBackground : "linear-gradient(135deg, rgba(76,29,149,0.36), rgba(15,23,42,0.92) 64%)", borderColor: item.reward_type === "badge" ? badgeTheme.cardBorder : "rgba(167,139,250,0.22)", boxShadow: item.reward_type === "badge" ? badgeTheme.cardShadow : "0 18px 40px rgba(76,29,149,0.18)" }}>
-                      <div className="absolute inset-0 pointer-events-none" style={{ background: item.reward_type === "badge" ? badgeTheme.aura : "radial-gradient(circle at top right, rgba(196,181,253,0.15), transparent 40%)" }} />
-                      <div className="relative z-10 flex items-center gap-4">
-                        <div className="h-16 w-16 rounded-[1.2rem] border border-white/10 bg-black/25" />
-                        <div className="min-w-0">
-                          <div className="text-lg font-black truncate">{item.badge_name || item.title}</div>
-                          <div className="text-sm text-white/70 truncate">{moodLine}</div>
-                          <div className="mt-2 text-xs text-white/55">구매 후 마이룸에서 바로 장착 가능</div>
+                    <div className="mt-4 h-24 rounded-[1.3rem] border border-white/10 overflow-hidden relative" style={{ background: item.reward_type === "badge" ? badgeTheme.cardBackground : "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92))" }}>
+                      <div className="absolute inset-0 opacity-60" style={{ background: item.reward_type === "badge" ? badgeTheme.aura : "radial-gradient(circle at top right, rgba(168,85,247,0.22), transparent 46%)" }} />
+                      <div className="relative h-full flex items-center justify-between px-4">
+                        <div>
+                          <div className="text-lg font-black">{item.badge_name || item.title}</div>
+                          <div className="text-xs text-white/60 mt-1">길드탭 캐릭터 카드 미리보기</div>
                         </div>
+                        <div className="h-12 w-12 rounded-2xl border border-white/10 bg-black/25" />
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-5 space-y-3">
-                    <div className="text-[11px] uppercase tracking-[0.24em] text-white/45 font-black">상품 포인트</div>
-                    <div className="grid gap-2">
-                      {highlights.map((line, idx) => (
-                        <div key={`${item.id}-highlight-${idx}`} className="flex items-start gap-2 rounded-2xl border border-white/8 bg-black/20 px-3 py-2 text-sm text-white/80">
-                          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-white/55" />
-                          <span>{line}</span>
+                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">상품 설명</div>
+                    <div className="mt-3 space-y-2">
+                      {highlights.map((line, index) => (
+                        <div key={`${item.id}-highlight-${index}`} className="text-sm text-white/75">
+                          • {line}
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="mt-5 rounded-[1.4rem] border border-white/10 bg-black/25 px-4 py-3">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">상세 설명</div>
-                    <div className="mt-2 text-sm leading-6 text-white/78 whitespace-pre-wrap">
-                      {item.description?.trim() || "상품 설명이 아직 등록되지 않았어. 관리자 페이지에서 더 자세한 설명을 추가해주면 구매욕을 더 자극할 수 있어."}
+                  <div className="mt-5 flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/40 font-black">Price</div>
+                      <div className="text-3xl font-black">{item.price}P</div>
+                    </div>
+                    <button
+                      disabled={!available || !user}
+                      onClick={() => purchase(item)}
+                      className={cn(
+                        "px-5 py-3 rounded-2xl font-black transition-all",
+                        available && user
+                          ? "bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-600/25"
+                          : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                      )}
+                    >
+                      {user ? (available ? "구매하기" : "판매 종료") : "로그인 필요"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {gachaProducts.map((product: any) => {
+            const available = isWeaponGachaAvailable(product);
+            const rewards = gachaRewards[String(product.id)] || [];
+            const featured = rewards.find((item: any) => item.is_featured) || rewards[0];
+            return (
+              <div
+                key={product.id}
+                className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
+              >
+                <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(76,29,149,0.3) 52%, rgba(2,6,23,0.96))" }} />
+                <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: "radial-gradient(circle at top right, rgba(250,204,21,0.18), transparent 28%), radial-gradient(circle at bottom left, rgba(59,130,246,0.18), transparent 32%)" }} />
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                          Weapon Gacha
+                        </span>
+                        <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
+                          {getWeaponGachaStatusText(product)}
+                        </span>
+                      </div>
+                      <div className="mt-4 text-2xl font-black leading-tight break-words">{product.title}</div>
+                      <div className="mt-2 text-sm text-white/75">{product.promo_text || product.description || "무기 파츠를 랜덤 획득할 수 있는 길드 전용 뽑기"}</div>
+                    </div>
+                    <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center backdrop-blur-md overflow-hidden">
+                      {product.image_url ? (
+                        <img src={product.image_url} className="w-full h-full object-cover" />
+                      ) : (
+                        <Swords className="text-white/80" />
+                      )}
                     </div>
                   </div>
 
-                  <div className="mt-6 flex items-end justify-between gap-4">
+                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">대표 보상 / Live Preview</div>
+                    <div className="mt-4 rounded-[1.3rem] border border-white/10 overflow-hidden relative bg-black/20 p-4">
+                      <div className="flex items-center gap-4">
+                        <WeaponImage weapon={featured} className="h-20 w-20 rounded-[1.4rem]" />
+                        <div className="min-w-0">
+                          <div className="text-lg font-black truncate">{featured?.name || "무기 파츠 구성 준비 중"}</div>
+                          <div className="mt-1 text-sm text-white/70 line-clamp-2">{featured?.description || "관리자 페이지에서 무기를 선택하면 여기 미리보기가 채워져."}</div>
+                          {featured && (
+                            <div className="mt-2 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: getWeaponTheme(featured).text, borderColor: getWeaponTheme(featured).border, background: getWeaponTheme(featured).background }}>
+                              {getWeaponTheme(featured).label}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">포함 무기</div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {rewards.length === 0 ? (
+                        <div className="text-sm text-gray-500">등록된 무기 보상이 없습니다.</div>
+                      ) : (
+                        rewards.slice(0, 6).map((weapon: any, index: number) => (
+                          <div key={`${product.id}-weapon-${weapon.id || index}`} className="px-3 py-2 rounded-xl border bg-black/20 text-xs font-black" style={{ borderColor: getWeaponTheme(weapon).border, color: getWeaponTheme(weapon).text }}>
+                            {weapon.name}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex items-center justify-between gap-4">
                     <div>
-                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">Price</div>
-                      <div className="text-3xl font-black text-yellow-300">{item.price} P</div>
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/40 font-black">Price</div>
+                      <div className="text-3xl font-black">{product.price}P</div>
                     </div>
                     <button
-                      disabled={!available}
-                      onClick={() => purchase(item)}
-                      className="px-5 py-3 rounded-2xl bg-purple-600 font-black disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_14px_30px_rgba(124,58,237,0.32)]"
+                      disabled={!available || !user}
+                      onClick={() => drawWeaponGacha(product)}
+                      className={cn(
+                        "px-5 py-3 rounded-2xl font-black transition-all",
+                        available && user
+                          ? "bg-fuchsia-600 hover:bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-600/25"
+                          : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                      )}
                     >
-                      {available ? "구매하기" : "구매 불가"}
+                      {user ? (available ? "뽑기하기" : "판매 종료") : "로그인 필요"}
                     </button>
                   </div>
                 </div>
@@ -4975,113 +5469,37 @@ const PointShopPage = ({ user, profile }: any) => {
           })}
         </div>
       )}
-    </div>
-  );
-};
 
-const AdminNoticeManager = ({ user, profile }: any) => {
-  const [notices, setNotices] = useState<any[]>([]);
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-
-  useEffect(() => {
-    fetchNotices();
-  }, []);
-
-  const fetchNotices = async () => {
-    const { data, error } = await supabase
-      .from("posts")
-      .select("*")
-      .eq("is_notice", true)
-      .order("is_pinned", { ascending: false })
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error(error);
-      setNotices([]);
-      return;
-    }
-
-    setNotices(data || []);
-  };
-
-  const createNotice = async () => {
-    if (!title.trim() || !content.trim()) return alert("공지 제목과 내용을 입력해줘.");
-
-    const { error } = await supabase.from("posts").insert({
-      title,
-      content,
-      category: "공지",
-      is_notice: true,
-      is_pinned: notices.length === 0,
-      author_id: user?.id || null,
-      author_name: profile?.nickname || "관리자",
-    });
-
-    if (error) return alert(error.message);
-
-    setTitle("");
-    setContent("");
-    fetchNotices();
-    alert("공지 작성 완료");
-  };
-
-  const togglePin = async (id: string, nextValue: boolean) => {
-    if (nextValue) {
-      await supabase.from("posts").update({ is_pinned: false }).eq("is_notice", true);
-    }
-    await supabase.from("posts").update({ is_pinned: nextValue }).eq("id", id);
-    fetchNotices();
-  };
-
-  const deleteNotice = async (id: string) => {
-    if (!confirm("이 공지를 삭제할까요?")) return;
-    const { error } = await supabase.from("posts").delete().eq("id", id);
-    if (error) return alert(error.message);
-    fetchNotices();
-  };
-
-  return (
-    <div className="space-y-6">
-      <h3 className="text-xl font-bold">공지 관리</h3>
-
-      <div className="space-y-3 border border-white/10 rounded-2xl p-5 bg-black/20">
-        <AdminInput label="공지 제목" value={title} onChange={setTitle} />
-        <textarea
-          className="w-full bg-black border border-white/10 rounded-2xl p-4 min-h-[140px]"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="메인 상단에 보여줄 공지 내용을 입력해줘"
-        />
-        <button onClick={createNotice} className="px-5 py-3 rounded-xl bg-purple-600 font-black">
-          공지 작성
-        </button>
-      </div>
-
-      {notices.length === 0 && (
-        <div className="text-gray-500">등록된 공지가 아직 없어.</div>
-      )}
-
-      {notices.map((notice) => (
-        <div key={notice.id} className="bg-black/40 p-4 rounded border border-white/10 gap-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="font-bold">{notice.title}</div>
-              <div className="text-xs text-gray-400 mt-1">{formatDateTime(notice.created_at)}</div>
-              <div className="text-sm text-gray-300 mt-3 whitespace-pre-wrap">{notice.content}</div>
+      <AnimatePresence>
+        {drawResult && (
+          <ModalFrame onClose={() => setDrawResult(null)}>
+            <div className="max-w-xl mx-auto rounded-[2.5rem] border border-white/10 bg-[#0b1020] p-8 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-80 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.14), rgba(168,85,247,0.2) 42%, rgba(2,6,23,0.96))" }} />
+              <div className="relative z-10 text-center">
+                <div className="text-[10px] uppercase tracking-[0.32em] text-fuchsia-300 font-black">Weapon Gacha Result</div>
+                <div className="mt-4 flex justify-center">
+                  <WeaponImage weapon={drawResult} className="h-28 w-28 rounded-[2rem]" />
+                </div>
+                <div className="mt-5 text-3xl font-black">{drawResult?.weapon_name || drawResult?.name || "무기 파츠"}</div>
+                <div className="mt-3 inline-flex px-3 py-1 rounded-full text-xs font-black border" style={{ color: getWeaponTheme({ rarity: drawResult?.rarity }).text, borderColor: getWeaponTheme({ rarity: drawResult?.rarity }).border, background: getWeaponTheme({ rarity: drawResult?.rarity }).background }}>
+                  {getWeaponTheme({ rarity: drawResult?.rarity }).label}
+                </div>
+                <div className="mt-4 text-sm text-white/75 whitespace-pre-wrap">
+                  {drawResult?.duplicate
+                    ? `중복 무기가 나와서 보상 포인트 ${drawResult?.refund_points || 0}P를 돌려줬어.`
+                    : drawResult?.message || "새 무기 파츠를 획득했어. 마이룸에서 캐릭터에게 장착해봐."}
+                </div>
+                <button
+                  onClick={() => setDrawResult(null)}
+                  className="mt-6 px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-500 font-black"
+                >
+                  확인
+                </button>
+              </div>
             </div>
-
-            <div className="flex flex-col gap-2 shrink-0">
-              <button onClick={() => togglePin(notice.id, !notice.is_pinned)} className="px-4 py-2 rounded-xl border border-white/10">
-                {notice.is_pinned ? "고정 해제" : "상단 고정"}
-              </button>
-              <button onClick={() => deleteNotice(notice.id)} className="px-4 py-2 rounded-xl bg-red-600 text-white">
-                삭제
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
+          </ModalFrame>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -5100,8 +5518,28 @@ const AdminPointShopManager = () => {
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
 
+  const [weaponName, setWeaponName] = useState("");
+  const [weaponDescription, setWeaponDescription] = useState("");
+  const [weaponImageUrl, setWeaponImageUrl] = useState("");
+  const [weaponRarity, setWeaponRarity] = useState<WeaponRarityKey>("rare");
+  const [weaponParts, setWeaponParts] = useState<any[]>([]);
+
+  const [gachaTitle, setGachaTitle] = useState("");
+  const [gachaDescription, setGachaDescription] = useState("");
+  const [gachaPrice, setGachaPrice] = useState("");
+  const [gachaImageUrl, setGachaImageUrl] = useState("");
+  const [gachaPromoText, setGachaPromoText] = useState("");
+  const [gachaAvailableFrom, setGachaAvailableFrom] = useState("");
+  const [gachaAvailableTo, setGachaAvailableTo] = useState("");
+  const [selectedWeaponIds, setSelectedWeaponIds] = useState<string[]>([]);
+  const [featuredWeaponId, setFeaturedWeaponId] = useState("");
+  const [gachaProducts, setGachaProducts] = useState<any[]>([]);
+  const [gachaRewardMap, setGachaRewardMap] = useState<Record<string, any[]>>({});
+
   useEffect(() => {
     fetchItems();
+    fetchWeaponParts();
+    fetchGachaProducts();
   }, []);
 
   useEffect(() => {
@@ -5121,7 +5559,59 @@ const AdminPointShopManager = () => {
     setItems(data || []);
   };
 
-  const resetForm = () => {
+  const fetchWeaponParts = async () => {
+    const { data, error } = await supabase.from("weapon_parts").select("*").order("created_at", { ascending: false });
+    if (error) {
+      console.error(error);
+      setWeaponParts([]);
+      return;
+    }
+    setWeaponParts(data || []);
+  };
+
+  const fetchGachaProducts = async () => {
+    const client = getSupabaseOrThrow();
+    const { data, error } = await client.from("weapon_gacha_products").select("*").order("created_at", { ascending: false });
+    if (error) {
+      console.error(error);
+      setGachaProducts([]);
+      setGachaRewardMap({});
+      return;
+    }
+    const products = data || [];
+    setGachaProducts(products);
+
+    const productIds = products.map((item: any) => item.id).filter(Boolean);
+    if (productIds.length === 0) {
+      setGachaRewardMap({});
+      return;
+    }
+
+    const { data: rewardRows, error: rewardError } = await client
+      .from("weapon_gacha_reward_items")
+      .select("id, product_id, weight, is_featured, weapon_id, weapon_parts(id, name, description, image_url, rarity)")
+      .in("product_id", productIds);
+
+    if (rewardError) {
+      console.error(rewardError);
+      setGachaRewardMap({});
+      return;
+    }
+
+    const grouped: Record<string, any[]> = {};
+    (rewardRows || []).forEach((row: any) => {
+      const key = String(row.product_id);
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push({
+        ...row.weapon_parts,
+        is_featured: row.is_featured,
+        weight: row.weight,
+      });
+    });
+    setGachaRewardMap(grouped);
+  };
+
+  const resetBadgeForm = () => {
     setTitle("");
     setPrice("");
     setDescription("");
@@ -5153,8 +5643,71 @@ const AdminPointShopManager = () => {
       available_to: availableTo ? new Date(availableTo).toISOString() : null,
     });
     if (error) return alert(error.message);
-    resetForm();
+    resetBadgeForm();
     fetchItems();
+  };
+
+  const createWeaponPart = async () => {
+    if (!weaponName.trim()) return alert("무기 이름을 입력하세요.");
+    const { error } = await supabase.from("weapon_parts").insert({
+      name: weaponName,
+      description: weaponDescription,
+      image_url: weaponImageUrl || null,
+      rarity: weaponRarity,
+      is_active: true,
+    });
+
+    if (error) return alert(error.message);
+
+    setWeaponName("");
+    setWeaponDescription("");
+    setWeaponImageUrl("");
+    setWeaponRarity("rare");
+    fetchWeaponParts();
+  };
+
+  const createGachaProduct = async () => {
+    if (!gachaTitle.trim() || !gachaPrice) return alert("뽑기 이름과 가격을 입력하세요.");
+    if (selectedWeaponIds.length === 0) return alert("뽑기 보상으로 들어갈 무기를 하나 이상 선택하세요.");
+
+    const client = getSupabaseOrThrow();
+    const { data: inserted, error } = await client
+      .from("weapon_gacha_products")
+      .insert({
+        title: gachaTitle,
+        description: gachaDescription,
+        price: toNumber(gachaPrice),
+        image_url: gachaImageUrl || null,
+        promo_text: gachaPromoText || null,
+        is_active: true,
+        available_from: gachaAvailableFrom ? new Date(gachaAvailableFrom).toISOString() : null,
+        available_to: gachaAvailableTo ? new Date(gachaAvailableTo).toISOString() : null,
+      })
+      .select("*")
+      .single();
+
+    if (error) return alert(error.message);
+
+    const rewardRows = selectedWeaponIds.map((weaponId) => ({
+      product_id: inserted.id,
+      weapon_id: weaponId,
+      weight: 1,
+      is_featured: featuredWeaponId ? featuredWeaponId === weaponId : selectedWeaponIds[0] === weaponId,
+    }));
+
+    const { error: rewardError } = await client.from("weapon_gacha_reward_items").insert(rewardRows);
+    if (rewardError) return alert(rewardError.message);
+
+    setGachaTitle("");
+    setGachaDescription("");
+    setGachaPrice("");
+    setGachaImageUrl("");
+    setGachaPromoText("");
+    setGachaAvailableFrom("");
+    setGachaAvailableTo("");
+    setSelectedWeaponIds([]);
+    setFeaturedWeaponId("");
+    fetchGachaProducts();
   };
 
   const toggleActive = async (item: any) => {
@@ -5168,6 +5721,29 @@ const AdminPointShopManager = () => {
     const { error } = await supabase.from("point_shop_items").delete().eq("id", itemId);
     if (error) return alert(error.message);
     fetchItems();
+  };
+
+  const toggleGachaActive = async (item: any) => {
+    const { error } = await supabase.from("weapon_gacha_products").update({ is_active: !item.is_active }).eq("id", item.id);
+    if (error) return alert(error.message);
+    fetchGachaProducts();
+  };
+
+  const deleteGachaProduct = async (itemId: string) => {
+    if (!confirm("이 뽑기 상품을 삭제할까요?")) return;
+    const client = getSupabaseOrThrow();
+    await client.from("weapon_gacha_reward_items").delete().eq("product_id", itemId);
+    const { error } = await client.from("weapon_gacha_products").delete().eq("id", itemId);
+    if (error) return alert(error.message);
+    fetchGachaProducts();
+  };
+
+  const deleteWeaponPart = async (weaponId: string) => {
+    if (!confirm("이 무기 파츠를 삭제할까요?")) return;
+    const { error } = await supabase.from("weapon_parts").delete().eq("id", weaponId);
+    if (error) return alert(error.message);
+    fetchWeaponParts();
+    fetchGachaProducts();
   };
 
   const previewItem = {
@@ -5189,76 +5765,84 @@ const AdminPointShopManager = () => {
   };
 
   const previewTheme = getBadgeVisualTheme(previewItem);
-  const previewHighlights = getShopItemHighlights(previewItem);
+  const gachaPreviewWeapons = weaponParts.filter((item: any) => selectedWeaponIds.includes(String(item.id)));
+  const gachaFeaturedPreview = gachaPreviewWeapons.find((item: any) => String(item.id) === featuredWeaponId) || gachaPreviewWeapons[0];
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-xl font-bold">포인트샵 관리</h3>
+    <div className="space-y-10">
+      <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
+        <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-purple-300">Badge Product Builder</div>
+            <div className="mt-2 text-2xl font-black">포인트샵 뱃지 상품 생성</div>
+            <div className="text-sm text-gray-400 mt-1">기존 뱃지 상품은 그대로 유지하면서 카드 그라데이션까지 같이 만들 수 있어.</div>
+          </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
-        <input className="bg-black border border-white/10 rounded-2xl p-4" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="상품명 / 뱃지명" />
-        <input className="bg-black border border-white/10 rounded-2xl p-4" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="가격" />
-        <select className="bg-black border border-white/10 rounded-2xl p-4" value={rewardType} onChange={(e) => setRewardType(e.target.value)}>
-          <option value="badge">뱃지</option>
-          <option value="general">일반 상품</option>
-        </select>
-      </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <AdminInput label="상품명" value={title} onChange={setTitle} placeholder="예: 여왕의 빛 뱃지" />
+            <AdminInput label="가격(포인트)" value={price} onChange={setPrice} placeholder="예: 800" />
+          </div>
 
-      <textarea className="w-full bg-black border border-white/10 rounded-2xl p-4 min-h-[120px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="상품 설명" />
+          <div>
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">설명</label>
+            <textarea
+              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-purple-500 font-bold text-sm text-white min-h-[120px]"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="상품 설명 / 구매 욕구 자극 문구"
+            />
+          </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
-        <div>
-          <label className="text-xs text-gray-400 mb-2 block">판매 시작 시간</label>
-          <input type="datetime-local" className="w-full bg-black border border-white/10 rounded-2xl p-4" value={availableFrom} onChange={(e) => setAvailableFrom(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400 mb-2 block">판매 종료 시간</label>
-          <input type="datetime-local" className="w-full bg-black border border-white/10 rounded-2xl p-4" value={availableTo} onChange={(e) => setAvailableTo(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-400 mb-2 block">뱃지 대표 색상</label>
-          <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeColor} onChange={(e) => setBadgeColor(e.target.value)} />
-        </div>
-      </div>
-
-      {rewardType === "badge" && (
-        <div className="grid lg:grid-cols-[1.05fr,0.95fr] gap-6">
-          <div className="rounded-[2rem] border border-white/10 bg-black/30 p-5 space-y-4">
-            <div className="text-sm font-black">길드 캐릭터 카드 이펙트</div>
-
+          <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs text-gray-400 mb-2 block">프리셋</label>
-              <select
-                className="w-full bg-black border border-white/10 rounded-2xl p-4"
-                value={badgeCardEffect}
-                onChange={(e) => setBadgeCardEffect(normalizeBadgeEffectKey(e.target.value))}
-              >
-                {Object.entries(BADGE_CARD_EFFECT_PRESETS)
-                  .filter(([key]) => key !== "none")
-                  .map(([key, preset]) => (
-                    <option key={key} value={key}>
-                      {preset.label}
-                    </option>
-                  ))}
-              </select>
+              <label className="text-xs text-gray-400 mb-2 block">대표 색상</label>
+              <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeColor} onChange={(e) => setBadgeColor(e.target.value)} />
             </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-xs text-gray-400 mb-2 block">그라데이션 시작색</label>
-                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientFrom} onChange={(e) => setBadgeGradientFrom(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-2 block">그라데이션 끝색</label>
-                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientTo} onChange={(e) => setBadgeGradientTo(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-2 block">글로우 색상</label>
-                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGlowColor} onChange={(e) => setBadgeGlowColor(e.target.value)} />
-              </div>
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">카드 이펙트 프리셋</label>
+              <select
+                className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
+                value={badgeCardEffect}
+                onChange={(e) => setBadgeCardEffect(e.target.value as BadgeEffectKey)}
+              >
+                {Object.entries(BADGE_CARD_EFFECT_PRESETS).map(([key, value]) => (
+                  <option key={key} value={key}>
+                    {value.label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">그라데이션 시작</label>
+              <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientFrom} onChange={(e) => setBadgeGradientFrom(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">그라데이션 끝</label>
+              <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientTo} onChange={(e) => setBadgeGradientTo(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 mb-2 block">글로우 색상</label>
+              <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGlowColor} onChange={(e) => setBadgeGlowColor(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <AdminInput label="판매 시작" type="datetime-local" value={availableFrom} onChange={setAvailableFrom} />
+            <AdminInput label="판매 종료" type="datetime-local" value={availableTo} onChange={setAvailableTo} />
+          </div>
+
+          <button
+            onClick={createItem}
+            className="w-full bg-purple-600 p-4 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all"
+          >
+            뱃지 상품 생성
+          </button>
+        </div>
+
+        <div className="space-y-6">
           <div className="rounded-[2rem] border p-5 relative overflow-hidden" style={{ background: previewTheme.cardBackground, borderColor: previewTheme.cardBorder, boxShadow: previewTheme.cardShadow }}>
             <div className="absolute inset-0 pointer-events-none" style={{ background: previewTheme.aura }} />
             <div className="relative z-10">
@@ -5279,131 +5863,318 @@ const AdminPointShopManager = () => {
               </div>
             </div>
           </div>
-        </div>
-      )}
 
-      <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
-        <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: rewardType === "badge" ? previewTheme.cardBackground : "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92) 52%, rgba(2,6,23,0.96))" }} />
-          <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: rewardType === "badge" ? previewTheme.aura : "radial-gradient(circle at top right, rgba(168,85,247,0.18), transparent 42%)" }} />
-          <div className="relative z-10">
-            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-white/70">Point Shop Live Preview</div>
-            <div className="mt-4 flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
-                    {rewardType === "badge" ? "Badge Item" : "Point Item"}
-                  </span>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: rewardType === "badge" ? previewTheme.chipText : "#c4b5fd", borderColor: rewardType === "badge" ? previewTheme.chipBorder : "rgba(196,181,253,0.45)", background: rewardType === "badge" ? previewTheme.chipBackground : "rgba(139,92,246,0.16)" }}>
-                    {getShopItemStatusText(previewItem)}
-                  </span>
+          <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: rewardType === "badge" ? previewTheme.cardBackground : "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92) 52%, rgba(2,6,23,0.96))" }} />
+            <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: rewardType === "badge" ? previewTheme.aura : "radial-gradient(circle at top right, rgba(168,85,247,0.18), transparent 42%)" }} />
+            <div className="relative z-10">
+              <div className="text-[10px] uppercase tracking-[0.28em] font-black text-white/70">Point Shop Live Preview</div>
+              <div className="mt-4 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                      Badge Item
+                    </span>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: previewTheme.chipText, borderColor: previewTheme.chipBorder, background: previewTheme.chipBackground }}>
+                      {getShopItemStatusText(previewItem)}
+                    </span>
+                  </div>
+                  <div className="mt-4 text-2xl font-black leading-tight break-words">{previewItem.title}</div>
+                  <div className="mt-2 text-sm text-white/70">{getShopMoodLine(previewItem)}</div>
                 </div>
-                <div className="mt-4 text-2xl font-black leading-tight">{previewItem.title}</div>
-                <div className="mt-2 text-sm text-white/70">{getShopMoodLine(previewItem)}</div>
-              </div>
-              <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center">
-                <ShoppingBag className="text-white/80" />
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-              <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">상세 설명</div>
-              <div className="mt-2 text-sm leading-6 text-white/78 whitespace-pre-wrap">{previewItem.description}</div>
-            </div>
-
-            <div className="mt-5 grid gap-2">
-              {previewHighlights.map((line, idx) => (
-                <div key={`preview-highlight-${idx}`} className="flex items-start gap-2 rounded-2xl border border-white/8 bg-black/20 px-3 py-2 text-sm text-white/80">
-                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-white/55" />
-                  <span>{line}</span>
+                <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center backdrop-blur-md">
+                  <ShoppingBag className="text-white/80" />
                 </div>
-              ))}
-            </div>
-
-            <div className="mt-6 flex items-end justify-between gap-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">Price</div>
-                <div className="text-3xl font-black text-yellow-300">{previewItem.price} P</div>
               </div>
-              <button type="button" className="px-5 py-3 rounded-2xl bg-purple-600 font-black shadow-[0_14px_30px_rgba(124,58,237,0.32)]">
-                구매하기
-              </button>
-            </div>
-          </div>
-        </div>
 
-        <div className="rounded-[2rem] border border-white/10 bg-black/30 p-5">
-          <div className="text-sm font-black">작성 팁</div>
-          <div className="mt-4 space-y-3 text-sm text-white/70 leading-6">
-            <div>- 첫 줄에 상품의 핵심 매력을 적고, 아래 줄에서 장착 효과나 혜택을 풀어주면 구매욕이 더 올라가.</div>
-            <div>- 뱃지 상품은 장착 시 길드 카드가 어떻게 변하는지 설명해주면 전환이 좋아져.</div>
-            <div>- 기간 한정 상품이면 판매 시작/종료 시간을 꼭 넣어줘. 희소성이 잘 보여.</div>
-            <div>- 설명이 비어 있으면 포인트샵에서는 기본 문구만 보이니까, 꼭 2~3줄 이상 써주는 걸 추천해.</div>
+              <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                <div className="text-sm font-bold text-white/85">{previewTheme.label} 길드 카드</div>
+                <div className="mt-3 text-sm text-white/70 whitespace-pre-wrap">{previewItem.description}</div>
+                <div className="mt-4 text-3xl font-black">{previewItem.price}P</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <button onClick={createItem} className="rounded-2xl bg-purple-600 font-black px-6 py-4">상품 생성</button>
+      <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-6">
+        <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-fuchsia-300">Weapon Part Builder</div>
+            <div className="mt-2 text-2xl font-black">장비 파츠 [무기] 등록</div>
+            <div className="text-sm text-gray-400 mt-1">뽑기 보상으로 들어갈 실제 무기 파츠를 먼저 만들어.</div>
+          </div>
 
-      <div className="space-y-4">
-        {items.map((item) => {
-          const badgeTheme = getBadgeVisualTheme(item);
-          const highlights = getShopItemHighlights(item);
-          return (
-            <div key={item.id} className="flex flex-col xl:flex-row justify-between bg-black/40 p-4 rounded border border-white/10 gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="font-bold">{item.title}</div>
-                  {item.reward_type === "badge" && (
-                    <span
-                      className="px-2 py-1 rounded-full text-[10px] font-black border"
-                      style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}
-                    >
-                      뱃지 · {badgeTheme.label}
-                    </span>
-                  )}
-                </div>
-                <div className="text-xs text-gray-400 mt-1 whitespace-pre-wrap">{item.description}</div>
-                <div className="text-yellow-300 font-black mt-1">{item.price} P</div>
-                <div className="text-xs text-gray-500 mt-1">{getShopItemStatusText(item)}</div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <AdminInput label="무기 이름" value={weaponName} onChange={setWeaponName} placeholder="예: 별빛 대검" />
+            <div>
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">희귀도</label>
+              <select className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl" value={weaponRarity} onChange={(e) => setWeaponRarity(e.target.value as WeaponRarityKey)}>
+                <option value="common">Common</option>
+                <option value="rare">Rare</option>
+                <option value="epic">Epic</option>
+                <option value="legendary">Legendary</option>
+              </select>
+            </div>
+          </div>
 
-                <div className="mt-3 grid gap-2">
-                  {highlights.map((line, idx) => (
-                    <div key={`${item.id}-admin-highlight-${idx}`} className="flex items-start gap-2 rounded-2xl border border-white/8 bg-black/20 px-3 py-2 text-xs text-white/75">
-                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/50" />
-                      <span>{line}</span>
-                    </div>
-                  ))}
-                </div>
+          <div>
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">무기 설명</label>
+            <textarea
+              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-fuchsia-500 font-bold text-sm text-white min-h-[120px]"
+              value={weaponDescription}
+              onChange={(e) => setWeaponDescription(e.target.value)}
+              placeholder="길드탭에 보여줄 무기 소개 문구"
+            />
+          </div>
 
-                {item.reward_type === "badge" && (
-                  <div className="mt-4 rounded-[1.25rem] border p-4 relative overflow-hidden" style={{ background: badgeTheme.cardBackground, borderColor: badgeTheme.cardBorder, boxShadow: badgeTheme.cardShadow }}>
-                    <div className="absolute inset-0 pointer-events-none" style={{ background: badgeTheme.aura }} />
-                    <div className="relative z-10 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-black">캐릭터 카드 미리보기</div>
-                        <div className="text-xs text-white/70">길드탭 카드에 바로 적용될 효과</div>
+          <ImageUploader label="무기 이미지" onUpload={setWeaponImageUrl} bucket="guild-images" folder="weapons" />
+          {weaponImageUrl && (
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="text-xs text-gray-400 mb-3">무기 이미지 미리보기</div>
+              <WeaponImage weapon={{ image_url: weaponImageUrl, rarity: weaponRarity }} className="h-24 w-24 rounded-[1.5rem]" />
+            </div>
+          )}
+
+          <button
+            onClick={createWeaponPart}
+            className="w-full bg-fuchsia-600 p-4 rounded-2xl font-black uppercase hover:bg-fuchsia-500 transition-all"
+          >
+            무기 파츠 저장
+          </button>
+        </div>
+
+        <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-sky-300">Weapon Gacha Builder</div>
+            <div className="mt-2 text-2xl font-black">무기 뽑기 상품 생성</div>
+            <div className="text-sm text-gray-400 mt-1">포인트샵에서 바로 뽑기할 수 있는 상품과 LIVE PREVIEW를 함께 구성할 수 있어.</div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <AdminInput label="뽑기 이름" value={gachaTitle} onChange={setGachaTitle} placeholder="예: 심연 무기 뽑기" />
+            <AdminInput label="가격(포인트)" value={gachaPrice} onChange={setGachaPrice} placeholder="예: 1200" />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">설명</label>
+            <textarea
+              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-sky-500 font-bold text-sm text-white min-h-[120px]"
+              value={gachaDescription}
+              onChange={(e) => setGachaDescription(e.target.value)}
+              placeholder="뽑기 상세 설명"
+            />
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <AdminInput label="대표 문구" value={gachaPromoText} onChange={setGachaPromoText} placeholder="예: 전설 무기 등장 확률 UP" />
+            <ImageUploader label="뽑기 대표 이미지" onUpload={setGachaImageUrl} bucket="guild-images" folder="gacha" />
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <AdminInput label="판매 시작" type="datetime-local" value={gachaAvailableFrom} onChange={setGachaAvailableFrom} />
+            <AdminInput label="상품 판매 기한" type="datetime-local" value={gachaAvailableTo} onChange={setGachaAvailableTo} />
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="text-sm font-black">포함 무기 선택</div>
+            <div className="text-xs text-gray-400 mt-1">체크한 무기들이 실제 뽑기 보상으로 들어가.</div>
+            <div className="mt-4 grid md:grid-cols-2 gap-3 max-h-[320px] overflow-y-auto pr-1">
+              {weaponParts.map((weapon: any) => {
+                const checked = selectedWeaponIds.includes(String(weapon.id));
+                const theme = getWeaponTheme(weapon);
+                return (
+                  <label
+                    key={weapon.id}
+                    className="rounded-2xl border p-3 cursor-pointer"
+                    style={{
+                      borderColor: checked ? theme.border : "rgba(255,255,255,0.08)",
+                      background: checked ? theme.background : "rgba(255,255,255,0.03)",
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = new Set(selectedWeaponIds);
+                          if (e.target.checked) next.add(String(weapon.id));
+                          else next.delete(String(weapon.id));
+                          const nextArray = Array.from(next);
+                          setSelectedWeaponIds(nextArray);
+                          if (!featuredWeaponId || !nextArray.includes(featuredWeaponId)) {
+                            setFeaturedWeaponId(nextArray[0] || "");
+                          }
+                        }}
+                      />
+                      <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl" />
+                      <div className="min-w-0">
+                        <div className="font-black truncate">{weapon.name}</div>
+                        <div className="text-xs mt-1" style={{ color: theme.text }}>{theme.label}</div>
                       </div>
-                      <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}>
-                        {item.badge_name || item.title}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">대표 무기 지정</label>
+            <select className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl" value={featuredWeaponId} onChange={(e) => setFeaturedWeaponId(e.target.value)}>
+              <option value="">자동 선택</option>
+              {gachaPreviewWeapons.map((weapon: any) => (
+                <option key={weapon.id} value={weapon.id}>{weapon.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={createGachaProduct}
+            className="w-full bg-sky-600 p-4 rounded-2xl font-black uppercase hover:bg-sky-500 transition-all"
+          >
+            무기 뽑기 상품 생성
+          </button>
+
+          <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
+            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-white/70">Weapon Gacha Live Preview</div>
+            <div className="mt-4 rounded-[1.5rem] border border-white/10 bg-[#09111f] p-5 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(168,85,247,0.24) 52%, rgba(2,6,23,0.96))" }} />
+              <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: "radial-gradient(circle at top right, rgba(250,204,21,0.2), transparent 26%)" }} />
+              <div className="relative z-10">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                        Weapon Gacha
+                      </span>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
+                        {getWeaponGachaStatusText({
+                          is_active: true,
+                          available_from: gachaAvailableFrom ? new Date(gachaAvailableFrom).toISOString() : null,
+                          available_to: gachaAvailableTo ? new Date(gachaAvailableTo).toISOString() : null,
+                        })}
                       </span>
                     </div>
+                    <div className="mt-4 text-2xl font-black leading-tight break-words">{gachaTitle || "신규 무기 뽑기"}</div>
+                    <div className="mt-2 text-sm text-white/75">{gachaPromoText || "전설 무기 등장 확률 UP / 대표 문구 미리보기"}</div>
                   </div>
-                )}
-              </div>
+                  <div className="h-16 w-16 rounded-[1.2rem] border border-white/10 bg-black/25 overflow-hidden flex items-center justify-center">
+                    {gachaImageUrl ? <img src={gachaImageUrl} className="w-full h-full object-cover" /> : <Swords className="text-white/80" />}
+                  </div>
+                </div>
 
-              <div className="flex flex-row xl:flex-col gap-2">
-                <button onClick={() => toggleActive(item)} className={cn("px-4 py-2 rounded-xl font-black", item.is_active ? "bg-emerald-600" : "bg-zinc-700")}>
-                  {item.is_active ? "판매중" : "비활성"}
+                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">대표 보상 미리보기</div>
+                  <div className="mt-4 flex items-center gap-4">
+                    <WeaponImage weapon={gachaFeaturedPreview} className="h-20 w-20 rounded-[1.4rem]" />
+                    <div className="min-w-0">
+                      <div className="text-lg font-black truncate">{gachaFeaturedPreview?.name || "선택된 무기 없음"}</div>
+                      <div className="mt-2 text-sm text-white/70 line-clamp-2">{gachaFeaturedPreview?.description || "왼쪽에서 보상 무기를 선택하면 라이브 프리뷰가 채워져."}</div>
+                      {gachaFeaturedPreview && (
+                        <div className="mt-2 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: getWeaponTheme(gachaFeaturedPreview).text, borderColor: getWeaponTheme(gachaFeaturedPreview).border, background: getWeaponTheme(gachaFeaturedPreview).background }}>
+                          {getWeaponTheme(gachaFeaturedPreview).label}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 text-3xl font-black">{toNumber(gachaPrice) || 900}P</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <SectionPanel title="현재 등록된 무기 뽑기" description="판매 중인 뽑기 상품과 구성 무기를 빠르게 확인할 수 있어.">
+        <div className="grid lg:grid-cols-2 gap-4">
+          {gachaProducts.map((product: any) => (
+            <div key={product.id} className="rounded-2xl border border-white/10 bg-black/20 p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xl font-black">{product.title}</div>
+                  <div className="text-sm text-gray-400 mt-1">{product.promo_text || product.description || "-"}</div>
+                  <div className="mt-3 text-xs text-gray-500">{getWeaponGachaStatusText(product)}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-2xl font-black text-sky-300">{product.price}P</div>
+                  <div className="text-xs text-gray-500">무기 뽑기</div>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(gachaRewardMap[String(product.id)] || []).map((weapon: any) => (
+                  <div key={`${product.id}-${weapon.id}`} className="px-3 py-2 rounded-xl border text-xs font-black" style={{ borderColor: getWeaponTheme(weapon).border, color: getWeaponTheme(weapon).text }}>
+                    {weapon.name}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button onClick={() => toggleGachaActive(product)} className="px-4 py-2 rounded-xl bg-white/10 font-black text-sm">
+                  {product.is_active ? "비활성화" : "활성화"}
                 </button>
-                <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-600 font-black">
+                <button onClick={() => deleteGachaProduct(product.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
                   삭제
                 </button>
               </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      </SectionPanel>
+
+      <SectionPanel title="등록된 무기 파츠" description="무기 파츠는 마이룸 장착과 길드탭 표시의 원본 데이터야.">
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {weaponParts.map((weapon: any) => (
+            <div key={weapon.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex items-start gap-3">
+                <WeaponImage weapon={weapon} className="h-16 w-16 rounded-[1.4rem]" />
+                <div className="min-w-0">
+                  <div className="font-black">{weapon.name}</div>
+                  <div className="mt-1 text-xs" style={{ color: getWeaponTheme(weapon).text }}>{getWeaponTheme(weapon).label}</div>
+                  <div className="mt-2 text-xs text-gray-400 line-clamp-3">{weapon.description || "설명이 없습니다."}</div>
+                </div>
+              </div>
+              <button onClick={() => deleteWeaponPart(weapon.id)} className="mt-4 px-3 py-2 rounded-xl bg-red-500/85 text-xs font-black">
+                삭제
+              </button>
+            </div>
+          ))}
+        </div>
+      </SectionPanel>
+
+      <SectionPanel title="현재 등록된 뱃지 상품" description="기존 포인트샵 뱃지 상품은 그대로 유지돼.">
+        <div className="grid md:grid-cols-2 gap-4">
+          {items.map((item) => {
+            const badgeTheme = getBadgeVisualTheme(item);
+            return (
+              <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xl font-black">{item.title}</div>
+                    <div className="text-sm text-gray-400 mt-1">{item.description || "설명 없음"}</div>
+                    <div className="mt-3 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}>
+                      {getShopItemStatusText(item)}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-2xl font-black text-purple-300">{item.price}P</div>
+                    <div className="text-xs text-gray-500">뱃지 상품</div>
+                  </div>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button onClick={() => toggleActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-black text-sm">
+                    {item.is_active ? "비활성화" : "활성화"}
+                  </button>
+                  <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
+                    삭제
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </SectionPanel>
     </div>
   );
 };
+
