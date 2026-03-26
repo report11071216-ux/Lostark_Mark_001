@@ -5328,7 +5328,7 @@ const PointShopPage = ({ user, profile }: any) => {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h2 className="text-4xl font-black italic uppercase tracking-tight">Point Shop</h2>
-          <p className="text-gray-500 font-bold mt-2">기존 뱃지 상품은 유지하고, 무기 파츠 뽑기는 확률/보장/10회 뽑기까지 보이도록 강화했어. 새로고침이 느려져도 포인트샵 자체는 독립적으로 빠르게 불러오도록 구성했어.</p>
+          <p className="text-gray-500 font-bold mt-2">가챠 상품.</p>
         </div>
 
         <div className="rounded-[2rem] border border-purple-500/20 bg-purple-500/10 px-5 py-4">
@@ -5340,7 +5340,7 @@ const PointShopPage = ({ user, profile }: any) => {
       <div className="flex flex-wrap gap-2 mb-8">
         {[
           ["badge", "뱃지 상점"],
-          ["gacha", "무기 뽑기"],
+          ["gacha", "무기 가챠"],
         ].map(([key, label]) => (
           <button
             key={key}
