@@ -5498,7 +5498,7 @@ const PointShopPage = ({ user, profile }: any) => {
                         <WeaponImage weapon={featured} className="h-20 w-20 rounded-[1.4rem]" />
                         <div className="min-w-0">
                           <div className="text-lg font-black truncate">{featured?.name || "무기 파츠 구성 준비 중"}</div>
-                          <div className="mt-1 text-sm text-white/70 line-clamp-2">{featured?.description || "관리자 페이지에서 무기를 선택하면 여기 미리보기가 채워져."}</div>
+                          <div className="mt-1 text-sm text-white/70 line-clamp-2">{featured?.description || "무기 이미지."}</div>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {featured && (
                               <div className="inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: getWeaponTheme(featured).text, borderColor: getWeaponTheme(featured).border, background: getWeaponTheme(featured).background }}>
