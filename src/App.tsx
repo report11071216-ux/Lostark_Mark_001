@@ -620,6 +620,46 @@ const getShopItemStatusText = (item: any) => {
   return "상시 판매";
 };
 
+const getShopItemHighlights = (item: any) => {
+  const lines = String(item?.description || "")
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
+  const highlights: string[] = [];
+
+  if (item?.reward_type === "badge") {
+    const theme = getBadgeVisualTheme(item);
+    highlights.push(`장착 시 길드 카드에 ${theme.label} 그라데이션 적용`);
+  }
+
+  if (item?.badge_name || item?.title) {
+    highlights.push(`획득 뱃지명 · ${item?.badge_name || item?.title}`);
+  }
+
+  if (item?.price) {
+    highlights.push(`구매 비용 · ${item.price}P`);
+  }
+
+  for (const line of lines) {
+    if (!highlights.includes(line)) highlights.push(line);
+  }
+
+  return highlights.slice(0, 4);
+};
+
+const getShopMoodLine = (item: any) => {
+  if (item?.reward_type === "badge") {
+    const theme = getBadgeVisualTheme(item);
+    return `${theme.label}로 길드 카드 분위기를 바로 바꿔주는 커스텀 뱃지`;
+  }
+
+  return item?.description?.trim()
+    ? String(item.description).trim().split(/\n+/)[0]
+    : "길드 활동에 재미를 더해주는 포인트샵 상품";
+};
+
 const BADGE_PRESET_COLORS = [
   "#8b5cf6",
   "#ec4899",
@@ -4824,11 +4864,11 @@ const PointShopPage = ({ user, profile }: any) => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-24 px-6 text-left">
+    <div className="max-w-7xl mx-auto py-24 px-6 text-left">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h2 className="text-4xl font-black italic uppercase tracking-tight">Point Shop</h2>
-          <p className="text-gray-500 font-bold mt-2">출석 체크와 게시글 작성으로 모은 포인트로 뱃지 등을 구매하고, 마이룸에서 캐릭터에 장착할 수 있습니다.</p>
+          <p className="text-gray-500 font-bold mt-2">텍스트만 보이는 상점이 아니라, 길드 카드에 적용될 분위기까지 바로 보이도록 상품 카드를 강화했어.</p>
         </div>
 
         <div className="rounded-[2rem] border border-purple-500/20 bg-purple-500/10 px-5 py-4">
@@ -4840,42 +4880,95 @@ const PointShopPage = ({ user, profile }: any) => {
       {loading ? (
         <div className="py-16 text-center text-gray-500">포인트샵 불러오는 중...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {items.map((item) => {
             const available = isShopItemAvailable(item);
-            return (
-              <div key={item.id} className="rounded-[2rem] border border-white/10 bg-[#0d111c]/80 p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-xl font-black">{item.title}</div>
-                      {item.reward_type === "badge" && (
-                        <span
-                          className="px-2 py-1 rounded-full text-[10px] font-black border"
-                          style={{ color: item.badge_color || "#c4b5fd", borderColor: item.badge_color || "#8b5cf6", backgroundColor: `${item.badge_color || "#8b5cf6"}22` }}
-                        >
-                          뱃지
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 text-sm text-gray-400 whitespace-pre-wrap">{item.description}</div>
-                    <div className="mt-3 text-xs text-gray-500">{getShopItemStatusText(item)}</div>
-                  </div>
-                  <ShoppingBag className="text-purple-300" />
-                </div>
+            const badgeTheme = getBadgeVisualTheme(item);
+            const highlights = getShopItemHighlights(item);
+            const moodLine = getShopMoodLine(item);
 
-                <div className="mt-5 flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-widest text-gray-500 font-black">Price</div>
-                    <div className="text-2xl font-black text-yellow-300">{item.price} P</div>
+            return (
+              <div
+                key={item.id}
+                className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
+              >
+                <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: item.reward_type === "badge" ? badgeTheme.cardBackground : "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92) 52%, rgba(2,6,23,0.96))" }} />
+                <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: item.reward_type === "badge" ? badgeTheme.aura : "radial-gradient(circle at top right, rgba(168,85,247,0.18), transparent 42%)" }} />
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                          {item.reward_type === "badge" ? "Badge Item" : "Point Item"}
+                        </span>
+                        <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: item.reward_type === "badge" ? badgeTheme.chipText : "#c4b5fd", borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(196,181,253,0.45)", background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(139,92,246,0.16)" }}>
+                          {getShopItemStatusText(item)}
+                        </span>
+                      </div>
+                      <div className="mt-4 text-2xl font-black leading-tight break-words">{item.title}</div>
+                      <div className="mt-2 text-sm text-white/70">{moodLine}</div>
+                    </div>
+                    <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center backdrop-blur-md">
+                      <ShoppingBag className="text-white/80" />
+                    </div>
                   </div>
-                  <button
-                    disabled={!available}
-                    onClick={() => purchase(item)}
-                    className="px-5 py-3 rounded-2xl bg-purple-600 font-black disabled:opacity-40"
-                  >
-                    {available ? "구매" : "구매 불가"}
-                  </button>
+
+                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">Live Card Mood</div>
+                        <div className="mt-1 text-sm font-bold text-white/85">{item.reward_type === "badge" ? `${badgeTheme.label} 길드 카드` : "포인트샵 대표 상품 카드"}</div>
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: item.reward_type === "badge" ? badgeTheme.chipText : "#ddd6fe", borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(221,214,254,0.35)", background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(124,58,237,0.18)" }}>
+                        {item.badge_name || item.title}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 rounded-[1.35rem] border p-4 relative overflow-hidden" style={{ background: item.reward_type === "badge" ? badgeTheme.cardBackground : "linear-gradient(135deg, rgba(76,29,149,0.36), rgba(15,23,42,0.92) 64%)", borderColor: item.reward_type === "badge" ? badgeTheme.cardBorder : "rgba(167,139,250,0.22)", boxShadow: item.reward_type === "badge" ? badgeTheme.cardShadow : "0 18px 40px rgba(76,29,149,0.18)" }}>
+                      <div className="absolute inset-0 pointer-events-none" style={{ background: item.reward_type === "badge" ? badgeTheme.aura : "radial-gradient(circle at top right, rgba(196,181,253,0.15), transparent 40%)" }} />
+                      <div className="relative z-10 flex items-center gap-4">
+                        <div className="h-16 w-16 rounded-[1.2rem] border border-white/10 bg-black/25" />
+                        <div className="min-w-0">
+                          <div className="text-lg font-black truncate">{item.badge_name || item.title}</div>
+                          <div className="text-sm text-white/70 truncate">{moodLine}</div>
+                          <div className="mt-2 text-xs text-white/55">구매 후 마이룸에서 바로 장착 가능</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 space-y-3">
+                    <div className="text-[11px] uppercase tracking-[0.24em] text-white/45 font-black">상품 포인트</div>
+                    <div className="grid gap-2">
+                      {highlights.map((line, idx) => (
+                        <div key={`${item.id}-highlight-${idx}`} className="flex items-start gap-2 rounded-2xl border border-white/8 bg-black/20 px-3 py-2 text-sm text-white/80">
+                          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-white/55" />
+                          <span>{line}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 rounded-[1.4rem] border border-white/10 bg-black/25 px-4 py-3">
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">상세 설명</div>
+                    <div className="mt-2 text-sm leading-6 text-white/78 whitespace-pre-wrap">
+                      {item.description?.trim() || "상품 설명이 아직 등록되지 않았어. 관리자 페이지에서 더 자세한 설명을 추가해주면 구매욕을 더 자극할 수 있어."}
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex items-end justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">Price</div>
+                      <div className="text-3xl font-black text-yellow-300">{item.price} P</div>
+                    </div>
+                    <button
+                      disabled={!available}
+                      onClick={() => purchase(item)}
+                      className="px-5 py-3 rounded-2xl bg-purple-600 font-black disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_14px_30px_rgba(124,58,237,0.32)]"
+                    >
+                      {available ? "구매하기" : "구매 불가"}
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -5077,13 +5170,26 @@ const AdminPointShopManager = () => {
     fetchItems();
   };
 
-  const previewTheme = getBadgeVisualTheme({
+  const previewItem = {
+    title: title || "신규 뱃지 상품",
+    badge_name: title || "신규 뱃지 상품",
+    description:
+      description ||
+      "길드 카드에 특별한 분위기를 더하는 뱃지 상품입니다.\n구매 직후 마이룸에서 착용할 수 있습니다.",
+    price: toNumber(price) || 500,
+    reward_type: rewardType,
     badge_color: badgeColor,
-    badge_card_effect: badgeCardEffect,
+    badge_card_effect: rewardType === "badge" ? badgeCardEffect : "none",
     badge_gradient_from: badgeGradientFrom,
     badge_gradient_to: badgeGradientTo,
     badge_glow_color: badgeGlowColor,
-  });
+    is_active: true,
+    available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
+    available_to: availableTo ? new Date(availableTo).toISOString() : null,
+  };
+
+  const previewTheme = getBadgeVisualTheme(previewItem);
+  const previewHighlights = getShopItemHighlights(previewItem);
 
   return (
     <div className="space-y-6">
@@ -5116,7 +5222,7 @@ const AdminPointShopManager = () => {
       </div>
 
       {rewardType === "badge" && (
-        <div className="grid lg:grid-cols-[1.1fr,0.9fr] gap-6">
+        <div className="grid lg:grid-cols-[1.05fr,0.95fr] gap-6">
           <div className="rounded-[2rem] border border-white/10 bg-black/30 p-5 space-y-4">
             <div className="text-sm font-black">길드 캐릭터 카드 이펙트</div>
 
@@ -5157,12 +5263,12 @@ const AdminPointShopManager = () => {
             <div className="absolute inset-0 pointer-events-none" style={{ background: previewTheme.aura }} />
             <div className="relative z-10">
               <div className="text-[10px] uppercase tracking-[0.28em] font-black" style={{ color: previewTheme.chipText }}>
-                Live Preview
+                Guild Card Live Preview
               </div>
               <div className="mt-4 flex items-center gap-4">
                 <div className="h-16 w-16 rounded-2xl bg-black/25 border border-white/10" />
                 <div className="min-w-0">
-                  <div className="text-lg font-black truncate">{title || "새 뱃지"}</div>
+                  <div className="text-lg font-black truncate">{previewItem.title}</div>
                   <div className="text-sm text-white/70">{previewTheme.label}</div>
                   <div className="mt-2">
                     <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: previewTheme.chipText, borderColor: previewTheme.chipBorder, background: previewTheme.chipBackground }}>
@@ -5176,55 +5282,126 @@ const AdminPointShopManager = () => {
         </div>
       )}
 
+      <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
+        <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 relative overflow-hidden">
+          <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: rewardType === "badge" ? previewTheme.cardBackground : "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92) 52%, rgba(2,6,23,0.96))" }} />
+          <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: rewardType === "badge" ? previewTheme.aura : "radial-gradient(circle at top right, rgba(168,85,247,0.18), transparent 42%)" }} />
+          <div className="relative z-10">
+            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-white/70">Point Shop Live Preview</div>
+            <div className="mt-4 flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                    {rewardType === "badge" ? "Badge Item" : "Point Item"}
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: rewardType === "badge" ? previewTheme.chipText : "#c4b5fd", borderColor: rewardType === "badge" ? previewTheme.chipBorder : "rgba(196,181,253,0.45)", background: rewardType === "badge" ? previewTheme.chipBackground : "rgba(139,92,246,0.16)" }}>
+                    {getShopItemStatusText(previewItem)}
+                  </span>
+                </div>
+                <div className="mt-4 text-2xl font-black leading-tight">{previewItem.title}</div>
+                <div className="mt-2 text-sm text-white/70">{getShopMoodLine(previewItem)}</div>
+              </div>
+              <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center">
+                <ShoppingBag className="text-white/80" />
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+              <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">상세 설명</div>
+              <div className="mt-2 text-sm leading-6 text-white/78 whitespace-pre-wrap">{previewItem.description}</div>
+            </div>
+
+            <div className="mt-5 grid gap-2">
+              {previewHighlights.map((line, idx) => (
+                <div key={`preview-highlight-${idx}`} className="flex items-start gap-2 rounded-2xl border border-white/8 bg-black/20 px-3 py-2 text-sm text-white/80">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-white/55" />
+                  <span>{line}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 flex items-end justify-between gap-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.24em] text-white/45 font-black">Price</div>
+                <div className="text-3xl font-black text-yellow-300">{previewItem.price} P</div>
+              </div>
+              <button type="button" className="px-5 py-3 rounded-2xl bg-purple-600 font-black shadow-[0_14px_30px_rgba(124,58,237,0.32)]">
+                구매하기
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-white/10 bg-black/30 p-5">
+          <div className="text-sm font-black">작성 팁</div>
+          <div className="mt-4 space-y-3 text-sm text-white/70 leading-6">
+            <div>- 첫 줄에 상품의 핵심 매력을 적고, 아래 줄에서 장착 효과나 혜택을 풀어주면 구매욕이 더 올라가.</div>
+            <div>- 뱃지 상품은 장착 시 길드 카드가 어떻게 변하는지 설명해주면 전환이 좋아져.</div>
+            <div>- 기간 한정 상품이면 판매 시작/종료 시간을 꼭 넣어줘. 희소성이 잘 보여.</div>
+            <div>- 설명이 비어 있으면 포인트샵에서는 기본 문구만 보이니까, 꼭 2~3줄 이상 써주는 걸 추천해.</div>
+          </div>
+        </div>
+      </div>
+
       <button onClick={createItem} className="rounded-2xl bg-purple-600 font-black px-6 py-4">상품 생성</button>
 
       <div className="space-y-4">
         {items.map((item) => {
           const badgeTheme = getBadgeVisualTheme(item);
+          const highlights = getShopItemHighlights(item);
           return (
-          <div key={item.id} className="flex flex-col lg:flex-row justify-between bg-black/40 p-4 rounded border border-white/10 gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="font-bold">{item.title}</div>
+            <div key={item.id} className="flex flex-col xl:flex-row justify-between bg-black/40 p-4 rounded border border-white/10 gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="font-bold">{item.title}</div>
+                  {item.reward_type === "badge" && (
+                    <span
+                      className="px-2 py-1 rounded-full text-[10px] font-black border"
+                      style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}
+                    >
+                      뱃지 · {badgeTheme.label}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-gray-400 mt-1 whitespace-pre-wrap">{item.description}</div>
+                <div className="text-yellow-300 font-black mt-1">{item.price} P</div>
+                <div className="text-xs text-gray-500 mt-1">{getShopItemStatusText(item)}</div>
+
+                <div className="mt-3 grid gap-2">
+                  {highlights.map((line, idx) => (
+                    <div key={`${item.id}-admin-highlight-${idx}`} className="flex items-start gap-2 rounded-2xl border border-white/8 bg-black/20 px-3 py-2 text-xs text-white/75">
+                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-white/50" />
+                      <span>{line}</span>
+                    </div>
+                  ))}
+                </div>
+
                 {item.reward_type === "badge" && (
-                  <span
-                    className="px-2 py-1 rounded-full text-[10px] font-black border"
-                    style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}
-                  >
-                    뱃지 · {badgeTheme.label}
-                  </span>
+                  <div className="mt-4 rounded-[1.25rem] border p-4 relative overflow-hidden" style={{ background: badgeTheme.cardBackground, borderColor: badgeTheme.cardBorder, boxShadow: badgeTheme.cardShadow }}>
+                    <div className="absolute inset-0 pointer-events-none" style={{ background: badgeTheme.aura }} />
+                    <div className="relative z-10 flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-black">캐릭터 카드 미리보기</div>
+                        <div className="text-xs text-white/70">길드탭 카드에 바로 적용될 효과</div>
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}>
+                        {item.badge_name || item.title}
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
-              <div className="text-xs text-gray-400 mt-1 whitespace-pre-wrap">{item.description}</div>
-              <div className="text-yellow-300 font-black mt-1">{item.price} P</div>
-              <div className="text-xs text-gray-500 mt-1">{getShopItemStatusText(item)}</div>
 
-              {item.reward_type === "badge" && (
-                <div className="mt-4 rounded-[1.25rem] border p-4 relative overflow-hidden" style={{ background: badgeTheme.cardBackground, borderColor: badgeTheme.cardBorder, boxShadow: badgeTheme.cardShadow }}>
-                  <div className="absolute inset-0 pointer-events-none" style={{ background: badgeTheme.aura }} />
-                  <div className="relative z-10 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-black">캐릭터 카드 미리보기</div>
-                      <div className="text-xs text-white/70">길드탭 카드에 바로 적용될 효과</div>
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-black border" style={{ color: badgeTheme.chipText, borderColor: badgeTheme.chipBorder, background: badgeTheme.chipBackground }}>
-                      {item.badge_name || item.title}
-                    </span>
-                  </div>
-                </div>
-              )}
+              <div className="flex flex-row xl:flex-col gap-2">
+                <button onClick={() => toggleActive(item)} className={cn("px-4 py-2 rounded-xl font-black", item.is_active ? "bg-emerald-600" : "bg-zinc-700")}>
+                  {item.is_active ? "판매중" : "비활성"}
+                </button>
+                <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-600 font-black">
+                  삭제
+                </button>
+              </div>
             </div>
-
-            <div className="flex flex-row lg:flex-col gap-2">
-              <button onClick={() => toggleActive(item)} className={cn("px-4 py-2 rounded-xl font-black", item.is_active ? "bg-emerald-600" : "bg-zinc-700")}>
-                {item.is_active ? "판매중" : "비활성"}
-              </button>
-              <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-600 font-black">
-                삭제
-              </button>
-            </div>
-          </div>
-        );
+          );
         })}
       </div>
     </div>
