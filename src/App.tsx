@@ -938,6 +938,53 @@ const normalizePointRateSettings = (value: any): PointRateSettings => {
   };
 };
 
+const normalizeAppSettings = (value: any) => {
+  const raw = value && typeof value === "object" ? value : {};
+  return {
+    ...defaultSettings,
+    ...raw,
+    point_rate_settings: normalizePointRateSettings(raw?.point_rate_settings),
+  };
+};
+
+const saveSingletonSettings = async (settingsLike: any) => {
+  const client = getSupabaseOrThrow();
+  const payload = normalizeAppSettings(settingsLike);
+  const settingsId = payload?.id || null;
+
+  if (settingsId) {
+    const { error } = await client.from("settings").update(payload).eq("id", settingsId);
+    return { error, payload };
+  }
+
+  const { data: existing, error: fetchError } = await client
+    .from("settings")
+    .select("id")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (fetchError) {
+    return { error: fetchError, payload };
+  }
+
+  if (existing?.id) {
+    const { error } = await client.from("settings").update(payload).eq("id", existing.id);
+    return { error, payload: { ...payload, id: existing.id } };
+  }
+
+  const { data: inserted, error } = await client
+    .from("settings")
+    .insert(payload)
+    .select("*")
+    .maybeSingle();
+
+  return {
+    error,
+    payload: inserted ? normalizeAppSettings(inserted) : payload,
+  };
+};
+
 const getPointRateForCharacter = (character: any, settingsLike: any) => {
   const settings = normalizePointRateSettings(settingsLike);
   const rarity = normalizeWeaponRarity(character?.equipped_weapon_rarity);
@@ -1049,10 +1096,7 @@ useEffect(() => {
   }
 
   if (cachedSettings) {
-    setSettings({
-      guild_name: cachedSettings.guild_name ?? defaultSettings.guild_name,
-      guild_description: cachedSettings.guild_description ?? defaultSettings.guild_description,
-    });
+    setSettings(normalizeAppSettings(cachedSettings));
   }
 
   const init = async () => {
@@ -1169,7 +1213,7 @@ const fetchInitialData = async () => {
 
     const [postsRes, settingsRes] = await Promise.allSettled([
       client.from("posts").select("*").order("created_at", { ascending: false }),
-      client.from("settings").select("*").limit(1).maybeSingle(),
+      client.from("settings").select("*").order("created_at", { ascending: true }).limit(1).maybeSingle(),
     ]);
 
     if (postsRes.status === "fulfilled") {
@@ -1189,12 +1233,7 @@ const fetchInitialData = async () => {
       if (error) {
         console.error("settings fetch error:", error);
       } else if (data) {
-        const nextSettings = {
-          guild_name: data.guild_name ?? defaultSettings.guild_name,
-          guild_description:
-            data.guild_description ?? defaultSettings.guild_description,
-        };
-
+        const nextSettings = normalizeAppSettings(data);
         setSettings(nextSettings);
         writeCache(CACHE_KEYS.settings, nextSettings);
       }
@@ -2998,14 +3037,16 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
   };
 
   const handleSave = async () => {
-    const payload = {
+    const payload = normalizeAppSettings({
       ...settings,
       point_rate_settings: normalizePointRateSettings(settings?.point_rate_settings),
-    };
-    const { error } = await supabase.from("settings").upsert(payload);
+    });
+    const { error, payload: savedPayload } = await saveSingletonSettings(payload);
     if (error) alert(error.message);
     else {
-      writeCache(CACHE_KEYS.settings, payload);
+      const nextSettings = normalizeAppSettings(savedPayload);
+      setSettings(nextSettings);
+      writeCache(CACHE_KEYS.settings, nextSettings);
       alert("포인트 경제 설정 저장 완료!");
     }
   };
@@ -3127,9 +3168,14 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
 
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
   const handleSave = async () => {
-    const { error } = await supabase.from("settings").upsert(settings);
+    const { error, payload } = await saveSingletonSettings(settings);
     if (error) alert(error.message);
-    else alert("길드 설정 업데이트 완료!");
+    else {
+      const nextSettings = normalizeAppSettings(payload);
+      setSettings(nextSettings);
+      writeCache(CACHE_KEYS.settings, nextSettings);
+      alert("길드 설정 업데이트 완료!");
+    }
   };
 
   return (
@@ -4396,12 +4442,23 @@ const MyRoom = ({ user, profile }: any) => {
   const fetchMyPoint = useCallback(async () => {
     if (!user?.id) return;
     const client = getSupabaseOrThrow();
-    const { data, error } = await client.from("profiles").select("points").eq("id", user.id).maybeSingle();
+    const { data, error } = await client
+      .from("profiles")
+      .select("points, last_point_tick_at, passive_points_today, passive_points_date")
+      .eq("id", user.id)
+      .maybeSingle();
+
     if (error) {
       console.error("fetchMyPoint error:", error);
       return;
     }
+
     setMyPoint(Number(data?.points || 0));
+    setPassivePointState({
+      lastTickAt: data?.last_point_tick_at || new Date().toISOString(),
+      passivePointsToday: Number(data?.passive_points_today || 0),
+      passivePointsDate: String(data?.passive_points_date || ""),
+    });
   }, [user?.id]);
 
   useEffect(() => {
@@ -4470,6 +4527,40 @@ const MyRoom = ({ user, profile }: any) => {
     void fetchPointEarnLogs();
   }, [fetchPointEarnLogs]);
 
+
+  const reconcilePassivePoints = useCallback(async (reason: "boot" | "myroom" | "interval" = "interval") => {
+    if (!user?.id) return;
+    const client = getSupabaseOrThrow();
+
+    try {
+      const { error } = await client.rpc("process_passive_point_ticks_for_user", {
+        p_user_id: user.id,
+      });
+
+      if (error) {
+        console.error(`process_passive_point_ticks_for_user (${reason}) error:`, error);
+        return;
+      }
+
+      await Promise.all([fetchMyPoint(), fetchPointEarnLogs()]);
+    } catch (error) {
+      console.error(`reconcilePassivePoints (${reason}) unexpected error:`, error);
+    }
+  }, [user?.id, fetchMyPoint, fetchPointEarnLogs]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void reconcilePassivePoints("boot");
+  }, [user?.id, reconcilePassivePoints]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const timer = window.setInterval(() => {
+      void reconcilePassivePoints("interval");
+    }, 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [user?.id, reconcilePassivePoints]);
+
   const equipNicknameEffect = async (effect: any) => {
     const client = getSupabaseOrThrow();
     const { error } = await client.from("profiles").update({
@@ -4505,59 +4596,11 @@ const MyRoom = ({ user, profile }: any) => {
       if (!user?.id || !pointRateSettings.enabled || !bestPointCharacter) return;
       const info = getNextPointTickInfo(passivePointState.lastTickAt, pointRateSettings.cycle_minutes);
       if (info.remainingMs > 0) return;
-
-      const today = getTodayKey();
-      const todayEarned = passivePointState.passivePointsDate === today ? Number(passivePointState.passivePointsToday || 0) : 0;
-      const rate = Number(bestPointCharacter.hourly_point_rate || 0);
-      const dailyCap = Number(pointRateSettings.daily_cap || 0);
-      if (rate <= 0 || todayEarned >= dailyCap) return;
-
-      const award = Math.min(rate, dailyCap - todayEarned);
-      const client = getSupabaseOrThrow();
-      const nextPoint = Number(myPoint || 0) + award;
-      const tickAt = new Date().toISOString();
-      const { error } = await client.from("profiles").update({
-        points: nextPoint,
-        last_point_tick_at: tickAt,
-        passive_points_today: todayEarned + award,
-        passive_points_date: today,
-      }).eq("id", user.id);
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      const logPayload = {
-        user_id: user.id,
-        points: award,
-        log_type: "passive_hourly",
-        title: "시간당 포인트 획득",
-        description: `${bestPointCharacter.character_name} · ${bestPointCharacter.equipped_weapon_name || "무기"} ${getEnhancementDisplay(bestPointCharacter.equipped_weapon_level)} 기준으로 ${award}P 획득`,
-      };
-
-      const { data: insertedLog, error: logError } = await client
-        .from("point_earn_logs")
-        .insert(logPayload)
-        .select("*")
-        .maybeSingle();
-
-      if (logError) {
-        console.error("point_earn_logs insert error:", logError);
-      } else if (insertedLog) {
-        setPointEarnLogs((prev) => [insertedLog, ...prev].slice(0, 20));
-      }
-
-      setPassivePointState({
-        lastTickAt: tickAt,
-        passivePointsToday: todayEarned + award,
-        passivePointsDate: today,
-      });
-      setMyPoint(nextPoint);
+      await reconcilePassivePoints("myroom");
     };
 
     void maybeGrantPassivePoint();
-  }, [user?.id, bestPointCharacter, pointRateSettings, pointTickNow]);
+  }, [user?.id, bestPointCharacter, pointRateSettings, pointTickNow, passivePointState.lastTickAt, reconcilePassivePoints]);
 
   const usedBadgeIds = useMemo(() => {
     const used = new Set<string>();
@@ -6780,6 +6823,7 @@ const AdminPointShopManager = () => {
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
+  const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "weapon" | "enhance_stone">("guild");
 
   const [weaponName, setWeaponName] = useState("");
   const [weaponDescription, setWeaponDescription] = useState("");
