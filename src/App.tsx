@@ -63,12 +63,8 @@ const withTimeout = async <T,>(promise: Promise<T>, ms = 12000): Promise<T> => {
 
 const CACHE_KEYS = {
   posts: "inxx_cache_posts_v2",
-  settings: "inxx_cache_settings_v3",
-  homeNotices: "inxx_cache_home_notices_v1",
+  settings: "inxx_cache_settings_v2",
 };
-
-const getMonthCacheKey = (year: number, month: number) =>
-  `inxx_cache_calendar_${year}_${String(month + 1).padStart(2, "0")}_v1`;
 
 const readCache = <T,>(key: string, fallback: T): T => {
   try {
@@ -107,96 +103,22 @@ const RAID_TYPE_OPTIONS = ["8인", "4인"];
 const CONTENT_MODE_OPTIONS = ["raid", "anime"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-type HomeSectionKey = "notice" | "calendar" | "ranking";
-
-const DEFAULT_HOME_SECTION_ORDER: HomeSectionKey[] = ["notice", "calendar", "ranking"];
-const HOME_SECTION_LABELS: Record<HomeSectionKey, string> = {
-  notice: "길드 공지사항",
-  calendar: "월별 레이드 일정",
-  ranking: "월별 참여 랭킹",
-};
-const DEFAULT_HOME_SECTION_VISIBILITY: Record<HomeSectionKey, boolean> = {
-  notice: true,
-  calendar: true,
-  ranking: true,
-};
-const DEFAULT_HOME_SECTION_TITLES: Record<HomeSectionKey, string> = {
-  ...HOME_SECTION_LABELS,
-};
-
-const normalizeHomeSectionOrder = (value: any): HomeSectionKey[] => {
-  const raw = Array.isArray(value)
-    ? value
-    : typeof value === "string"
-    ? value
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean)
-    : [];
-
-  const normalized = raw.filter((item): item is HomeSectionKey =>
-    ["notice", "calendar", "ranking"].includes(String(item))
-  );
-
-  const unique = Array.from(new Set(normalized));
-  for (const key of DEFAULT_HOME_SECTION_ORDER) {
-    if (!unique.includes(key)) unique.push(key);
-  }
-  return unique.slice(0, DEFAULT_HOME_SECTION_ORDER.length);
-};
-
-const normalizeHomeSectionVisibility = (value: any): Record<HomeSectionKey, boolean> => {
-  const raw = value && typeof value === "object" ? value : {};
-  return {
-    notice: raw.notice !== false,
-    calendar: raw.calendar !== false,
-    ranking: raw.ranking !== false,
-  };
-};
-
-const normalizeHomeSectionTitles = (value: any): Record<HomeSectionKey, string> => {
-  const raw = value && typeof value === "object" ? value : {};
-  return {
-    notice: String(raw.notice || HOME_SECTION_LABELS.notice).trim() || HOME_SECTION_LABELS.notice,
-    calendar: String(raw.calendar || HOME_SECTION_LABELS.calendar).trim() || HOME_SECTION_LABELS.calendar,
-    ranking: String(raw.ranking || HOME_SECTION_LABELS.ranking).trim() || HOME_SECTION_LABELS.ranking,
-  };
-};
-
-const normalizeHomeNoticeLimit = (value: any) => {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return 4;
-  return Math.max(2, Math.min(8, Math.round(num)));
-};
-
-const parseSettingsRecord = (raw: any) => ({
-  guild_name: raw?.guild_name ?? "INXX",
-  guild_description: raw?.guild_description ?? "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
-  home_section_order: normalizeHomeSectionOrder(raw?.home_section_order),
-  home_section_visibility: normalizeHomeSectionVisibility(raw?.home_section_visibility),
-  home_section_titles: normalizeHomeSectionTitles(raw?.home_section_titles),
-  home_notice_layout: raw?.home_notice_layout === "wide" ? "wide" : "compact",
-  home_notice_limit: normalizeHomeNoticeLimit(raw?.home_notice_limit),
-});
-
-const buildSettingsPayload = (settings: any) => ({
-  ...settings,
-  home_section_order: normalizeHomeSectionOrder(settings?.home_section_order),
-  home_section_visibility: normalizeHomeSectionVisibility(settings?.home_section_visibility),
-  home_section_titles: normalizeHomeSectionTitles(settings?.home_section_titles),
-  home_notice_layout: settings?.home_notice_layout === "wide" ? "wide" : "compact",
-  home_notice_limit: normalizeHomeNoticeLimit(settings?.home_notice_limit),
-});
-
-const defaultSettings = parseSettingsRecord({
+const defaultSettings = {
   guild_name: "INXX",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
-  home_section_order: DEFAULT_HOME_SECTION_ORDER,
-  home_section_visibility: DEFAULT_HOME_SECTION_VISIBILITY,
-  home_section_titles: DEFAULT_HOME_SECTION_TITLES,
-  home_notice_layout: "compact",
-  home_notice_limit: 4,
-});
+  point_rate_settings: {
+    enabled: true,
+    cycle_minutes: 60,
+    daily_cap: 500,
+    enhancement_bonus_per_5: 2,
+    rate_by_rarity: {
+      common: 10,
+      rare: 15,
+      epic: 22,
+      legendary: 30,
+    },
+  },
+};
 
 const emptyRaidForm = {
   raid_name: "",
@@ -673,6 +595,7 @@ const getEnhancementItemEffectText = (item: any) => {
 const getShopRewardTypeLabel = (item: any) => {
   if (item?.reward_type === "enhance_stone") return "Enhance Stone";
   if (item?.reward_type === "badge") return "Badge Item";
+  if (item?.reward_type === "nickname_effect") return "Nickname FX";
   return "Point Item";
 };
 
@@ -681,6 +604,10 @@ const getPointShopCardBackground = (item: any, badgeTheme: any) => {
   if (item?.reward_type === "enhance_stone") {
     return "linear-gradient(135deg, rgba(251,191,36,0.18), rgba(168,85,247,0.18), rgba(15,23,42,0.96) 58%, rgba(2,6,23,0.98))";
   }
+  if (item?.reward_type === "nickname_effect") {
+    const theme = getNicknameEffectTheme(item);
+    return `linear-gradient(135deg, ${hexToRgba(theme.from, 0.24)}, ${hexToRgba(theme.to, 0.2)}, rgba(15,23,42,0.96) 60%, rgba(2,6,23,0.98))`;
+  }
   return "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92) 52%, rgba(2,6,23,0.96))";
 };
 
@@ -688,6 +615,10 @@ const getPointShopAuraBackground = (item: any, badgeTheme: any) => {
   if (item?.reward_type === "badge") return badgeTheme.aura;
   if (item?.reward_type === "enhance_stone") {
     return "radial-gradient(circle at top right, rgba(251,191,36,0.22), transparent 40%), radial-gradient(circle at bottom left, rgba(168,85,247,0.16), transparent 44%)";
+  }
+  if (item?.reward_type === "nickname_effect") {
+    const theme = getNicknameEffectTheme(item);
+    return `radial-gradient(circle at top right, ${hexToRgba(theme.glow, 0.24)}, transparent 42%)`;
   }
   return "radial-gradient(circle at top right, rgba(168,85,247,0.18), transparent 42%)";
 };
@@ -774,115 +705,63 @@ const WeaponImage = ({
 
 
 
-const HomeNoticeSection = ({
-  user,
-  profile,
-  notices,
-  loading,
-  layout = "compact",
-  title = HOME_SECTION_LABELS.notice,
-  noticeLimit = 4,
-}: {
-  user: UserLike;
-  profile: ProfileLike;
-  notices: PostLike[];
-  loading: boolean;
-  layout?: "compact" | "wide";
-  title?: string;
-  noticeLimit?: number;
-}) => {
-  const pinnedCount = notices.filter((item) => item.is_pinned).length;
-  const normalizedLimit = normalizeHomeNoticeLimit(noticeLimit);
-  const pinnedNotices = notices.filter((item) => item.is_pinned);
-  const regularNotices = notices.filter((item) => !item.is_pinned);
-  const previewItems =
-    layout === "wide"
-      ? notices.slice(0, Math.max(normalizedLimit, 6))
-      : [...pinnedNotices.slice(0, 1), ...regularNotices].slice(0, normalizedLimit);
-  const featuredNotice = layout === "compact" ? previewItems[0] : null;
-  const listItems = layout === "compact" ? previewItems.slice(featuredNotice ? 1 : 0) : previewItems;
+const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: ProfileLike }) => {
+  const [notices, setNotices] = useState<PostLike[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const renderNoticeCard = (notice: PostLike, featured = false) => (
-    <button
-      key={notice.id}
-      className={cn(
-        "w-full text-left rounded-2xl border transition hover:border-amber-400/40",
-        notice.is_pinned ? "bg-amber-500/10 border-amber-500/20" : "bg-white/5 border-white/10",
-        featured ? "p-5 md:p-6 rounded-[1.75rem] bg-gradient-to-br from-amber-500/15 via-black/40 to-transparent" : "p-4 md:p-5"
-      )}
-    >
-      <div className="flex flex-wrap items-center gap-2 mb-2">
-        {notice.is_pinned && (
-          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-300 border border-rose-500/20">
-            <Pin size={12} />
-            PIN
-          </span>
-        )}
-        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-300 border border-amber-500/20">
-          공지
-        </span>
-        <span className="text-xs text-gray-500">{formatDateTime(notice.created_at)}</span>
-      </div>
-      <div className={cn("font-black", featured ? "text-xl md:text-2xl line-clamp-2" : "text-base md:text-lg line-clamp-1")}>
-        {notice.title}
-      </div>
-      <div className={cn("mt-3 text-gray-400", featured ? "text-sm md:text-base line-clamp-4" : "text-sm line-clamp-2")}>
-        {notice.content}
-      </div>
-    </button>
-  );
+  useEffect(() => {
+    fetchNotices();
+  }, []);
+
+  const fetchNotices = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("posts")
+      .select("*")
+      .eq("is_notice", true)
+      .order("is_pinned", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    if (error) {
+      console.error(error);
+      setNotices([]);
+    } else {
+      setNotices(data || []);
+    }
+    setLoading(false);
+  };
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-8 md:pt-12 pb-6">
-      <div
-        className={cn(
-          "rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-white/5 to-transparent overflow-hidden",
-          layout === "compact" ? "shadow-[0_0_40px_rgba(251,191,36,0.08)]" : ""
-        )}
-      >
+      <div className="rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-white/5 to-transparent overflow-hidden">
         <div className="p-6 md:p-8 border-b border-white/10">
-          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-            <div className="min-w-0">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-300 text-[11px] font-black tracking-[0.2em] uppercase">
                 <Bell size={14} />
                 Guild Notice
               </div>
-              <h2 className="mt-4 text-2xl md:text-4xl font-black tracking-tight">
-                {title}
+              <h2 className="mt-4 text-3xl md:text-5xl font-black tracking-tight">
+                길드 공지사항
               </h2>
-              <p className="mt-2 text-sm md:text-base text-gray-400">
-               공지사항을 확인하세요.
+              <p className="mt-2 text-gray-400">
+                공지사항.
               </p>
             </div>
 
-            <div className={cn(
-              "grid gap-3 min-w-fit",
-              layout === "compact" ? "grid-cols-3" : "grid-cols-2 md:grid-cols-3"
-            )}>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 min-w-fit">
               <MiniStat label="공지" value={notices.length} />
-              <MiniStat label="고정" value={pinnedCount} />
+              <MiniStat label="고정" value={notices.filter((x) => x.is_pinned).length} />
               <MiniStat label="권한" value={profile?.role === "admin" ? "관리자" : user ? "길드원" : "게스트"} />
             </div>
           </div>
         </div>
 
-        <div className="p-4 md:p-6">
+        <div className="p-4 md:p-6 space-y-3">
           {loading && (
-            <div className={cn(layout === "compact" ? "grid md:grid-cols-[1.15fr,0.85fr] gap-3" : "space-y-3")}>
-              {Array.from({ length: layout === "compact" ? 2 : normalizedLimit }).map((_, index) => (
-                <div
-                  key={`notice-skeleton-${index}`}
-                  className={cn(
-                    "rounded-2xl border border-white/10 bg-white/5 animate-pulse",
-                    layout === "compact" && index === 0 ? "p-6 min-h-[220px]" : "p-4 min-h-[120px]"
-                  )}
-                >
-                  <div className="h-4 w-24 rounded bg-white/10" />
-                  <div className="mt-4 h-7 w-3/4 rounded bg-white/10" />
-                  <div className="mt-3 h-4 w-full rounded bg-white/5" />
-                  <div className="mt-2 h-4 w-2/3 rounded bg-white/5" />
-                </div>
-              ))}
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
+              공지 불러오는 중...
             </div>
           )}
 
@@ -892,423 +771,36 @@ const HomeNoticeSection = ({
             </div>
           )}
 
-          {!loading && notices.length > 0 && layout === "compact" && (
-            <div className="grid md:grid-cols-[1.15fr,0.85fr] gap-3">
-              {featuredNotice ? renderNoticeCard(featuredNotice, true) : <div />}
-              <div className="space-y-3">
-                {listItems.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
-                    표시할 보조 공지가 없어.
-                  </div>
-                ) : (
-                  listItems.map((notice) => renderNoticeCard(notice))
+          {!loading &&
+            notices.map((notice) => (
+              <button
+                key={notice.id}
+                className={cn(
+                  "w-full text-left rounded-2xl border p-4 md:p-5 transition hover:border-amber-400/40",
+                  notice.is_pinned
+                    ? "bg-amber-500/10 border-amber-500/20"
+                    : "bg-white/5 border-white/10"
                 )}
-              </div>
-            </div>
-          )}
-
-          {!loading && notices.length > 0 && layout === "wide" && (
-            <div className="space-y-3">
-              {previewItems.map((notice) => renderNoticeCard(notice))}
-            </div>
-          )}
-        </div>
-
-        {!loading && notices.length > 0 && (
-          <div className="px-4 md:px-6 pb-5 text-xs text-gray-500">
-            현재 메인에는 최신 공지 {previewItems.length}개가 노출 중이야.
-          </div>
-        )}
-      </div>
-    </section>
-  );
-};
-
-const getMonthlyCharacterStats = (participants: ParticipantLike[], raids: ScheduleLike[]) => {
-  const map = new Map<string, { nickname: string; count: number; raidCount: number }>();
-
-  participants.forEach((participant: any) => {
-    const nickname = (participant.character_name || "이름없음").trim();
-    const existing = map.get(nickname) || {
-      nickname,
-      count: 0,
-      raidCount: 0,
-    };
-
-    existing.count += 1;
-    map.set(nickname, existing);
-  });
-
-  raids.forEach((raid) => {
-    const raidParticipants = participants.filter((p: any) => p.schedule_id === raid.id);
-    const uniqueNicknames = Array.from(
-      new Set(raidParticipants.map((p: any) => (p.character_name || "이름없음").trim()))
-    );
-
-    uniqueNicknames.forEach((nickname) => {
-      const existing = map.get(nickname) || { nickname, count: 0, raidCount: 0 };
-      existing.raidCount += 1;
-      map.set(nickname, existing);
-    });
-  });
-
-  return Array.from(map.values()).sort((a, b) => {
-    if (b.raidCount !== a.raidCount) return b.raidCount - a.raidCount;
-    if (b.count !== a.count) return b.count - a.count;
-    return a.nickname.localeCompare(b.nickname, "ko");
-  });
-};
-
-const HomeMonthlyRankingSection = ({
-  raids,
-  participants,
-  loading,
-  currentDate,
-  title = HOME_SECTION_LABELS.ranking,
-}: {
-  raids: ScheduleLike[];
-  participants: ParticipantLike[];
-  loading: boolean;
-  currentDate: Date;
-  title?: string;
-}) => {
-  const monthlyCharacterStats = useMemo(
-    () => getMonthlyCharacterStats(participants, raids),
-    [participants, raids]
-  );
-
-  return (
-    <section className="max-w-7xl mx-auto px-6 py-6 md:py-8">
-      <SectionPanel
-        title={title}
-        description={`${formatMonthLabel(currentDate.getFullYear(), currentDate.getMonth())} 기준 캐릭터 참가횟수 확인.`}
-      >
-        {loading ? (
-          <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-6">
-            {Array.from({ length: 2 }).map((_, idx) => (
-              <div key={`ranking-skeleton-${idx}`} className="rounded-2xl border border-white/10 bg-white/5 p-4 animate-pulse min-h-[260px]">
-                <div className="h-5 w-32 rounded bg-white/10" />
-                <div className="mt-4 h-4 w-full rounded bg-white/5" />
-                <div className="mt-2 h-4 w-4/5 rounded bg-white/5" />
-                <div className="mt-6 h-12 w-full rounded-2xl bg-white/5" />
-                <div className="mt-3 h-12 w-full rounded-2xl bg-white/5" />
-                <div className="mt-3 h-12 w-full rounded-2xl bg-white/5" />
-              </div>
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  {notice.is_pinned && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-300 border border-rose-500/20">
+                      <Pin size={12} />
+                      PIN
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-300 border border-amber-500/20">
+                    공지
+                  </span>
+                  <span className="text-xs text-gray-500">{formatDateTime(notice.created_at)}</span>
+                </div>
+                <div className="text-lg md:text-xl font-black">{notice.title}</div>
+                <div className="mt-2 text-sm text-gray-300 line-clamp-2">{notice.content}</div>
+              </button>
             ))}
-          </div>
-        ) : monthlyCharacterStats.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-gray-500">
-            아직 이번 달 참여 데이터가 없습니다.
-          </div>
-        ) : (
-          <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-6">
-            <div className="space-y-3">
-              {monthlyCharacterStats.slice(0, 5).map((item, index) => (
-                <div
-                  key={item.nickname}
-                  className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4 flex items-center justify-between gap-4"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-500/20 flex items-center justify-center text-sm font-black text-purple-300 shrink-0">
-                      #{index + 1}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-black truncate">{item.nickname}</div>
-                      <div className="text-xs text-gray-500">월간 레이드 참여 요약</div>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <div className="text-lg font-black text-white">{item.raidCount}회</div>
-                    <div className="text-xs text-gray-500">등록 {item.count}건</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-3 max-h-[540px] overflow-y-auto pr-1">
-              {monthlyCharacterStats.map((item, index) => (
-                <div
-                  key={`${item.nickname}-detail`}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-11 w-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                        <BarChart3 size={16} className="text-purple-300" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-black truncate">
-                          #{index + 1} {item.nickname}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          월간 레이드 참여 횟수 {item.raidCount}회
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="text-xl font-black text-purple-300">{item.raidCount}</div>
-                      <div className="text-[11px] text-gray-500">raid count</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 h-2 rounded-full bg-black/40 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-indigo-500"
-                      style={{
-                        width: `${
-                          monthlyCharacterStats[0]?.raidCount
-                            ? (item.raidCount / monthlyCharacterStats[0].raidCount) * 100
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-
-                  <div className="mt-3 text-xs text-gray-400">
-                    참가 등록 총 {item.count}건
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </SectionPanel>
+        </div>
+      </div>
     </section>
-  );
-};
-
-const HomeDashboard = ({
-  user,
-  profile,
-  settings,
-  contentView,
-  setContentView,
-}: {
-  user: UserLike;
-  profile: ProfileLike;
-  settings: typeof defaultSettings;
-  contentView: string;
-  setContentView: (value: string) => void;
-}) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [notices, setNotices] = useState<PostLike[]>(() =>
-    readCache<PostLike[]>(CACHE_KEYS.homeNotices, [])
-  );
-  const [noticesLoading, setNoticesLoading] = useState(notices.length === 0);
-  const [raids, setRaids] = useState<ScheduleLike[]>([]);
-  const [participants, setParticipants] = useState<ParticipantLike[]>([]);
-  const [calendarLoading, setCalendarLoading] = useState(true);
-  const [noticesUpdatedAt, setNoticesUpdatedAt] = useState<string | null>(null);
-  const [calendarUpdatedAt, setCalendarUpdatedAt] = useState<string | null>(null);
-
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
-  const daysInMonth = useMemo(() => new Date(year, month + 1, 0).getDate(), [year, month]);
-
-  const fetchNotices = useCallback(async () => {
-    if (!supabase) return;
-    setNoticesLoading(true);
-
-    try {
-      const client = getSupabaseOrThrow();
-      const { data, error } = await withTimeout(
-        client
-          .from("posts")
-          .select("*")
-          .eq("is_notice", true)
-          .order("is_pinned", { ascending: false })
-          .order("created_at", { ascending: false })
-          .limit(6),
-        5000
-      );
-
-      if (error) {
-        console.error("home notices fetch error:", error);
-        return;
-      }
-
-      const next = data || [];
-      setNotices(next);
-      setNoticesUpdatedAt(new Date().toISOString());
-      writeCache(CACHE_KEYS.homeNotices, next);
-    } catch (error) {
-      console.error("home notices unexpected error:", error);
-    } finally {
-      setNoticesLoading(false);
-    }
-  }, []);
-
-  const fetchCalendarData = useCallback(async () => {
-    if (!supabase) return;
-    const cacheKey = getMonthCacheKey(year, month);
-    const cached = readCache<{ raids: ScheduleLike[]; participants: ParticipantLike[] } | null>(cacheKey, null);
-
-    if (cached?.raids?.length || cached?.participants?.length) {
-      setRaids(cached.raids || []);
-      setParticipants(cached.participants || []);
-      setCalendarLoading(false);
-    } else {
-      setCalendarLoading(true);
-    }
-
-    try {
-      const client = getSupabaseOrThrow();
-      const monthStart = formatDate(year, month, 1);
-      const monthEnd = formatDate(year, month, daysInMonth);
-
-      const { data: rData, error: raidError } = await withTimeout(
-        client
-          .from("raid_schedules")
-          .select("*")
-          .gte("raid_date", monthStart)
-          .lte("raid_date", monthEnd)
-          .order("raid_date", { ascending: true })
-          .order("raid_time", { ascending: true }),
-        7000
-      );
-
-      if (raidError) {
-        console.error("raid_schedules fetch error:", raidError);
-        if (!cached) {
-          setRaids([]);
-          setParticipants([]);
-        }
-        return;
-      }
-
-      const scheduleIds = (rData || []).map((r: any) => r.id);
-      let pData: any[] = [];
-
-      if (scheduleIds.length > 0) {
-        const { data, error: participantError } = await withTimeout(
-          client
-            .from("raid_participants")
-            .select("*")
-            .in("schedule_id", scheduleIds),
-          7000
-        );
-
-        if (participantError) {
-          console.error("raid_participants fetch error:", participantError);
-        } else {
-          pData = data || [];
-        }
-      }
-
-      setRaids(rData || []);
-      setParticipants(pData || []);
-      setCalendarUpdatedAt(new Date().toISOString());
-      writeCache(cacheKey, { raids: rData || [], participants: pData || [] });
-    } catch (error) {
-      console.error("fetchCalendarData error:", error);
-      if (!cached) {
-        setRaids([]);
-        setParticipants([]);
-      }
-    } finally {
-      setCalendarLoading(false);
-    }
-  }, [daysInMonth, month, year]);
-
-  useEffect(() => {
-    void fetchNotices();
-  }, [fetchNotices]);
-
-  useEffect(() => {
-    void fetchCalendarData();
-  }, [fetchCalendarData]);
-
-  const sectionOrder = normalizeHomeSectionOrder(settings?.home_section_order);
-  const sectionVisibility = normalizeHomeSectionVisibility(settings?.home_section_visibility);
-  const sectionTitles = normalizeHomeSectionTitles(settings?.home_section_titles);
-  const visibleSectionOrder = sectionOrder.filter((sectionKey) => sectionVisibility[sectionKey] !== false);
-  const homeNoticeLimit = normalizeHomeNoticeLimit(settings?.home_notice_limit);
-
-  return (
-    <>
-      <div className="max-w-7xl mx-auto px-6 pt-6">
-        <div className="grid md:grid-cols-3 gap-3">
-          <MiniStat label="HOME SECTIONS" value={visibleSectionOrder.length} />
-          <MiniStat label="NOTICE UPDATE" value={noticesUpdatedAt ? formatDateTime(noticesUpdatedAt) : "캐시 사용 중"} />
-          <MiniStat label="CALENDAR UPDATE" value={calendarUpdatedAt ? formatDateTime(calendarUpdatedAt) : "캐시 사용 중"} />
-        </div>
-      </div>
-
-      {visibleSectionOrder.map((sectionKey) => {
-        if (sectionKey === "notice") {
-          return (
-            <HomeNoticeSection
-              key={sectionKey}
-              user={user}
-              profile={profile}
-              notices={notices}
-              loading={noticesLoading}
-              layout={settings?.home_notice_layout === "wide" ? "wide" : "compact"}
-              title={sectionTitles.notice}
-              noticeLimit={homeNoticeLimit}
-            />
-          );
-        }
-
-        if (sectionKey === "calendar") {
-          return (
-            <RaidCalendar
-              key={sectionKey}
-              user={user}
-              profile={profile}
-              currentDate={currentDate}
-              setCurrentDate={setCurrentDate}
-              raids={raids}
-              participants={participants}
-              calendarLoading={calendarLoading}
-              onRefresh={fetchCalendarData}
-              title={sectionTitles.calendar}
-            />
-          );
-        }
-
-        return (
-          <HomeMonthlyRankingSection
-            key={sectionKey}
-            raids={raids}
-            participants={participants}
-            loading={calendarLoading}
-            currentDate={currentDate}
-            title={sectionTitles.ranking}
-          />
-        );
-      })}
-
-      {visibleSectionOrder.length === 0 && (
-        <section className="max-w-7xl mx-auto px-6 py-10">
-          <div className="rounded-[2rem] border border-dashed border-white/10 bg-black/20 px-6 py-10 text-center text-gray-400">
-            홈 화면에 표시할 섹션이 없어. 관리자페이지에서 홈 화면 관리를 열어 섹션 표시를 켜줘.
-          </div>
-        </section>
-      )}
-
-      <div className="max-w-7xl mx-auto px-6 mb-12">
-        <div className="flex justify-center gap-6 md:gap-12 border-b border-white/5 pb-6 overflow-x-auto">
-          {["레이드", "가디언 토벌", "클래스"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setContentView(tab)}
-              className={`text-lg md:text-xl font-black italic uppercase transition-all whitespace-nowrap ${
-                contentView === tab
-                  ? "text-purple-400 scale-105 underline underline-offset-8"
-                  : "text-gray-600 hover:text-gray-400"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <MainContentViewer type={contentView} />
-    </>
   );
 };
 
@@ -1367,6 +859,12 @@ const getShopItemHighlights = (item: any) => {
     highlights.push(`장착 시 길드 카드에 ${theme.label} 그라데이션 적용`);
   }
 
+  if (item?.reward_type === "nickname_effect") {
+    const theme = getNicknameEffectTheme(item);
+    highlights.push(`마이룸 닉네임에 ${theme.label} 효과 적용`);
+    highlights.push("구매 후 마이룸에서 바로 적용 가능");
+  }
+
   if (item?.reward_type === "enhance_stone") {
     highlights.push(`강화 보조 효과 · ${getEnhancementItemEffectText(item)}`);
     highlights.push("마이룸 강화 시 최고 등급 강화석 자동 사용");
@@ -1393,6 +891,11 @@ const getShopMoodLine = (item: any) => {
     return `${theme.label}로 길드 카드 분위기를 바로 바꿔주는 커스텀 뱃지`;
   }
 
+  if (item?.reward_type === "nickname_effect") {
+    const theme = getNicknameEffectTheme(item);
+    return `${theme.label} 효과로 마이룸 닉네임을 꾸밀 수 있는 커스텀 상품`;
+  }
+
   if (item?.reward_type === "enhance_stone") {
     return `${getEnhancementItemEffectText(item)} 효과를 가진 무기 강화 보조 아이템`;
   }
@@ -1410,6 +913,113 @@ const BADGE_PRESET_COLORS = [
   "#3b82f6",
   "#ef4444",
 ];
+
+type PointRateSettings = {
+  enabled: boolean;
+  cycle_minutes: number;
+  daily_cap: number;
+  enhancement_bonus_per_5: number;
+  rate_by_rarity: Record<WeaponRarityKey, number>;
+};
+
+const normalizePointRateSettings = (value: any): PointRateSettings => {
+  const raw = value && typeof value === "object" ? value : {};
+  return {
+    enabled: raw.enabled !== false,
+    cycle_minutes: Math.max(5, Math.min(240, Math.round(Number(raw.cycle_minutes) || 60))),
+    daily_cap: Math.max(0, Math.min(100000, Math.round(Number(raw.daily_cap) || 500))),
+    enhancement_bonus_per_5: Math.max(0, Math.min(1000, Math.round(Number(raw.enhancement_bonus_per_5) || 2))),
+    rate_by_rarity: {
+      common: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.common) || 10)),
+      rare: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.rare) || 15)),
+      epic: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.epic) || 22)),
+      legendary: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.legendary) || 30)),
+    },
+  };
+};
+
+const getPointRateForCharacter = (character: any, settingsLike: any) => {
+  const settings = normalizePointRateSettings(settingsLike);
+  const rarity = normalizeWeaponRarity(character?.equipped_weapon_rarity);
+  const enhancementLevel = normalizeEnhancementLevel(character?.equipped_weapon_level);
+  const base = Number(settings.rate_by_rarity?.[rarity] || 0);
+  const bonus = Math.floor(enhancementLevel / 5) * Number(settings.enhancement_bonus_per_5 || 0);
+  return Math.max(0, base + bonus);
+};
+
+const getBestPointCharacter = (characters: any[], settingsLike: any) => {
+  const rows = Array.isArray(characters) ? characters : [];
+  return rows
+    .filter((character: any) => character?.equipped_weapon_name)
+    .map((character: any) => ({
+      ...character,
+      hourly_point_rate: getPointRateForCharacter(character, settingsLike),
+    }))
+    .sort((a: any, b: any) => {
+      if (b.hourly_point_rate !== a.hourly_point_rate) return b.hourly_point_rate - a.hourly_point_rate;
+      return normalizeEnhancementLevel(b?.equipped_weapon_level) - normalizeEnhancementLevel(a?.equipped_weapon_level);
+    })[0] || null;
+};
+
+const getNextPointTickInfo = (lastTickAt: string | null | undefined, cycleMinutes: number) => {
+  const cycleMs = Math.max(5, Number(cycleMinutes || 60)) * 60 * 1000;
+  const last = lastTickAt ? new Date(lastTickAt).getTime() : Date.now();
+  const nextAt = new Date(last + cycleMs);
+  const remainingMs = Math.max(0, nextAt.getTime() - Date.now());
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return {
+    nextAt,
+    remainingMs,
+    formatted: `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`,
+  };
+};
+
+type NicknameEffectKey = "none" | "violet" | "sunset" | "ocean" | "emerald" | "rose" | "gold" | "rainbow";
+
+const NICKNAME_EFFECT_PRESETS: Record<NicknameEffectKey, { label: string; from: string; to: string; glow: string }> = {
+  none: { label: "기본", from: "#ffffff", to: "#ffffff", glow: "#a78bfa" },
+  violet: { label: "바이올렛", from: "#c4b5fd", to: "#7c3aed", glow: "#8b5cf6" },
+  sunset: { label: "선셋", from: "#fb7185", to: "#f59e0b", glow: "#fb7185" },
+  ocean: { label: "오션", from: "#67e8f9", to: "#2563eb", glow: "#38bdf8" },
+  emerald: { label: "에메랄드", from: "#6ee7b7", to: "#059669", glow: "#10b981" },
+  rose: { label: "로즈", from: "#f9a8d4", to: "#db2777", glow: "#ec4899" },
+  gold: { label: "골드", from: "#fde68a", to: "#f59e0b", glow: "#fbbf24" },
+  rainbow: { label: "레인보우", from: "#f472b6", to: "#22d3ee", glow: "#a78bfa" },
+};
+
+const normalizeNicknameEffectKey = (value: any): NicknameEffectKey => {
+  const normalized = String(value || "none").trim().toLowerCase();
+  if (["violet", "sunset", "ocean", "emerald", "rose", "gold", "rainbow"].includes(normalized)) {
+    return normalized as NicknameEffectKey;
+  }
+  return "none";
+};
+
+const getNicknameEffectTheme = (item: any) => {
+  const effectKey = normalizeNicknameEffectKey(item?.nickname_effect_key || item?.active_nickname_effect);
+  const preset = NICKNAME_EFFECT_PRESETS[effectKey] || NICKNAME_EFFECT_PRESETS.none;
+  return {
+    effectKey,
+    label: preset.label,
+    from: item?.nickname_gradient_from || preset.from,
+    to: item?.nickname_gradient_to || preset.to,
+    glow: item?.nickname_glow_color || preset.glow,
+  };
+};
+
+const getNicknameEffectStyle = (item: any): React.CSSProperties => {
+  const theme = getNicknameEffectTheme(item);
+  return {
+    backgroundImage: `linear-gradient(90deg, ${theme.from}, ${theme.to})`,
+    WebkitBackgroundClip: "text",
+    backgroundClip: "text",
+    color: "transparent",
+    textShadow: `0 0 18px ${hexToRgba(theme.glow, 0.32)}`,
+  };
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<UserLike>(null);
@@ -1439,7 +1049,10 @@ useEffect(() => {
   }
 
   if (cachedSettings) {
-    setSettings(parseSettingsRecord(cachedSettings));
+    setSettings({
+      guild_name: cachedSettings.guild_name ?? defaultSettings.guild_name,
+      guild_description: cachedSettings.guild_description ?? defaultSettings.guild_description,
+    });
   }
 
   const init = async () => {
@@ -1576,7 +1189,11 @@ const fetchInitialData = async () => {
       if (error) {
         console.error("settings fetch error:", error);
       } else if (data) {
-        const nextSettings = parseSettingsRecord(data);
+        const nextSettings = {
+          guild_name: data.guild_name ?? defaultSettings.guild_name,
+          guild_description:
+            data.guild_description ?? defaultSettings.guild_description,
+        };
 
         setSettings(nextSettings);
         writeCache(CACHE_KEYS.settings, nextSettings);
@@ -1654,7 +1271,28 @@ const fetchInitialData = async () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <HomeDashboard user={user} profile={profile} settings={settings} contentView={contentView} setContentView={setContentView} />
+                <HomeNoticeSection user={user} profile={profile} />
+                <RaidCalendar user={user} profile={profile} />
+
+                <div className="max-w-7xl mx-auto px-6 mb-12">
+                  <div className="flex justify-center gap-6 md:gap-12 border-b border-white/5 pb-6 overflow-x-auto">
+                    {["레이드", "가디언 토벌", "클래스"].map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setContentView(tab)}
+                        className={`text-lg md:text-xl font-black italic uppercase transition-all whitespace-nowrap ${
+                          contentView === tab
+                            ? "text-purple-400 scale-105 underline underline-offset-8"
+                            : "text-gray-600 hover:text-gray-400"
+                        }`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <MainContentViewer type={contentView} />
               </motion.div>
             )}
 
@@ -1965,6 +1603,11 @@ const SectionPanel = ({
 
 const MainContentViewer = ({ type }: { type: string }) => {
   const [items, setItems] = useState<any[]>([]);
+  const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "weapon" | "enhance_stone">("guild");
+  const [nicknameEffectKey, setNicknameEffectKey] = useState<NicknameEffectKey>("violet");
+  const [nicknameGradientFrom, setNicknameGradientFrom] = useState(NICKNAME_EFFECT_PRESETS.violet.from);
+  const [nicknameGradientTo, setNicknameGradientTo] = useState(NICKNAME_EFFECT_PRESETS.violet.to);
+  const [nicknameGlowColor, setNicknameGlowColor] = useState(NICKNAME_EFFECT_PRESETS.violet.glow);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
   useEffect(() => {
@@ -2207,20 +1850,14 @@ const StatCard = ({
   </div>
 );
 
-const RaidCalendar = ({
-  user,
-  profile,
-  currentDate,
-  setCurrentDate,
-  raids,
-  participants,
-  calendarLoading,
-  onRefresh,
-  title = HOME_SECTION_LABELS.calendar,
-}: any) => {
+const RaidCalendar = ({ user, profile }: any) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [raids, setRaids] = useState<ScheduleLike[]>([]);
+  const [participants, setParticipants] = useState<ParticipantLike[]>([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedRaid, setSelectedRaid] = useState<any>(null);
+  const [calendarLoading, setCalendarLoading] = useState(true);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -2229,22 +1866,110 @@ const RaidCalendar = ({
   const firstDayOffset = getWeekdayIndexMondayStart(firstDate);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
+  useEffect(() => {
+    fetchCalendarData();
+  }, [year, month]);
+
+  const fetchCalendarData = async () => {
+    setCalendarLoading(true);
+
+    try {
+      const monthStart = formatDate(year, month, 1);
+      const monthEnd = formatDate(year, month, daysInMonth);
+
+      const { data: rData, error: raidError } = await supabase
+        .from("raid_schedules")
+        .select("*")
+        .gte("raid_date", monthStart)
+        .lte("raid_date", monthEnd)
+        .order("raid_date", { ascending: true })
+        .order("raid_time", { ascending: true });
+
+      if (raidError) {
+        console.error("raid_schedules fetch error:", raidError);
+        setRaids([]);
+        setParticipants([]);
+        return;
+      }
+
+      const scheduleIds = (rData || []).map((r: any) => r.id);
+
+      let pData: any[] = [];
+      if (scheduleIds.length > 0) {
+        const { data, error: participantError } = await supabase
+          .from("raid_participants")
+          .select("*")
+          .in("schedule_id", scheduleIds);
+
+        if (participantError) {
+          console.error("raid_participants fetch error:", participantError);
+        } else {
+          pData = data || [];
+        }
+      }
+
+      setRaids(rData || []);
+      setParticipants(pData || []);
+    } catch (error) {
+      console.error("fetchCalendarData error:", error);
+      setRaids([]);
+      setParticipants([]);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
   const monthStats = useMemo(() => {
     const totalRaids = raids.length;
     const totalParticipants = participants.length;
-    const fullCount = raids.filter((raid: any) => {
-      const raidParticipants = participants.filter((p: any) => p.schedule_id === raid.id);
+    const fullCount = raids.filter((raid) => {
+      const raidParticipants = participants.filter((p) => p.schedule_id === raid.id);
       return raidParticipants.length >= getCapacity(raid).maxParticipants;
     }).length;
 
     return { totalRaids, totalParticipants, fullCount };
   }, [raids, participants]);
 
+  const monthlyCharacterStats = useMemo(() => {
+    const map = new Map<string, { nickname: string; count: number; raidCount: number }>();
+
+    participants.forEach((participant: any) => {
+      const nickname = (participant.character_name || "이름없음").trim();
+      const existing = map.get(nickname) || {
+        nickname,
+        count: 0,
+        raidCount: 0,
+      };
+
+      existing.count += 1;
+      map.set(nickname, existing);
+    });
+
+    raids.forEach((raid) => {
+      const raidParticipants = participants.filter((p: any) => p.schedule_id === raid.id);
+      const uniqueNicknames = Array.from(
+        new Set(raidParticipants.map((p: any) => (p.character_name || "이름없음").trim()))
+      );
+
+      uniqueNicknames.forEach((nickname) => {
+        const existing = map.get(nickname) || { nickname, count: 0, raidCount: 0 };
+        existing.raidCount += 1;
+        map.set(nickname, existing);
+      });
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.raidCount !== a.raidCount) return b.raidCount - a.raidCount;
+      if (b.count !== a.count) return b.count - a.count;
+      return a.nickname.localeCompare(b.nickname, "ko");
+    });
+  }, [participants, raids]);
+
   return (
-    <section className="max-w-7xl mx-auto px-6 py-10 md:py-16 border-t border-white/5">
-      <div className="mb-8">
+    <section className="max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-white/5">
+      <div className="grid lg:grid-cols-[1.2fr,0.8fr] gap-6 mb-8">
         <SectionPanel
-          title={title}
+          title="Raid Calendar"
           description="월별 레이드 일정."
           action={
             <div className="flex gap-2">
@@ -2278,26 +2003,53 @@ const RaidCalendar = ({
             </div>
           </div>
         </SectionPanel>
+
+        <SectionPanel
+          title="월별 참여 랭킹"
+          description="이번 달 기준 캐릭터 참가횟수 확인."
+        >
+          <div className="space-y-3">
+            {monthlyCharacterStats.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-center text-sm text-gray-500">
+                아직 이번 달 참여 데이터가 없습니다.
+              </div>
+            )}
+
+            {monthlyCharacterStats.slice(0, 6).map((item, index) => (
+              <div
+                key={item.nickname}
+                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4 flex items-center justify-between gap-4"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-500/20 flex items-center justify-center text-sm font-black text-purple-300 shrink-0">
+                    #{index + 1}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-black truncate">{item.nickname}</div>
+                    <div className="text-xs text-gray-500">월간 레이드 참여 요약</div>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <div className="text-lg font-black text-white">{item.raidCount}회</div>
+                  <div className="text-xs text-gray-500">등록 {item.count}건</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionPanel>
       </div>
 
-      <div className="bg-slate-950/55 rounded-[2rem] md:rounded-[3rem] border border-white/10 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.08)]">
-        <div className="grid grid-cols-7 text-center text-[10px] md:text-xs text-gray-500 border-b border-white/5 uppercase tracking-[0.2em]">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
-            <div key={dayLabel} className="p-4">
-              {dayLabel}
-            </div>
-          ))}
-        </div>
-
-        {calendarLoading ? (
-          <div className="p-4 md:p-6">
-            <div className="grid grid-cols-7 gap-[1px]">
-              {Array.from({ length: 35 }).map((_, i) => (
-                <div key={`calendar-skeleton-${i}`} className="bg-[#0a0a0a] min-h-[120px] md:min-h-[150px] animate-pulse border border-white/5" />
-              ))}
-            </div>
+      <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-6">
+        <div className="bg-slate-950/55 rounded-[2rem] md:rounded-[3rem] border border-white/10 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.08)]">
+          <div className="grid grid-cols-7 text-center text-[10px] md:text-xs text-gray-500 border-b border-white/5 uppercase tracking-[0.2em]">
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
+              <div key={dayLabel} className="p-4">
+                {dayLabel}
+              </div>
+            ))}
           </div>
-        ) : (
+
           <div className="grid grid-cols-7 gap-[1px] bg-white/5">
             {Array.from({ length: firstDayOffset }).map((_, i) => (
               <div key={`empty-${i}`} className="bg-[#0a0a0a] min-h-[150px] md:min-h-[180px]" />
@@ -2305,7 +2057,7 @@ const RaidCalendar = ({
 
             {days.map((day) => {
               const dateStr = formatDate(year, month, day);
-              const dayRaids = raids.filter((raid: any) => raid.raid_date === dateStr);
+              const dayRaids = raids.filter((raid) => raid.raid_date === dateStr);
               const today = new Date();
               const isToday = isSameDay(new Date(year, month, day), today);
 
@@ -2353,11 +2105,11 @@ const RaidCalendar = ({
                       </div>
                     )}
 
-                    {dayRaids.map((raid: any) => (
+                    {dayRaids.map((raid) => (
                       <RaidCard
                         key={raid.id}
                         raid={raid}
-                        parts={participants.filter((p: any) => p.schedule_id === raid.id)}
+                        parts={participants.filter((p) => p.schedule_id === raid.id)}
                         onOpen={() => setSelectedRaid(raid)}
                       />
                     ))}
@@ -2366,14 +2118,74 @@ const RaidCalendar = ({
               );
             })}
           </div>
-        )}
+        </div>
+
+        <SectionPanel
+          title="월별 통계 보드"
+          description="이번 달 참여 많이 한 캐릭터를 전체로 확인할 수 있어."
+        >
+          {calendarLoading ? (
+            <div className="py-12 text-center text-gray-500 font-bold">불러오는 중...</div>
+          ) : monthlyCharacterStats.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-gray-500">
+              집계할 참여 데이터가 없어.
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[620px] overflow-y-auto pr-1">
+              {monthlyCharacterStats.map((item, index) => (
+                <div
+                  key={item.nickname}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-11 w-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                        <BarChart3 size={16} className="text-purple-300" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-black truncate">
+                          #{index + 1} {item.nickname}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          월간 레이드 참여 횟수 {item.raidCount}회
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="text-xl font-black text-purple-300">{item.raidCount}</div>
+                      <div className="text-[11px] text-gray-500">raid count</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 h-2 rounded-full bg-black/40 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-indigo-500"
+                      style={{
+                        width: `${
+                          monthlyCharacterStats[0]?.raidCount
+                            ? (item.raidCount / monthlyCharacterStats[0].raidCount) * 100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-3 text-xs text-gray-400">
+                    참가 등록 총 {item.count}건
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionPanel>
       </div>
 
       <AnimatePresence>
         {isCreateOpen && (
           <CreateRaidModal
             date={selectedDate}
-            onRefresh={onRefresh}
+            onRefresh={fetchCalendarData}
             onClose={() => setIsCreateOpen(false)}
           />
         )}
@@ -2383,12 +2195,12 @@ const RaidCalendar = ({
         {selectedRaid && (
           <RaidDetailModal
             raid={selectedRaid}
-            parts={participants.filter((p: any) => p.schedule_id === selectedRaid.id)}
+            parts={participants.filter((p) => p.schedule_id === selectedRaid.id)}
             user={user}
             profile={profile}
             onClose={() => setSelectedRaid(null)}
             onRefresh={async () => {
-              await onRefresh();
+              await fetchCalendarData();
               setSelectedRaid(null);
             }}
           />
@@ -3161,6 +2973,103 @@ const ModalFrame = ({
 );
 
 
+
+const PointEconomyManager = ({ settings, setSettings }: any) => {
+  const pointSettings = normalizePointRateSettings(settings?.point_rate_settings);
+
+  const setValue = (patch: any) => {
+    setSettings((prev: any) => ({
+      ...prev,
+      point_rate_settings: normalizePointRateSettings({
+        ...normalizePointRateSettings(prev?.point_rate_settings),
+        ...patch,
+      }),
+    }));
+  };
+
+  const setRate = (rarity: WeaponRarityKey, value: string) => {
+    const current = normalizePointRateSettings(settings?.point_rate_settings);
+    setValue({
+      rate_by_rarity: {
+        ...current.rate_by_rarity,
+        [rarity]: Number(value || 0),
+      },
+    });
+  };
+
+  const handleSave = async () => {
+    const payload = {
+      ...settings,
+      point_rate_settings: normalizePointRateSettings(settings?.point_rate_settings),
+    };
+    const { error } = await supabase.from("settings").upsert(payload);
+    if (error) alert(error.message);
+    else {
+      writeCache(CACHE_KEYS.settings, payload);
+      alert("포인트 경제 설정 저장 완료!");
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <SectionPanel title="시간당 포인트 설정" description="무기 등급별 기본 포인트와 5강 단위 추가 포인트를 전부 관리자 페이지에서 설정해.">
+        <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
+          <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <label className="text-xs text-gray-400 mb-2 block">시스템 사용 여부</label>
+                <button
+                  onClick={() => setValue({ enabled: !pointSettings.enabled })}
+                  className={cn("w-full h-[58px] rounded-2xl border font-black", pointSettings.enabled ? "bg-emerald-600 border-emerald-500 text-white" : "bg-black border-white/10 text-gray-400")}
+                >
+                  {pointSettings.enabled ? "활성화" : "비활성화"}
+                </button>
+              </div>
+              <AdminInput label="획득 주기(분)" value={String(pointSettings.cycle_minutes)} onChange={(v: any) => setValue({ cycle_minutes: Number(v || 60) })} />
+              <AdminInput label="하루 최대 포인트" value={String(pointSettings.daily_cap)} onChange={(v: any) => setValue({ daily_cap: Number(v || 500) })} />
+              <AdminInput label="5강마다 추가 포인트" value={String(pointSettings.enhancement_bonus_per_5)} onChange={(v: any) => setValue({ enhancement_bonus_per_5: Number(v || 2) })} />
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              {(["common","rare","epic","legendary"] as WeaponRarityKey[]).map((rarity) => (
+                <AdminInput
+                  key={rarity}
+                  label={`${WEAPON_RARITY_THEMES[rarity].label} 시간당 포인트`}
+                  value={String(pointSettings.rate_by_rarity[rarity] || 0)}
+                  onChange={(v: any) => setRate(rarity, v)}
+                />
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <button onClick={handleSave} className="px-6 py-3 rounded-2xl bg-purple-600 font-black">포인트 경제 저장</button>
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-white/10 bg-black/20 p-6">
+            <div className="text-[10px] uppercase tracking-[0.24em] text-purple-300 font-black">Preview</div>
+            <div className="mt-2 text-2xl font-black">강화 단계별 예시</div>
+            <div className="mt-4 space-y-3">
+              {[0, 5, 10, 15, 20, 25].map((level) => (
+                <div key={level} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="font-black">+{level}강 기준</div>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    {(["common","rare","epic","legendary"] as WeaponRarityKey[]).map((rarity) => (
+                      <div key={`${rarity}-${level}`} className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 flex items-center justify-between">
+                        <span>{WEAPON_RARITY_THEMES[rarity].label}</span>
+                        <span className="font-black text-amber-300">{Number(pointSettings.rate_by_rarity[rarity] || 0) + Math.floor(level / 5) * Number(pointSettings.enhancement_bonus_per_5 || 0)}P</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </SectionPanel>
+    </div>
+  );
+};
+
+
 const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
   const [adminTab, setAdminTab] = useState("레이드");
 
@@ -3169,11 +3078,11 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
     "가디언 토벌",
     "클래스",
     "길드 설정",
-    "홈 화면 관리",
     "공지 관리",
     "캐릭터 관리",
     "레이드 관리",
     "회원 관리",
+    "포인트 경제 관리",
     "포인트샵 관리",
   ];
 
@@ -3192,9 +3101,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
             key={tab}
             onClick={() => setAdminTab(tab)}
             className={`whitespace-nowrap px-6 py-2 rounded-full text-xs font-black tracking-widest uppercase transition-all ${
-              adminTab === tab
-                ? "bg-purple-600 text-white"
-                : "bg-white/5 text-gray-500 hover:bg-white/10"
+              adminTab === tab ? "bg-purple-600 text-white" : "bg-white/5 text-gray-500 hover:bg-white/10"
             }`}
           >
             {tab}
@@ -3206,16 +3113,12 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
         {adminTab === "레이드" && <RaidContentEditor isRaid />}
         {adminTab === "가디언 토벌" && <RaidContentEditor isRaid={false} />}
         {adminTab === "클래스" && <ClassContentEditor />}
-        {adminTab === "길드 설정" && (
-          <GuildSettingsEditor settings={settings} setSettings={setSettings} />
-        )}
-        {adminTab === "홈 화면 관리" && (
-          <HomeLayoutEditor settings={settings} setSettings={setSettings} />
-        )}
+        {adminTab === "길드 설정" && <GuildSettingsEditor settings={settings} setSettings={setSettings} />}
         {adminTab === "공지 관리" && <AdminNoticeManager user={user} profile={profile} />}
         {adminTab === "캐릭터 관리" && <AdminCharacterManager />}
         {adminTab === "레이드 관리" && <AdminRaidManager />}
         {adminTab === "회원 관리" && <AdminUserManager />}
+        {adminTab === "포인트 경제 관리" && <PointEconomyManager settings={settings} setSettings={setSettings} />}
         {adminTab === "포인트샵 관리" && <AdminPointShopManager />}
       </div>
     </motion.div>
@@ -3223,24 +3126,10 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
 };
 
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
-  const [saving, setSaving] = useState(false);
-
   const handleSave = async () => {
-    if (!supabase) return alert("Supabase 연결을 확인해줘.");
-    setSaving(true);
-
-    try {
-      const payload = buildSettingsPayload(settings);
-      const { error } = await getSupabaseOrThrow().from("settings").upsert(payload);
-      if (error) throw error;
-      setSettings(payload);
-      writeCache(CACHE_KEYS.settings, payload);
-      alert("길드 설정 업데이트 완료!");
-    } catch (error: any) {
-      alert(error?.message || "길드 설정 저장 중 오류가 발생했습니다.");
-    } finally {
-      setSaving(false);
-    }
+    const { error } = await supabase.from("settings").upsert(settings);
+    if (error) alert(error.message);
+    else alert("길드 설정 업데이트 완료!");
   };
 
   return (
@@ -3257,345 +3146,10 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
       />
       <button
         onClick={handleSave}
-        disabled={saving}
-        className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all disabled:opacity-60"
+        className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all"
       >
-        {saving ? "Saving..." : "Update Hero Section"}
+        Update Hero Section
       </button>
-    </div>
-  );
-};
-
-
-const HomeLayoutPreviewCard = ({
-  title,
-  subtitle,
-  accent = "purple",
-}: {
-  title: string;
-  subtitle: string;
-  accent?: "amber" | "purple" | "blue";
-}) => {
-  const accentClass =
-    accent === "amber"
-      ? "border-amber-500/20 bg-amber-500/10"
-      : accent === "blue"
-      ? "border-sky-500/20 bg-sky-500/10"
-      : "border-purple-500/20 bg-purple-500/10";
-
-  return (
-    <div className={cn("rounded-2xl border p-4", accentClass)}>
-      <div className="text-sm font-black">{title}</div>
-      <div className="mt-2 text-xs text-gray-300">{subtitle}</div>
-    </div>
-  );
-};
-
-const HomeLayoutPreview = ({ settings }: { settings: any }) => {
-  const visibility = normalizeHomeSectionVisibility(settings?.home_section_visibility);
-  const order = normalizeHomeSectionOrder(settings?.home_section_order).filter((key) => visibility[key] !== false);
-  const titles = normalizeHomeSectionTitles(settings?.home_section_titles);
-  const noticeLayout = settings?.home_notice_layout === "wide" ? "wide" : "compact";
-  const noticeLimit = normalizeHomeNoticeLimit(settings?.home_notice_limit);
-
-  return (
-    <div className="rounded-[2rem] border border-white/10 bg-black/30 p-6 space-y-4">
-      <div>
-        <div className="text-xs font-black uppercase text-purple-400 tracking-[0.25em]">
-          Live Preview
-        </div>
-        <h3 className="mt-2 text-2xl font-black">저장 전 메인 배치 미리보기</h3>
-        <p className="mt-2 text-sm text-gray-400">
-          실제 홈 섹션 순서와 노출 상태를 간단히 확인할 수 있어.
-        </p>
-      </div>
-
-      {order.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
-          현재 모든 섹션이 숨김 처리되어 있어.
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {order.map((key, index) => (
-            <div key={key} className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-black">
-                    Section {index + 1}
-                  </div>
-                  <div className="mt-1 text-lg font-black">{titles[key]}</div>
-                </div>
-                <div className="text-xs text-gray-500">{key}</div>
-              </div>
-
-              <div className="mt-4">
-                {key === "notice" && (
-                  <div className={cn("grid gap-3", noticeLayout === "compact" ? "md:grid-cols-[1.1fr,0.9fr]" : "grid-cols-1")}>
-                    <HomeLayoutPreviewCard
-                      title={noticeLayout === "compact" ? "대표 공지 카드" : "공지 리스트"}
-                      subtitle={`공지 ${noticeLimit}개 노출 · ${noticeLayout} 레이아웃`}
-                      accent="amber"
-                    />
-                    {noticeLayout === "compact" && (
-                      <div className="space-y-3">
-                        {Array.from({ length: Math.max(1, noticeLimit - 1) }).map((_, idx) => (
-                          <HomeLayoutPreviewCard
-                            key={`preview-notice-${idx}`}
-                            title={`보조 공지 ${idx + 1}`}
-                            subtitle="2줄 미리보기 형태"
-                            accent="amber"
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {key === "calendar" && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {Array.from({ length: 4 }).map((_, idx) => (
-                      <HomeLayoutPreviewCard
-                        key={`preview-calendar-${idx}`}
-                        title={`일정 블록 ${idx + 1}`}
-                        subtitle="월별 캘린더 셀 미리보기"
-                        accent="blue"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {key === "ranking" && (
-                  <div className="space-y-3">
-                    {["#1", "#2", "#3"].map((rank) => (
-                      <HomeLayoutPreviewCard
-                        key={rank}
-                        title={`${rank} 참여 랭커`}
-                        subtitle="월간 누적 참여 횟수 요약"
-                        accent="purple"
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const HomeLayoutEditor = ({ settings, setSettings }: any) => {
-  const [saving, setSaving] = useState(false);
-  const sectionOrder = normalizeHomeSectionOrder(settings?.home_section_order);
-  const visibility = normalizeHomeSectionVisibility(settings?.home_section_visibility);
-  const titles = normalizeHomeSectionTitles(settings?.home_section_titles);
-  const noticeLimit = normalizeHomeNoticeLimit(settings?.home_notice_limit);
-
-  const moveSection = (key: HomeSectionKey, direction: -1 | 1) => {
-    const currentOrder = [...sectionOrder];
-    const index = currentOrder.indexOf(key);
-    const targetIndex = index + direction;
-    if (index < 0 || targetIndex < 0 || targetIndex >= currentOrder.length) return;
-
-    const next = [...currentOrder];
-    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-    setSettings({ ...settings, home_section_order: next });
-  };
-
-  const handleSave = async () => {
-    if (!supabase) return alert("Supabase 연결을 확인해줘.");
-    setSaving(true);
-
-    try {
-      const payload = buildSettingsPayload(settings);
-      const { error } = await getSupabaseOrThrow().from("settings").upsert(payload);
-      if (error) throw error;
-      setSettings(payload);
-      writeCache(CACHE_KEYS.settings, payload);
-      alert("홈 화면 배치 저장 완료! 메인에서 바로 반영돼.");
-    } catch (error: any) {
-      alert(error?.message || "홈 화면 배치 저장 중 오류가 발생했습니다.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-8">
-      <div className="space-y-8">
-        <div className="rounded-[2rem] border border-white/10 bg-black/30 p-6 space-y-6">
-          <div>
-            <div className="text-xs font-black uppercase text-purple-400 tracking-[0.25em] mb-2">
-              Main Home Layout
-            </div>
-            <h3 className="text-2xl font-black">메인 홈 섹션 순서 / 노출 제어</h3>
-            <p className="text-sm text-gray-400 mt-2">
-              순서 변경, 숨김 처리, 제목 수정을 한 번에 저장할 수 있어.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {sectionOrder.map((key, index) => (
-              <div
-                key={key}
-                className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-4"
-              >
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="h-11 w-11 rounded-2xl border border-purple-500/20 bg-purple-500/10 flex items-center justify-center font-black text-purple-300 shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-black">{HOME_SECTION_LABELS[key]}</div>
-                      <div className="text-xs text-gray-500">{key}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() =>
-                        setSettings({
-                          ...settings,
-                          home_section_visibility: {
-                            ...visibility,
-                            [key]: !visibility[key],
-                          },
-                        })
-                      }
-                      className={cn(
-                        "px-4 py-2 rounded-xl border text-sm font-black transition",
-                        visibility[key]
-                          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-                          : "border-white/10 bg-black/30 text-gray-300"
-                      )}
-                    >
-                      {visibility[key] ? "표시 중" : "숨김"}
-                    </button>
-                    <button
-                      onClick={() => moveSection(key, -1)}
-                      disabled={index === 0}
-                      className="px-4 py-2 rounded-xl border border-white/10 bg-black/30 text-sm font-black disabled:opacity-30"
-                    >
-                      위로
-                    </button>
-                    <button
-                      onClick={() => moveSection(key, 1)}
-                      disabled={index === sectionOrder.length - 1}
-                      className="px-4 py-2 rounded-xl border border-white/10 bg-black/30 text-sm font-black disabled:opacity-30"
-                    >
-                      아래로
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid md:grid-cols-[1fr,160px] gap-3">
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-[0.2em] text-gray-500 mb-2">
-                      섹션 제목
-                    </div>
-                    <input
-                      value={titles[key]}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          home_section_titles: {
-                            ...titles,
-                            [key]: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-purple-400"
-                      placeholder={HOME_SECTION_LABELS[key]}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-[0.2em] text-gray-500 mb-2">
-                      현재 상태
-                    </div>
-                    <div className={cn(
-                      "rounded-xl border px-4 py-3 text-sm font-black",
-                      visibility[key]
-                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-                        : "border-white/10 bg-black/30 text-gray-400"
-                    )}>
-                      {visibility[key] ? "메인 노출" : "숨김 처리"}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[2rem] border border-white/10 bg-black/30 p-6 space-y-4">
-          <div className="text-xs font-black uppercase text-purple-400 tracking-[0.25em]">
-            Notice Layout
-          </div>
-          <h3 className="text-2xl font-black">공지사항 레이아웃 / 노출 개수</h3>
-          <p className="text-sm text-gray-400">
-            compact를 추천해. 대표 공지 + 보조 공지 구조로 공간 활용이 훨씬 좋아져.
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-3">
-            {[
-              { key: "compact", title: "Compact", desc: "대표 공지 1개 + 보조 리스트 형태" },
-              { key: "wide", title: "Wide", desc: "기존과 비슷한 넓은 공지 리스트 형태" },
-            ].map((item) => {
-              const active = (settings?.home_notice_layout || "compact") === item.key;
-              return (
-                <button
-                  key={item.key}
-                  onClick={() => setSettings({ ...settings, home_notice_layout: item.key })}
-                  className={cn(
-                    "text-left rounded-2xl border p-5 transition-all",
-                    active
-                      ? "border-purple-500 bg-purple-500/10"
-                      : "border-white/10 bg-white/5 hover:border-white/20"
-                  )}
-                >
-                  <div className="text-lg font-black">{item.title}</div>
-                  <div className="text-sm text-gray-400 mt-2">{item.desc}</div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div>
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-gray-500 mb-2">
-              메인 공지 노출 개수 (2~8)
-            </div>
-            <input
-              type="range"
-              min={2}
-              max={8}
-              step={1}
-              value={noticeLimit}
-              onChange={(e) =>
-                setSettings({
-                  ...settings,
-                  home_notice_limit: Number(e.target.value),
-                })
-              }
-              className="w-full"
-            />
-            <div className="mt-3 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-gray-300">
-              현재 메인 공지 {noticeLimit}개 노출
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all disabled:opacity-60"
-        >
-          {saving ? "Saving..." : "Update Home Layout"}
-        </button>
-      </div>
-
-      <HomeLayoutPreview settings={settings} />
     </div>
   );
 };
@@ -4609,6 +4163,9 @@ const MyRoom = ({ user, profile }: any) => {
   const [ownedWeapons, setOwnedWeapons] = useState<any[]>([]);
   const [ownedEnhanceItems, setOwnedEnhanceItems] = useState<any[]>([]);
   const [myPoint, setMyPoint] = useState(0);
+  const [ownedNicknameEffects, setOwnedNicknameEffects] = useState<any[]>([]);
+  const [pointRateSettings, setPointRateSettings] = useState<PointRateSettings>(normalizePointRateSettings(readCache<any>(CACHE_KEYS.settings, defaultSettings)?.point_rate_settings));
+  const [pointTickNow, setPointTickNow] = useState(Date.now());
   const [enhancingCharacterId, setEnhancingCharacterId] = useState<string | null>(null);
   const [expandedWeaponPanels, setExpandedWeaponPanels] = useState<Record<string, boolean>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -4783,6 +4340,24 @@ const MyRoom = ({ user, profile }: any) => {
     );
   }, [user?.id]);
 
+  const fetchOwnedNicknameEffects = useCallback(async () => {
+    if (!user?.id) return;
+    const client = getSupabaseOrThrow();
+    const { data, error } = await client
+      .from("user_owned_nickname_effects")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("fetchOwnedNicknameEffects error:", error);
+      setOwnedNicknameEffects([]);
+      return;
+    }
+
+    setOwnedNicknameEffects(data || []);
+  }, [user?.id]);
+
   const fetchOwnedEnhanceItems = useCallback(async () => {
     if (!user?.id) return;
     const client = getSupabaseOrThrow();
@@ -4843,9 +4418,83 @@ const MyRoom = ({ user, profile }: any) => {
       fetchOwnedBadges();
       fetchOwnedWeapons();
       fetchOwnedEnhanceItems();
+      fetchOwnedNicknameEffects();
       fetchMyPoint();
     }
-  }, [profile, user, fetchOwnedBadges, fetchOwnedWeapons, fetchOwnedEnhanceItems, fetchMyPoint]);
+  }, [profile, user, fetchOwnedBadges, fetchOwnedWeapons, fetchOwnedEnhanceItems, fetchOwnedNicknameEffects, fetchMyPoint]);
+
+  useEffect(() => {
+    const cachedSettings = readCache<any>(CACHE_KEYS.settings, defaultSettings);
+    setPointRateSettings(normalizePointRateSettings(cachedSettings?.point_rate_settings));
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setPointTickNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const equipNicknameEffect = async (effect: any) => {
+    const client = getSupabaseOrThrow();
+    const { error } = await client.from("profiles").update({
+      active_nickname_effect: effect?.nickname_effect_key || "violet",
+      nickname_gradient_from: effect?.nickname_gradient_from || null,
+      nickname_gradient_to: effect?.nickname_gradient_to || null,
+      nickname_glow_color: effect?.nickname_glow_color || null,
+    }).eq("id", user.id);
+
+    if (error) return alert(error.message);
+    alert("닉네임 효과 적용 완료!");
+    window.location.reload();
+  };
+
+  const clearNicknameEffect = async () => {
+    const client = getSupabaseOrThrow();
+    const { error } = await client.from("profiles").update({
+      active_nickname_effect: "none",
+      nickname_gradient_from: null,
+      nickname_gradient_to: null,
+      nickname_glow_color: null,
+    }).eq("id", user.id);
+
+    if (error) return alert(error.message);
+    alert("닉네임 효과 해제 완료!");
+    window.location.reload();
+  };
+
+  const bestPointCharacter = useMemo(() => getBestPointCharacter(characters, pointRateSettings), [characters, pointRateSettings]);
+
+  useEffect(() => {
+    const maybeGrantPassivePoint = async () => {
+      if (!user?.id || !pointRateSettings.enabled || !bestPointCharacter) return;
+      const info = getNextPointTickInfo(profile?.last_point_tick_at, pointRateSettings.cycle_minutes);
+      if (info.remainingMs > 0) return;
+
+      const today = getTodayKey();
+      const todayEarned = String(profile?.passive_points_date || "") === today ? Number(profile?.passive_points_today || 0) : 0;
+      const rate = Number(bestPointCharacter.hourly_point_rate || 0);
+      const dailyCap = Number(pointRateSettings.daily_cap || 0);
+      if (rate <= 0 || todayEarned >= dailyCap) return;
+
+      const award = Math.min(rate, dailyCap - todayEarned);
+      const client = getSupabaseOrThrow();
+      const nextPoint = Number(myPoint || 0) + award;
+      const { error } = await client.from("profiles").update({
+        points: nextPoint,
+        last_point_tick_at: new Date().toISOString(),
+        passive_points_today: todayEarned + award,
+        passive_points_date: today,
+      }).eq("id", user.id);
+
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      setMyPoint(nextPoint);
+    };
+
+    void maybeGrantPassivePoint();
+  }, [user?.id, bestPointCharacter, pointRateSettings, pointTickNow]);
 
   const usedBadgeIds = useMemo(() => {
     const used = new Set<string>();
@@ -5273,9 +4922,57 @@ const MyRoom = ({ user, profile }: any) => {
       <div className="bg-white/5 p-10 rounded-3xl space-y-6">
         <div className="grid md:grid-cols-4 gap-4">
           <InfoMiniCard title="닉네임" value={profile.nickname || "-"} />
-          <InfoMiniCard title="포인트" value={`${profile.points || 0}`} />
+          <InfoMiniCard title="포인트" value={`${myPoint || profile.points || 0}`} />
           <InfoMiniCard title="랭크" value={profile.rank_name || "Seed"} />
           <InfoMiniCard title="보유 뱃지" value={`${ownedBadges.length}개`} />
+        </div>
+
+        <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-4">
+          <div className="rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-black/30 to-transparent p-5">
+            <div className="text-[10px] uppercase tracking-[0.24em] font-black text-amber-300">Hourly Point Engine</div>
+            <div className="mt-2 text-2xl font-black">시간당 포인트 현황</div>
+            {bestPointCharacter ? (
+              <>
+                <div className="mt-3 text-sm text-gray-300">
+                  기준 캐릭터 <span className="font-black text-white">{bestPointCharacter.character_name}</span> · {bestPointCharacter.equipped_weapon_name} {getEnhancementDisplay(bestPointCharacter.equipped_weapon_level)}
+                </div>
+                <div className="mt-4 grid md:grid-cols-3 gap-3">
+                  <MiniStat label="1시간 획득" value={`${bestPointCharacter.hourly_point_rate}P`} />
+                  <MiniStat label="다음 지급까지" value={getNextPointTickInfo(profile?.last_point_tick_at, pointRateSettings.cycle_minutes).formatted} />
+                  <MiniStat label="5강 보너스" value={`+${Math.floor(normalizeEnhancementLevel(bestPointCharacter.equipped_weapon_level) / 5) * Number(pointRateSettings.enhancement_bonus_per_5 || 0)}P`} />
+                </div>
+                <div className="mt-3 text-xs text-gray-400">
+                  {WEAPON_RARITY_THEMES[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)].label} 기본 {pointRateSettings.rate_by_rarity[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)]}P + 강화 보너스 적용
+                </div>
+              </>
+            ) : (
+              <div className="mt-3 text-sm text-gray-500">장착 무기가 있는 캐릭터가 있어야 시간당 포인트가 계산돼.</div>
+            )}
+          </div>
+
+          <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
+            <div className="text-[10px] uppercase tracking-[0.24em] font-black text-fuchsia-300">Nickname FX</div>
+            <div className="mt-2 text-2xl font-black">닉네임 꾸미기</div>
+            <div className="mt-3 text-3xl font-black" style={getNicknameEffectStyle(profile)}>
+              {profile.nickname || "Guild Member"}
+            </div>
+            <div className="mt-4 space-y-3 max-h-[220px] overflow-y-auto pr-1">
+              <button onClick={clearNicknameEffect} className="w-full px-4 py-3 rounded-2xl bg-white/10 border border-white/10 text-sm font-black">
+                기본 닉네임으로 되돌리기
+              </button>
+              {ownedNicknameEffects.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-gray-500">
+                  아직 보유한 닉네임 효과가 없어. 포인트샵 닉네임 탭에서 구매해줘.
+                </div>
+              )}
+              {ownedNicknameEffects.map((effect: any) => (
+                <button key={effect.id} onClick={() => equipNicknameEffect(effect)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-left">
+                  <div className="text-lg font-black" style={getNicknameEffectStyle(effect)}>{effect.title || "닉네임 이펙트"}</div>
+                  <div className="mt-1 text-xs text-gray-400">보유 수량 {Number(effect.quantity || 1)}개 · 클릭하면 즉시 적용</div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-3 items-center">
@@ -6390,7 +6087,7 @@ const PointShopPage = ({ user, profile }: any) => {
   const [gachaRewards, setGachaRewards] = useState<Record<string, any[]>>({});
   const [myPoint, setMyPoint] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [shopTab, setShopTab] = useState<"badge" | "enhance" | "gacha">("badge");
+  const [shopTab, setShopTab] = useState<"guild" | "nickname" | "enhance" | "gacha">("guild");
   const [drawSession, setDrawSession] = useState<any>(null);
   const [drawingProductId, setDrawingProductId] = useState<string | null>(null);
 
@@ -6523,6 +6220,48 @@ const PointShopPage = ({ user, profile }: any) => {
       return;
     }
 
+    if (item.reward_type === "nickname_effect") {
+      const nextPoint = Math.max(0, myPoint - Number(item.price || 0));
+      const { error: pointError } = await client.from("profiles").update({ points: nextPoint }).eq("id", user.id);
+      if (pointError) return alert(pointError.message);
+
+      const { data: existingRow, error: inventoryReadError } = await client
+        .from("user_owned_nickname_effects")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("shop_item_id", item.id)
+        .maybeSingle();
+
+      if (inventoryReadError) return alert(`${inventoryReadError.message}\n\n닉네임 이펙트 SQL을 먼저 적용해줘.`);
+
+      if (existingRow?.id) {
+        const { error: inventoryUpdateError } = await client
+          .from("user_owned_nickname_effects")
+          .update({ quantity: Number(existingRow.quantity || 0) + 1, title: item.title })
+          .eq("id", existingRow.id)
+          .eq("user_id", user.id);
+
+        if (inventoryUpdateError) return alert(inventoryUpdateError.message);
+      } else {
+        const { error: inventoryInsertError } = await client.from("user_owned_nickname_effects").insert({
+          user_id: user.id,
+          shop_item_id: item.id,
+          title: item.title,
+          quantity: 1,
+          nickname_effect_key: item.nickname_effect_key || "violet",
+          nickname_gradient_from: item.nickname_gradient_from || null,
+          nickname_gradient_to: item.nickname_gradient_to || null,
+          nickname_glow_color: item.nickname_glow_color || null,
+        });
+
+        if (inventoryInsertError) return alert(`${inventoryInsertError.message}\n\n닉네임 이펙트 SQL을 먼저 적용해줘.`);
+      }
+
+      alert(`${item.title} 구매 완료! 마이룸에서 바로 적용할 수 있어.`);
+      fetchShop();
+      return;
+    }
+
     const { error } = await supabase.rpc("purchase_shop_item", {
       p_user_id: user.id,
       p_item_id: item.id,
@@ -6581,7 +6320,8 @@ const PointShopPage = ({ user, profile }: any) => {
     await fetchShop();
   };
 
-  const badgeItems = items.filter((item) => item.reward_type === "badge");
+  const guildItems = items.filter((item) => item.reward_type === "badge" && String(item.shop_category || "guild") !== "nickname");
+  const nicknameItems = items.filter((item) => item.reward_type === "nickname_effect" || String(item.shop_category || "") === "nickname");
   const enhanceItems = items.filter((item) => item.reward_type === "enhance_stone");
 
   const renderShopCards = (shopItems: any[], emptyText: string) => (
@@ -6922,7 +6662,7 @@ const AdminPointShopManager = () => {
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [rewardType, setRewardType] = useState<"badge" | "enhance_stone">("badge");
+  const [rewardType, setRewardType] = useState<"badge" | "enhance_stone" | "nickname_effect">("badge");
   const [badgeColor, setBadgeColor] = useState("#8b5cf6");
   const [badgeCardEffect, setBadgeCardEffect] = useState<BadgeEffectKey>("violet");
   const [badgeGradientFrom, setBadgeGradientFrom] = useState(BADGE_CARD_EFFECT_PRESETS.violet.from);
@@ -6964,6 +6704,13 @@ const AdminPointShopManager = () => {
     setBadgeGradientTo(preset.to);
     setBadgeGlowColor(preset.glow);
   }, [badgeCardEffect]);
+
+  useEffect(() => {
+    const preset = NICKNAME_EFFECT_PRESETS[nicknameEffectKey] || NICKNAME_EFFECT_PRESETS.violet;
+    setNicknameGradientFrom(preset.from);
+    setNicknameGradientTo(preset.to);
+    setNicknameGlowColor(preset.glow);
+  }, [nicknameEffectKey]);
 
   const fetchItems = async () => {
     const { data, error } = await supabase.from("point_shop_items").select("*").order("created_at", { ascending: false });
@@ -7043,6 +6790,11 @@ const AdminPointShopManager = () => {
     setPrice("");
     setDescription("");
     setRewardType("badge");
+    setManagerTab("guild");
+    setNicknameEffectKey("violet");
+    setNicknameGradientFrom(NICKNAME_EFFECT_PRESETS.violet.from);
+    setNicknameGradientTo(NICKNAME_EFFECT_PRESETS.violet.to);
+    setNicknameGlowColor(NICKNAME_EFFECT_PRESETS.violet.glow);
     setBadgeColor("#8b5cf6");
     setBadgeCardEffect("violet");
     setBadgeGradientFrom(BADGE_CARD_EFFECT_PRESETS.violet.from);
@@ -7062,12 +6814,17 @@ const AdminPointShopManager = () => {
       price: toNumber(price),
       is_active: true,
       reward_type: rewardType,
+      shop_category: managerTab,
       badge_name: rewardType === "badge" ? title : null,
       badge_color: rewardType === "badge" ? badgeColor : null,
       badge_card_effect: rewardType === "badge" ? badgeCardEffect : "none",
       badge_gradient_from: rewardType === "badge" ? badgeGradientFrom : null,
       badge_gradient_to: rewardType === "badge" ? badgeGradientTo : null,
       badge_glow_color: rewardType === "badge" ? badgeGlowColor : null,
+      nickname_effect_key: rewardType === "nickname_effect" ? nicknameEffectKey : null,
+      nickname_gradient_from: rewardType === "nickname_effect" ? nicknameGradientFrom : null,
+      nickname_gradient_to: rewardType === "nickname_effect" ? nicknameGradientTo : null,
+      nickname_glow_color: rewardType === "nickname_effect" ? nicknameGlowColor : null,
       enhance_bonus_rate: rewardType === "enhance_stone" ? Number(enhanceBonusRate || 0) : 0,
       available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
       available_to: availableTo ? new Date(availableTo).toISOString() : null,
@@ -7256,27 +7013,50 @@ const AdminPointShopManager = () => {
 
   return (
     <div className="space-y-10">
+      <div className="flex flex-wrap gap-3">
+        {[
+          { key: "guild", label: "길드 탭" },
+          { key: "nickname", label: "닉네임 탭" },
+          { key: "weapon", label: "무기 탭" },
+          { key: "enhance_stone", label: "강화석 탭" },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => {
+              setManagerTab(tab.key as any);
+              if (tab.key === "nickname") setRewardType("nickname_effect");
+              else if (tab.key === "enhance_stone") setRewardType("enhance_stone");
+              else setRewardType("badge");
+            }}
+            className={cn("px-4 py-2 rounded-full text-xs font-black tracking-[0.18em] uppercase border", managerTab === tab.key ? "bg-purple-600 border-purple-500 text-white" : "bg-black/30 border-white/10 text-gray-400")}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
       <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
         <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
           <div>
             <div className="text-[10px] uppercase tracking-[0.28em] font-black text-purple-300">Point Shop Item Builder</div>
             <div className="mt-2 text-2xl font-black">포인트샵 상품 생성</div>
-            <div className="text-sm text-gray-400 mt-1">뱃지 상품과 강화석 상품을 같은 관리 화면에서 만들 수 있어.</div>
+            <div className="text-sm text-gray-400 mt-1">길드/닉네임/무기/강화석 탭으로 분리해서 관리할 수 있어.</div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <AdminInput label="상품명" value={title} onChange={setTitle} placeholder={rewardType === "badge" ? "예: 여왕의 빛 뱃지" : "예: 고급 강화석"} />
+              <AdminInput label="상품명" value={title} onChange={setTitle} placeholder={rewardType === "badge" ? "예: 여왕의 빛 뱃지" : rewardType === "nickname_effect" ? "예: 황혼 그라데이션 닉네임" : "예: 고급 강화석"} />
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-2 block">상품 타입</label>
               <select
                 className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
                 value={rewardType}
-                onChange={(e) => setRewardType(e.target.value as "badge" | "enhance_stone")}
+                onChange={(e) => setRewardType(e.target.value as "badge" | "enhance_stone" | "nickname_effect")}
               >
                 <option value="badge">뱃지 상품</option>
                 <option value="enhance_stone">강화석 상품</option>
+                <option value="nickname_effect">닉네임 효과 상품</option>
               </select>
             </div>
           </div>
@@ -7299,9 +7079,44 @@ const AdminPointShopManager = () => {
               className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-purple-500 font-bold text-sm text-white min-h-[120px]"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={rewardType === "badge" ? "상품 설명 / 구매 욕구 자극 문구" : "예: 무기 강화 시 성공 확률을 높여주는 보조 아이템"}
+              placeholder={rewardType === "badge" ? "상품 설명 / 구매 욕구 자극 문구" : rewardType === "nickname_effect" ? "예: 마이룸 닉네임에 그라데이션과 글로우를 적용" : "예: 무기 강화 시 성공 확률을 높여주는 보조 아이템"}
             />
           </div>
+
+          {rewardType === "nickname_effect" && (
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 mb-2 block">닉네임 이펙트 프리셋</label>
+                  <select className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4" value={nicknameEffectKey} onChange={(e) => setNicknameEffectKey(e.target.value as NicknameEffectKey)}>
+                    {Object.entries(NICKNAME_EFFECT_PRESETS).map(([key, value]) => (
+                      <option key={key} value={key}>{value.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                  <div className="text-xs text-gray-400">미리보기</div>
+                  <div className="mt-3 text-2xl font-black" style={getNicknameEffectStyle({ nickname_effect_key: nicknameEffectKey, nickname_gradient_from: nicknameGradientFrom, nickname_gradient_to: nicknameGradientTo, nickname_glow_color: nicknameGlowColor })}>
+                    {title || "닉네임 EFFECT"}
+                  </div>
+                </div>
+              </div>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 mb-2 block">시작 색상</label>
+                  <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={nicknameGradientFrom} onChange={(e) => setNicknameGradientFrom(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-2 block">끝 색상</label>
+                  <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={nicknameGradientTo} onChange={(e) => setNicknameGradientTo(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-2 block">글로우 색상</label>
+                  <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={nicknameGlowColor} onChange={(e) => setNicknameGlowColor(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          )}
 
           {rewardType === "badge" && (
             <>
