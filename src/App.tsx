@@ -1071,13 +1071,20 @@ const getNicknameEffectTheme = (item: any) => {
   };
 };
 
+const hasNicknameEffect = (item: any) => {
+  const effectKey = normalizeNicknameEffectKey(item?.nickname_effect_key || item?.active_nickname_effect);
+  return effectKey !== "none";
+};
+
 const getNicknameEffectStyle = (item: any): React.CSSProperties => {
+  if (!hasNicknameEffect(item)) return {};
   const theme = getNicknameEffectTheme(item);
   return {
     backgroundImage: `linear-gradient(90deg, ${theme.from}, ${theme.to})`,
     WebkitBackgroundClip: "text",
     backgroundClip: "text",
     color: "transparent",
+    display: "inline-block",
     textShadow: `0 0 18px ${hexToRgba(theme.glow, 0.32)}`,
   };
 };
@@ -4368,6 +4375,11 @@ const MyRoom = ({ user, profile }: any) => {
         const equippedBadges = getCharacterBadges(item);
         return {
           ...item,
+          owner_profile_nickname: profile?.nickname || item.owner_nickname || item.nickname || "",
+          owner_active_nickname_effect: profile?.active_nickname_effect || "none",
+          owner_nickname_gradient_from: profile?.nickname_gradient_from || null,
+          owner_nickname_gradient_to: profile?.nickname_gradient_to || null,
+          owner_nickname_glow_color: profile?.nickname_glow_color || null,
           equipped_badges: equippedBadges,
           isEditing: false,
           draft: {
@@ -4664,8 +4676,20 @@ const MyRoom = ({ user, profile }: any) => {
     }).eq("id", user.id);
 
     if (error) return alert(error.message);
+    setProfile((prev: any) =>
+      prev
+        ? {
+            ...prev,
+            active_nickname_effect: effect?.nickname_effect_key || "violet",
+            nickname_gradient_from: effect?.nickname_gradient_from || null,
+            nickname_gradient_to: effect?.nickname_gradient_to || null,
+            nickname_glow_color: effect?.nickname_glow_color || null,
+          }
+        : prev
+    );
     alert("닉네임 효과 적용 완료!");
-    window.location.reload();
+    await fetchProfile(user.id);
+    await fetchCharacters();
   };
 
   const clearNicknameEffect = async () => {
@@ -4678,8 +4702,20 @@ const MyRoom = ({ user, profile }: any) => {
     }).eq("id", user.id);
 
     if (error) return alert(error.message);
+    setProfile((prev: any) =>
+      prev
+        ? {
+            ...prev,
+            active_nickname_effect: "none",
+            nickname_gradient_from: null,
+            nickname_gradient_to: null,
+            nickname_glow_color: null,
+          }
+        : prev
+    );
     alert("닉네임 효과 해제 완료!");
-    window.location.reload();
+    await fetchProfile(user.id);
+    await fetchCharacters();
   };
 
   const bestPointCharacter = useMemo(() => getBestPointCharacter(characters, pointRateSettings), [characters, pointRateSettings]);
@@ -5120,7 +5156,12 @@ const MyRoom = ({ user, profile }: any) => {
 
       <div className="bg-white/5 p-10 rounded-3xl space-y-6">
         <div className="grid md:grid-cols-4 gap-4">
-          <InfoMiniCard title="닉네임" value={profile.nickname || "-"} />
+          <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
+            <div className="text-[11px] uppercase tracking-[0.22em] text-gray-400 font-black">닉네임</div>
+            <div className="mt-3 text-2xl font-black" style={getNicknameEffectStyle(profile)}>
+              {profile.nickname || "-"}
+            </div>
+          </div>
           <InfoMiniCard title="포인트" value={`${myPoint || profile.points || 0}`} />
           <InfoMiniCard title="랭크" value={profile.rank_name || "Seed"} />
           <InfoMiniCard title="보유 뱃지" value={`${ownedBadges.length}개`} />
@@ -5999,12 +6040,46 @@ const GuildMembersPage = () => {
       }
 
       const overviewMap = new Map(overviewRows.map((row: any) => [row.id, row]));
-      const merged = (liveRows.length > 0 ? liveRows : overviewRows).map((row: any) => {
+      const baseMembers = (liveRows.length > 0 ? liveRows : overviewRows).map((row: any) => {
         const overview = overviewMap.get(row.id) || {};
         const baseRow = { ...overview, ...row };
         return {
           ...baseRow,
           equipped_badges: getCharacterBadges(baseRow),
+        };
+      });
+
+      const ownerIds = Array.from(
+        new Set(
+          baseMembers
+            .map((row: any) => String(row.owner_id || row.user_id || "").trim())
+            .filter(Boolean)
+        )
+      );
+
+      let profileMap = new Map<string, any>();
+      if (ownerIds.length > 0) {
+        const { data: profileRows, error: profileError } = await client
+          .from("profiles")
+          .select("id, nickname, active_nickname_effect, nickname_gradient_from, nickname_gradient_to, nickname_glow_color")
+          .in("id", ownerIds);
+
+        if (profileError) {
+          console.error("profiles nickname effect fetch error:", profileError);
+        } else {
+          profileMap = new Map((profileRows || []).map((row: any) => [String(row.id), row]));
+        }
+      }
+
+      const merged = baseMembers.map((row: any) => {
+        const ownerProfile = profileMap.get(String(row.owner_id || row.user_id || "")) || null;
+        return {
+          ...row,
+          owner_profile_nickname: ownerProfile?.nickname || row.owner_nickname || row.nickname || "",
+          owner_active_nickname_effect: ownerProfile?.active_nickname_effect || "none",
+          owner_nickname_gradient_from: ownerProfile?.nickname_gradient_from || null,
+          owner_nickname_gradient_to: ownerProfile?.nickname_gradient_to || null,
+          owner_nickname_glow_color: ownerProfile?.nickname_glow_color || null,
         };
       });
 
@@ -6124,7 +6199,17 @@ const GuildMembersPage = () => {
 
                     <div className="text-right shrink-0">
                       <div className="text-[10px] text-white/50 uppercase tracking-widest">Owner</div>
-                      <div className="text-sm font-bold">{member.owner_nickname || "-"}</div>
+                      <div
+                        className="text-sm font-bold"
+                        style={getNicknameEffectStyle({
+                          active_nickname_effect: member.owner_active_nickname_effect,
+                          nickname_gradient_from: member.owner_nickname_gradient_from,
+                          nickname_gradient_to: member.owner_nickname_gradient_to,
+                          nickname_glow_color: member.owner_nickname_glow_color,
+                        })}
+                      >
+                        {member.owner_profile_nickname || member.owner_nickname || "-"}
+                      </div>
                     </div>
                   </div>
 
