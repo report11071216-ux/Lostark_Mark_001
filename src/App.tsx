@@ -947,6 +947,26 @@ const normalizeAppSettings = (value: any) => {
   };
 };
 
+const fetchSingletonSettingsRow = async () => {
+  const client = getSupabaseOrThrow();
+
+  const attempts = [
+    () => client.from("settings").select("*").order("id", { ascending: true }).limit(1).maybeSingle(),
+    () => client.from("settings").select("*").limit(1).maybeSingle(),
+  ];
+
+  for (const run of attempts) {
+    const result = await run();
+    if (!result.error) return result;
+    const message = String(result.error.message || "");
+    if (!message.includes("column settings.created_at does not exist")) {
+      return result;
+    }
+  }
+
+  return client.from("settings").select("*").limit(1).maybeSingle();
+};
+
 const saveSingletonSettings = async (settingsLike: any) => {
   const client = getSupabaseOrThrow();
   const payload = normalizeAppSettings(settingsLike);
@@ -957,12 +977,7 @@ const saveSingletonSettings = async (settingsLike: any) => {
     return { error, payload };
   }
 
-  const { data: existing, error: fetchError } = await client
-    .from("settings")
-    .select("id")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const { data: existing, error: fetchError } = await fetchSingletonSettingsRow();
 
   if (fetchError) {
     return { error: fetchError, payload };
@@ -1213,7 +1228,7 @@ const fetchInitialData = async () => {
 
     const [postsRes, settingsRes] = await Promise.allSettled([
       client.from("posts").select("*").order("created_at", { ascending: false }),
-      client.from("settings").select("*").order("created_at", { ascending: true }).limit(1).maybeSingle(),
+      fetchSingletonSettingsRow(),
     ]);
 
     if (postsRes.status === "fulfilled") {
@@ -6858,11 +6873,14 @@ const AdminPointShopManager = () => {
   }, [badgeCardEffect]);
 
   useEffect(() => {
-    const preset = NICKNAME_EFFECT_PRESETS[nicknameEffectKey] || NICKNAME_EFFECT_PRESETS.violet;
-    setNicknameGradientFrom(preset.from);
-    setNicknameGradientTo(preset.to);
-    setNicknameGlowColor(preset.glow);
-  }, [nicknameEffectKey]);
+    if (managerTab === "nickname") {
+      setRewardType("nickname_effect");
+    } else if (managerTab === "enhance_stone") {
+      setRewardType("enhance_stone");
+    } else {
+      setRewardType("badge");
+    }
+  }, [managerTab]);
 
   const fetchItems = async () => {
     const { data, error } = await supabase.from("point_shop_items").select("*").order("created_at", { ascending: false });
@@ -6983,7 +7001,7 @@ const AdminPointShopManager = () => {
     };
 
     const { error } = await supabase.from("point_shop_items").insert(payload);
-    if (error) return alert(`${error.message}\n\n강화석 컬럼 SQL을 먼저 적용해줘.`);
+    if (error) return alert(`상품 생성 실패: ${error.message}`);
     resetItemForm();
     fetchItems();
   };
@@ -7204,7 +7222,13 @@ const AdminPointShopManager = () => {
               <select
                 className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
                 value={rewardType}
-                onChange={(e) => setRewardType(e.target.value as "badge" | "enhance_stone" | "nickname_effect")}
+                onChange={(e) => {
+                  const nextType = e.target.value as "badge" | "enhance_stone" | "nickname_effect";
+                  setRewardType(nextType);
+                  if (nextType === "nickname_effect") setManagerTab("nickname");
+                  else if (nextType === "enhance_stone") setManagerTab("enhance_stone");
+                  else setManagerTab("guild");
+                }}
               >
                 <option value="badge">뱃지 상품</option>
                 <option value="enhance_stone">강화석 상품</option>
@@ -7314,7 +7338,7 @@ const AdminPointShopManager = () => {
             onClick={createItem}
             className="w-full bg-purple-600 p-4 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all"
           >
-            {rewardType === "badge" ? "뱃지 상품 생성" : "강화석 상품 생성"}
+            {rewardType === "badge" ? "뱃지 상품 생성" : rewardType === "nickname_effect" ? "닉네임 상품 생성" : "강화석 상품 생성"}
           </button>
         </div>
 
@@ -7323,7 +7347,7 @@ const AdminPointShopManager = () => {
             <div className="absolute inset-0 pointer-events-none" style={{ background: rewardType === "badge" ? previewTheme.aura : "radial-gradient(circle at top right, rgba(250,204,21,0.22), transparent 40%)" }} />
             <div className="relative z-10">
               <div className="text-[10px] uppercase tracking-[0.28em] font-black" style={{ color: rewardType === "badge" ? previewTheme.chipText : "#fde68a" }}>
-                {rewardType === "badge" ? "Guild Card Live Preview" : "Enhance Item Preview"}
+                {rewardType === "badge" ? "Guild Card Live Preview" : rewardType === "nickname_effect" ? "Nickname Effect Preview" : "Enhance Item Preview"}
               </div>
               <div className="mt-4 flex items-center gap-4">
                 <div className="h-16 w-16 rounded-2xl bg-black/25 border border-white/10 flex items-center justify-center">
@@ -7332,7 +7356,7 @@ const AdminPointShopManager = () => {
                 <div className="min-w-0">
                   <div className="text-lg font-black truncate">{previewItem.title}</div>
                   <div className="text-sm text-white/70">
-                    {rewardType === "badge" ? previewTheme.label : getEnhancementItemEffectText(previewItem)}
+                    {rewardType === "badge" ? previewTheme.label : rewardType === "nickname_effect" ? getNicknameEffectTheme(previewItem).label : getEnhancementItemEffectText(previewItem)}
                   </div>
                 </div>
               </div>
