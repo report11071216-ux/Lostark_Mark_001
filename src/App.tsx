@@ -851,7 +851,7 @@ const HomeNoticeSection = ({
                 {title}
               </h2>
               <p className="mt-2 text-sm md:text-base text-gray-400">
-                자주 확인해야 하는 공지를 카드형으로 빠르게 확인할 수 있어.
+               공지사항을 확인하세요.
               </p>
             </div>
 
