@@ -1120,8 +1120,21 @@ const PassivePointBackgroundSync = ({
   const syncLockRef = useRef(false);
   const passiveRpcUnavailableRef = useRef(false);
 
+  const refreshProfileSafely = useCallback(async () => {
+    try {
+      await onProfileRefresh();
+    } catch (error) {
+      console.error("PassivePointBackgroundSync profile refresh error:", error);
+    }
+  }, [onProfileRefresh]);
+
   const runSync = useCallback(async (reason: "boot" | "interval" | "focus" | "visible" = "interval") => {
-    if (!userId || syncLockRef.current || passiveRpcUnavailableRef.current) return;
+    if (!userId || syncLockRef.current) return;
+
+    if (passiveRpcUnavailableRef.current) {
+      await refreshProfileSafely();
+      return;
+    }
 
     syncLockRef.current = true;
     try {
@@ -1133,29 +1146,35 @@ const PassivePointBackgroundSync = ({
       if (error) {
         if (isMissingSupabaseResourceError(error, "process_passive_point_ticks_for_user")) {
           passiveRpcUnavailableRef.current = true;
+          await refreshProfileSafely();
           return;
         }
         console.error(`PassivePointBackgroundSync ${reason} error:`, error);
+        await refreshProfileSafely();
         return;
       }
 
       if (data && typeof data === "object") {
         const awarded = Number((data as any).awarded || 0);
         const reasonText = String((data as any).reason || "");
-        if (awarded > 0 || ["initialized", "cap_reached"].includes(reasonText)) {
-          await onProfileRefresh();
+        if (awarded > 0 || ["initialized", "cap_reached", "waiting", "disabled", "no_equipped_weapon"].includes(reasonText)) {
+          await refreshProfileSafely();
         }
+      } else {
+        await refreshProfileSafely();
       }
     } catch (error) {
       if (isMissingSupabaseResourceError(error, "process_passive_point_ticks_for_user")) {
         passiveRpcUnavailableRef.current = true;
+        await refreshProfileSafely();
         return;
       }
       console.error(`PassivePointBackgroundSync ${reason} unexpected error:`, error);
+      await refreshProfileSafely();
     } finally {
       syncLockRef.current = false;
     }
-  }, [userId, onProfileRefresh]);
+  }, [userId, refreshProfileSafely]);
 
   useEffect(() => {
     if (!userId) return;
