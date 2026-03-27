@@ -63,8 +63,12 @@ const withTimeout = async <T,>(promise: Promise<T>, ms = 12000): Promise<T> => {
 
 const CACHE_KEYS = {
   posts: "inxx_cache_posts_v2",
-  settings: "inxx_cache_settings_v2",
+  settings: "inxx_cache_settings_v3",
+  homeNotices: "inxx_cache_home_notices_v1",
 };
+
+const getMonthCacheKey = (year: number, month: number) =>
+  `inxx_cache_calendar_${year}_${String(month + 1).padStart(2, "0")}_v1`;
 
 const readCache = <T,>(key: string, fallback: T): T => {
   try {
@@ -103,10 +107,55 @@ const RAID_TYPE_OPTIONS = ["8인", "4인"];
 const CONTENT_MODE_OPTIONS = ["raid", "anime"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const defaultSettings = {
+type HomeSectionKey = "notice" | "calendar" | "ranking";
+
+const DEFAULT_HOME_SECTION_ORDER: HomeSectionKey[] = ["notice", "calendar", "ranking"];
+const HOME_SECTION_LABELS: Record<HomeSectionKey, string> = {
+  notice: "길드 공지사항",
+  calendar: "월별 레이드 일정",
+  ranking: "월별 참여 랭킹",
+};
+
+const normalizeHomeSectionOrder = (value: any): HomeSectionKey[] => {
+  const raw = Array.isArray(value)
+    ? value
+    : typeof value === "string"
+    ? value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+
+  const normalized = raw.filter((item): item is HomeSectionKey =>
+    ["notice", "calendar", "ranking"].includes(String(item))
+  );
+
+  const unique = Array.from(new Set(normalized));
+  for (const key of DEFAULT_HOME_SECTION_ORDER) {
+    if (!unique.includes(key)) unique.push(key);
+  }
+  return unique.slice(0, DEFAULT_HOME_SECTION_ORDER.length);
+};
+
+const parseSettingsRecord = (raw: any) => ({
+  guild_name: raw?.guild_name ?? "INXX",
+  guild_description: raw?.guild_description ?? "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
+  home_section_order: normalizeHomeSectionOrder(raw?.home_section_order),
+  home_notice_layout: raw?.home_notice_layout === "wide" ? "wide" : "compact",
+});
+
+const buildSettingsPayload = (settings: any) => ({
+  ...settings,
+  home_section_order: normalizeHomeSectionOrder(settings?.home_section_order),
+  home_notice_layout: settings?.home_notice_layout === "wide" ? "wide" : "compact",
+});
+
+const defaultSettings = parseSettingsRecord({
   guild_name: "INXX",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
-};
+  home_section_order: DEFAULT_HOME_SECTION_ORDER,
+  home_notice_layout: "compact",
+});
 
 const emptyRaidForm = {
   raid_name: "",
@@ -684,81 +733,85 @@ const WeaponImage = ({
 
 
 
-const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: ProfileLike }) => {
-  const [notices, setNotices] = useState<PostLike[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchNotices();
-  }, []);
-
-  const fetchNotices = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("posts")
-      .select("*")
-      .eq("is_notice", true)
-      .order("is_pinned", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    if (error) {
-      console.error(error);
-      setNotices([]);
-    } else {
-      setNotices(data || []);
-    }
-    setLoading(false);
-  };
+const HomeNoticeSection = ({
+  user,
+  profile,
+  notices,
+  loading,
+  layout = "compact",
+}: {
+  user: UserLike;
+  profile: ProfileLike;
+  notices: PostLike[];
+  loading: boolean;
+  layout?: "compact" | "wide";
+}) => {
+  const pinnedCount = notices.filter((item) => item.is_pinned).length;
+  const previewItems = layout === "wide" ? notices : notices.slice(0, 4);
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-8 md:pt-12 pb-6">
-      <div className="rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-white/5 to-transparent overflow-hidden">
+      <div
+        className={cn(
+          "rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-white/5 to-transparent overflow-hidden",
+          layout === "compact" ? "shadow-[0_0_40px_rgba(251,191,36,0.08)]" : ""
+        )}
+      >
         <div className="p-6 md:p-8 border-b border-white/10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
+          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+            <div className="min-w-0">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-300 text-[11px] font-black tracking-[0.2em] uppercase">
                 <Bell size={14} />
                 Guild Notice
               </div>
-              <h2 className="mt-4 text-3xl md:text-5xl font-black tracking-tight">
+              <h2 className="mt-4 text-2xl md:text-4xl font-black tracking-tight">
                 길드 공지사항
               </h2>
-              <p className="mt-2 text-gray-400">
-                공지사항.
+              <p className="mt-2 text-sm md:text-base text-gray-400">
+                자주 확인해야 하는 공지를 카드형으로 빠르게 확인할 수 있어.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 min-w-fit">
+            <div className={cn(
+              "grid gap-3 min-w-fit",
+              layout === "compact" ? "grid-cols-3" : "grid-cols-2 md:grid-cols-3"
+            )}>
               <MiniStat label="공지" value={notices.length} />
-              <MiniStat label="고정" value={notices.filter((x) => x.is_pinned).length} />
+              <MiniStat label="고정" value={pinnedCount} />
               <MiniStat label="권한" value={profile?.role === "admin" ? "관리자" : user ? "길드원" : "게스트"} />
             </div>
           </div>
         </div>
 
-        <div className="p-4 md:p-6 space-y-3">
+        <div className={cn("p-4 md:p-6", layout === "compact" ? "grid md:grid-cols-2 gap-3" : "space-y-3")}>
           {loading && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
+            <div className={cn(
+              "rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500",
+              layout === "compact" ? "md:col-span-2" : ""
+            )}>
               공지 불러오는 중...
             </div>
           )}
 
           {!loading && notices.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
+            <div className={cn(
+              "rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500",
+              layout === "compact" ? "md:col-span-2" : ""
+            )}>
               아직 등록된 공지가 없어.
             </div>
           )}
 
           {!loading &&
-            notices.map((notice) => (
+            previewItems.map((notice) => (
               <button
                 key={notice.id}
                 className={cn(
                   "w-full text-left rounded-2xl border p-4 md:p-5 transition hover:border-amber-400/40",
                   notice.is_pinned
                     ? "bg-amber-500/10 border-amber-500/20"
-                    : "bg-white/5 border-white/10"
+                    : "bg-white/5 border-white/10",
+                  layout === "compact" ? "h-full" : ""
                 )}
               >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -773,13 +826,364 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                   </span>
                   <span className="text-xs text-gray-500">{formatDateTime(notice.created_at)}</span>
                 </div>
-                <div className="text-lg md:text-xl font-black">{notice.title}</div>
-                <div className="mt-2 text-sm text-gray-300 line-clamp-2">{notice.content}</div>
+                <div className="text-base md:text-lg font-black line-clamp-1">{notice.title}</div>
+                <div className={cn("mt-2 text-sm text-gray-300", layout === "compact" ? "line-clamp-3" : "line-clamp-2")}>
+                  {notice.content}
+                </div>
               </button>
             ))}
         </div>
       </div>
     </section>
+  );
+};
+
+const getMonthlyCharacterStats = (participants: ParticipantLike[], raids: ScheduleLike[]) => {
+  const map = new Map<string, { nickname: string; count: number; raidCount: number }>();
+
+  participants.forEach((participant: any) => {
+    const nickname = (participant.character_name || "이름없음").trim();
+    const existing = map.get(nickname) || {
+      nickname,
+      count: 0,
+      raidCount: 0,
+    };
+
+    existing.count += 1;
+    map.set(nickname, existing);
+  });
+
+  raids.forEach((raid) => {
+    const raidParticipants = participants.filter((p: any) => p.schedule_id === raid.id);
+    const uniqueNicknames = Array.from(
+      new Set(raidParticipants.map((p: any) => (p.character_name || "이름없음").trim()))
+    );
+
+    uniqueNicknames.forEach((nickname) => {
+      const existing = map.get(nickname) || { nickname, count: 0, raidCount: 0 };
+      existing.raidCount += 1;
+      map.set(nickname, existing);
+    });
+  });
+
+  return Array.from(map.values()).sort((a, b) => {
+    if (b.raidCount !== a.raidCount) return b.raidCount - a.raidCount;
+    if (b.count !== a.count) return b.count - a.count;
+    return a.nickname.localeCompare(b.nickname, "ko");
+  });
+};
+
+const HomeMonthlyRankingSection = ({
+  raids,
+  participants,
+  loading,
+  currentDate,
+}: {
+  raids: ScheduleLike[];
+  participants: ParticipantLike[];
+  loading: boolean;
+  currentDate: Date;
+}) => {
+  const monthlyCharacterStats = useMemo(
+    () => getMonthlyCharacterStats(participants, raids),
+    [participants, raids]
+  );
+
+  return (
+    <section className="max-w-7xl mx-auto px-6 py-6 md:py-8">
+      <SectionPanel
+        title="월별 참여 랭킹"
+        description={`${formatMonthLabel(currentDate.getFullYear(), currentDate.getMonth())} 기준 캐릭터 참가횟수 확인.`}
+      >
+        {loading ? (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-gray-500">
+            랭킹 집계 중...
+          </div>
+        ) : monthlyCharacterStats.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-gray-500">
+            아직 이번 달 참여 데이터가 없습니다.
+          </div>
+        ) : (
+          <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-6">
+            <div className="space-y-3">
+              {monthlyCharacterStats.slice(0, 5).map((item, index) => (
+                <div
+                  key={item.nickname}
+                  className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4 flex items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-500/20 flex items-center justify-center text-sm font-black text-purple-300 shrink-0">
+                      #{index + 1}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-black truncate">{item.nickname}</div>
+                      <div className="text-xs text-gray-500">월간 레이드 참여 요약</div>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <div className="text-lg font-black text-white">{item.raidCount}회</div>
+                    <div className="text-xs text-gray-500">등록 {item.count}건</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-3 max-h-[540px] overflow-y-auto pr-1">
+              {monthlyCharacterStats.map((item, index) => (
+                <div
+                  key={`${item.nickname}-detail`}
+                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-11 w-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                        <BarChart3 size={16} className="text-purple-300" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-black truncate">
+                          #{index + 1} {item.nickname}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          월간 레이드 참여 횟수 {item.raidCount}회
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="text-xl font-black text-purple-300">{item.raidCount}</div>
+                      <div className="text-[11px] text-gray-500">raid count</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 h-2 rounded-full bg-black/40 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-indigo-500"
+                      style={{
+                        width: `${
+                          monthlyCharacterStats[0]?.raidCount
+                            ? (item.raidCount / monthlyCharacterStats[0].raidCount) * 100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-3 text-xs text-gray-400">
+                    참가 등록 총 {item.count}건
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </SectionPanel>
+    </section>
+  );
+};
+
+const HomeDashboard = ({
+  user,
+  profile,
+  settings,
+  contentView,
+  setContentView,
+}: {
+  user: UserLike;
+  profile: ProfileLike;
+  settings: typeof defaultSettings;
+  contentView: string;
+  setContentView: (value: string) => void;
+}) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [notices, setNotices] = useState<PostLike[]>(() =>
+    readCache<PostLike[]>(CACHE_KEYS.homeNotices, [])
+  );
+  const [noticesLoading, setNoticesLoading] = useState(notices.length === 0);
+  const [raids, setRaids] = useState<ScheduleLike[]>([]);
+  const [participants, setParticipants] = useState<ParticipantLike[]>([]);
+  const [calendarLoading, setCalendarLoading] = useState(true);
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const daysInMonth = useMemo(() => new Date(year, month + 1, 0).getDate(), [year, month]);
+
+  const fetchNotices = useCallback(async () => {
+    if (!supabase) return;
+    setNoticesLoading(true);
+
+    try {
+      const client = getSupabaseOrThrow();
+      const { data, error } = await withTimeout(
+        client
+          .from("posts")
+          .select("*")
+          .eq("is_notice", true)
+          .order("is_pinned", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(6),
+        5000
+      );
+
+      if (error) {
+        console.error("home notices fetch error:", error);
+        return;
+      }
+
+      const next = data || [];
+      setNotices(next);
+      writeCache(CACHE_KEYS.homeNotices, next);
+    } catch (error) {
+      console.error("home notices unexpected error:", error);
+    } finally {
+      setNoticesLoading(false);
+    }
+  }, []);
+
+  const fetchCalendarData = useCallback(async () => {
+    if (!supabase) return;
+    const cacheKey = getMonthCacheKey(year, month);
+    const cached = readCache<{ raids: ScheduleLike[]; participants: ParticipantLike[] } | null>(cacheKey, null);
+
+    if (cached?.raids?.length || cached?.participants?.length) {
+      setRaids(cached.raids || []);
+      setParticipants(cached.participants || []);
+      setCalendarLoading(false);
+    } else {
+      setCalendarLoading(true);
+    }
+
+    try {
+      const client = getSupabaseOrThrow();
+      const monthStart = formatDate(year, month, 1);
+      const monthEnd = formatDate(year, month, daysInMonth);
+
+      const { data: rData, error: raidError } = await withTimeout(
+        client
+          .from("raid_schedules")
+          .select("*")
+          .gte("raid_date", monthStart)
+          .lte("raid_date", monthEnd)
+          .order("raid_date", { ascending: true })
+          .order("raid_time", { ascending: true }),
+        7000
+      );
+
+      if (raidError) {
+        console.error("raid_schedules fetch error:", raidError);
+        if (!cached) {
+          setRaids([]);
+          setParticipants([]);
+        }
+        return;
+      }
+
+      const scheduleIds = (rData || []).map((r: any) => r.id);
+      let pData: any[] = [];
+
+      if (scheduleIds.length > 0) {
+        const { data, error: participantError } = await withTimeout(
+          client
+            .from("raid_participants")
+            .select("*")
+            .in("schedule_id", scheduleIds),
+          7000
+        );
+
+        if (participantError) {
+          console.error("raid_participants fetch error:", participantError);
+        } else {
+          pData = data || [];
+        }
+      }
+
+      setRaids(rData || []);
+      setParticipants(pData || []);
+      writeCache(cacheKey, { raids: rData || [], participants: pData || [] });
+    } catch (error) {
+      console.error("fetchCalendarData error:", error);
+      if (!cached) {
+        setRaids([]);
+        setParticipants([]);
+      }
+    } finally {
+      setCalendarLoading(false);
+    }
+  }, [daysInMonth, month, year]);
+
+  useEffect(() => {
+    void fetchNotices();
+  }, [fetchNotices]);
+
+  useEffect(() => {
+    void fetchCalendarData();
+  }, [fetchCalendarData]);
+
+  const sectionOrder = normalizeHomeSectionOrder(settings?.home_section_order);
+
+  return (
+    <>
+      {sectionOrder.map((sectionKey) => {
+        if (sectionKey === "notice") {
+          return (
+            <HomeNoticeSection
+              key={sectionKey}
+              user={user}
+              profile={profile}
+              notices={notices}
+              loading={noticesLoading}
+              layout={settings?.home_notice_layout === "wide" ? "wide" : "compact"}
+            />
+          );
+        }
+
+        if (sectionKey === "calendar") {
+          return (
+            <RaidCalendar
+              key={sectionKey}
+              user={user}
+              profile={profile}
+              currentDate={currentDate}
+              setCurrentDate={setCurrentDate}
+              raids={raids}
+              participants={participants}
+              calendarLoading={calendarLoading}
+              onRefresh={fetchCalendarData}
+            />
+          );
+        }
+
+        return (
+          <HomeMonthlyRankingSection
+            key={sectionKey}
+            raids={raids}
+            participants={participants}
+            loading={calendarLoading}
+            currentDate={currentDate}
+          />
+        );
+      })}
+
+      <div className="max-w-7xl mx-auto px-6 mb-12">
+        <div className="flex justify-center gap-6 md:gap-12 border-b border-white/5 pb-6 overflow-x-auto">
+          {["레이드", "가디언 토벌", "클래스"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setContentView(tab)}
+              className={`text-lg md:text-xl font-black italic uppercase transition-all whitespace-nowrap ${
+                contentView === tab
+                  ? "text-purple-400 scale-105 underline underline-offset-8"
+                  : "text-gray-600 hover:text-gray-400"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <MainContentViewer type={contentView} />
+    </>
   );
 };
 
@@ -910,10 +1314,7 @@ useEffect(() => {
   }
 
   if (cachedSettings) {
-    setSettings({
-      guild_name: cachedSettings.guild_name ?? defaultSettings.guild_name,
-      guild_description: cachedSettings.guild_description ?? defaultSettings.guild_description,
-    });
+    setSettings(parseSettingsRecord(cachedSettings));
   }
 
   const init = async () => {
@@ -1050,11 +1451,7 @@ const fetchInitialData = async () => {
       if (error) {
         console.error("settings fetch error:", error);
       } else if (data) {
-        const nextSettings = {
-          guild_name: data.guild_name ?? defaultSettings.guild_name,
-          guild_description:
-            data.guild_description ?? defaultSettings.guild_description,
-        };
+        const nextSettings = parseSettingsRecord(data);
 
         setSettings(nextSettings);
         writeCache(CACHE_KEYS.settings, nextSettings);
@@ -1132,28 +1529,7 @@ const fetchInitialData = async () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <HomeNoticeSection user={user} profile={profile} />
-                <RaidCalendar user={user} profile={profile} />
-
-                <div className="max-w-7xl mx-auto px-6 mb-12">
-                  <div className="flex justify-center gap-6 md:gap-12 border-b border-white/5 pb-6 overflow-x-auto">
-                    {["레이드", "가디언 토벌", "클래스"].map((tab) => (
-                      <button
-                        key={tab}
-                        onClick={() => setContentView(tab)}
-                        className={`text-lg md:text-xl font-black italic uppercase transition-all whitespace-nowrap ${
-                          contentView === tab
-                            ? "text-purple-400 scale-105 underline underline-offset-8"
-                            : "text-gray-600 hover:text-gray-400"
-                        }`}
-                      >
-                        {tab}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <MainContentViewer type={contentView} />
+                <HomeDashboard user={user} profile={profile} settings={settings} contentView={contentView} setContentView={setContentView} />
               </motion.div>
             )}
 
@@ -1706,14 +2082,19 @@ const StatCard = ({
   </div>
 );
 
-const RaidCalendar = ({ user, profile }: any) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [raids, setRaids] = useState<ScheduleLike[]>([]);
-  const [participants, setParticipants] = useState<ParticipantLike[]>([]);
+const RaidCalendar = ({
+  user,
+  profile,
+  currentDate,
+  setCurrentDate,
+  raids,
+  participants,
+  calendarLoading,
+  onRefresh,
+}: any) => {
   const [selectedDate, setSelectedDate] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedRaid, setSelectedRaid] = useState<any>(null);
-  const [calendarLoading, setCalendarLoading] = useState(true);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -1722,108 +2103,20 @@ const RaidCalendar = ({ user, profile }: any) => {
   const firstDayOffset = getWeekdayIndexMondayStart(firstDate);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  useEffect(() => {
-    fetchCalendarData();
-  }, [year, month]);
-
-  const fetchCalendarData = async () => {
-    setCalendarLoading(true);
-
-    try {
-      const monthStart = formatDate(year, month, 1);
-      const monthEnd = formatDate(year, month, daysInMonth);
-
-      const { data: rData, error: raidError } = await supabase
-        .from("raid_schedules")
-        .select("*")
-        .gte("raid_date", monthStart)
-        .lte("raid_date", monthEnd)
-        .order("raid_date", { ascending: true })
-        .order("raid_time", { ascending: true });
-
-      if (raidError) {
-        console.error("raid_schedules fetch error:", raidError);
-        setRaids([]);
-        setParticipants([]);
-        return;
-      }
-
-      const scheduleIds = (rData || []).map((r: any) => r.id);
-
-      let pData: any[] = [];
-      if (scheduleIds.length > 0) {
-        const { data, error: participantError } = await supabase
-          .from("raid_participants")
-          .select("*")
-          .in("schedule_id", scheduleIds);
-
-        if (participantError) {
-          console.error("raid_participants fetch error:", participantError);
-        } else {
-          pData = data || [];
-        }
-      }
-
-      setRaids(rData || []);
-      setParticipants(pData || []);
-    } catch (error) {
-      console.error("fetchCalendarData error:", error);
-      setRaids([]);
-      setParticipants([]);
-    } finally {
-      setCalendarLoading(false);
-    }
-  };
-
   const monthStats = useMemo(() => {
     const totalRaids = raids.length;
     const totalParticipants = participants.length;
-    const fullCount = raids.filter((raid) => {
-      const raidParticipants = participants.filter((p) => p.schedule_id === raid.id);
+    const fullCount = raids.filter((raid: any) => {
+      const raidParticipants = participants.filter((p: any) => p.schedule_id === raid.id);
       return raidParticipants.length >= getCapacity(raid).maxParticipants;
     }).length;
 
     return { totalRaids, totalParticipants, fullCount };
   }, [raids, participants]);
 
-  const monthlyCharacterStats = useMemo(() => {
-    const map = new Map<string, { nickname: string; count: number; raidCount: number }>();
-
-    participants.forEach((participant: any) => {
-      const nickname = (participant.character_name || "이름없음").trim();
-      const existing = map.get(nickname) || {
-        nickname,
-        count: 0,
-        raidCount: 0,
-      };
-
-      existing.count += 1;
-      map.set(nickname, existing);
-    });
-
-    raids.forEach((raid) => {
-      const raidParticipants = participants.filter((p: any) => p.schedule_id === raid.id);
-      const uniqueNicknames = Array.from(
-        new Set(raidParticipants.map((p: any) => (p.character_name || "이름없음").trim()))
-      );
-
-      uniqueNicknames.forEach((nickname) => {
-        const existing = map.get(nickname) || { nickname, count: 0, raidCount: 0 };
-        existing.raidCount += 1;
-        map.set(nickname, existing);
-      });
-    });
-
-    return Array.from(map.values()).sort((a, b) => {
-      if (b.raidCount !== a.raidCount) return b.raidCount - a.raidCount;
-      if (b.count !== a.count) return b.count - a.count;
-      return a.nickname.localeCompare(b.nickname, "ko");
-    });
-  }, [participants, raids]);
-
   return (
-    <section className="max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-white/5">
-      <div className="grid lg:grid-cols-[1.2fr,0.8fr] gap-6 mb-8">
+    <section className="max-w-7xl mx-auto px-6 py-10 md:py-16 border-t border-white/5">
+      <div className="mb-8">
         <SectionPanel
           title="Raid Calendar"
           description="월별 레이드 일정."
@@ -1859,53 +2152,20 @@ const RaidCalendar = ({ user, profile }: any) => {
             </div>
           </div>
         </SectionPanel>
-
-        <SectionPanel
-          title="월별 참여 랭킹"
-          description="이번 달 기준 캐릭터 참가횟수 확인."
-        >
-          <div className="space-y-3">
-            {monthlyCharacterStats.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-center text-sm text-gray-500">
-                아직 이번 달 참여 데이터가 없습니다.
-              </div>
-            )}
-
-            {monthlyCharacterStats.slice(0, 6).map((item, index) => (
-              <div
-                key={item.nickname}
-                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4 flex items-center justify-between gap-4"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-500/20 flex items-center justify-center text-sm font-black text-purple-300 shrink-0">
-                    #{index + 1}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-black truncate">{item.nickname}</div>
-                    <div className="text-xs text-gray-500">월간 레이드 참여 요약</div>
-                  </div>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <div className="text-lg font-black text-white">{item.raidCount}회</div>
-                  <div className="text-xs text-gray-500">등록 {item.count}건</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </SectionPanel>
       </div>
 
-      <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-6">
-        <div className="bg-slate-950/55 rounded-[2rem] md:rounded-[3rem] border border-white/10 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.08)]">
-          <div className="grid grid-cols-7 text-center text-[10px] md:text-xs text-gray-500 border-b border-white/5 uppercase tracking-[0.2em]">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
-              <div key={dayLabel} className="p-4">
-                {dayLabel}
-              </div>
-            ))}
-          </div>
+      <div className="bg-slate-950/55 rounded-[2rem] md:rounded-[3rem] border border-white/10 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.08)]">
+        <div className="grid grid-cols-7 text-center text-[10px] md:text-xs text-gray-500 border-b border-white/5 uppercase tracking-[0.2em]">
+          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
+            <div key={dayLabel} className="p-4">
+              {dayLabel}
+            </div>
+          ))}
+        </div>
 
+        {calendarLoading ? (
+          <div className="py-16 text-center text-gray-500 font-bold">달력 불러오는 중...</div>
+        ) : (
           <div className="grid grid-cols-7 gap-[1px] bg-white/5">
             {Array.from({ length: firstDayOffset }).map((_, i) => (
               <div key={`empty-${i}`} className="bg-[#0a0a0a] min-h-[150px] md:min-h-[180px]" />
@@ -1913,7 +2173,7 @@ const RaidCalendar = ({ user, profile }: any) => {
 
             {days.map((day) => {
               const dateStr = formatDate(year, month, day);
-              const dayRaids = raids.filter((raid) => raid.raid_date === dateStr);
+              const dayRaids = raids.filter((raid: any) => raid.raid_date === dateStr);
               const today = new Date();
               const isToday = isSameDay(new Date(year, month, day), today);
 
@@ -1961,11 +2221,11 @@ const RaidCalendar = ({ user, profile }: any) => {
                       </div>
                     )}
 
-                    {dayRaids.map((raid) => (
+                    {dayRaids.map((raid: any) => (
                       <RaidCard
                         key={raid.id}
                         raid={raid}
-                        parts={participants.filter((p) => p.schedule_id === raid.id)}
+                        parts={participants.filter((p: any) => p.schedule_id === raid.id)}
                         onOpen={() => setSelectedRaid(raid)}
                       />
                     ))}
@@ -1974,74 +2234,14 @@ const RaidCalendar = ({ user, profile }: any) => {
               );
             })}
           </div>
-        </div>
-
-        <SectionPanel
-          title="월별 통계 보드"
-          description="이번 달 참여 많이 한 캐릭터를 전체로 확인할 수 있어."
-        >
-          {calendarLoading ? (
-            <div className="py-12 text-center text-gray-500 font-bold">불러오는 중...</div>
-          ) : monthlyCharacterStats.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-gray-500">
-              집계할 참여 데이터가 없어.
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-[620px] overflow-y-auto pr-1">
-              {monthlyCharacterStats.map((item, index) => (
-                <div
-                  key={item.nickname}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-11 w-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                        <BarChart3 size={16} className="text-purple-300" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-black truncate">
-                          #{index + 1} {item.nickname}
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          월간 레이드 참여 횟수 {item.raidCount}회
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="text-xl font-black text-purple-300">{item.raidCount}</div>
-                      <div className="text-[11px] text-gray-500">raid count</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 h-2 rounded-full bg-black/40 overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-indigo-500"
-                      style={{
-                        width: `${
-                          monthlyCharacterStats[0]?.raidCount
-                            ? (item.raidCount / monthlyCharacterStats[0].raidCount) * 100
-                            : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
-
-                  <div className="mt-3 text-xs text-gray-400">
-                    참가 등록 총 {item.count}건
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionPanel>
+        )}
       </div>
 
       <AnimatePresence>
         {isCreateOpen && (
           <CreateRaidModal
             date={selectedDate}
-            onRefresh={fetchCalendarData}
+            onRefresh={onRefresh}
             onClose={() => setIsCreateOpen(false)}
           />
         )}
@@ -2051,12 +2251,12 @@ const RaidCalendar = ({ user, profile }: any) => {
         {selectedRaid && (
           <RaidDetailModal
             raid={selectedRaid}
-            parts={participants.filter((p) => p.schedule_id === selectedRaid.id)}
+            parts={participants.filter((p: any) => p.schedule_id === selectedRaid.id)}
             user={user}
             profile={profile}
             onClose={() => setSelectedRaid(null)}
             onRefresh={async () => {
-              await fetchCalendarData();
+              await onRefresh();
               setSelectedRaid(null);
             }}
           />
@@ -2837,6 +3037,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
     "가디언 토벌",
     "클래스",
     "길드 설정",
+    "홈 화면 관리",
     "공지 관리",
     "캐릭터 관리",
     "레이드 관리",
@@ -2876,6 +3077,9 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
         {adminTab === "길드 설정" && (
           <GuildSettingsEditor settings={settings} setSettings={setSettings} />
         )}
+        {adminTab === "홈 화면 관리" && (
+          <HomeLayoutEditor settings={settings} setSettings={setSettings} />
+        )}
         {adminTab === "공지 관리" && <AdminNoticeManager user={user} profile={profile} />}
         {adminTab === "캐릭터 관리" && <AdminCharacterManager />}
         {adminTab === "레이드 관리" && <AdminRaidManager />}
@@ -2887,10 +3091,24 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
 };
 
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
+  const [saving, setSaving] = useState(false);
+
   const handleSave = async () => {
-    const { error } = await supabase.from("settings").upsert(settings);
-    if (error) alert(error.message);
-    else alert("길드 설정 업데이트 완료!");
+    if (!supabase) return alert("Supabase 연결을 확인해줘.");
+    setSaving(true);
+
+    try {
+      const payload = buildSettingsPayload(settings);
+      const { error } = await getSupabaseOrThrow().from("settings").upsert(payload);
+      if (error) throw error;
+      setSettings(payload);
+      writeCache(CACHE_KEYS.settings, payload);
+      alert("길드 설정 업데이트 완료!");
+    } catch (error: any) {
+      alert(error?.message || "길드 설정 저장 중 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -2907,9 +3125,138 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
       />
       <button
         onClick={handleSave}
-        className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all"
+        disabled={saving}
+        className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all disabled:opacity-60"
       >
-        Update Hero Section
+        {saving ? "Saving..." : "Update Hero Section"}
+      </button>
+    </div>
+  );
+};
+
+const HomeLayoutEditor = ({ settings, setSettings }: any) => {
+  const [saving, setSaving] = useState(false);
+  const sectionOrder = normalizeHomeSectionOrder(settings?.home_section_order);
+
+  const moveSection = (key: HomeSectionKey, direction: -1 | 1) => {
+    const currentOrder = [...sectionOrder];
+    const index = currentOrder.indexOf(key);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= currentOrder.length) return;
+
+    const next = [...currentOrder];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    setSettings({ ...settings, home_section_order: next });
+  };
+
+  const handleSave = async () => {
+    if (!supabase) return alert("Supabase 연결을 확인해줘.");
+    setSaving(true);
+
+    try {
+      const payload = buildSettingsPayload(settings);
+      const { error } = await getSupabaseOrThrow().from("settings").upsert(payload);
+      if (error) throw error;
+      setSettings(payload);
+      writeCache(CACHE_KEYS.settings, payload);
+      alert("홈 화면 배치 저장 완료! 메인에서 바로 반영돼.");
+    } catch (error: any) {
+      alert(error?.message || "홈 화면 배치 저장 중 오류가 발생했습니다.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="rounded-[2rem] border border-white/10 bg-black/30 p-6 space-y-6">
+        <div>
+          <div className="text-xs font-black uppercase text-purple-400 tracking-[0.25em] mb-2">
+            Main Home Layout
+          </div>
+          <h3 className="text-2xl font-black">메인 홈 섹션 순서</h3>
+          <p className="text-sm text-gray-400 mt-2">
+            관리자에서 순서를 저장하면 홈 화면에서 같은 순서로 바로 렌더링돼.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {sectionOrder.map((key, index) => (
+            <div
+              key={key}
+              className="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="h-11 w-11 rounded-2xl border border-purple-500/20 bg-purple-500/10 flex items-center justify-center font-black text-purple-300 shrink-0">
+                  {index + 1}
+                </div>
+                <div className="min-w-0">
+                  <div className="font-black">{HOME_SECTION_LABELS[key]}</div>
+                  <div className="text-xs text-gray-500">{key}</div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => moveSection(key, -1)}
+                  disabled={index === 0}
+                  className="px-4 py-2 rounded-xl border border-white/10 bg-black/30 text-sm font-black disabled:opacity-30"
+                >
+                  위로
+                </button>
+                <button
+                  onClick={() => moveSection(key, 1)}
+                  disabled={index === sectionOrder.length - 1}
+                  className="px-4 py-2 rounded-xl border border-white/10 bg-black/30 text-sm font-black disabled:opacity-30"
+                >
+                  아래로
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-[2rem] border border-white/10 bg-black/30 p-6 space-y-4">
+        <div className="text-xs font-black uppercase text-purple-400 tracking-[0.25em]">
+          Notice Layout
+        </div>
+        <h3 className="text-2xl font-black">공지사항 레이아웃</h3>
+        <p className="text-sm text-gray-400">
+          compact를 추천해. 가로 폭을 줄이고 카드형으로 정리해서 공간 활용이 좋아져.
+        </p>
+
+        <div className="grid md:grid-cols-2 gap-3">
+          {[
+            { key: "compact", title: "Compact", desc: "2열 카드형 공지 레이아웃" },
+            { key: "wide", title: "Wide", desc: "기존과 비슷한 넓은 공지 레이아웃" },
+          ].map((item) => {
+            const active = (settings?.home_notice_layout || "compact") === item.key;
+            return (
+              <button
+                key={item.key}
+                onClick={() => setSettings({ ...settings, home_notice_layout: item.key })}
+                className={cn(
+                  "text-left rounded-2xl border p-5 transition-all",
+                  active
+                    ? "border-purple-500 bg-purple-500/10"
+                    : "border-white/10 bg-white/5 hover:border-white/20"
+                )}
+              >
+                <div className="text-lg font-black">{item.title}</div>
+                <div className="text-sm text-gray-400 mt-2">{item.desc}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all disabled:opacity-60"
+      >
+        {saving ? "Saving..." : "Update Home Layout"}
       </button>
     </div>
   );
