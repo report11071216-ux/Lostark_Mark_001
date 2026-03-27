@@ -115,6 +115,14 @@ const HOME_SECTION_LABELS: Record<HomeSectionKey, string> = {
   calendar: "월별 레이드 일정",
   ranking: "월별 참여 랭킹",
 };
+const DEFAULT_HOME_SECTION_VISIBILITY: Record<HomeSectionKey, boolean> = {
+  notice: true,
+  calendar: true,
+  ranking: true,
+};
+const DEFAULT_HOME_SECTION_TITLES: Record<HomeSectionKey, string> = {
+  ...HOME_SECTION_LABELS,
+};
 
 const normalizeHomeSectionOrder = (value: any): HomeSectionKey[] => {
   const raw = Array.isArray(value)
@@ -137,24 +145,57 @@ const normalizeHomeSectionOrder = (value: any): HomeSectionKey[] => {
   return unique.slice(0, DEFAULT_HOME_SECTION_ORDER.length);
 };
 
+const normalizeHomeSectionVisibility = (value: any): Record<HomeSectionKey, boolean> => {
+  const raw = value && typeof value === "object" ? value : {};
+  return {
+    notice: raw.notice !== false,
+    calendar: raw.calendar !== false,
+    ranking: raw.ranking !== false,
+  };
+};
+
+const normalizeHomeSectionTitles = (value: any): Record<HomeSectionKey, string> => {
+  const raw = value && typeof value === "object" ? value : {};
+  return {
+    notice: String(raw.notice || HOME_SECTION_LABELS.notice).trim() || HOME_SECTION_LABELS.notice,
+    calendar: String(raw.calendar || HOME_SECTION_LABELS.calendar).trim() || HOME_SECTION_LABELS.calendar,
+    ranking: String(raw.ranking || HOME_SECTION_LABELS.ranking).trim() || HOME_SECTION_LABELS.ranking,
+  };
+};
+
+const normalizeHomeNoticeLimit = (value: any) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 4;
+  return Math.max(2, Math.min(8, Math.round(num)));
+};
+
 const parseSettingsRecord = (raw: any) => ({
   guild_name: raw?.guild_name ?? "INXX",
   guild_description: raw?.guild_description ?? "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
   home_section_order: normalizeHomeSectionOrder(raw?.home_section_order),
+  home_section_visibility: normalizeHomeSectionVisibility(raw?.home_section_visibility),
+  home_section_titles: normalizeHomeSectionTitles(raw?.home_section_titles),
   home_notice_layout: raw?.home_notice_layout === "wide" ? "wide" : "compact",
+  home_notice_limit: normalizeHomeNoticeLimit(raw?.home_notice_limit),
 });
 
 const buildSettingsPayload = (settings: any) => ({
   ...settings,
   home_section_order: normalizeHomeSectionOrder(settings?.home_section_order),
+  home_section_visibility: normalizeHomeSectionVisibility(settings?.home_section_visibility),
+  home_section_titles: normalizeHomeSectionTitles(settings?.home_section_titles),
   home_notice_layout: settings?.home_notice_layout === "wide" ? "wide" : "compact",
+  home_notice_limit: normalizeHomeNoticeLimit(settings?.home_notice_limit),
 });
 
 const defaultSettings = parseSettingsRecord({
   guild_name: "INXX",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
   home_section_order: DEFAULT_HOME_SECTION_ORDER,
+  home_section_visibility: DEFAULT_HOME_SECTION_VISIBILITY,
+  home_section_titles: DEFAULT_HOME_SECTION_TITLES,
   home_notice_layout: "compact",
+  home_notice_limit: 4,
 });
 
 const emptyRaidForm = {
@@ -739,15 +780,57 @@ const HomeNoticeSection = ({
   notices,
   loading,
   layout = "compact",
+  title = HOME_SECTION_LABELS.notice,
+  noticeLimit = 4,
 }: {
   user: UserLike;
   profile: ProfileLike;
   notices: PostLike[];
   loading: boolean;
   layout?: "compact" | "wide";
+  title?: string;
+  noticeLimit?: number;
 }) => {
   const pinnedCount = notices.filter((item) => item.is_pinned).length;
-  const previewItems = layout === "wide" ? notices : notices.slice(0, 4);
+  const normalizedLimit = normalizeHomeNoticeLimit(noticeLimit);
+  const pinnedNotices = notices.filter((item) => item.is_pinned);
+  const regularNotices = notices.filter((item) => !item.is_pinned);
+  const previewItems =
+    layout === "wide"
+      ? notices.slice(0, Math.max(normalizedLimit, 6))
+      : [...pinnedNotices.slice(0, 1), ...regularNotices].slice(0, normalizedLimit);
+  const featuredNotice = layout === "compact" ? previewItems[0] : null;
+  const listItems = layout === "compact" ? previewItems.slice(featuredNotice ? 1 : 0) : previewItems;
+
+  const renderNoticeCard = (notice: PostLike, featured = false) => (
+    <button
+      key={notice.id}
+      className={cn(
+        "w-full text-left rounded-2xl border transition hover:border-amber-400/40",
+        notice.is_pinned ? "bg-amber-500/10 border-amber-500/20" : "bg-white/5 border-white/10",
+        featured ? "p-5 md:p-6 rounded-[1.75rem] bg-gradient-to-br from-amber-500/15 via-black/40 to-transparent" : "p-4 md:p-5"
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-2 mb-2">
+        {notice.is_pinned && (
+          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-300 border border-rose-500/20">
+            <Pin size={12} />
+            PIN
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-300 border border-amber-500/20">
+          공지
+        </span>
+        <span className="text-xs text-gray-500">{formatDateTime(notice.created_at)}</span>
+      </div>
+      <div className={cn("font-black", featured ? "text-xl md:text-2xl line-clamp-2" : "text-base md:text-lg line-clamp-1")}>
+        {notice.title}
+      </div>
+      <div className={cn("mt-3 text-gray-400", featured ? "text-sm md:text-base line-clamp-4" : "text-sm line-clamp-2")}>
+        {notice.content}
+      </div>
+    </button>
+  );
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-8 md:pt-12 pb-6">
@@ -765,10 +848,10 @@ const HomeNoticeSection = ({
                 Guild Notice
               </div>
               <h2 className="mt-4 text-2xl md:text-4xl font-black tracking-tight">
-                길드 공지사항
+                {title}
               </h2>
               <p className="mt-2 text-sm md:text-base text-gray-400">
-                공지를 확인해주세요.
+                자주 확인해야 하는 공지를 카드형으로 빠르게 확인할 수 있어.
               </p>
             </div>
 
@@ -783,56 +866,59 @@ const HomeNoticeSection = ({
           </div>
         </div>
 
-        <div className={cn("p-4 md:p-6", layout === "compact" ? "grid md:grid-cols-2 gap-3" : "space-y-3")}>
+        <div className="p-4 md:p-6">
           {loading && (
-            <div className={cn(
-              "rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500",
-              layout === "compact" ? "md:col-span-2" : ""
-            )}>
-              공지 불러오는 중...
+            <div className={cn(layout === "compact" ? "grid md:grid-cols-[1.15fr,0.85fr] gap-3" : "space-y-3")}>
+              {Array.from({ length: layout === "compact" ? 2 : normalizedLimit }).map((_, index) => (
+                <div
+                  key={`notice-skeleton-${index}`}
+                  className={cn(
+                    "rounded-2xl border border-white/10 bg-white/5 animate-pulse",
+                    layout === "compact" && index === 0 ? "p-6 min-h-[220px]" : "p-4 min-h-[120px]"
+                  )}
+                >
+                  <div className="h-4 w-24 rounded bg-white/10" />
+                  <div className="mt-4 h-7 w-3/4 rounded bg-white/10" />
+                  <div className="mt-3 h-4 w-full rounded bg-white/5" />
+                  <div className="mt-2 h-4 w-2/3 rounded bg-white/5" />
+                </div>
+              ))}
             </div>
           )}
 
           {!loading && notices.length === 0 && (
-            <div className={cn(
-              "rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500",
-              layout === "compact" ? "md:col-span-2" : ""
-            )}>
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
               아직 등록된 공지가 없어.
             </div>
           )}
 
-          {!loading &&
-            previewItems.map((notice) => (
-              <button
-                key={notice.id}
-                className={cn(
-                  "w-full text-left rounded-2xl border p-4 md:p-5 transition hover:border-amber-400/40",
-                  notice.is_pinned
-                    ? "bg-amber-500/10 border-amber-500/20"
-                    : "bg-white/5 border-white/10",
-                  layout === "compact" ? "h-full" : ""
+          {!loading && notices.length > 0 && layout === "compact" && (
+            <div className="grid md:grid-cols-[1.15fr,0.85fr] gap-3">
+              {featuredNotice ? renderNoticeCard(featuredNotice, true) : <div />}
+              <div className="space-y-3">
+                {listItems.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
+                    표시할 보조 공지가 없어.
+                  </div>
+                ) : (
+                  listItems.map((notice) => renderNoticeCard(notice))
                 )}
-              >
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  {notice.is_pinned && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-300 border border-rose-500/20">
-                      <Pin size={12} />
-                      PIN
-                    </span>
-                  )}
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-300 border border-amber-500/20">
-                    공지
-                  </span>
-                  <span className="text-xs text-gray-500">{formatDateTime(notice.created_at)}</span>
-                </div>
-                <div className="text-base md:text-lg font-black line-clamp-1">{notice.title}</div>
-                <div className={cn("mt-2 text-sm text-gray-300", layout === "compact" ? "line-clamp-3" : "line-clamp-2")}>
-                  {notice.content}
-                </div>
-              </button>
-            ))}
+              </div>
+            </div>
+          )}
+
+          {!loading && notices.length > 0 && layout === "wide" && (
+            <div className="space-y-3">
+              {previewItems.map((notice) => renderNoticeCard(notice))}
+            </div>
+          )}
         </div>
+
+        {!loading && notices.length > 0 && (
+          <div className="px-4 md:px-6 pb-5 text-xs text-gray-500">
+            현재 메인에는 최신 공지 {previewItems.length}개가 노출 중이야.
+          </div>
+        )}
       </div>
     </section>
   );
@@ -878,11 +964,13 @@ const HomeMonthlyRankingSection = ({
   participants,
   loading,
   currentDate,
+  title = HOME_SECTION_LABELS.ranking,
 }: {
   raids: ScheduleLike[];
   participants: ParticipantLike[];
   loading: boolean;
   currentDate: Date;
+  title?: string;
 }) => {
   const monthlyCharacterStats = useMemo(
     () => getMonthlyCharacterStats(participants, raids),
@@ -892,12 +980,21 @@ const HomeMonthlyRankingSection = ({
   return (
     <section className="max-w-7xl mx-auto px-6 py-6 md:py-8">
       <SectionPanel
-        title="월별 참여 랭킹"
+        title={title}
         description={`${formatMonthLabel(currentDate.getFullYear(), currentDate.getMonth())} 기준 캐릭터 참가횟수 확인.`}
       >
         {loading ? (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-gray-500">
-            랭킹 집계 중...
+          <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-6">
+            {Array.from({ length: 2 }).map((_, idx) => (
+              <div key={`ranking-skeleton-${idx}`} className="rounded-2xl border border-white/10 bg-white/5 p-4 animate-pulse min-h-[260px]">
+                <div className="h-5 w-32 rounded bg-white/10" />
+                <div className="mt-4 h-4 w-full rounded bg-white/5" />
+                <div className="mt-2 h-4 w-4/5 rounded bg-white/5" />
+                <div className="mt-6 h-12 w-full rounded-2xl bg-white/5" />
+                <div className="mt-3 h-12 w-full rounded-2xl bg-white/5" />
+                <div className="mt-3 h-12 w-full rounded-2xl bg-white/5" />
+              </div>
+            ))}
           </div>
         ) : monthlyCharacterStats.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-gray-500">
@@ -1003,6 +1100,8 @@ const HomeDashboard = ({
   const [raids, setRaids] = useState<ScheduleLike[]>([]);
   const [participants, setParticipants] = useState<ParticipantLike[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(true);
+  const [noticesUpdatedAt, setNoticesUpdatedAt] = useState<string | null>(null);
+  const [calendarUpdatedAt, setCalendarUpdatedAt] = useState<string | null>(null);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -1032,6 +1131,7 @@ const HomeDashboard = ({
 
       const next = data || [];
       setNotices(next);
+      setNoticesUpdatedAt(new Date().toISOString());
       writeCache(CACHE_KEYS.homeNotices, next);
     } catch (error) {
       console.error("home notices unexpected error:", error);
@@ -1099,6 +1199,7 @@ const HomeDashboard = ({
 
       setRaids(rData || []);
       setParticipants(pData || []);
+      setCalendarUpdatedAt(new Date().toISOString());
       writeCache(cacheKey, { raids: rData || [], participants: pData || [] });
     } catch (error) {
       console.error("fetchCalendarData error:", error);
@@ -1120,10 +1221,22 @@ const HomeDashboard = ({
   }, [fetchCalendarData]);
 
   const sectionOrder = normalizeHomeSectionOrder(settings?.home_section_order);
+  const sectionVisibility = normalizeHomeSectionVisibility(settings?.home_section_visibility);
+  const sectionTitles = normalizeHomeSectionTitles(settings?.home_section_titles);
+  const visibleSectionOrder = sectionOrder.filter((sectionKey) => sectionVisibility[sectionKey] !== false);
+  const homeNoticeLimit = normalizeHomeNoticeLimit(settings?.home_notice_limit);
 
   return (
     <>
-      {sectionOrder.map((sectionKey) => {
+      <div className="max-w-7xl mx-auto px-6 pt-6">
+        <div className="grid md:grid-cols-3 gap-3">
+          <MiniStat label="HOME SECTIONS" value={visibleSectionOrder.length} />
+          <MiniStat label="NOTICE UPDATE" value={noticesUpdatedAt ? formatDateTime(noticesUpdatedAt) : "캐시 사용 중"} />
+          <MiniStat label="CALENDAR UPDATE" value={calendarUpdatedAt ? formatDateTime(calendarUpdatedAt) : "캐시 사용 중"} />
+        </div>
+      </div>
+
+      {visibleSectionOrder.map((sectionKey) => {
         if (sectionKey === "notice") {
           return (
             <HomeNoticeSection
@@ -1133,6 +1246,8 @@ const HomeDashboard = ({
               notices={notices}
               loading={noticesLoading}
               layout={settings?.home_notice_layout === "wide" ? "wide" : "compact"}
+              title={sectionTitles.notice}
+              noticeLimit={homeNoticeLimit}
             />
           );
         }
@@ -1149,6 +1264,7 @@ const HomeDashboard = ({
               participants={participants}
               calendarLoading={calendarLoading}
               onRefresh={fetchCalendarData}
+              title={sectionTitles.calendar}
             />
           );
         }
@@ -1160,9 +1276,18 @@ const HomeDashboard = ({
             participants={participants}
             loading={calendarLoading}
             currentDate={currentDate}
+            title={sectionTitles.ranking}
           />
         );
       })}
+
+      {visibleSectionOrder.length === 0 && (
+        <section className="max-w-7xl mx-auto px-6 py-10">
+          <div className="rounded-[2rem] border border-dashed border-white/10 bg-black/20 px-6 py-10 text-center text-gray-400">
+            홈 화면에 표시할 섹션이 없어. 관리자페이지에서 홈 화면 관리를 열어 섹션 표시를 켜줘.
+          </div>
+        </section>
+      )}
 
       <div className="max-w-7xl mx-auto px-6 mb-12">
         <div className="flex justify-center gap-6 md:gap-12 border-b border-white/5 pb-6 overflow-x-auto">
@@ -2091,6 +2216,7 @@ const RaidCalendar = ({
   participants,
   calendarLoading,
   onRefresh,
+  title = HOME_SECTION_LABELS.calendar,
 }: any) => {
   const [selectedDate, setSelectedDate] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -2118,7 +2244,7 @@ const RaidCalendar = ({
     <section className="max-w-7xl mx-auto px-6 py-10 md:py-16 border-t border-white/5">
       <div className="mb-8">
         <SectionPanel
-          title="Raid Calendar"
+          title={title}
           description="월별 레이드 일정."
           action={
             <div className="flex gap-2">
@@ -2164,7 +2290,13 @@ const RaidCalendar = ({
         </div>
 
         {calendarLoading ? (
-          <div className="py-16 text-center text-gray-500 font-bold">달력 불러오는 중...</div>
+          <div className="p-4 md:p-6">
+            <div className="grid grid-cols-7 gap-[1px]">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div key={`calendar-skeleton-${i}`} className="bg-[#0a0a0a] min-h-[120px] md:min-h-[150px] animate-pulse border border-white/5" />
+              ))}
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-7 gap-[1px] bg-white/5">
             {Array.from({ length: firstDayOffset }).map((_, i) => (
@@ -3134,9 +3266,131 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
   );
 };
 
+
+const HomeLayoutPreviewCard = ({
+  title,
+  subtitle,
+  accent = "purple",
+}: {
+  title: string;
+  subtitle: string;
+  accent?: "amber" | "purple" | "blue";
+}) => {
+  const accentClass =
+    accent === "amber"
+      ? "border-amber-500/20 bg-amber-500/10"
+      : accent === "blue"
+      ? "border-sky-500/20 bg-sky-500/10"
+      : "border-purple-500/20 bg-purple-500/10";
+
+  return (
+    <div className={cn("rounded-2xl border p-4", accentClass)}>
+      <div className="text-sm font-black">{title}</div>
+      <div className="mt-2 text-xs text-gray-300">{subtitle}</div>
+    </div>
+  );
+};
+
+const HomeLayoutPreview = ({ settings }: { settings: any }) => {
+  const visibility = normalizeHomeSectionVisibility(settings?.home_section_visibility);
+  const order = normalizeHomeSectionOrder(settings?.home_section_order).filter((key) => visibility[key] !== false);
+  const titles = normalizeHomeSectionTitles(settings?.home_section_titles);
+  const noticeLayout = settings?.home_notice_layout === "wide" ? "wide" : "compact";
+  const noticeLimit = normalizeHomeNoticeLimit(settings?.home_notice_limit);
+
+  return (
+    <div className="rounded-[2rem] border border-white/10 bg-black/30 p-6 space-y-4">
+      <div>
+        <div className="text-xs font-black uppercase text-purple-400 tracking-[0.25em]">
+          Live Preview
+        </div>
+        <h3 className="mt-2 text-2xl font-black">저장 전 메인 배치 미리보기</h3>
+        <p className="mt-2 text-sm text-gray-400">
+          실제 홈 섹션 순서와 노출 상태를 간단히 확인할 수 있어.
+        </p>
+      </div>
+
+      {order.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
+          현재 모든 섹션이 숨김 처리되어 있어.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {order.map((key, index) => (
+            <div key={key} className="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.25em] text-gray-500 font-black">
+                    Section {index + 1}
+                  </div>
+                  <div className="mt-1 text-lg font-black">{titles[key]}</div>
+                </div>
+                <div className="text-xs text-gray-500">{key}</div>
+              </div>
+
+              <div className="mt-4">
+                {key === "notice" && (
+                  <div className={cn("grid gap-3", noticeLayout === "compact" ? "md:grid-cols-[1.1fr,0.9fr]" : "grid-cols-1")}>
+                    <HomeLayoutPreviewCard
+                      title={noticeLayout === "compact" ? "대표 공지 카드" : "공지 리스트"}
+                      subtitle={`공지 ${noticeLimit}개 노출 · ${noticeLayout} 레이아웃`}
+                      accent="amber"
+                    />
+                    {noticeLayout === "compact" && (
+                      <div className="space-y-3">
+                        {Array.from({ length: Math.max(1, noticeLimit - 1) }).map((_, idx) => (
+                          <HomeLayoutPreviewCard
+                            key={`preview-notice-${idx}`}
+                            title={`보조 공지 ${idx + 1}`}
+                            subtitle="2줄 미리보기 형태"
+                            accent="amber"
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {key === "calendar" && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {Array.from({ length: 4 }).map((_, idx) => (
+                      <HomeLayoutPreviewCard
+                        key={`preview-calendar-${idx}`}
+                        title={`일정 블록 ${idx + 1}`}
+                        subtitle="월별 캘린더 셀 미리보기"
+                        accent="blue"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {key === "ranking" && (
+                  <div className="space-y-3">
+                    {["#1", "#2", "#3"].map((rank) => (
+                      <HomeLayoutPreviewCard
+                        key={rank}
+                        title={`${rank} 참여 랭커`}
+                        subtitle="월간 누적 참여 횟수 요약"
+                        accent="purple"
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const HomeLayoutEditor = ({ settings, setSettings }: any) => {
   const [saving, setSaving] = useState(false);
   const sectionOrder = normalizeHomeSectionOrder(settings?.home_section_order);
+  const visibility = normalizeHomeSectionVisibility(settings?.home_section_visibility);
+  const titles = normalizeHomeSectionTitles(settings?.home_section_titles);
+  const noticeLimit = normalizeHomeNoticeLimit(settings?.home_notice_limit);
 
   const moveSection = (key: HomeSectionKey, direction: -1 | 1) => {
     const currentOrder = [...sectionOrder];
@@ -3168,96 +3422,180 @@ const HomeLayoutEditor = ({ settings, setSettings }: any) => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="rounded-[2rem] border border-white/10 bg-black/30 p-6 space-y-6">
-        <div>
-          <div className="text-xs font-black uppercase text-purple-400 tracking-[0.25em] mb-2">
-            Main Home Layout
-          </div>
-          <h3 className="text-2xl font-black">메인 홈 섹션 순서</h3>
-          <p className="text-sm text-gray-400 mt-2">
-            관리자에서 순서를 저장하면 홈 화면에서 같은 순서로 바로 렌더링돼.
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          {sectionOrder.map((key, index) => (
-            <div
-              key={key}
-              className="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-            >
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="h-11 w-11 rounded-2xl border border-purple-500/20 bg-purple-500/10 flex items-center justify-center font-black text-purple-300 shrink-0">
-                  {index + 1}
-                </div>
-                <div className="min-w-0">
-                  <div className="font-black">{HOME_SECTION_LABELS[key]}</div>
-                  <div className="text-xs text-gray-500">{key}</div>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => moveSection(key, -1)}
-                  disabled={index === 0}
-                  className="px-4 py-2 rounded-xl border border-white/10 bg-black/30 text-sm font-black disabled:opacity-30"
-                >
-                  위로
-                </button>
-                <button
-                  onClick={() => moveSection(key, 1)}
-                  disabled={index === sectionOrder.length - 1}
-                  className="px-4 py-2 rounded-xl border border-white/10 bg-black/30 text-sm font-black disabled:opacity-30"
-                >
-                  아래로
-                </button>
-              </div>
+    <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-8">
+      <div className="space-y-8">
+        <div className="rounded-[2rem] border border-white/10 bg-black/30 p-6 space-y-6">
+          <div>
+            <div className="text-xs font-black uppercase text-purple-400 tracking-[0.25em] mb-2">
+              Main Home Layout
             </div>
-          ))}
-        </div>
-      </div>
+            <h3 className="text-2xl font-black">메인 홈 섹션 순서 / 노출 제어</h3>
+            <p className="text-sm text-gray-400 mt-2">
+              순서 변경, 숨김 처리, 제목 수정을 한 번에 저장할 수 있어.
+            </p>
+          </div>
 
-      <div className="rounded-[2rem] border border-white/10 bg-black/30 p-6 space-y-4">
-        <div className="text-xs font-black uppercase text-purple-400 tracking-[0.25em]">
-          Notice Layout
-        </div>
-        <h3 className="text-2xl font-black">공지사항 레이아웃</h3>
-        <p className="text-sm text-gray-400">
-          compact를 추천해. 가로 폭을 줄이고 카드형으로 정리해서 공간 활용이 좋아져.
-        </p>
-
-        <div className="grid md:grid-cols-2 gap-3">
-          {[
-            { key: "compact", title: "Compact", desc: "2열 카드형 공지 레이아웃" },
-            { key: "wide", title: "Wide", desc: "기존과 비슷한 넓은 공지 레이아웃" },
-          ].map((item) => {
-            const active = (settings?.home_notice_layout || "compact") === item.key;
-            return (
-              <button
-                key={item.key}
-                onClick={() => setSettings({ ...settings, home_notice_layout: item.key })}
-                className={cn(
-                  "text-left rounded-2xl border p-5 transition-all",
-                  active
-                    ? "border-purple-500 bg-purple-500/10"
-                    : "border-white/10 bg-white/5 hover:border-white/20"
-                )}
+          <div className="space-y-3">
+            {sectionOrder.map((key, index) => (
+              <div
+                key={key}
+                className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-4"
               >
-                <div className="text-lg font-black">{item.title}</div>
-                <div className="text-sm text-gray-400 mt-2">{item.desc}</div>
-              </button>
-            );
-          })}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="h-11 w-11 rounded-2xl border border-purple-500/20 bg-purple-500/10 flex items-center justify-center font-black text-purple-300 shrink-0">
+                      {index + 1}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-black">{HOME_SECTION_LABELS[key]}</div>
+                      <div className="text-xs text-gray-500">{key}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() =>
+                        setSettings({
+                          ...settings,
+                          home_section_visibility: {
+                            ...visibility,
+                            [key]: !visibility[key],
+                          },
+                        })
+                      }
+                      className={cn(
+                        "px-4 py-2 rounded-xl border text-sm font-black transition",
+                        visibility[key]
+                          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                          : "border-white/10 bg-black/30 text-gray-300"
+                      )}
+                    >
+                      {visibility[key] ? "표시 중" : "숨김"}
+                    </button>
+                    <button
+                      onClick={() => moveSection(key, -1)}
+                      disabled={index === 0}
+                      className="px-4 py-2 rounded-xl border border-white/10 bg-black/30 text-sm font-black disabled:opacity-30"
+                    >
+                      위로
+                    </button>
+                    <button
+                      onClick={() => moveSection(key, 1)}
+                      disabled={index === sectionOrder.length - 1}
+                      className="px-4 py-2 rounded-xl border border-white/10 bg-black/30 text-sm font-black disabled:opacity-30"
+                    >
+                      아래로
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-[1fr,160px] gap-3">
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-[0.2em] text-gray-500 mb-2">
+                      섹션 제목
+                    </div>
+                    <input
+                      value={titles[key]}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          home_section_titles: {
+                            ...titles,
+                            [key]: e.target.value,
+                          },
+                        })
+                      }
+                      className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-purple-400"
+                      placeholder={HOME_SECTION_LABELS[key]}
+                    />
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-[0.2em] text-gray-500 mb-2">
+                      현재 상태
+                    </div>
+                    <div className={cn(
+                      "rounded-xl border px-4 py-3 text-sm font-black",
+                      visibility[key]
+                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                        : "border-white/10 bg-black/30 text-gray-400"
+                    )}>
+                      {visibility[key] ? "메인 노출" : "숨김 처리"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+
+        <div className="rounded-[2rem] border border-white/10 bg-black/30 p-6 space-y-4">
+          <div className="text-xs font-black uppercase text-purple-400 tracking-[0.25em]">
+            Notice Layout
+          </div>
+          <h3 className="text-2xl font-black">공지사항 레이아웃 / 노출 개수</h3>
+          <p className="text-sm text-gray-400">
+            compact를 추천해. 대표 공지 + 보조 공지 구조로 공간 활용이 훨씬 좋아져.
+          </p>
+
+          <div className="grid md:grid-cols-2 gap-3">
+            {[
+              { key: "compact", title: "Compact", desc: "대표 공지 1개 + 보조 리스트 형태" },
+              { key: "wide", title: "Wide", desc: "기존과 비슷한 넓은 공지 리스트 형태" },
+            ].map((item) => {
+              const active = (settings?.home_notice_layout || "compact") === item.key;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => setSettings({ ...settings, home_notice_layout: item.key })}
+                  className={cn(
+                    "text-left rounded-2xl border p-5 transition-all",
+                    active
+                      ? "border-purple-500 bg-purple-500/10"
+                      : "border-white/10 bg-white/5 hover:border-white/20"
+                  )}
+                >
+                  <div className="text-lg font-black">{item.title}</div>
+                  <div className="text-sm text-gray-400 mt-2">{item.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-gray-500 mb-2">
+              메인 공지 노출 개수 (2~8)
+            </div>
+            <input
+              type="range"
+              min={2}
+              max={8}
+              step={1}
+              value={noticeLimit}
+              onChange={(e) =>
+                setSettings({
+                  ...settings,
+                  home_notice_limit: Number(e.target.value),
+                })
+              }
+              className="w-full"
+            />
+            <div className="mt-3 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-gray-300">
+              현재 메인 공지 {noticeLimit}개 노출
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all disabled:opacity-60"
+        >
+          {saving ? "Saving..." : "Update Home Layout"}
+        </button>
       </div>
 
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all disabled:opacity-60"
-      >
-        {saving ? "Saving..." : "Update Home Layout"}
-      </button>
+      <HomeLayoutPreview settings={settings} />
     </div>
   );
 };
