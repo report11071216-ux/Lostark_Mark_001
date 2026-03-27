@@ -1,6 +1,6 @@
 
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield,
@@ -1082,6 +1082,75 @@ const getNicknameEffectStyle = (item: any): React.CSSProperties => {
   };
 };
 
+const PassivePointBackgroundSync = ({
+  userId,
+  onProfileRefresh,
+}: {
+  userId: string | null | undefined;
+  onProfileRefresh: () => Promise<void> | void;
+}) => {
+  const syncLockRef = useRef(false);
+
+  const runSync = useCallback(async (reason: "boot" | "interval" | "focus" | "visible" = "interval") => {
+    if (!userId || syncLockRef.current) return;
+
+    syncLockRef.current = true;
+    try {
+      const client = getSupabaseOrThrow();
+      const { data, error } = await client.rpc("process_passive_point_ticks_for_user", {
+        p_user_id: userId,
+      });
+
+      if (error) {
+        console.error(`PassivePointBackgroundSync ${reason} error:`, error);
+        return;
+      }
+
+      if (data && typeof data === "object") {
+        const awarded = Number((data as any).awarded || 0);
+        const reasonText = String((data as any).reason || "");
+        if (awarded > 0 || ["initialized", "cap_reached"].includes(reasonText)) {
+          await onProfileRefresh();
+        }
+      }
+    } catch (error) {
+      console.error(`PassivePointBackgroundSync ${reason} unexpected error:`, error);
+    } finally {
+      syncLockRef.current = false;
+    }
+  }, [userId, onProfileRefresh]);
+
+  useEffect(() => {
+    if (!userId) return;
+    void runSync("boot");
+
+    const minuteTimer = window.setInterval(() => {
+      void runSync("interval");
+    }, 60 * 1000);
+
+    const handleFocus = () => {
+      void runSync("focus");
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void runSync("visible");
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.clearInterval(minuteTimer);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [userId, runSync]);
+
+  return null;
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<UserLike>(null);
@@ -1314,6 +1383,15 @@ const fetchInitialData = async () => {
           user={user}
           profile={profile}
           onLogout={handleLogout}
+        />
+
+        <PassivePointBackgroundSync
+          userId={user?.id}
+          onProfileRefresh={async () => {
+            if (user?.id) {
+              await fetchProfile(user.id);
+            }
+          }}
         />
 
         <main className={profile?.role === "admin" ? "pt-20" : "pt-16"}>
@@ -6978,7 +7056,7 @@ const AdminPointShopManager = () => {
   const createItem = async () => {
     if (!title.trim() || !price) return alert("상품명과 가격을 입력하세요.");
 
-    const payload = {
+    const basePayload: Record<string, any> = {
       title,
       description,
       price: toNumber(price),
@@ -6995,12 +7073,26 @@ const AdminPointShopManager = () => {
       nickname_gradient_from: rewardType === "nickname_effect" ? nicknameGradientFrom : null,
       nickname_gradient_to: rewardType === "nickname_effect" ? nicknameGradientTo : null,
       nickname_glow_color: rewardType === "nickname_effect" ? nicknameGlowColor : null,
-      enhance_bonus_rate: rewardType === "enhance_stone" ? Number(enhanceBonusRate || 0) : 0,
       available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
       available_to: availableTo ? new Date(availableTo).toISOString() : null,
     };
 
-    const { error } = await supabase.from("point_shop_items").insert(payload);
+    let insertPayload: Record<string, any> = { ...basePayload };
+    if (rewardType === "enhance_stone") {
+      insertPayload.enhance_bonus_rate = Number(enhanceBonusRate || 0);
+    }
+
+    let { error } = await supabase.from("point_shop_items").insert(insertPayload);
+
+    if (error && /enhance_bonus_rate/i.test(String(error.message || "")) && rewardType === "enhance_stone") {
+      const fallbackPayload = {
+        ...basePayload,
+        bonus_rate: Number(enhanceBonusRate || 0),
+      };
+      const retry = await supabase.from("point_shop_items").insert(fallbackPayload);
+      error = retry.error;
+    }
+
     if (error) return alert(`상품 생성 실패: ${error.message}`);
     resetItemForm();
     fetchItems();
