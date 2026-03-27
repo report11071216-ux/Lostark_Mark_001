@@ -586,33 +586,37 @@ const getEnhancementSuccessRate = (level: any, bonusRate = 0) => {
   return Math.min(100, Math.max(5, Math.round(rate * 100) / 100));
 };
 
-const getEnhancementItemEffectText = (item: any) => {
-  const rate = Number(item?.enhance_bonus_rate ?? item?.bonus_rate ?? 0);
-  if (!Number.isFinite(rate) || rate <= 0) return "강화 확률 보정 없음";
-  return `강화 확률 +${rate}%`;
+const getNakwonExpRequiredForLevel = (level: any) => {
+  const normalizedLevel = Math.max(1, Math.floor(Number(level || 1)));
+  return 300 + (normalizedLevel - 1) * 150;
 };
 
-const getEnhancementItemType = (item: any) => {
-  const itemType = String(item?.item_type || item?.reward_type || "").trim().toLowerCase();
-  if (itemType === "enhance_protect_ticket") return "enhance_protect_ticket";
-  if (itemType === "enhance_stone") return "enhance_stone";
-  if (Number(item?.bonus_rate || item?.enhance_bonus_rate || 0) > 0) return "enhance_stone";
-  return "enhance_misc";
+const applyNakwonExpGain = (levelLike: any, expLike: any, gainedExpLike: any) => {
+  let level = Math.max(1, Math.floor(Number(levelLike || 1)));
+  let exp = Math.max(0, Math.floor(Number(expLike || 0)));
+  let gainedExp = Math.max(0, Math.floor(Number(gainedExpLike || 0)));
+  let leveledUp = false;
+
+  exp += gainedExp;
+  while (exp >= getNakwonExpRequiredForLevel(level)) {
+    exp -= getNakwonExpRequiredForLevel(level);
+    level += 1;
+    leveledUp = true;
+  }
+
+  return {
+    level,
+    exp,
+    leveledUp,
+    nextRequiredExp: getNakwonExpRequiredForLevel(level),
+  };
 };
 
-const isEnhanceStoneItem = (item: any) => getEnhancementItemType(item) === "enhance_stone";
-const isEnhanceProtectTicketItem = (item: any) => getEnhancementItemType(item) === "enhance_protect_ticket";
-
-const getEnhanceProtectTicketEffectText = (item: any) => {
-  const scope = item?.protection_scope ? String(item.protection_scope) : "파괴";
-  return `${scope} 방지 1회`;
-};
-
-const getDailyEnhanceLimitByNakwonLevel = (value: any) => {
-  const level = Math.max(1, Math.floor(Number(value || 1)));
-  if (level >= 20) return 4;
-  if (level >= 10) return 3;
-  if (level >= 5) return 2;
+const getNakwonDailyEnhanceLimit = (nakwonLevelLike: any) => {
+  const nakwonLevel = Math.max(1, Math.floor(Number(nakwonLevelLike || 1)));
+  if (nakwonLevel >= 20) return 4;
+  if (nakwonLevel >= 10) return 3;
+  if (nakwonLevel >= 5) return 2;
   return 1;
 };
 
@@ -625,7 +629,7 @@ const getEnhancementDestroyRate = (level: any) => {
   return 12;
 };
 
-const getEnhancementDestroyedLevel = (level: any) => {
+const getEnhancementDestroyFallbackLevel = (level: any) => {
   const normalizedLevel = normalizeEnhancementLevel(level);
   if (normalizedLevel < 15) return normalizedLevel;
   if (normalizedLevel < 18) return 12;
@@ -633,25 +637,17 @@ const getEnhancementDestroyedLevel = (level: any) => {
   return 15;
 };
 
-const getEnhanceAttemptState = (profileLike: any) => {
-  const today = getTodayKey();
-  const usedDate = String(profileLike?.enhance_attempts_used_date || "").slice(0, 10);
-  const used = usedDate === today ? Math.max(0, Number(profileLike?.enhance_attempts_used_today || 0)) : 0;
-  const limit = getDailyEnhanceLimitByNakwonLevel(profileLike?.nakwon_level);
-  return {
-    today,
-    usedDate: usedDate || today,
-    used,
-    limit,
-    remaining: Math.max(0, limit - used),
-  };
+const getEnhancementItemEffectText = (item: any) => {
+  const rate = Number(item?.enhance_bonus_rate ?? item?.bonus_rate ?? 0);
+  if (!Number.isFinite(rate) || rate <= 0) return "강화 확률 보정 없음";
+  return `강화 확률 +${rate}%`;
 };
 
 const getShopRewardTypeLabel = (item: any) => {
   if (item?.reward_type === "enhance_stone") return "Enhance Stone";
-  if (item?.reward_type === "enhance_protect_ticket") return "Protect Ticket";
   if (item?.reward_type === "badge") return "Badge Item";
   if (item?.reward_type === "nickname_effect") return "Nickname FX";
+  if (item?.reward_type === "enhance_protect_ticket") return "Protect Ticket";
   return "Point Item";
 };
 
@@ -660,12 +656,12 @@ const getPointShopCardBackground = (item: any, badgeTheme: any) => {
   if (item?.reward_type === "enhance_stone") {
     return "linear-gradient(135deg, rgba(251,191,36,0.18), rgba(168,85,247,0.18), rgba(15,23,42,0.96) 58%, rgba(2,6,23,0.98))";
   }
-  if (item?.reward_type === "enhance_protect_ticket") {
-    return "linear-gradient(135deg, rgba(244,114,182,0.22), rgba(251,191,36,0.18), rgba(15,23,42,0.96) 58%, rgba(2,6,23,0.98))";
-  }
   if (item?.reward_type === "nickname_effect") {
     const theme = getNicknameEffectTheme(item);
     return `linear-gradient(135deg, ${hexToRgba(theme.from, 0.24)}, ${hexToRgba(theme.to, 0.2)}, rgba(15,23,42,0.96) 60%, rgba(2,6,23,0.98))`;
+  }
+  if (item?.reward_type === "enhance_protect_ticket") {
+    return "linear-gradient(135deg, rgba(244,114,182,0.18), rgba(251,191,36,0.16), rgba(15,23,42,0.96) 60%, rgba(2,6,23,0.98))";
   }
   return "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(15,23,42,0.92) 52%, rgba(2,6,23,0.96))";
 };
@@ -675,12 +671,12 @@ const getPointShopAuraBackground = (item: any, badgeTheme: any) => {
   if (item?.reward_type === "enhance_stone") {
     return "radial-gradient(circle at top right, rgba(251,191,36,0.22), transparent 40%), radial-gradient(circle at bottom left, rgba(168,85,247,0.16), transparent 44%)";
   }
-  if (item?.reward_type === "enhance_protect_ticket") {
-    return "radial-gradient(circle at top right, rgba(244,114,182,0.26), transparent 40%), radial-gradient(circle at bottom left, rgba(251,191,36,0.18), transparent 44%)";
-  }
   if (item?.reward_type === "nickname_effect") {
     const theme = getNicknameEffectTheme(item);
     return `radial-gradient(circle at top right, ${hexToRgba(theme.glow, 0.24)}, transparent 42%)`;
+  }
+  if (item?.reward_type === "enhance_protect_ticket") {
+    return "radial-gradient(circle at top right, rgba(244,114,182,0.22), transparent 42%), radial-gradient(circle at bottom left, rgba(251,191,36,0.18), transparent 44%)";
   }
   return "radial-gradient(circle at top right, rgba(168,85,247,0.18), transparent 42%)";
 };
@@ -933,8 +929,8 @@ const getShopItemHighlights = (item: any) => {
   }
 
   if (item?.reward_type === "enhance_protect_ticket") {
-    highlights.push(`보호 효과 · ${getEnhanceProtectTicketEffectText(item)}`);
-    highlights.push("고강 실패 시 파손 판정이 나오면 자동으로 1개 소모");
+    highlights.push("고강 파손 판정 시 자동으로 1개 사용");
+    highlights.push("파손만 막고 실패 자체는 그대로 처리");
   }
 
   if (item?.reward_type === "badge" && (item?.badge_name || item?.title)) {
@@ -968,7 +964,7 @@ const getShopMoodLine = (item: any) => {
   }
 
   if (item?.reward_type === "enhance_protect_ticket") {
-    return `${getEnhanceProtectTicketEffectText(item)} 효과를 가진 고강 안전장치`;
+    return "고강 실패 시 파손 판정을 막아주는 강화 보호권";
   }
 
   return item?.description?.trim()
@@ -3139,6 +3135,8 @@ const JoinForm = ({
             취소
           </button>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -4370,6 +4368,13 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   const [ownedEnhanceItems, setOwnedEnhanceItems] = useState<any[]>([]);
   const [myPoint, setMyPoint] = useState(0);
   const [ownedNicknameEffects, setOwnedNicknameEffects] = useState<any[]>([]);
+  const [myRoomTab, setMyRoomTab] = useState<"growth" | "characters">("growth");
+  const [nakwonSpendAmount, setNakwonSpendAmount] = useState("100");
+  const [nakwonSubmitting, setNakwonSubmitting] = useState(false);
+  const [enhancementAttemptState, setEnhancementAttemptState] = useState(() => ({
+    usedToday: Number(profile?.enhance_attempts_used_today || 0),
+    usedDate: String(profile?.enhance_attempts_used_date || ""),
+  }));
   const [pointRateSettings, setPointRateSettings] = useState<PointRateSettings>(normalizePointRateSettings(readCache<any>(CACHE_KEYS.settings, defaultSettings)?.point_rate_settings));
   const [pointTickNow, setPointTickNow] = useState(Date.now());
   const passiveTickAnchorRef = useRef<string>(profile?.last_point_tick_at || new Date().toISOString());
@@ -4390,24 +4395,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   const [enhancingCharacterId, setEnhancingCharacterId] = useState<string | null>(null);
   const [expandedWeaponPanels, setExpandedWeaponPanels] = useState<Record<string, boolean>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
-
-  const enhanceAttemptState = useMemo(() => getEnhanceAttemptState(profile), [profile?.nakwon_level, profile?.enhance_attempts_used_today, profile?.enhance_attempts_used_date]);
-  const availableEnhanceStones = useMemo(
-    () =>
-      ownedEnhanceItems
-        .filter((item: any) => Number(item.quantity || 0) > 0 && isEnhanceStoneItem(item))
-        .sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0)),
-    [ownedEnhanceItems]
-  );
-  const availableProtectTickets = useMemo(
-    () =>
-      ownedEnhanceItems
-        .filter((item: any) => Number(item.quantity || 0) > 0 && isEnhanceProtectTicketItem(item))
-        .sort((a: any, b: any) => String(a.item_name || a.title || "").localeCompare(String(b.item_name || b.title || ""), "ko")),
-    [ownedEnhanceItems]
-  );
-  const bestEnhanceStone = availableEnhanceStones[0] || null;
-  const availableProtectTicket = availableProtectTickets[0] || null;
 
   const toggleWeaponPanel = (characterId: string) => {
     setExpandedWeaponPanels((prev) => ({
@@ -4626,7 +4613,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           ...item,
           quantity: Math.max(0, Number(item.quantity || 0)),
           bonus_rate: Number(item.bonus_rate || item.enhance_bonus_rate || 0),
-          item_type: getEnhancementItemType(item),
+          item_type: item.item_type || "enhance_stone",
+          protection_scope: item.protection_scope || null,
         }))
       );
     } catch (error) {
@@ -4640,7 +4628,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     const client = getSupabaseOrThrow();
     const { data, error } = await client
       .from("profiles")
-      .select("points, last_point_tick_at, passive_points_today, passive_points_date, nakwon_level, enhance_attempts_used_today, enhance_attempts_used_date")
+      .select("points, last_point_tick_at, passive_points_today, passive_points_date, enhance_attempts_used_today, enhance_attempts_used_date, nakwon_level, nakwon_exp, nakwon_total_spent")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -4655,7 +4643,71 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       passivePointsToday: Number(data?.passive_points_today || 0),
       passivePointsDate: String(data?.passive_points_date || ""),
     });
+    setEnhancementAttemptState({
+      usedToday: Number(data?.enhance_attempts_used_today || 0),
+      usedDate: String(data?.enhance_attempts_used_date || ""),
+    });
   }, [user?.id]);
+
+  useEffect(() => {
+    setEnhancementAttemptState({
+      usedToday: Number(profile?.enhance_attempts_used_today || 0),
+      usedDate: String(profile?.enhance_attempts_used_date || ""),
+    });
+  }, [profile?.enhance_attempts_used_today, profile?.enhance_attempts_used_date]);
+
+  const nakwonLevel = Math.max(1, Number(profile?.nakwon_level || 1));
+  const nakwonExp = Math.max(0, Number(profile?.nakwon_exp || 0));
+  const nakwonTotalSpent = Math.max(0, Number(profile?.nakwon_total_spent || 0));
+  const nakwonRequiredExp = getNakwonExpRequiredForLevel(nakwonLevel);
+  const nakwonProgressPercent = Math.max(0, Math.min(100, (nakwonExp / Math.max(1, nakwonRequiredExp)) * 100));
+  const dailyEnhanceLimit = getNakwonDailyEnhanceLimit(nakwonLevel);
+  const enhanceAttemptsUsedToday =
+    enhancementAttemptState.usedDate === getTodayKey() ? Number(enhancementAttemptState.usedToday || 0) : 0;
+  const remainingEnhanceAttempts = Math.max(0, dailyEnhanceLimit - enhanceAttemptsUsedToday);
+  const protectionTicketCount = ownedEnhanceItems
+    .filter((item: any) => item.item_type === "enhance_protect_ticket")
+    .reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0);
+
+  const handleNakwonInfuse = async (amountLike?: number) => {
+    if (!user?.id) return alert("로그인 후 사용 가능합니다.");
+    const amount = Math.max(0, Math.floor(Number(amountLike ?? nakwonSpendAmount)));
+    if (!Number.isFinite(amount) || amount <= 0) return alert("주입할 포인트를 입력해줘.");
+    if (myPoint < amount) return alert("포인트가 부족해.");
+    if (!confirm(`${amount}P를 낙원 경험치로 주입할까요?`)) return;
+
+    const result = applyNakwonExpGain(profile?.nakwon_level, profile?.nakwon_exp, amount);
+    const nextPoint = Math.max(0, myPoint - amount);
+    const client = getSupabaseOrThrow();
+    setNakwonSubmitting(true);
+
+    const { error } = await client
+      .from("profiles")
+      .update({
+        points: nextPoint,
+        nakwon_level: result.level,
+        nakwon_exp: result.exp,
+        nakwon_total_spent: Math.max(0, Number(profile?.nakwon_total_spent || 0)) + amount,
+      })
+      .eq("id", user.id);
+
+    setNakwonSubmitting(false);
+
+    if (error) {
+      alert(`${error.message}\n\n낙원력 컬럼 SQL을 먼저 적용해줘.`);
+      return;
+    }
+
+    setMyPoint(nextPoint);
+    await fetchProfile(user.id);
+    await fetchMyPoint();
+
+    alert(
+      result.leveledUp
+        ? `낙원력이 상승했어! Lv.${nakwonLevel} → Lv.${result.level}`
+        : `낙원 경험치 +${amount} 완료!`
+    );
+  };
 
   useEffect(() => {
     const fetchRankIcon = async () => {
@@ -5004,12 +5056,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       return;
     }
 
-    const attemptState = getEnhanceAttemptState(profile);
-    if (attemptState.remaining <= 0) {
-      alert(`오늘의 계정 강화 시도권을 모두 사용했어. (${attemptState.used}/${attemptState.limit})`);
-      return;
-    }
-
     const inventoryWeapon =
       ownedWeapons.find((item: any) => String(item.inventory_id || item.id || "") === String(character.equipped_weapon_inventory_id || "")) ||
       ownedWeapons.find((item: any) => String(item.weapon_id || item.id || "") === String(character.equipped_weapon_id || ""));
@@ -5019,30 +5065,46 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       return;
     }
 
+    const today = getTodayKey();
+    const attemptsUsed = enhancementAttemptState.usedDate === today ? Number(enhancementAttemptState.usedToday || 0) : 0;
+    const dailyLimit = getNakwonDailyEnhanceLimit(profile?.nakwon_level);
+
+    if (attemptsUsed >= dailyLimit) {
+      alert(`오늘 사용 가능한 계정 전체 강화 시도권을 모두 썼어. (${attemptsUsed}/${dailyLimit})`);
+      return;
+    }
+
     if (myPoint < 1) {
       alert("강화에는 1포인트가 필요해.");
       return;
     }
 
-    const availableStone = availableEnhanceStones[0] || null;
-    const availableProtectTicket = availableProtectTickets[0] || null;
+    const availableStone = ownedEnhanceItems
+      .filter((item: any) => item.item_type !== "enhance_protect_ticket" && Number(item.quantity || 0) > 0)
+      .sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0] || null;
+
+    const availableProtection = ownedEnhanceItems
+      .filter((item: any) => item.item_type === "enhance_protect_ticket" && Number(item.quantity || 0) > 0)
+      .sort((a: any, b: any) => Number(b.quantity || 0) - Number(a.quantity || 0))[0] || null;
+
     const bonusRate = Number(availableStone?.bonus_rate || 0);
     const successRate = getEnhancementSuccessRate(currentLevel, bonusRate);
     const destroyRate = getEnhancementDestroyRate(currentLevel);
-    const destroyFallbackLevel = getEnhancementDestroyedLevel(currentLevel);
-    const canProtect = destroyRate > 0 && !!availableProtectTicket;
-
+    const fallbackLevel = getEnhancementDestroyFallbackLevel(currentLevel);
     const confirmLines = [
       `${character.character_name}의 ${character.equipped_weapon_name}을(를) 강화할까요?`,
       `현재 단계: ${getEnhancementDisplay(currentLevel)} / 최대 ${ENHANCEMENT_MAX_LEVEL}강`,
-      `계정 일일 시도권: ${attemptState.used}/${attemptState.limit} 사용 중 → 시도 후 ${Math.min(attemptState.limit, attemptState.used + 1)}/${attemptState.limit}`,
       `기본 비용: 1P`,
+      `오늘 시도권: ${attemptsUsed}/${dailyLimit} 사용`,
       availableStone
         ? `사용 강화석: ${availableStone.item_name || availableStone.title || "강화석"} (${getEnhancementItemEffectText(availableStone)})`
         : "사용 강화석: 없음",
       destroyRate > 0
-        ? `파손 확률: ${destroyRate}%${canProtect ? ` · 보호권 자동 사용 (${availableProtectTicket?.item_name || availableProtectTicket?.title || "파괴방지권"} x${availableProtectTicket?.quantity || 0})` : ` · 파손 시 ${getEnhancementDisplay(destroyFallbackLevel)}로 하락`}`
+        ? `파손 확률: ${destroyRate}% (파손 시 ${getEnhancementDisplay(fallbackLevel)}로 하락)`
         : "파손 확률: 없음",
+      availableProtection
+        ? `파괴방지권: ${availableProtection.item_name || availableProtection.title || "파괴방지권"} x${availableProtection.quantity} (자동 사용)`
+        : "파괴방지권: 없음",
       `최종 성공 확률: ${successRate}%`,
     ];
 
@@ -5051,158 +5113,123 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     const client = getSupabaseOrThrow();
     setEnhancingCharacterId(String(character.id));
 
-    try {
-      const profileSnapshot = await client
-        .from("profiles")
-        .select("points, nakwon_level, enhance_attempts_used_today, enhance_attempts_used_date")
-        .eq("id", user.id)
-        .maybeSingle();
+    const nextPoint = Math.max(0, myPoint - 1);
+    const { error: pointError } = await client.from("profiles").update({ points: nextPoint }).eq("id", user.id);
+    if (pointError) {
+      setEnhancingCharacterId(null);
+      alert(pointError.message);
+      return;
+    }
 
-      if (profileSnapshot.error) {
-        throw new Error(profileSnapshot.error.message);
-      }
-
-      const latestProfile = profileSnapshot.data || {};
-      const latestAttemptState = getEnhanceAttemptState(latestProfile);
-      if (latestAttemptState.remaining <= 0) {
-        throw new Error(`오늘의 계정 강화 시도권을 모두 사용했어. (${latestAttemptState.used}/${latestAttemptState.limit})`);
-      }
-
-      const latestPoint = Number(latestProfile?.points || 0);
-      if (latestPoint < 1) {
-        throw new Error("강화에는 1포인트가 필요해.");
-      }
-
-      const latestInventoryWeapon =
-        ownedWeapons.find((item: any) => String(item.inventory_id || item.id || "") === String(character.equipped_weapon_inventory_id || "")) ||
-        ownedWeapons.find((item: any) => String(item.weapon_id || item.id || "") === String(character.equipped_weapon_id || ""));
-
-      if (!latestInventoryWeapon) {
-        throw new Error("장착 무기 인벤토리 정보를 다시 불러오지 못했어.");
-      }
-
-      const latestStone = availableEnhanceStones[0] || null;
-      const latestProtectTicket = availableProtectTickets[0] || null;
-      const latestBonusRate = Number(latestStone?.bonus_rate || 0);
-      const latestSuccessRate = getEnhancementSuccessRate(currentLevel, latestBonusRate);
-      const latestDestroyRate = getEnhancementDestroyRate(currentLevel);
-
-      const nextUsedAttempts = latestAttemptState.used + 1;
-      const profilePatch: Record<string, any> = {
-        points: Math.max(0, latestPoint - 1),
-        enhance_attempts_used_today: nextUsedAttempts,
-        enhance_attempts_used_date: latestAttemptState.today,
-      };
-
-      const { error: pointError } = await client.from("profiles").update(profilePatch).eq("id", user.id);
-      if (pointError) {
-        throw new Error(pointError.message);
-      }
-
-      if (latestStone) {
-        const nextQuantity = Math.max(0, Number(latestStone.quantity || 0) - 1);
-        const { error: stoneError } = await client
-          .from("user_owned_enhance_items")
-          .update({ quantity: nextQuantity })
-          .eq("id", latestStone.id)
-          .eq("user_id", user.id);
-
-        if (stoneError) {
-          throw new Error(stoneError.message);
-        }
-      }
-
-      let consumedProtectTicket = false;
-      let resultType: "success" | "fail_keep" | "destroyed" | "protected" = "fail_keep";
-      let nextLevel = currentLevel;
-
-      const isSuccess = Math.random() * 100 < latestSuccessRate;
-      if (isSuccess) {
-        nextLevel = Math.min(ENHANCEMENT_MAX_LEVEL, currentLevel + 1);
-        resultType = "success";
-      } else {
-        const isDestroyed = latestDestroyRate > 0 && Math.random() * 100 < latestDestroyRate;
-        if (isDestroyed) {
-          if (latestProtectTicket && Number(latestProtectTicket.quantity || 0) > 0) {
-            const nextTicketQuantity = Math.max(0, Number(latestProtectTicket.quantity || 0) - 1);
-            const { error: protectError } = await client
-              .from("user_owned_enhance_items")
-              .update({ quantity: nextTicketQuantity })
-              .eq("id", latestProtectTicket.id)
-              .eq("user_id", user.id);
-
-            if (protectError) {
-              throw new Error(protectError.message);
-            }
-
-            consumedProtectTicket = true;
-            nextLevel = currentLevel;
-            resultType = "protected";
-          } else {
-            nextLevel = getEnhancementDestroyedLevel(currentLevel);
-            resultType = "destroyed";
-          }
-        } else {
-          nextLevel = currentLevel;
-          resultType = "fail_keep";
-        }
-      }
-
-      const { error: weaponError } = await client
-        .from("user_owned_weapons")
-        .update({
-          enhancement_level: nextLevel,
-          last_enhanced_on: latestAttemptState.today,
-        })
-        .eq("id", latestInventoryWeapon.inventory_id || latestInventoryWeapon.id)
+    if (availableStone) {
+      const nextQuantity = Math.max(0, Number(availableStone.quantity || 0) - 1);
+      const { error: stoneError } = await client
+        .from("user_owned_enhance_items")
+        .update({ quantity: nextQuantity })
+        .eq("id", availableStone.id)
         .eq("user_id", user.id);
 
-      if (weaponError) {
-        throw new Error(`${weaponError.message}\n\n강화 컬럼 SQL을 먼저 적용해줘.`);
-      }
-
-      const { error: characterError } = await client
-        .from("guild_members")
-        .update({
-          equipped_weapon_inventory_id: latestInventoryWeapon.inventory_id || latestInventoryWeapon.id,
-          equipped_weapon_level: nextLevel,
-          equipped_weapon_last_enhanced_on: latestAttemptState.today,
-        })
-        .eq("id", character.id);
-
-      if (characterError) {
-        throw new Error(`${characterError.message}\n\n길드 캐릭터 무기 강화 컬럼 SQL을 먼저 적용해줘.`);
-      }
-
-      await Promise.all([
-        fetchCharacters(),
-        fetchOwnedWeapons(),
-        fetchOwnedEnhanceItems(),
-        fetchMyPoint(),
-        fetchProfile?.(user.id),
-      ]);
-
-      if (resultType === "success") {
-        alert(`강화 성공! ${character.equipped_weapon_name} ${getEnhancementDisplay(currentLevel)} → ${getEnhancementDisplay(nextLevel)}\n오늘 시도권 사용: ${nextUsedAttempts}/${latestAttemptState.limit}`);
+      if (stoneError) {
+        setEnhancingCharacterId(null);
+        alert(stoneError.message);
         return;
       }
-
-      if (resultType === "protected") {
-        alert(`강화 실패. 파손 판정이 나왔지만 ${latestProtectTicket?.item_name || latestProtectTicket?.title || "파괴방지권"}이 자동 사용되어 ${getEnhancementDisplay(currentLevel)}을 유지했어.\n오늘 시도권 사용: ${nextUsedAttempts}/${latestAttemptState.limit}${consumedProtectTicket ? `\n남은 방지권: ${Math.max(0, Number(latestProtectTicket?.quantity || 0) - 1)}개` : ""}`);
-        return;
-      }
-
-      if (resultType === "destroyed") {
-        alert(`강화 실패로 무기가 파손되어 ${getEnhancementDisplay(currentLevel)} → ${getEnhancementDisplay(nextLevel)}로 하락했어.\n오늘 시도권 사용: ${nextUsedAttempts}/${latestAttemptState.limit}`);
-        return;
-      }
-
-      alert(`강화 실패. 하지만 ${character.equipped_weapon_name}의 강화 수치는 ${getEnhancementDisplay(currentLevel)}로 유지됐어.\n오늘 시도권 사용: ${nextUsedAttempts}/${latestAttemptState.limit}`);
-    } catch (error: any) {
-      alert(error?.message || "강화 처리 중 오류가 발생했어.");
-    } finally {
-      setEnhancingCharacterId(null);
     }
+
+    const isSuccess = Math.random() * 100 < successRate;
+    const isDestroyed = !isSuccess && destroyRate > 0 && Math.random() * 100 < destroyRate;
+    const protectionUsed = Boolean(isDestroyed && availableProtection);
+    const nextLevel = isSuccess
+      ? Math.min(ENHANCEMENT_MAX_LEVEL, currentLevel + 1)
+      : isDestroyed && !protectionUsed
+      ? fallbackLevel
+      : currentLevel;
+
+    if (protectionUsed && availableProtection) {
+      const nextProtectionQuantity = Math.max(0, Number(availableProtection.quantity || 0) - 1);
+      const { error: protectionError } = await client
+        .from("user_owned_enhance_items")
+        .update({ quantity: nextProtectionQuantity })
+        .eq("id", availableProtection.id)
+        .eq("user_id", user.id);
+
+      if (protectionError) {
+        setEnhancingCharacterId(null);
+        alert(protectionError.message);
+        return;
+      }
+    }
+
+    const { error: weaponError } = await client
+      .from("user_owned_weapons")
+      .update({
+        enhancement_level: nextLevel,
+        last_enhanced_on: today,
+      })
+      .eq("id", inventoryWeapon.inventory_id || inventoryWeapon.id)
+      .eq("user_id", user.id);
+
+    if (weaponError) {
+      setEnhancingCharacterId(null);
+      alert(`${weaponError.message}\n\n강화 컬럼 SQL을 먼저 적용해줘.`);
+      return;
+    }
+
+    const { error: characterError } = await client
+      .from("guild_members")
+      .update({
+        equipped_weapon_inventory_id: inventoryWeapon.inventory_id || inventoryWeapon.id,
+        equipped_weapon_level: nextLevel,
+        equipped_weapon_last_enhanced_on: today,
+      })
+      .eq("id", character.id);
+
+    if (characterError) {
+      setEnhancingCharacterId(null);
+      alert(`${characterError.message}\n\n길드 캐릭터 무기 강화 컬럼 SQL을 먼저 적용해줘.`);
+      return;
+    }
+
+    const nextAttemptsUsed = attemptsUsed + 1;
+    const { error: attemptsError } = await client
+      .from("profiles")
+      .update({
+        enhance_attempts_used_today: nextAttemptsUsed,
+        enhance_attempts_used_date: today,
+      })
+      .eq("id", user.id);
+
+    setEnhancingCharacterId(null);
+
+    if (attemptsError) {
+      alert(`${attemptsError.message}\n\n낙원력/계정 시도권 SQL을 먼저 적용해줘.`);
+      return;
+    }
+
+    setMyPoint(nextPoint);
+    setEnhancementAttemptState({
+      usedToday: nextAttemptsUsed,
+      usedDate: today,
+    });
+
+    await Promise.all([fetchCharacters(), fetchOwnedWeapons(), fetchOwnedEnhanceItems(), fetchMyPoint(), fetchProfile(user.id)]);
+
+    if (isSuccess) {
+      alert(`강화 성공! ${character.equipped_weapon_name} ${getEnhancementDisplay(currentLevel)} → ${getEnhancementDisplay(nextLevel)}`);
+      return;
+    }
+
+    if (isDestroyed && protectionUsed) {
+      alert(`강화 실패! 파손 판정이 있었지만 파괴방지권이 자동으로 사용되어 ${getEnhancementDisplay(currentLevel)} 상태를 지켰어.`);
+      return;
+    }
+
+    if (isDestroyed) {
+      alert(`강화 실패! 무기가 파손되어 ${getEnhancementDisplay(currentLevel)} → ${getEnhancementDisplay(nextLevel)} 로 하락했어.`);
+      return;
+    }
+
+    alert(`강화 실패. 하지만 ${character.equipped_weapon_name}의 강화 수치는 ${getEnhancementDisplay(currentLevel)}로 유지됐어.`);
   };
 
   const deleteCharacter = async (id: string) => {
@@ -5451,7 +5478,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       <h2 className="text-4xl font-black mb-10">My Room</h2>
 
       <div className="bg-white/5 p-10 rounded-3xl space-y-6">
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid md:grid-cols-5 gap-4">
           <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
             <div className="text-[11px] uppercase tracking-[0.22em] text-gray-400 font-black">닉네임</div>
             <div className="mt-3 text-2xl font-black" style={getNicknameEffectStyle(profile)}>
@@ -5459,11 +5486,88 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
             </div>
           </div>
           <InfoMiniCard title="포인트" value={`${myPoint || profile.points || 0}`} />
-          <InfoMiniCard title="랭크" value={profile.rank_name || "Seed"} />
+          <InfoMiniCard title="낙원력" value={`Lv.${nakwonLevel}`} />
+          <InfoMiniCard title="오늘 강화권" value={`${remainingEnhanceAttempts}/${dailyEnhanceLimit}`} />
           <InfoMiniCard title="보유 뱃지" value={`${ownedBadges.length}개`} />
         </div>
 
-        <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-4">
+        <div className="flex flex-wrap gap-2">
+          {[
+            ["growth", "낙원력/성장"],
+            ["characters", "캐릭터/장비"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setMyRoomTab(key as "growth" | "characters")}
+              className={cn(
+                "px-4 py-2 rounded-full border text-sm font-black transition",
+                myRoomTab === key ? "bg-purple-600 border-purple-500 text-white" : "bg-white/5 border-white/10 text-gray-400"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {myRoomTab === "growth" && (
+          <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-4">
+            <div className="rounded-[2rem] border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 via-black/30 to-transparent p-5">
+              <div className="text-[10px] uppercase tracking-[0.24em] font-black text-cyan-300">Nakwon Level</div>
+              <div className="mt-2 text-2xl font-black">낙원력 제단</div>
+              <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <div className="text-4xl font-black text-white">Lv.{nakwonLevel}</div>
+                  <div className="mt-1 text-sm text-gray-400">누적 주입 {nakwonTotalSpent}P · 오늘 강화권 {dailyEnhanceLimit}회</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-right">
+                  <div className="text-xs text-gray-500">다음 레벨까지</div>
+                  <div className="text-lg font-black text-cyan-300">{nakwonExp} / {nakwonRequiredExp} EXP</div>
+                </div>
+              </div>
+              <div className="mt-4 h-3 rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full rounded-full bg-cyan-400" style={{ width: `${nakwonProgressPercent}%` }} />
+              </div>
+              <div className="mt-4 grid md:grid-cols-3 gap-3">
+                <MiniStat label="일일 강화 시도권" value={`${dailyEnhanceLimit}회`} />
+                <MiniStat label="남은 시도권" value={`${remainingEnhanceAttempts}회`} />
+                <MiniStat label="파괴방지권" value={`${protectionTicketCount}개`} />
+              </div>
+              <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="text-sm font-black">포인트를 낙원 경험치로 주입</div>
+                <div className="mt-2 text-xs text-gray-400">1P = 1EXP · 낙원력이 오를수록 계정 전체 일일 강화 시도권이 증가해.</div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {[50, 100, 300, 500].map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      onClick={() => void handleNakwonInfuse(amount)}
+                      disabled={nakwonSubmitting}
+                      className="px-4 py-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-cyan-200 text-sm font-black"
+                    >
+                      {amount}P 주입
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <input
+                    value={nakwonSpendAmount}
+                    onChange={(e) => setNakwonSpendAmount(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="직접 입력"
+                    className="flex-1 min-w-[160px] bg-black border border-white/10 rounded-xl px-4 py-3 text-sm font-black"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleNakwonInfuse()}
+                    disabled={nakwonSubmitting}
+                    className="px-5 py-3 rounded-xl bg-cyan-500 text-black font-black"
+                  >
+                    {nakwonSubmitting ? "주입 중..." : "직접 주입"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
           <div className="rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-black/30 to-transparent p-5">
             <div className="text-[10px] uppercase tracking-[0.24em] font-black text-amber-300">Hourly Point Engine</div>
             <div className="mt-2 text-2xl font-black">자동 포인트 현황</div>
@@ -5514,6 +5618,10 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           </div>
         </div>
 
+        </div>
+        )}
+
+        {myRoomTab === "growth" && (
         <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -5549,6 +5657,11 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           </div>
         </div>
 
+        </div>
+        )}
+
+        {myRoomTab === "characters" && (
+          <>
         <div className="flex flex-wrap gap-3 items-center">
           <button onClick={handleAttendance} className="bg-green-600 px-5 py-3 rounded-xl font-black">
             출석 체크 (+10P)
@@ -5835,7 +5948,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
                     {!expandedWeaponPanels[character.id] && ownedWeapons.length > 0 && (
                       <div className="mt-3 text-xs text-gray-500">
-                        눌러서 보유 무기 목록을 펼치고 장착하거나 강화할 수 있어. 오늘 계정 강화 시도권 {enhanceAttemptState.used}/{enhanceAttemptState.limit} · 현재 보유 포인트 {myPoint}P · 강화석 {availableEnhanceStones.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}개 · 방지권 {availableProtectTickets.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}개
+                        눌러서 보유 무기 목록을 펼치고 장착하거나, 현재 무기를 하루 1회 강화할 수 있어. 현재 보유 포인트 {myPoint}P · 강화석 {ownedEnhanceItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}개
                       </div>
                     )}
 
@@ -5860,20 +5973,16 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                     </span>
                                   </div>
                                   <div className="mt-2 text-sm text-amber-50/80">
-                                    성공 확률 {getEnhancementSuccessRate(character.equipped_weapon_level, (bestEnhanceStone?.bonus_rate) || 0)}%
-                                    {bestEnhanceStone && ` · 최고 강화석 자동 사용 (${getEnhancementItemEffectText(bestEnhanceStone)})`}
-                                  </div>
-                                  <div className="mt-1 text-xs text-amber-100/70">
-                                    계정 시도권 {enhanceAttemptState.used}/{enhanceAttemptState.limit} · 1회 시도당 1P 소모 · 최대 {ENHANCEMENT_MAX_LEVEL}강
+                                    성공 확률 {getEnhancementSuccessRate(character.equipped_weapon_level, (ownedEnhanceItems.filter((item: any) => Number(item.quantity || 0) > 0).sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0]?.bonus_rate) || 0)}%
+                                    {ownedEnhanceItems.some((item: any) => Number(item.quantity || 0) > 0) && ` · 최고 강화석 자동 사용 (${getEnhancementItemEffectText(ownedEnhanceItems.filter((item: any) => Number(item.quantity || 0) > 0).sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0])})`}
                                   </div>
                                   <div className="mt-1 text-xs text-amber-100/60">
-                                    {getEnhancementDestroyRate(character.equipped_weapon_level) > 0
-                                      ? `실패 시 파손 확률 ${getEnhancementDestroyRate(character.equipped_weapon_level)}% · 파손 시 ${getEnhancementDisplay(getEnhancementDestroyedLevel(character.equipped_weapon_level))}로 하락`
-                                      : "실패 시 강화 수치 유지"}
-                                    {availableProtectTicket ? ` · 방지권 ${availableProtectTicket.quantity}개 보유` : ""}
+                                    계정 전체 일일 강화 시도권 {remainingEnhanceAttempts}/{dailyEnhanceLimit} · 1회 시도당 1P 소모 · 최대 {ENHANCEMENT_MAX_LEVEL}강
                                   </div>
-                                  {enhanceAttemptState.remaining <= 0 && (
-                                    <div className="mt-2 text-xs text-rose-200">오늘의 계정 강화 시도권을 모두 사용했어.</div>
+                                  {getEnhancementDestroyRate(character.equipped_weapon_level) > 0 && (
+                                    <div className="mt-2 text-xs text-rose-200">
+                                      현재 단계 파손 확률 {getEnhancementDestroyRate(character.equipped_weapon_level)}% · 방지권 보유 {protectionTicketCount}개
+                                    </div>
                                   )}
                                 </div>
                                 <button
@@ -5882,18 +5991,18 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                   disabled={
                                     enhancingCharacterId === String(character.id) ||
                                     normalizeEnhancementLevel(character.equipped_weapon_level) >= ENHANCEMENT_MAX_LEVEL ||
-                                    enhanceAttemptState.remaining <= 0
+                                    remainingEnhanceAttempts <= 0
                                   }
                                   className={cn(
                                     "px-4 py-3 rounded-xl text-sm font-black transition whitespace-nowrap",
                                     enhancingCharacterId === String(character.id) ||
                                       normalizeEnhancementLevel(character.equipped_weapon_level) >= ENHANCEMENT_MAX_LEVEL ||
-                                      enhanceAttemptState.remaining <= 0
+                                      remainingEnhanceAttempts <= 0
                                       ? "bg-zinc-700 text-zinc-300"
                                       : "bg-amber-500 text-black hover:bg-amber-400"
                                   )}
                                 >
-                                  {enhancingCharacterId === String(character.id) ? "강화 중..." : `강화 시도 (${enhanceAttemptState.remaining}회 남음)`}
+                                  {enhancingCharacterId === String(character.id) ? "강화 중..." : "강화 시도"}
                                 </button>
                               </div>
 
@@ -5901,16 +6010,12 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                 <div className="mt-4 flex flex-wrap gap-2">
                                   {ownedEnhanceItems
                                     .filter((item: any) => Number(item.quantity || 0) > 0)
-                                    .sort((a: any, b: any) => {
-                                      const typeDiff = String(getEnhancementItemType(a)).localeCompare(String(getEnhancementItemType(b)));
-                                      if (typeDiff !== 0) return typeDiff;
-                                      return Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0);
-                                    })
+                                    .sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))
                                     .map((item: any) => (
                                       <div key={item.id} className="px-3 py-2 rounded-xl border border-white/10 bg-black/20 text-xs">
-                                        <span className="font-black text-white">{item.item_name || item.title || (isEnhanceProtectTicketItem(item) ? "파괴방지권" : "강화석")}</span>
-                                        <span className={cn("ml-2", isEnhanceProtectTicketItem(item) ? "text-rose-200" : "text-amber-200")}>
-                                          {isEnhanceProtectTicketItem(item) ? getEnhanceProtectTicketEffectText(item) : getEnhancementItemEffectText(item)}
+                                        <span className="font-black text-white">{item.item_name || item.title || (item.item_type === "enhance_protect_ticket" ? "파괴방지권" : "강화석")}</span>
+                                        <span className="text-amber-200 ml-2">
+                                          {item.item_type === "enhance_protect_ticket" ? "파손 자동 방지" : getEnhancementItemEffectText(item)}
                                         </span>
                                         <span className="text-gray-400 ml-2">x{item.quantity}</span>
                                       </div>
@@ -6369,7 +6474,7 @@ const GuildMembersPage = () => {
       if (ownerIds.length > 0) {
         const { data: profileRows, error: profileError } = await client
           .from("profiles")
-          .select("id, nickname, active_nickname_effect, nickname_gradient_from, nickname_gradient_to, nickname_glow_color")
+          .select("id, nickname, active_nickname_effect, nickname_gradient_from, nickname_gradient_to, nickname_glow_color, nakwon_level")
           .in("id", ownerIds);
 
         if (profileError) {
@@ -6388,6 +6493,7 @@ const GuildMembersPage = () => {
           owner_nickname_gradient_from: ownerProfile?.nickname_gradient_from || null,
           owner_nickname_gradient_to: ownerProfile?.nickname_gradient_to || null,
           owner_nickname_glow_color: ownerProfile?.nickname_glow_color || null,
+          owner_nakwon_level: Number(ownerProfile?.nakwon_level || 1),
         };
       });
 
@@ -7012,8 +7118,6 @@ const PointShopPage = ({ user, profile }: any) => {
                         ? `${badgeTheme.label} 길드 카드`
                         : item.reward_type === "enhance_stone"
                         ? "무기 강화 보조 아이템"
-                        : item.reward_type === "enhance_protect_ticket"
-                        ? "고강 파손 방지 아이템"
                         : "포인트샵 대표 상품 카드"}
                     </div>
                   </div>
@@ -7022,12 +7126,7 @@ const PointShopPage = ({ user, profile }: any) => {
                       {getEnhancementItemEffectText(item)}
                     </span>
                   )}
-                  {item.reward_type === "enhance_protect_ticket" && (
-                    <span className="px-3 py-1 rounded-full text-xs font-black border border-rose-400/30 bg-rose-500/10 text-rose-200">
-                      {getEnhanceProtectTicketEffectText(item)}
-                    </span>
-                  )}
-                  {item.reward_type !== "enhance_stone" && item.reward_type !== "enhance_protect_ticket" && (
+                  {item.reward_type !== "enhance_stone" && (
                     <span
                       className="px-3 py-1 rounded-full text-xs font-black border"
                       style={{
@@ -7866,7 +7965,7 @@ const AdminPointShopManager = () => {
                     <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
                       {getShopRewardTypeLabel(previewItem)}
                     </span>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: rewardType === "badge" ? previewTheme.chipText : rewardType === "enhance_protect_ticket" ? "#fecdd3" : "#fde68a", borderColor: rewardType === "badge" ? previewTheme.chipBorder : rewardType === "enhance_protect_ticket" ? "rgba(251,113,133,0.35)" : "rgba(250,204,21,0.35)", background: rewardType === "badge" ? previewTheme.chipBackground : rewardType === "enhance_protect_ticket" ? "rgba(244,63,94,0.16)" : "rgba(245,158,11,0.16)" }}>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: rewardType === "badge" ? previewTheme.chipText : "#fde68a", borderColor: rewardType === "badge" ? previewTheme.chipBorder : "rgba(250,204,21,0.35)", background: rewardType === "badge" ? previewTheme.chipBackground : "rgba(245,158,11,0.16)" }}>
                       {getShopItemStatusText(previewItem)}
                     </span>
                   </div>
