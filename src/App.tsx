@@ -92,6 +92,27 @@ const getSupabaseOrThrow = () => {
   return supabase;
 };
 
+const isMissingSupabaseResourceError = (error: any, resourceName?: string) => {
+  const message = String(error?.message || error?.details || error?.hint || "").toLowerCase();
+  const code = String(error?.code || "").toLowerCase();
+  const status = Number(error?.status || error?.statusCode || 0);
+  const resource = String(resourceName || "").toLowerCase();
+
+  const candidates = [
+    "404",
+    "not found",
+    "could not find",
+    "schema cache",
+    "does not exist",
+    "relation",
+    "function",
+    resource,
+  ].filter(Boolean);
+
+  const matched = candidates.some((token) => message.includes(token) || code.includes(token));
+  return matched || status === 404;
+};
+
 type UserLike = any;
 type ProfileLike = any;
 type PostLike = any;
@@ -1097,9 +1118,10 @@ const PassivePointBackgroundSync = ({
   onProfileRefresh: () => Promise<void> | void;
 }) => {
   const syncLockRef = useRef(false);
+  const passiveRpcUnavailableRef = useRef(false);
 
   const runSync = useCallback(async (reason: "boot" | "interval" | "focus" | "visible" = "interval") => {
-    if (!userId || syncLockRef.current) return;
+    if (!userId || syncLockRef.current || passiveRpcUnavailableRef.current) return;
 
     syncLockRef.current = true;
     try {
@@ -1109,6 +1131,10 @@ const PassivePointBackgroundSync = ({
       });
 
       if (error) {
+        if (isMissingSupabaseResourceError(error, "process_passive_point_ticks_for_user")) {
+          passiveRpcUnavailableRef.current = true;
+          return;
+        }
         console.error(`PassivePointBackgroundSync ${reason} error:`, error);
         return;
       }
@@ -1121,6 +1147,10 @@ const PassivePointBackgroundSync = ({
         }
       }
     } catch (error) {
+      if (isMissingSupabaseResourceError(error, "process_passive_point_ticks_for_user")) {
+        passiveRpcUnavailableRef.current = true;
+        return;
+      }
       console.error(`PassivePointBackgroundSync ${reason} unexpected error:`, error);
     } finally {
       syncLockRef.current = false;
@@ -1453,7 +1483,7 @@ const fetchInitialData = async () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <MyRoom user={user} profile={profile} />
+                <MyRoom user={user} profile={profile} setProfile={setProfile} />
               </motion.div>
             )}
 
@@ -4293,7 +4323,7 @@ const Auth = ({ mode, setMode }: any) => {
 };
 
 
-const MyRoom = ({ user, profile }: any) => {
+const MyRoom = ({ user, profile, setProfile }: any) => {
   const [rankIcon, setRankIcon] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [characterName, setCharacterName] = useState("");
@@ -4526,7 +4556,9 @@ const MyRoom = ({ user, profile }: any) => {
         .order("bonus_rate", { ascending: false });
 
       if (error) {
-        console.error("fetchOwnedEnhanceItems error:", error);
+        if (!isMissingSupabaseResourceError(error, "user_owned_enhance_items")) {
+          console.error("fetchOwnedEnhanceItems error:", error);
+        }
         setOwnedEnhanceItems([]);
         return;
       }
@@ -4539,7 +4571,9 @@ const MyRoom = ({ user, profile }: any) => {
         }))
       );
     } catch (error) {
-      console.error("fetchOwnedEnhanceItems unexpected error:", error);
+      if (!isMissingSupabaseResourceError(error, "user_owned_enhance_items")) {
+        console.error("fetchOwnedEnhanceItems unexpected error:", error);
+      }
       setOwnedEnhanceItems([]);
     }
   }, [user?.id]);
@@ -4633,8 +4667,10 @@ const MyRoom = ({ user, profile }: any) => {
   }, [fetchPointEarnLogs]);
 
 
+  const passiveRpcUnavailableRef = useRef(false);
+
   const reconcilePassivePoints = useCallback(async (reason: "boot" | "myroom" | "interval" = "interval") => {
-    if (!user?.id) return;
+    if (!user?.id || passiveRpcUnavailableRef.current) return;
     const client = getSupabaseOrThrow();
 
     try {
@@ -4643,12 +4679,20 @@ const MyRoom = ({ user, profile }: any) => {
       });
 
       if (error) {
+        if (isMissingSupabaseResourceError(error, "process_passive_point_ticks_for_user")) {
+          passiveRpcUnavailableRef.current = true;
+          return;
+        }
         console.error(`process_passive_point_ticks_for_user (${reason}) error:`, error);
         return;
       }
 
       await Promise.all([fetchMyPoint(), fetchPointEarnLogs()]);
     } catch (error) {
+      if (isMissingSupabaseResourceError(error, "process_passive_point_ticks_for_user")) {
+        passiveRpcUnavailableRef.current = true;
+        return;
+      }
       console.error(`reconcilePassivePoints (${reason}) unexpected error:`, error);
     }
   }, [user?.id, fetchMyPoint, fetchPointEarnLogs]);
