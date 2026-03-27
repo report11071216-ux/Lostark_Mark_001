@@ -6235,7 +6235,17 @@ const GuildMembersPage = () => {
                             );
                           })}
                         </div>
-                        <div className="text-xl font-black truncate">{member.character_name}</div>
+                        <div
+                          className="text-2xl md:text-[1.7rem] font-black leading-tight truncate"
+                          style={getNicknameEffectStyle({
+                            active_nickname_effect: member.owner_active_nickname_effect,
+                            nickname_gradient_from: member.owner_nickname_gradient_from,
+                            nickname_gradient_to: member.owner_nickname_gradient_to,
+                            nickname_glow_color: member.owner_nickname_glow_color,
+                          })}
+                        >
+                          {member.character_name}
+                        </div>
                         <div className="text-sm text-gray-300/80 truncate">{member.class_name}</div>
                         <div className="mt-1 text-purple-200 font-black">아이템 Lv. {member.item_level}</div>
                       </div>
