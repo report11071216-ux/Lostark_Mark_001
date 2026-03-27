@@ -4166,6 +4166,12 @@ const MyRoom = ({ user, profile }: any) => {
   const [ownedNicknameEffects, setOwnedNicknameEffects] = useState<any[]>([]);
   const [pointRateSettings, setPointRateSettings] = useState<PointRateSettings>(normalizePointRateSettings(readCache<any>(CACHE_KEYS.settings, defaultSettings)?.point_rate_settings));
   const [pointTickNow, setPointTickNow] = useState(Date.now());
+  const [passivePointState, setPassivePointState] = useState(() => ({
+    lastTickAt: profile?.last_point_tick_at || new Date().toISOString(),
+    passivePointsToday: Number(profile?.passive_points_today || 0),
+    passivePointsDate: String(profile?.passive_points_date || ""),
+  }));
+  const [pointEarnLogs, setPointEarnLogs] = useState<any[]>([]);
   const [enhancingCharacterId, setEnhancingCharacterId] = useState<string | null>(null);
   const [expandedWeaponPanels, setExpandedWeaponPanels] = useState<Record<string, boolean>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -4433,6 +4439,37 @@ const MyRoom = ({ user, profile }: any) => {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    setPassivePointState({
+      lastTickAt: profile?.last_point_tick_at || new Date().toISOString(),
+      passivePointsToday: Number(profile?.passive_points_today || 0),
+      passivePointsDate: String(profile?.passive_points_date || ""),
+    });
+  }, [profile?.id, profile?.last_point_tick_at, profile?.passive_points_today, profile?.passive_points_date]);
+
+  const fetchPointEarnLogs = useCallback(async () => {
+    if (!user?.id) return;
+    const client = getSupabaseOrThrow();
+    const { data, error } = await client
+      .from("point_earn_logs")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("point_earn_logs fetch error:", error);
+      setPointEarnLogs([]);
+      return;
+    }
+
+    setPointEarnLogs(data || []);
+  }, [user?.id]);
+
+  useEffect(() => {
+    void fetchPointEarnLogs();
+  }, [fetchPointEarnLogs]);
+
   const equipNicknameEffect = async (effect: any) => {
     const client = getSupabaseOrThrow();
     const { error } = await client.from("profiles").update({
@@ -4466,11 +4503,11 @@ const MyRoom = ({ user, profile }: any) => {
   useEffect(() => {
     const maybeGrantPassivePoint = async () => {
       if (!user?.id || !pointRateSettings.enabled || !bestPointCharacter) return;
-      const info = getNextPointTickInfo(profile?.last_point_tick_at, pointRateSettings.cycle_minutes);
+      const info = getNextPointTickInfo(passivePointState.lastTickAt, pointRateSettings.cycle_minutes);
       if (info.remainingMs > 0) return;
 
       const today = getTodayKey();
-      const todayEarned = String(profile?.passive_points_date || "") === today ? Number(profile?.passive_points_today || 0) : 0;
+      const todayEarned = passivePointState.passivePointsDate === today ? Number(passivePointState.passivePointsToday || 0) : 0;
       const rate = Number(bestPointCharacter.hourly_point_rate || 0);
       const dailyCap = Number(pointRateSettings.daily_cap || 0);
       if (rate <= 0 || todayEarned >= dailyCap) return;
@@ -4478,9 +4515,10 @@ const MyRoom = ({ user, profile }: any) => {
       const award = Math.min(rate, dailyCap - todayEarned);
       const client = getSupabaseOrThrow();
       const nextPoint = Number(myPoint || 0) + award;
+      const tickAt = new Date().toISOString();
       const { error } = await client.from("profiles").update({
         points: nextPoint,
-        last_point_tick_at: new Date().toISOString(),
+        last_point_tick_at: tickAt,
         passive_points_today: todayEarned + award,
         passive_points_date: today,
       }).eq("id", user.id);
@@ -4490,6 +4528,31 @@ const MyRoom = ({ user, profile }: any) => {
         return;
       }
 
+      const logPayload = {
+        user_id: user.id,
+        points: award,
+        log_type: "passive_hourly",
+        title: "시간당 포인트 획득",
+        description: `${bestPointCharacter.character_name} · ${bestPointCharacter.equipped_weapon_name || "무기"} ${getEnhancementDisplay(bestPointCharacter.equipped_weapon_level)} 기준으로 ${award}P 획득`,
+      };
+
+      const { data: insertedLog, error: logError } = await client
+        .from("point_earn_logs")
+        .insert(logPayload)
+        .select("*")
+        .maybeSingle();
+
+      if (logError) {
+        console.error("point_earn_logs insert error:", logError);
+      } else if (insertedLog) {
+        setPointEarnLogs((prev) => [insertedLog, ...prev].slice(0, 20));
+      }
+
+      setPassivePointState({
+        lastTickAt: tickAt,
+        passivePointsToday: todayEarned + award,
+        passivePointsDate: today,
+      });
       setMyPoint(nextPoint);
     };
 
@@ -4938,11 +5001,14 @@ const MyRoom = ({ user, profile }: any) => {
                 </div>
                 <div className="mt-4 grid md:grid-cols-3 gap-3">
                   <MiniStat label="1시간 획득" value={`${bestPointCharacter.hourly_point_rate}P`} />
-                  <MiniStat label="다음 지급까지" value={getNextPointTickInfo(profile?.last_point_tick_at, pointRateSettings.cycle_minutes).formatted} />
+                  <MiniStat label="다음 지급까지" value={getNextPointTickInfo(passivePointState.lastTickAt, pointRateSettings.cycle_minutes).formatted} />
                   <MiniStat label="5강 보너스" value={`+${Math.floor(normalizeEnhancementLevel(bestPointCharacter.equipped_weapon_level) / 5) * Number(pointRateSettings.enhancement_bonus_per_5 || 0)}P`} />
                 </div>
                 <div className="mt-3 text-xs text-gray-400">
                   {WEAPON_RARITY_THEMES[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)].label} 기본 {pointRateSettings.rate_by_rarity[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)]}P + 강화 보너스 적용
+                </div>
+                <div className="mt-3 text-xs text-gray-400">
+                  오늘 누적 {passivePointState.passivePointsDate === getTodayKey() ? passivePointState.passivePointsToday : 0}P / 일일 최대 {pointRateSettings.daily_cap}P
                 </div>
               </>
             ) : (
@@ -4972,6 +5038,41 @@ const MyRoom = ({ user, profile }: any) => {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.24em] font-black text-emerald-300">Point Earn Logs</div>
+              <div className="mt-2 text-2xl font-black">포인트 획득 로그</div>
+            </div>
+            <button onClick={() => void fetchPointEarnLogs()} className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-sm font-black">
+              새로고침
+            </button>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {pointEarnLogs.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-gray-500">
+                아직 기록된 포인트 획득 로그가 없어. 1시간 주기가 지나면 여기 바로 쌓여.
+              </div>
+            ) : (
+              pointEarnLogs.map((log: any) => (
+                <div key={log.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-base font-black text-white">{log.title || "포인트 획득"}</div>
+                      <div className="mt-1 text-sm text-gray-400">{log.description || "포인트가 지급됐어."}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-black text-emerald-300">+{Number(log.points || 0)}P</div>
+                      <div className="text-xs text-gray-500">{new Date(log.created_at).toLocaleString("ko-KR")}</div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -6438,7 +6539,7 @@ const PointShopPage = ({ user, profile }: any) => {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h2 className="text-4xl font-black italic uppercase tracking-tight">Point Shop</h2>
-          <p className="text-gray-500 font-bold mt-2">뱃지, 강화석, 무기 가챠 상품.</p>
+          <p className="text-gray-500 font-bold mt-2">뱃지, 닉네임 효과, 강화석, 무기 가챠 상품.</p>
         </div>
 
         <div className="rounded-[2rem] border border-purple-500/20 bg-purple-500/10 px-5 py-4">
@@ -6449,13 +6550,14 @@ const PointShopPage = ({ user, profile }: any) => {
 
       <div className="flex flex-wrap gap-2 mb-8">
         {[
-          ["badge", "뱃지 상점"],
+          ["guild", "뱃지 상점"],
+          ["nickname", "닉네임 상점"],
           ["enhance", "강화석 상점"],
           ["gacha", "무기 가챠"],
         ].map(([key, label]) => (
           <button
             key={key}
-            onClick={() => setShopTab(key as "badge" | "enhance" | "gacha")}
+            onClick={() => setShopTab(key as "guild" | "nickname" | "enhance" | "gacha")}
             className={cn(
               "px-4 py-2 rounded-full text-sm font-black border transition",
               shopTab === key ? "bg-purple-600 border-purple-500 text-white" : "bg-white/5 border-white/10 text-gray-400"
@@ -6468,8 +6570,10 @@ const PointShopPage = ({ user, profile }: any) => {
 
       {loading ? (
         <div className="py-16 text-center text-gray-500">포인트샵 불러오는 중...</div>
-      ) : shopTab === "badge" ? (
-        renderShopCards(badgeItems, "아직 등록된 뱃지 상품이 없습니다.")
+      ) : shopTab === "guild" ? (
+        renderShopCards(guildItems, "아직 등록된 뱃지 상품이 없습니다.")
+      ) : shopTab === "nickname" ? (
+        renderShopCards(nicknameItems, "아직 등록된 닉네임 상품이 없습니다.")
       ) : shopTab === "enhance" ? (
         renderShopCards(enhanceItems, "아직 등록된 강화석 상품이 없습니다.")
       ) : (
@@ -6669,6 +6773,10 @@ const AdminPointShopManager = () => {
   const [badgeGradientTo, setBadgeGradientTo] = useState(BADGE_CARD_EFFECT_PRESETS.violet.to);
   const [badgeGlowColor, setBadgeGlowColor] = useState(BADGE_CARD_EFFECT_PRESETS.violet.glow);
   const [enhanceBonusRate, setEnhanceBonusRate] = useState("5");
+  const [nicknameEffectKey, setNicknameEffectKey] = useState<NicknameEffectKey>("violet");
+  const [nicknameGradientFrom, setNicknameGradientFrom] = useState(NICKNAME_EFFECT_PRESETS.violet.from);
+  const [nicknameGradientTo, setNicknameGradientTo] = useState(NICKNAME_EFFECT_PRESETS.violet.to);
+  const [nicknameGlowColor, setNicknameGlowColor] = useState(NICKNAME_EFFECT_PRESETS.violet.glow);
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
