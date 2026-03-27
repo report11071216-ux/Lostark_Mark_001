@@ -6252,6 +6252,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           );
           })}
         </div>
+          </>
+        )}
       </div>
     </div>
   );
