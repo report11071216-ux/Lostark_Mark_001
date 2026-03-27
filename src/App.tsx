@@ -1011,14 +1011,20 @@ const getPointRateForCharacter = (character: any, settingsLike: any) => {
 
 const getBestPointCharacter = (characters: any[], settingsLike: any) => {
   const rows = Array.isArray(characters) ? characters : [];
+  const cycleMinutes = Math.max(5, Number(settingsLike?.cycle_minutes || 60));
   return rows
     .filter((character: any) => character?.equipped_weapon_name)
-    .map((character: any) => ({
-      ...character,
-      hourly_point_rate: getPointRateForCharacter(character, settingsLike),
-    }))
+    .map((character: any) => {
+      const pointRatePerTick = getPointRateForCharacter(character, settingsLike);
+      const estimatedHourlyPointRate = Math.max(0, Math.round(pointRatePerTick * (60 / cycleMinutes)));
+      return {
+        ...character,
+        point_rate_per_tick: pointRatePerTick,
+        hourly_point_rate: estimatedHourlyPointRate,
+      };
+    })
     .sort((a: any, b: any) => {
-      if (b.hourly_point_rate !== a.hourly_point_rate) return b.hourly_point_rate - a.hourly_point_rate;
+      if (b.point_rate_per_tick !== a.point_rate_per_tick) return b.point_rate_per_tick - a.point_rate_per_tick;
       return normalizeEnhancementLevel(b?.equipped_weapon_level) - normalizeEnhancementLevel(a?.equipped_weapon_level);
     })[0] || null;
 };
@@ -4616,7 +4622,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
     if (error) {
       console.error("point_earn_logs fetch error:", error);
-      setPointEarnLogs([]);
       return;
     }
 
@@ -4630,11 +4635,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
   const bestPointCharacter = useMemo(() => getBestPointCharacter(characters, pointRateSettings), [characters, pointRateSettings]);
   const pointPerTick = useMemo(() => {
-    const hourlyRate = Number(bestPointCharacter?.hourly_point_rate || 0);
-    const cycleMinutes = Math.max(5, Number(pointRateSettings?.cycle_minutes || 60));
-    if (hourlyRate <= 0) return 0;
-    return Math.max(1, Math.round((hourlyRate * cycleMinutes) / 60));
-  }, [bestPointCharacter, pointRateSettings?.cycle_minutes]);
+    return Math.max(0, Number(bestPointCharacter?.point_rate_per_tick || 0));
+  }, [bestPointCharacter]);
 
   const reconcilePassivePoints = useCallback(async (reason: "boot" | "myroom" | "interval" | "focus" = "interval") => {
     if (!user?.id || passiveCatchupLockRef.current) return;
@@ -4685,7 +4687,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           ? `${ticksPassed}회 누적 정산 · ${pointPerTick}P씩 지급`
           : `${Math.max(5, Number(pointRateSettings.cycle_minutes || 60))}분 주기 적립`;
         const logPayload = {
-          id: `local-${Date.now()}`,
           user_id: user.id,
           title: reason === "boot" ? "오프라인 재접속 정산" : "시간당 자동 적립",
           description,
@@ -4693,15 +4694,27 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           created_at: new Date().toISOString(),
         };
 
-        const { error: logError } = await client.from("point_earn_logs").insert(logPayload);
+        let insertedLog = {
+          ...logPayload,
+          id: `local-${Date.now()}`,
+        } as any;
+
+        const { data: insertedRows, error: logError } = await client
+          .from("point_earn_logs")
+          .insert(logPayload)
+          .select("*")
+          .limit(1);
+
         if (logError) {
           const message = String(logError?.message || "");
           if (!message.includes("schema cache") && !message.includes("404") && !message.includes("relation")) {
             console.error("point_earn_logs insert error:", logError);
           }
+        } else if (Array.isArray(insertedRows) && insertedRows[0]) {
+          insertedLog = insertedRows[0];
         }
 
-        setPointEarnLogs((prev) => [logPayload, ...prev].slice(0, 20));
+        setPointEarnLogs((prev) => [insertedLog, ...prev.filter((item: any) => item?.id !== insertedLog.id)].slice(0, 20));
       }
 
       setMyPoint(nextProfilePatch.points);
@@ -5274,19 +5287,19 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
         <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-4">
           <div className="rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-black/30 to-transparent p-5">
             <div className="text-[10px] uppercase tracking-[0.24em] font-black text-amber-300">Hourly Point Engine</div>
-            <div className="mt-2 text-2xl font-black">시간당 포인트 현황</div>
+            <div className="mt-2 text-2xl font-black">자동 포인트 현황</div>
             {bestPointCharacter ? (
               <>
                 <div className="mt-3 text-sm text-gray-300">
                   기준 캐릭터 <span className="font-black text-white">{bestPointCharacter.character_name}</span> · {bestPointCharacter.equipped_weapon_name} {getEnhancementDisplay(bestPointCharacter.equipped_weapon_level)}
                 </div>
                 <div className="mt-4 grid md:grid-cols-3 gap-3">
-                  <MiniStat label="1시간 획득" value={`${bestPointCharacter.hourly_point_rate}P`} />
+                  <MiniStat label={`${pointRateSettings.cycle_minutes}분마다`} value={`${pointPerTick}P`} />
                   <MiniStat label="다음 지급까지" value={getNextPointTickInfo(passivePointState.lastTickAt, pointRateSettings.cycle_minutes).formatted} />
                   <MiniStat label="5강 보너스" value={`+${Math.floor(normalizeEnhancementLevel(bestPointCharacter.equipped_weapon_level) / 5) * Number(pointRateSettings.enhancement_bonus_per_5 || 0)}P`} />
                 </div>
                 <div className="mt-3 text-xs text-gray-400">
-                  {WEAPON_RARITY_THEMES[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)].label} 기본 {pointRateSettings.rate_by_rarity[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)]}P + 강화 보너스 적용
+                  {WEAPON_RARITY_THEMES[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)].label} 기본 {pointRateSettings.rate_by_rarity[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)]}P + 강화 보너스 적용 · 시간당 예상 {bestPointCharacter.hourly_point_rate}P
                 </div>
                 <div className="mt-3 text-xs text-gray-400">
                   오늘 누적 {passivePointState.passivePointsDate === getTodayKey() ? passivePointState.passivePointsToday : 0}P / 일일 최대 {pointRateSettings.daily_cap}P
