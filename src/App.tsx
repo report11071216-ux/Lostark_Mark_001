@@ -3135,8 +3135,6 @@ const JoinForm = ({
             취소
           </button>
         </div>
-          </>
-        )}
       </div>
     </div>
   );
