@@ -1044,18 +1044,100 @@ const getBestPointCharacter = (characters: any[], settingsLike: any) => {
     })[0] || null;
 };
 
-const getNextPointTickInfo = (lastTickAt: string | null | undefined, cycleMinutes: number) => {
+const getNextPointTickInfo = (lastTickAt: string | null | undefined, cycleMinutes: number, nowMs: number = Date.now()) => {
   const cycleMs = Math.max(5, Number(cycleMinutes || 60)) * 60 * 1000;
-  const last = lastTickAt ? new Date(lastTickAt).getTime() : Date.now();
+  const parsed = lastTickAt ? new Date(lastTickAt).getTime() : Number.NaN;
+  const last = Number.isFinite(parsed) ? parsed : nowMs;
   const nextAt = new Date(last + cycleMs);
-  const remainingMs = Math.max(0, nextAt.getTime() - Date.now());
-  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const remainingMs = Math.max(0, nextAt.getTime() - nowMs);
+  const totalSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return {
     nextAt,
     remainingMs,
     formatted: `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`,
+  };
+};
+
+const getDayKeyFromMs = (value: number) => {
+  const date = new Date(value);
+  const pad = (input: number) => String(input).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const calculatePassivePointCatchup = ({
+  lastTickAt,
+  nowMs,
+  cycleMinutes,
+  pointPerCycle,
+  dailyCap,
+  passivePointsToday,
+  passivePointsDate,
+}: {
+  lastTickAt: string | null | undefined;
+  nowMs: number;
+  cycleMinutes: number;
+  pointPerCycle: number;
+  dailyCap: number;
+  passivePointsToday: number;
+  passivePointsDate: string | null | undefined;
+}) => {
+  const cycleMs = Math.max(5, Number(cycleMinutes || 60)) * 60 * 1000;
+  const parsed = lastTickAt ? new Date(lastTickAt).getTime() : Number.NaN;
+  const safeNowMs = Number.isFinite(nowMs) ? nowMs : Date.now();
+  const lastMs = Number.isFinite(parsed) ? parsed : safeNowMs;
+
+  if (safeNowMs <= lastMs || cycleMs <= 0 || pointPerCycle <= 0) {
+    return {
+      awardedPoints: 0,
+      elapsedCycles: 0,
+      nextLastTickAt: new Date(lastMs).toISOString(),
+      nextPassivePointsToday: passivePointsDate === getDayKeyFromMs(safeNowMs) ? Number(passivePointsToday || 0) : 0,
+      nextPassivePointsDate: getDayKeyFromMs(safeNowMs),
+    };
+  }
+
+  const elapsedCycles = Math.floor((safeNowMs - lastMs) / cycleMs);
+  if (elapsedCycles <= 0) {
+    return {
+      awardedPoints: 0,
+      elapsedCycles: 0,
+      nextLastTickAt: new Date(lastMs).toISOString(),
+      nextPassivePointsToday: passivePointsDate === getDayKeyFromMs(safeNowMs) ? Number(passivePointsToday || 0) : 0,
+      nextPassivePointsDate: getDayKeyFromMs(safeNowMs),
+    };
+  }
+
+  const earnedByDay = new Map<string, number>();
+  if (passivePointsDate) {
+    earnedByDay.set(String(passivePointsDate), Math.max(0, Number(passivePointsToday || 0)));
+  }
+
+  let awardedPoints = 0;
+  let cursorMs = lastMs;
+
+  for (let index = 0; index < elapsedCycles; index += 1) {
+    cursorMs += cycleMs;
+    const dayKey = getDayKeyFromMs(cursorMs);
+    const usedToday = earnedByDay.get(dayKey) ?? 0;
+    if (usedToday >= dailyCap) continue;
+
+    const grant = Math.min(pointPerCycle, Math.max(0, dailyCap - usedToday));
+    if (grant <= 0) continue;
+
+    earnedByDay.set(dayKey, usedToday + grant);
+    awardedPoints += grant;
+  }
+
+  const currentDayKey = getDayKeyFromMs(safeNowMs);
+
+  return {
+    awardedPoints,
+    elapsedCycles,
+    nextLastTickAt: new Date(lastMs + elapsedCycles * cycleMs).toISOString(),
+    nextPassivePointsToday: Math.max(0, Number(earnedByDay.get(currentDayKey) || 0)),
+    nextPassivePointsDate: currentDayKey,
   };
 };
 
@@ -4689,8 +4771,87 @@ const MyRoom = ({ user, profile, setProfile }: any) => {
   const passiveRpcUnavailableRef = useRef(false);
 
   const reconcilePassivePoints = useCallback(async (reason: "boot" | "myroom" | "interval" = "interval") => {
-    if (!user?.id || passiveRpcUnavailableRef.current) return;
+    if (!user?.id) return;
     const client = getSupabaseOrThrow();
+
+    const runLocalCatchup = async () => {
+      if (!pointRateSettings.enabled) return;
+      const targetCharacter = getBestPointCharacter(characters, pointRateSettings);
+      if (!targetCharacter) return;
+
+      const pointPerCycle = Number(targetCharacter.hourly_point_rate || 0);
+      if (pointPerCycle <= 0) return;
+
+      const result = calculatePassivePointCatchup({
+        lastTickAt: passivePointState.lastTickAt,
+        nowMs: Date.now(),
+        cycleMinutes: pointRateSettings.cycle_minutes,
+        pointPerCycle,
+        dailyCap: Number(pointRateSettings.daily_cap || 0),
+        passivePointsToday: Number(passivePointState.passivePointsToday || 0),
+        passivePointsDate: passivePointState.passivePointsDate,
+      });
+
+      if (result.elapsedCycles <= 0) return;
+
+      const nextPoints = Number(myPoint || 0) + Number(result.awardedPoints || 0);
+      const payload = {
+        points: nextPoints,
+        last_point_tick_at: result.nextLastTickAt,
+        passive_points_today: result.nextPassivePointsToday,
+        passive_points_date: result.nextPassivePointsDate,
+      };
+
+      const { error: profileError } = await client.from("profiles").update(payload).eq("id", user.id);
+      if (profileError) {
+        console.error(`local passive catchup (${reason}) profile update error:`, profileError);
+        return;
+      }
+
+      setMyPoint(nextPoints);
+      setPassivePointState({
+        lastTickAt: result.nextLastTickAt,
+        passivePointsToday: result.nextPassivePointsToday,
+        passivePointsDate: result.nextPassivePointsDate,
+      });
+
+      if (Number(result.awardedPoints || 0) > 0) {
+        const logPayload = {
+          user_id: user.id,
+          amount: Number(result.awardedPoints || 0),
+          reason: reason === "boot" ? "오프라인 재접속 정산" : "시간당 자동 적립",
+          meta: {
+            source: "client_reconnect_catchup",
+            reason,
+            elapsed_cycles: Number(result.elapsedCycles || 0),
+            cycle_minutes: Number(pointRateSettings.cycle_minutes || 0),
+            character_name: targetCharacter?.character_name || null,
+            weapon_name: targetCharacter?.equipped_weapon_name || null,
+          },
+        };
+
+        const { error: logError } = await client.from("point_earn_logs").insert(logPayload);
+        if (logError && !isMissingSupabaseResourceError(logError, "point_earn_logs")) {
+          console.error(`local passive catchup (${reason}) log insert error:`, logError);
+        }
+
+        setPointEarnLogs((prev) => [
+          {
+            id: `local-catchup-${Date.now()}`,
+            created_at: new Date().toISOString(),
+            amount: Number(result.awardedPoints || 0),
+            reason: logPayload.reason,
+            meta: logPayload.meta,
+          },
+          ...prev,
+        ].slice(0, 20));
+      }
+    };
+
+    if (passiveRpcUnavailableRef.current) {
+      await runLocalCatchup();
+      return;
+    }
 
     try {
       const { error } = await client.rpc("process_passive_point_ticks_for_user", {
@@ -4700,6 +4861,7 @@ const MyRoom = ({ user, profile, setProfile }: any) => {
       if (error) {
         if (isMissingSupabaseResourceError(error, "process_passive_point_ticks_for_user")) {
           passiveRpcUnavailableRef.current = true;
+          await runLocalCatchup();
           return;
         }
         console.error(`process_passive_point_ticks_for_user (${reason}) error:`, error);
@@ -4710,11 +4872,12 @@ const MyRoom = ({ user, profile, setProfile }: any) => {
     } catch (error) {
       if (isMissingSupabaseResourceError(error, "process_passive_point_ticks_for_user")) {
         passiveRpcUnavailableRef.current = true;
+        await runLocalCatchup();
         return;
       }
       console.error(`reconcilePassivePoints (${reason}) unexpected error:`, error);
     }
-  }, [user?.id, fetchMyPoint, fetchPointEarnLogs]);
+  }, [user?.id, characters, pointRateSettings, passivePointState, myPoint, fetchMyPoint, fetchPointEarnLogs]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -4786,7 +4949,7 @@ const MyRoom = ({ user, profile, setProfile }: any) => {
   useEffect(() => {
     const maybeGrantPassivePoint = async () => {
       if (!user?.id || !pointRateSettings.enabled || !bestPointCharacter) return;
-      const info = getNextPointTickInfo(passivePointState.lastTickAt, pointRateSettings.cycle_minutes);
+      const info = getNextPointTickInfo(passivePointState.lastTickAt, pointRateSettings.cycle_minutes, pointTickNow);
       if (info.remainingMs > 0) return;
       await reconcilePassivePoints("myroom");
     };
@@ -5241,7 +5404,7 @@ const MyRoom = ({ user, profile, setProfile }: any) => {
                 </div>
                 <div className="mt-4 grid md:grid-cols-3 gap-3">
                   <MiniStat label="1시간 획득" value={`${bestPointCharacter.hourly_point_rate}P`} />
-                  <MiniStat label="다음 지급까지" value={getNextPointTickInfo(passivePointState.lastTickAt, pointRateSettings.cycle_minutes).formatted} />
+                  <MiniStat label="다음 지급까지" value={getNextPointTickInfo(passivePointState.lastTickAt, pointRateSettings.cycle_minutes, pointTickNow).formatted} />
                   <MiniStat label="5강 보너스" value={`+${Math.floor(normalizeEnhancementLevel(bestPointCharacter.equipped_weapon_level) / 5) * Number(pointRateSettings.enhancement_bonus_per_5 || 0)}P`} />
                 </div>
                 <div className="mt-3 text-xs text-gray-400">
