@@ -2347,25 +2347,25 @@ const RaidCalendar = ({ user, profile }: any) => {
             <div className="flex gap-2">
               <button
                 onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
-                className="p-3 border border-white/10 rounded-xl hover:border-sky-400 transition"
+                className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/30 hover:bg-blue-400/10 hover:text-white hover:shadow-[0_12px_30px_rgba(59,130,246,0.14)]"
               >
-                <ChevronLeft size={18} />
+                <ChevronLeft size={18} className="transition-transform group-hover:-translate-x-0.5" />
               </button>
               <button
                 onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
-                className="p-3 border border-white/10 rounded-xl hover:border-sky-400 transition"
+                className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/30 hover:bg-blue-400/10 hover:text-white hover:shadow-[0_12px_30px_rgba(59,130,246,0.14)]"
               >
-                <ChevronRight size={18} />
+                <ChevronRight size={18} className="transition-transform group-hover:translate-x-0.5" />
               </button>
             </div>
           }
         >
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div>
-              <div className="text-[11px] text-sky-300 uppercase tracking-[0.3em] font-semibold mb-2">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-300">
                 Monthly View
               </div>
-              <h2 className="text-4xl font-semibold">{formatMonthLabel(year, month)}</h2>
+              <h2 className="text-4xl font-semibold tracking-tight">{formatMonthLabel(year, month)}</h2>
             </div>
 
             <div className="grid grid-cols-3 gap-3 w-full md:w-auto">
@@ -2382,7 +2382,7 @@ const RaidCalendar = ({ user, profile }: any) => {
         >
           <div className="space-y-3">
             {monthlyCharacterStats.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-center text-sm text-slate-500">
+              <div className="rounded-[1.75rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-7 text-center text-sm text-slate-500">
                 아직 이번 달 참여 데이터가 없습니다.
               </div>
             )}
@@ -2390,19 +2390,19 @@ const RaidCalendar = ({ user, profile }: any) => {
             {monthlyCharacterStats.slice(0, 6).map((item, index) => (
               <div
                 key={item.nickname}
-                className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4 flex items-center justify-between gap-4"
+                className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center text-sm font-semibold text-sky-300 shrink-0">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-sm font-semibold text-sky-200">
                     #{index + 1}
                   </div>
                   <div className="min-w-0">
-                    <div className="font-semibold truncate">{item.nickname}</div>
+                    <div className="truncate font-semibold">{item.nickname}</div>
                     <div className="text-xs text-slate-500">월간 레이드 참여 요약</div>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
+                <div className="shrink-0 text-right">
                   <div className="text-lg font-semibold text-white">{item.raidCount}회</div>
                   <div className="text-xs text-slate-500">등록 {item.count}건</div>
                 </div>
@@ -2413,18 +2413,21 @@ const RaidCalendar = ({ user, profile }: any) => {
       </div>
 
       <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-6">
-        <div className="bg-slate-950/55 rounded-[2rem] md:rounded-[3rem] border border-white/10 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(59,130,246,0.12)]">
-          <div className="grid grid-cols-7 text-center text-[10px] md:text-xs text-slate-500 border-b border-white/5 uppercase tracking-[0.2em]">
+        <div className="overflow-hidden rounded-[2rem] md:rounded-[2.5rem] border border-white/10 bg-slate-950/50 backdrop-blur-xl shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
+          <div className="grid grid-cols-7 border-b border-white/5 bg-white/[0.03] text-center text-[10px] md:text-xs uppercase tracking-[0.22em] text-slate-400">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
-              <div key={dayLabel} className="p-4">
+              <div key={dayLabel} className="px-2 py-4">
                 {dayLabel}
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-[1px] bg-white/5">
+          <div className="grid grid-cols-7 gap-px bg-white/5">
             {Array.from({ length: firstDayOffset }).map((_, i) => (
-              <div key={`empty-${i}`} className="bg-[#0a0a0a] min-h-[150px] md:min-h-[180px]" />
+              <div
+                key={`empty-${i}`}
+                className="min-h-[156px] md:min-h-[190px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]"
+              />
             ))}
 
             {days.map((day) => {
@@ -2432,47 +2435,74 @@ const RaidCalendar = ({ user, profile }: any) => {
               const dayRaids = raids.filter((raid) => raid.raid_date === dateStr);
               const today = new Date();
               const isToday = isSameDay(new Date(year, month, day), today);
+              const dayParticipantCount = dayRaids.reduce((sum, raid) => {
+                return sum + participants.filter((p) => p.schedule_id === raid.id).length;
+              }, 0);
 
               return (
                 <div
                   key={day}
-                  className={`min-h-[150px] md:min-h-[180px] p-3 border transition-all ${
-                    isToday
-                      ? "bg-blue-950/30 border-blue-500 shadow-lg shadow-blue-500/10"
-                      : "bg-[#0a0a0a] border-transparent"
-                  }`}
+                  className={cn(
+                    "group relative min-h-[156px] md:min-h-[190px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-3 transition-all duration-200 hover:z-[1] hover:bg-blue-400/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(147,197,253,0.16)]",
+                    isToday && "bg-blue-500/[0.08] shadow-[inset_0_0_0_1px_rgba(96,165,250,0.28),0_0_0_1px_rgba(96,165,250,0.1)]"
+                  )}
                 >
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
+                  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                  {isToday && <div className="pointer-events-none absolute right-3 top-3 h-10 w-10 rounded-full bg-blue-400/10 blur-xl" />}
+
+                  <div className="mb-3 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
                       <div
-                        className={`text-sm font-semibold ${
-                          isToday ? "text-sky-300" : "text-slate-400"
-                        }`}
+                        className={cn(
+                          "inline-flex h-9 min-w-[36px] items-center justify-center rounded-xl px-2 text-sm font-semibold transition-all",
+                          isToday
+                            ? "border border-blue-300/25 bg-blue-400/10 text-sky-200 shadow-[0_8px_24px_rgba(59,130,246,0.18)]"
+                            : "border border-transparent bg-white/[0.03] text-slate-300 group-hover:border-white/10"
+                        )}
                       >
                         {day}
                       </div>
-                      <div className="text-[10px] text-slate-600 uppercase tracking-widest">
+                      <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
                         {DAY_LABELS[new Date(year, month, day).getDay()]}
                       </div>
                     </div>
 
-                    {profile?.role === "admin" && (
-                      <button
-                        onClick={() => {
-                          setSelectedDate(dateStr);
-                          setIsCreateOpen(true);
-                        }}
-                        className="text-sky-300 hover:text-white transition"
-                        title="레이드 생성"
-                      >
-                        <Plus size={16} />
-                      </button>
+                    <div className="flex items-center gap-2">
+                      {dayRaids.length > 0 && (
+                        <div className="inline-flex items-center gap-1 rounded-full border border-blue-300/15 bg-blue-400/10 px-2 py-1 text-[10px] font-semibold text-blue-100">
+                          <span className="h-1.5 w-1.5 rounded-full bg-sky-300" />
+                          {dayRaids.length}
+                        </div>
+                      )}
+
+                      {profile?.role === "admin" && (
+                        <button
+                          onClick={() => {
+                            setSelectedDate(dateStr);
+                            setIsCreateOpen(true);
+                          }}
+                          className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-sky-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/25 hover:bg-blue-400/10 hover:text-white"
+                          title="레이드 생성"
+                        >
+                          <Plus size={15} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mb-3 flex items-center gap-2 text-[11px] text-slate-500">
+                    <span>{dayRaids.length}개 일정</span>
+                    {dayParticipantCount > 0 && (
+                      <>
+                        <span className="text-slate-600">•</span>
+                        <span>{dayParticipantCount}명 참여</span>
+                      </>
                     )}
                   </div>
 
                   <div className="space-y-2">
                     {dayRaids.length === 0 && (
-                      <div className="text-[11px] text-slate-600 font-bold rounded-xl border border-dashed border-white/5 px-3 py-4 text-center">
+                      <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-3 py-4 text-center text-[11px] font-medium text-slate-500">
                         일정 없음
                       </div>
                     )}
@@ -2497,9 +2527,9 @@ const RaidCalendar = ({ user, profile }: any) => {
           description="이번 달 참여 많이 한 캐릭터를 전체로 확인할 수 있어."
         >
           {calendarLoading ? (
-            <div className="py-12 text-center text-slate-500 font-bold">불러오는 중...</div>
+            <div className="py-12 text-center font-medium text-slate-500">불러오는 중...</div>
           ) : monthlyCharacterStats.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-slate-500">
+            <div className="rounded-[1.75rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-slate-500">
               집계할 참여 데이터가 없어.
             </div>
           ) : (
@@ -2507,15 +2537,15 @@ const RaidCalendar = ({ user, profile }: any) => {
               {monthlyCharacterStats.map((item, index) => (
                 <div
                   key={item.nickname}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                  className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
                 >
                   <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-11 w-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
                         <BarChart3 size={16} className="text-sky-300" />
                       </div>
                       <div className="min-w-0">
-                        <div className="font-semibold truncate">
+                        <div className="truncate font-semibold">
                           #{index + 1} {item.nickname}
                         </div>
                         <div className="text-xs text-slate-500">
@@ -2524,15 +2554,15 @@ const RaidCalendar = ({ user, profile }: any) => {
                       </div>
                     </div>
 
-                    <div className="text-right shrink-0">
+                    <div className="shrink-0 text-right">
                       <div className="text-xl font-semibold text-sky-300">{item.raidCount}</div>
                       <div className="text-[11px] text-slate-500">raid count</div>
                     </div>
                   </div>
 
-                  <div className="mt-3 h-2 rounded-full bg-black/40 overflow-hidden">
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.05]">
                     <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-sky-500"
+                      className="h-full rounded-full bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-300"
                       style={{
                         width: `${
                           monthlyCharacterStats[0]?.raidCount
@@ -2591,12 +2621,12 @@ const SummaryChip = ({
   label: string;
   value: string | number;
 }) => (
-  <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
-    <div className="flex items-center gap-2 text-sky-300 text-[11px] font-semibold uppercase tracking-widest mb-1">
+  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.05]">
+    <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-300">
       {icon}
       {label}
     </div>
-    <div className="text-2xl font-semibold">{value}</div>
+    <div className="text-2xl font-semibold text-white">{value}</div>
   </div>
 );
 
@@ -2627,12 +2657,13 @@ const RaidCard = ({
     <motion.button
       whileHover={{ y: -2, scale: 1.01 }}
       onClick={onOpen}
-      className={`w-full relative p-3 rounded-2xl cursor-pointer text-left border bg-gradient-to-br shadow-lg transition-all ${colors.card} ${
-        isFull ? "border-red-500/50" : ""
-      }`}
-    >
+      className={`w-full relative overflow-hidden rounded-[1.35rem] border p-3 text-left shadow-[0_16px_34px_rgba(2,6,23,0.24)] transition-all ${
+        isFull
+          ? "border-rose-400/30 bg-[linear-gradient(135deg,rgba(59,130,246,0.14),rgba(15,23,42,0.9))]"
+          : "border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] hover:border-blue-300/20 hover:bg-[linear-gradient(135deg,rgba(59,130,246,0.14),rgba(255,255,255,0.03))]"
+      }`}>
       <div className="flex items-start justify-between gap-2 mb-2">
-        <span className={`text-[10px] font-semibold uppercase tracking-widest ${colors.badge}`}>
+        <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${colors.badge}`}>
           {raid.type === "anime" ? "📺 시청" : `${raid.raid_type} · ${raid.difficulty}`}
         </span>
         <span className={`text-[10px] font-semibold ${isFull ? "text-red-300" : "text-slate-400"}`}>
@@ -2641,7 +2672,7 @@ const RaidCard = ({
         </span>
       </div>
 
-      <div className="text-sm font-semibold text-white leading-tight truncate">
+      <div className="text-sm font-semibold leading-tight text-white truncate">
         {raid.raid_name}
       </div>
 
