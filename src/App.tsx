@@ -1640,17 +1640,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div
-          className="flex items-center gap-3 cursor-pointer"
-          onClick={() => setActiveTab("home")}
-        >
-          <div className="w-9 h-9 bg-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-600/30">
-            <Shield className="text-white w-5 h-5" />
-          </div>
-          <span className="text-2xl font-black tracking-tighter uppercase font-mono italic">
-            INXX
-          </span>
-        </div>
+        <div className="w-10" />
 
         <div className="hidden md:flex gap-8 items-center">
           {navItems.map((item) => (
