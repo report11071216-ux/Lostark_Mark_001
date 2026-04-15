@@ -134,18 +134,18 @@ const difficultyOptions = ["노말", "하드", "나이트메어"];
 const classNameByMode = (mode: string) => {
   if (mode === "anime") {
     return {
-      card: "from-emerald-900/30 to-teal-900/20 border-emerald-500/30 hover:border-emerald-400",
-      badge: "text-emerald-300",
-      bar: "bg-emerald-500",
-      chip: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20",
+      card: "from-blue-950/30 to-blue-950/20 border-blue-500/30 hover:border-sky-400",
+      badge: "text-sky-300",
+      bar: "bg-blue-500",
+      chip: "bg-blue-500/15 text-sky-300 border border-blue-500/20",
     };
   }
 
   return {
-    card: "from-purple-900/30 to-indigo-900/20 border-purple-500/30 hover:border-purple-400",
-    badge: "text-purple-300",
-    bar: "bg-purple-500",
-    chip: "bg-purple-500/15 text-purple-300 border border-purple-500/20",
+    card: "from-blue-950/30 to-blue-950/20 border-blue-500/30 hover:border-sky-400",
+    badge: "text-sky-300",
+    bar: "bg-blue-500",
+    chip: "bg-blue-500/15 text-sky-300 border border-blue-500/20",
   };
 };
 
@@ -792,18 +792,18 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-8 md:pt-12 pb-6">
-      <div className="rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-white/5 to-transparent overflow-hidden">
+      <div className="rounded-[2rem] border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-white/5 to-transparent overflow-hidden">
         <div className="p-6 md:p-8 border-b border-white/10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-amber-300 text-[11px] font-black tracking-[0.2em] uppercase">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/20 bg-blue-500/10 text-sky-300 text-[11px] font-semibold tracking-[0.2em] uppercase">
                 <Bell size={14} />
                 Guild Notice
               </div>
-              <h2 className="mt-4 text-3xl md:text-5xl font-black tracking-tight">
+              <h2 className="mt-4 text-3xl md:text-5xl font-semibold tracking-tight">
                 길드 공지사항
               </h2>
-              <p className="mt-2 text-gray-400">
+              <p className="mt-2 text-slate-400">
                 공지사항.
               </p>
             </div>
@@ -818,13 +818,13 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
 
         <div className="p-4 md:p-6 space-y-3">
           {loading && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-slate-500">
               공지 불러오는 중...
             </div>
           )}
 
           {!loading && notices.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-gray-500">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-slate-500">
               아직 등록된 공지가 없어.
             </div>
           )}
@@ -834,26 +834,26 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
               <button
                 key={notice.id}
                 className={cn(
-                  "w-full text-left rounded-2xl border p-4 md:p-5 transition hover:border-amber-400/40",
+                  "w-full text-left rounded-2xl border p-4 md:p-5 transition hover:border-sky-400/40",
                   notice.is_pinned
-                    ? "bg-amber-500/10 border-amber-500/20"
+                    ? "bg-blue-500/10 border-blue-500/20"
                     : "bg-white/5 border-white/10"
                 )}
               >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   {notice.is_pinned && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-300 border border-rose-500/20">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/20">
                       <Pin size={12} />
                       PIN
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-300 border border-amber-500/20">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-500/15 text-sky-300 border border-blue-500/20">
                     공지
                   </span>
-                  <span className="text-xs text-gray-500">{formatDateTime(notice.created_at)}</span>
+                  <span className="text-xs text-slate-500">{formatDateTime(notice.created_at)}</span>
                 </div>
-                <div className="text-lg md:text-xl font-black">{notice.title}</div>
-                <div className="mt-2 text-sm text-gray-300 line-clamp-2">{notice.content}</div>
+                <div className="text-lg md:text-xl font-semibold">{notice.title}</div>
+                <div className="mt-2 text-sm text-slate-300 line-clamp-2">{notice.content}</div>
               </button>
             ))}
         </div>
@@ -864,8 +864,8 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
 
 const MiniStat = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-    <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-black">{label}</div>
-    <div className="mt-1 text-lg font-black">{value}</div>
+    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-semibold">{label}</div>
+    <div className="mt-1 text-lg font-semibold">{value}</div>
   </div>
 );
 
@@ -1403,7 +1403,7 @@ const fetchInitialData = async () => {
   if (loading) {
     return (
       <PageShell>
-        <div className="min-h-screen flex items-center justify-center text-purple-300 font-black italic">
+        <div className="min-h-screen flex items-center justify-center text-sky-300 font-semibold">
           INXX SYSTEM LOADING...
         </div>
       </PageShell>
@@ -1415,14 +1415,14 @@ const fetchInitialData = async () => {
       <PageShell>
         <div className="min-h-screen flex items-center justify-center px-6">
           <div className="w-full max-w-2xl rounded-[2rem] border border-red-500/30 bg-red-950/20 p-8 text-left">
-            <div className="text-[11px] font-black tracking-[0.3em] uppercase text-red-300">
+            <div className="text-[11px] font-semibold tracking-[0.3em] uppercase text-red-300">
               Boot Error
             </div>
-            <h1 className="mt-3 text-3xl font-black">홈페이지 초기화 실패</h1>
-            <p className="mt-4 text-sm leading-6 text-gray-300">
+            <h1 className="mt-3 text-3xl font-semibold">홈페이지 초기화 실패</h1>
+            <p className="mt-4 text-sm leading-6 text-slate-300">
               {bootError}
             </p>
-            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-gray-400">
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 text-sm text-slate-400">
               Vercel 프로젝트 환경변수와 Supabase 연결값을 다시 확인한 뒤 재배포하세요.
             </div>
           </div>
@@ -1435,7 +1435,7 @@ const fetchInitialData = async () => {
     <PageShell>
       <div className="relative z-10">
         {profile?.role === "admin" && (
-          <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-purple-900 to-red-900 text-[10px] font-black py-1 text-center tracking-[0.3em] uppercase">
+          <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-blue-950 via-slate-900 to-blue-900 text-[10px] font-semibold py-1 text-center tracking-[0.24em] uppercase">
             👑 Administrator Session Active
           </div>
         )}
@@ -1475,10 +1475,10 @@ const fetchInitialData = async () => {
                       <button
                         key={tab}
                         onClick={() => setContentView(tab)}
-                        className={`text-lg md:text-xl font-black italic uppercase transition-all whitespace-nowrap ${
+                        className={`text-lg md:text-xl font-semibold uppercase transition-all whitespace-nowrap ${
                           contentView === tab
-                            ? "text-purple-400 scale-105 underline underline-offset-8"
-                            : "text-gray-600 hover:text-gray-400"
+                            ? "text-sky-400 scale-105 underline underline-offset-8"
+                            : "text-slate-600 hover:text-slate-400"
                         }`}
                       >
                         {tab}
@@ -1575,9 +1575,9 @@ const fetchInitialData = async () => {
 }
 
 const PageShell = ({ children }: { children: React.ReactNode }) => (
-  <div className="min-h-screen relative overflow-hidden bg-[#05070d] text-white font-sans selection:bg-purple-500/30">
+  <div className="min-h-screen relative overflow-hidden bg-[#07111f] text-white font-sans selection:bg-sky-400/30">
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(88,101,242,0.20),_transparent_30%),radial-gradient(circle_at_20%_80%,_rgba(168,85,247,0.16),_transparent_26%),radial-gradient(circle_at_80%_30%,_rgba(59,130,246,0.14),_transparent_22%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.22),_transparent_30%),radial-gradient(circle_at_20%_80%,_rgba(59,130,246,0.14),_transparent_26%),radial-gradient(circle_at_80%_30%,_rgba(191,219,254,0.12),_transparent_22%)]" />
       <div
         className="absolute inset-0 opacity-[0.14]"
         style={{
@@ -1586,9 +1586,9 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
           backgroundSize: "28px 28px",
         }}
       />
-      <div className="absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full bg-indigo-500/20 blur-3xl" />
-      <div className="absolute top-[18%] right-[6%] h-[360px] w-[360px] rounded-full bg-fuchsia-500/16 blur-3xl" />
-      <div className="absolute bottom-[-120px] left-[28%] h-[520px] w-[520px] rounded-full bg-sky-500/16 blur-3xl" />
+      <div className="absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full bg-sky-500/20 blur-3xl" />
+      <div className="absolute top-[18%] right-[6%] h-[360px] w-[360px] rounded-full bg-sky-400/14 blur-3xl" />
+      <div className="absolute bottom-[-120px] left-[28%] h-[520px] w-[520px] rounded-full bg-sky-400/14 blur-3xl" />
     </div>
     {children}
   </div>
@@ -1597,7 +1597,7 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
 const Hero = ({ settings }: any) => {
   return (
     <section className="relative h-[58vh] md:h-[72vh] flex items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(168,85,247,0.20),transparent_25%),radial-gradient(circle_at_70%_30%,rgba(59,130,246,0.18),transparent_28%),linear-gradient(180deg,rgba(5,7,13,0.1),rgba(5,7,13,0.88))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(125,211,252,0.16),transparent_25%),radial-gradient(circle_at_70%_30%,rgba(59,130,246,0.16),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.12),rgba(7,17,31,0.9))]" />
 
       <div className="relative z-10 text-center px-4">
         <motion.div
@@ -1605,22 +1605,22 @@ const Hero = ({ settings }: any) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9 }}
         >
-          <span className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-purple-500/5 text-purple-300 text-[10px] font-black mb-6 border border-purple-500/10 tracking-[0.35em] uppercase italic">
+          <span className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/5 text-sky-200 text-[11px] font-semibold mb-6 border border-white/10 tracking-[0.28em] uppercase">
             <Sparkles size={12} />
             Lost Ark Guild System
           </span>
 
-          <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-b from-white to-white/20 font-mono leading-none">
+          <h1 className="text-6xl md:text-8xl font-semibold mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/20 font-mono leading-none">
             {settings?.guild_name}
           </h1>
 
-          <p className="text-gray-300 text-base md:text-xl max-w-2xl mx-auto font-bold italic uppercase tracking-tight opacity-80">
+          <p className="text-slate-300 text-base md:text-xl max-w-2xl mx-auto font-medium tracking-tight opacity-85">
             {settings?.guild_description}
           </p>
         </motion.div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#07111f] to-transparent" />
     </section>
   );
 };
@@ -1638,7 +1638,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/10">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/70 backdrop-blur-2xl border-b border-white/10 shadow-[0_8px_30px_rgba(2,6,23,0.28)]">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <div className="w-10" />
 
@@ -1647,10 +1647,10 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`text-xs font-black tracking-[0.2em] transition-all uppercase ${
+              className={`text-xs font-semibold tracking-[0.2em] transition-all uppercase ${
                 activeTab === item.id
-                  ? "text-purple-400"
-                  : "text-gray-500 hover:text-white"
+                  ? "text-sky-400"
+                  : "text-slate-500 hover:text-white"
               }`}
             >
               {item.label}
@@ -1659,7 +1659,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
           {user && (
             <button
               onClick={onLogout}
-              className="text-xs font-black text-gray-500 hover:text-red-400 uppercase tracking-widest transition-colors"
+              className="text-xs font-semibold text-slate-500 hover:text-red-400 uppercase tracking-widest transition-colors"
             >
               Logout
             </button>
@@ -1712,7 +1712,7 @@ const ImageUploader = ({
 
   return (
     <div className="space-y-3 text-left">
-      <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">
+      <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">
         {label}
       </label>
       <div className="relative group">
@@ -1726,7 +1726,7 @@ const ImageUploader = ({
         />
         <label
           htmlFor={`file-${label.replace(/\s+/g, "-")}`}
-          className="flex items-center justify-center gap-3 w-full bg-black border border-white/10 p-4 rounded-2xl cursor-pointer hover:border-purple-500 transition-all text-xs font-black text-gray-500 group-hover:text-white"
+          className="flex items-center justify-center gap-3 w-full bg-black border border-white/10 p-4 rounded-2xl cursor-pointer hover:border-blue-500 transition-all text-xs font-semibold text-slate-500 group-hover:text-white"
         >
           {uploading ? (
             "UPLOADING..."
@@ -1750,13 +1750,13 @@ const AdminInput = ({
   type = "text",
 }: any) => (
   <div className="space-y-3 text-left w-full">
-    <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">
+    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">
       {label}
     </label>
     <input
       type={type}
       placeholder={placeholder}
-      className="w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-purple-500 font-bold text-sm text-white transition-all"
+      className="w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-blue-500 font-bold text-sm text-white transition-all"
       value={value}
       onChange={(e) => onChange && onChange(e.target.value)}
     />
@@ -1774,11 +1774,11 @@ const SectionPanel = ({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <div className="bg-[#0d111c]/80 border border-white/10 rounded-[2rem] p-6 md:p-8">
+  <div className="bg-[#0f172a]/80 border border-white/10 rounded-[2rem] p-6 md:p-8">
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
       <div>
-        <h3 className="text-2xl font-black tracking-tight">{title}</h3>
-        {description && <p className="text-sm text-gray-400 mt-1">{description}</p>}
+        <h3 className="text-2xl font-semibold tracking-tight">{title}</h3>
+        {description && <p className="text-sm text-slate-400 mt-1">{description}</p>}
       </div>
       {action}
     </div>
@@ -1836,7 +1836,7 @@ const MainContentViewer = ({ type }: { type: string }) => {
   return (
     <section className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 py-10">
       {items.length === 0 && (
-        <div className="col-span-full text-center text-gray-600 font-black italic py-10 uppercase">
+        <div className="col-span-full text-center text-slate-600 font-semibold py-10 uppercase">
           No Contents Registered.
         </div>
       )}
@@ -1855,12 +1855,12 @@ const MainContentViewer = ({ type }: { type: string }) => {
             }
             className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#07111f] via-transparent to-transparent" />
           <div className="absolute bottom-4 left-4 right-4 text-left">
-            <span className="text-[8px] font-black text-purple-500 uppercase tracking-widest mb-1 block italic">
+            <span className="text-[8px] font-semibold text-blue-500 uppercase tracking-widest mb-1 block">
               {type}
             </span>
-            <h3 className="text-sm font-black italic uppercase tracking-tighter leading-tight truncate">
+            <h3 className="text-sm font-semibold uppercase tracking-tight leading-tight truncate">
               {item.name || item.sub_class}
             </h3>
           </div>
@@ -1929,10 +1929,10 @@ const DetailPopup = ({ item, type, onClose }: any) => {
             className="w-full md:w-48 h-48 object-cover rounded-3xl border border-white/10 shadow-2xl"
           />
           <div className="flex flex-col justify-end">
-            <h2 className="text-4xl md:text-5xl font-black italic uppercase text-purple-500 mb-2">
+            <h2 className="text-4xl md:text-5xl font-semibold uppercase text-blue-500 mb-2">
               {item.name || item.sub_class}
             </h2>
-            <p className="text-gray-500 font-bold uppercase tracking-widest italic">
+            <p className="text-slate-500 font-bold uppercase tracking-widest">
               {type} Specification
             </p>
           </div>
@@ -1945,10 +1945,10 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                 <button
                   key={g}
                   onClick={() => setGate(g)}
-                  className={`px-6 py-2 rounded-lg font-black transition-all ${
+                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
                     gate === g
-                      ? "bg-purple-600 shadow-lg shadow-purple-600/20"
-                      : "text-gray-500"
+                      ? "bg-blue-600 shadow-lg shadow-blue-600/20"
+                      : "text-slate-500"
                   }`}
                 >
                   {g}관문
@@ -1961,8 +1961,8 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                 <button
                   key={d}
                   onClick={() => setDiff(d)}
-                  className={`px-6 py-2 rounded-lg font-black text-xs transition-all ${
-                    diff === d ? "bg-white text-black" : "text-gray-500"
+                  className={`px-6 py-2 rounded-lg font-semibold text-xs transition-all ${
+                    diff === d ? "bg-white text-black" : "text-slate-500"
                   }`}
                 >
                   {d}
@@ -1992,17 +1992,17 @@ const DetailPopup = ({ item, type, onClose }: any) => {
               <StatCard label="HP (체력)" value={details.hp || "-"} />
               <StatCard label="계열" value={details.element_type || "-"} />
               <StatCard label="속성" value={details.attribute || "-"} />
-              <div className="p-6 bg-white/5 rounded-2xl border border-purple-500/20 md:col-span-3">
-                <label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">
+              <div className="p-6 bg-white/5 rounded-2xl border border-blue-500/20 md:col-span-3">
+                <label className="text-[10px] font-semibold text-blue-500/50 uppercase tracking-widest mb-2 block">
                   클리어 골드
                 </label>
-                <div className="text-2xl font-black text-yellow-400">
+                <div className="text-2xl font-semibold text-yellow-400">
                   {details.clear_gold?.toLocaleString() || "0"} G
                 </div>
               </div>
             </>
           ) : (
-            <div className="col-span-3 py-20 text-center text-gray-700 font-black italic uppercase tracking-widest">
+            <div className="col-span-3 py-20 text-center text-slate-700 font-semibold uppercase tracking-widest">
               데이터가 없습니다.
             </div>
           )}
@@ -2028,10 +2028,10 @@ const StatCard = ({
       full ? "md:col-span-3" : wide ? "md:col-span-2" : ""
     }`}
   >
-    <label className="text-[10px] font-black text-purple-500/50 uppercase tracking-widest mb-2 block italic">
+    <label className="text-[10px] font-semibold text-blue-500/50 uppercase tracking-widest mb-2 block">
       {label}
     </label>
-    <div className="text-lg font-black">{value}</div>
+    <div className="text-lg font-semibold">{value}</div>
   </div>
 );
 
@@ -2160,13 +2160,13 @@ const RaidCalendar = ({ user, profile }: any) => {
             <div className="flex gap-2">
               <button
                 onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
-                className="p-3 border border-white/10 rounded-xl hover:border-purple-400 transition"
+                className="p-3 border border-white/10 rounded-xl hover:border-sky-400 transition"
               >
                 <ChevronLeft size={18} />
               </button>
               <button
                 onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
-                className="p-3 border border-white/10 rounded-xl hover:border-purple-400 transition"
+                className="p-3 border border-white/10 rounded-xl hover:border-sky-400 transition"
               >
                 <ChevronRight size={18} />
               </button>
@@ -2175,10 +2175,10 @@ const RaidCalendar = ({ user, profile }: any) => {
         >
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div>
-              <div className="text-[11px] text-purple-300 uppercase tracking-[0.3em] font-black mb-2">
+              <div className="text-[11px] text-sky-300 uppercase tracking-[0.3em] font-semibold mb-2">
                 Monthly View
               </div>
-              <h2 className="text-4xl font-black italic">{formatMonthLabel(year, month)}</h2>
+              <h2 className="text-4xl font-semibold">{formatMonthLabel(year, month)}</h2>
             </div>
 
             <div className="grid grid-cols-3 gap-3 w-full md:w-auto">
@@ -2195,7 +2195,7 @@ const RaidCalendar = ({ user, profile }: any) => {
         >
           <div className="space-y-3">
             {monthlyCharacterStats.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-center text-sm text-gray-500">
+              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-6 text-center text-sm text-slate-500">
                 아직 이번 달 참여 데이터가 없습니다.
               </div>
             )}
@@ -2206,18 +2206,18 @@ const RaidCalendar = ({ user, profile }: any) => {
                 className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4 flex items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-500/20 flex items-center justify-center text-sm font-black text-purple-300 shrink-0">
+                  <div className="h-10 w-10 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center text-sm font-semibold text-sky-300 shrink-0">
                     #{index + 1}
                   </div>
                   <div className="min-w-0">
-                    <div className="font-black truncate">{item.nickname}</div>
-                    <div className="text-xs text-gray-500">월간 레이드 참여 요약</div>
+                    <div className="font-semibold truncate">{item.nickname}</div>
+                    <div className="text-xs text-slate-500">월간 레이드 참여 요약</div>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <div className="text-lg font-black text-white">{item.raidCount}회</div>
-                  <div className="text-xs text-gray-500">등록 {item.count}건</div>
+                  <div className="text-lg font-semibold text-white">{item.raidCount}회</div>
+                  <div className="text-xs text-slate-500">등록 {item.count}건</div>
                 </div>
               </div>
             ))}
@@ -2226,8 +2226,8 @@ const RaidCalendar = ({ user, profile }: any) => {
       </div>
 
       <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-6">
-        <div className="bg-slate-950/55 rounded-[2rem] md:rounded-[3rem] border border-white/10 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(99,102,241,0.08)]">
-          <div className="grid grid-cols-7 text-center text-[10px] md:text-xs text-gray-500 border-b border-white/5 uppercase tracking-[0.2em]">
+        <div className="bg-slate-950/55 rounded-[2rem] md:rounded-[3rem] border border-white/10 backdrop-blur-xl overflow-hidden shadow-[0_0_50px_rgba(59,130,246,0.12)]">
+          <div className="grid grid-cols-7 text-center text-[10px] md:text-xs text-slate-500 border-b border-white/5 uppercase tracking-[0.2em]">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
               <div key={dayLabel} className="p-4">
                 {dayLabel}
@@ -2251,20 +2251,20 @@ const RaidCalendar = ({ user, profile }: any) => {
                   key={day}
                   className={`min-h-[150px] md:min-h-[180px] p-3 border transition-all ${
                     isToday
-                      ? "bg-purple-900/30 border-purple-500 shadow-lg shadow-purple-500/10"
+                      ? "bg-blue-950/30 border-blue-500 shadow-lg shadow-blue-500/10"
                       : "bg-[#0a0a0a] border-transparent"
                   }`}
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div>
                       <div
-                        className={`text-sm font-black ${
-                          isToday ? "text-purple-300" : "text-gray-400"
+                        className={`text-sm font-semibold ${
+                          isToday ? "text-sky-300" : "text-slate-400"
                         }`}
                       >
                         {day}
                       </div>
-                      <div className="text-[10px] text-gray-600 uppercase tracking-widest">
+                      <div className="text-[10px] text-slate-600 uppercase tracking-widest">
                         {DAY_LABELS[new Date(year, month, day).getDay()]}
                       </div>
                     </div>
@@ -2275,7 +2275,7 @@ const RaidCalendar = ({ user, profile }: any) => {
                           setSelectedDate(dateStr);
                           setIsCreateOpen(true);
                         }}
-                        className="text-purple-300 hover:text-white transition"
+                        className="text-sky-300 hover:text-white transition"
                         title="레이드 생성"
                       >
                         <Plus size={16} />
@@ -2285,7 +2285,7 @@ const RaidCalendar = ({ user, profile }: any) => {
 
                   <div className="space-y-2">
                     {dayRaids.length === 0 && (
-                      <div className="text-[11px] text-gray-600 font-bold rounded-xl border border-dashed border-white/5 px-3 py-4 text-center">
+                      <div className="text-[11px] text-slate-600 font-bold rounded-xl border border-dashed border-white/5 px-3 py-4 text-center">
                         일정 없음
                       </div>
                     )}
@@ -2310,9 +2310,9 @@ const RaidCalendar = ({ user, profile }: any) => {
           description="이번 달 참여 많이 한 캐릭터를 전체로 확인할 수 있어."
         >
           {calendarLoading ? (
-            <div className="py-12 text-center text-gray-500 font-bold">불러오는 중...</div>
+            <div className="py-12 text-center text-slate-500 font-bold">불러오는 중...</div>
           ) : monthlyCharacterStats.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-gray-500">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-slate-500">
               집계할 참여 데이터가 없어.
             </div>
           ) : (
@@ -2325,27 +2325,27 @@ const RaidCalendar = ({ user, profile }: any) => {
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="h-11 w-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                        <BarChart3 size={16} className="text-purple-300" />
+                        <BarChart3 size={16} className="text-sky-300" />
                       </div>
                       <div className="min-w-0">
-                        <div className="font-black truncate">
+                        <div className="font-semibold truncate">
                           #{index + 1} {item.nickname}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-slate-500">
                           월간 레이드 참여 횟수 {item.raidCount}회
                         </div>
                       </div>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <div className="text-xl font-black text-purple-300">{item.raidCount}</div>
-                      <div className="text-[11px] text-gray-500">raid count</div>
+                      <div className="text-xl font-semibold text-sky-300">{item.raidCount}</div>
+                      <div className="text-[11px] text-slate-500">raid count</div>
                     </div>
                   </div>
 
                   <div className="mt-3 h-2 rounded-full bg-black/40 overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-indigo-500"
+                      className="h-full bg-gradient-to-r from-blue-500 to-sky-500"
                       style={{
                         width: `${
                           monthlyCharacterStats[0]?.raidCount
@@ -2356,7 +2356,7 @@ const RaidCalendar = ({ user, profile }: any) => {
                     />
                   </div>
 
-                  <div className="mt-3 text-xs text-gray-400">
+                  <div className="mt-3 text-xs text-slate-400">
                     참가 등록 총 {item.count}건
                   </div>
                 </div>
@@ -2405,20 +2405,20 @@ const SummaryChip = ({
   value: string | number;
 }) => (
   <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
-    <div className="flex items-center gap-2 text-purple-300 text-[11px] font-black uppercase tracking-widest mb-1">
+    <div className="flex items-center gap-2 text-sky-300 text-[11px] font-semibold uppercase tracking-widest mb-1">
       {icon}
       {label}
     </div>
-    <div className="text-2xl font-black">{value}</div>
+    <div className="text-2xl font-semibold">{value}</div>
   </div>
 );
 
 const InfoMiniCard = ({ title, value }: { title: string; value: string }) => (
   <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
-    <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">
+    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">
       {title}
     </div>
-    <div className="text-base font-black text-white">{value}</div>
+    <div className="text-base font-semibold text-white">{value}</div>
   </div>
 );
 
@@ -2445,16 +2445,16 @@ const RaidCard = ({
       }`}
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <span className={`text-[10px] font-black uppercase tracking-widest ${colors.badge}`}>
+        <span className={`text-[10px] font-semibold uppercase tracking-widest ${colors.badge}`}>
           {raid.type === "anime" ? "📺 시청" : `${raid.raid_type} · ${raid.difficulty}`}
         </span>
-        <span className={`text-[10px] font-black ${isFull ? "text-red-300" : "text-gray-400"}`}>
+        <span className={`text-[10px] font-semibold ${isFull ? "text-red-300" : "text-slate-400"}`}>
           {parts.length}/{capacity.maxParticipants}
           {isFull ? " FULL" : ""}
         </span>
       </div>
 
-      <div className="text-sm font-black text-white leading-tight truncate">
+      <div className="text-sm font-semibold text-white leading-tight truncate">
         {raid.raid_name}
       </div>
 
@@ -2462,7 +2462,7 @@ const RaidCard = ({
         {raid.experience && raid.type !== "anime" && (
           <span className={colors.chip}>🎯 {raid.experience}</span>
         )}
-        <span className="bg-white/5 text-gray-300 border border-white/10 text-[10px] px-2 py-1 rounded-full">
+        <span className="bg-white/5 text-slate-300 border border-white/10 text-[10px] px-2 py-1 rounded-full">
           <Clock size={10} className="inline mr-1" />
           {raid.raid_time}
         </span>
@@ -2556,12 +2556,12 @@ const CreateRaidModal = ({
       <div className="bg-[#10131f] border border-white/10 p-8 rounded-[2rem] w-full max-w-md space-y-4 shadow-2xl">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.3em] text-purple-300 font-black mb-2">
+            <div className="text-[10px] uppercase tracking-[0.3em] text-sky-300 font-semibold mb-2">
               Create Schedule
             </div>
-            <h3 className="text-2xl font-black">{date}</h3>
+            <h3 className="text-2xl font-semibold">{date}</h3>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white">
+          <button onClick={onClose} className="text-slate-500 hover:text-white">
             <X size={22} />
           </button>
         </div>
@@ -2645,7 +2645,7 @@ const CreateRaidModal = ({
         <button
           onClick={save}
           disabled={loading}
-          className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 py-4 rounded-2xl font-black hover:opacity-90 transition"
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-600 py-4 rounded-2xl font-semibold hover:opacity-90 transition"
         >
           {loading ? "생성 중..." : "일정 생성"}
         </button>
@@ -2699,13 +2699,13 @@ const RaidDetailModal = ({
   return (
     <ModalFrame onClose={onClose}>
       <div className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[#0c1020]/95 backdrop-blur-2xl overflow-hidden shadow-[0_0_60px_rgba(99,102,241,0.16)]">
-        <div className={`p-6 md:p-8 border-b border-white/10 bg-gradient-to-r ${raid.type === "anime" ? "from-emerald-950/60 to-teal-950/40" : "from-purple-950/60 to-indigo-950/40"}`}>
+        <div className={`p-6 md:p-8 border-b border-white/10 bg-gradient-to-r ${raid.type === "anime" ? "from-blue-950/60 to-blue-950/40" : "from-blue-950/60 to-blue-950/40"}`}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className={`text-[10px] font-black uppercase tracking-[0.3em] mb-2 ${colors.badge}`}>
+              <div className={`text-[10px] font-semibold uppercase tracking-[0.3em] mb-2 ${colors.badge}`}>
                 {raid.type === "anime" ? "Watch Party" : "Raid Detail"}
               </div>
-              <h3 className="text-3xl font-black">{raid.raid_name}</h3>
+              <h3 className="text-3xl font-semibold">{raid.raid_name}</h3>
               <div className="flex flex-wrap gap-2 mt-3">
                 <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
                   {formatShortDate(raid.raid_date)}
@@ -2731,7 +2731,7 @@ const RaidDetailModal = ({
               </div>
             </div>
 
-            <button onClick={onClose} className="text-gray-500 hover:text-white">
+            <button onClick={onClose} className="text-slate-500 hover:text-white">
               <X size={24} />
             </button>
           </div>
@@ -2745,11 +2745,11 @@ const RaidDetailModal = ({
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-black/30 p-4 md:p-5">
-            <div className="text-sm font-black mb-4">참가자 목록</div>
+            <div className="text-sm font-semibold mb-4">참가자 목록</div>
 
             <div className="space-y-3 max-h-[320px] overflow-y-auto">
               {parts.length === 0 && (
-                <div className="text-gray-500 text-sm py-6 text-center">
+                <div className="text-slate-500 text-sm py-6 text-center">
                   아직 참가자가 없습니다.
                 </div>
               )}
@@ -2769,7 +2769,7 @@ const RaidDetailModal = ({
             {user && !isFull && (
               <button
                 onClick={() => setShowJoin(true)}
-                className="flex-1 py-4 rounded-2xl font-black bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 transition"
+                className="flex-1 py-4 rounded-2xl font-semibold bg-gradient-to-r from-blue-600 to-blue-600 hover:opacity-90 transition"
               >
                 ⚔️ 참여하기
               </button>
@@ -2778,7 +2778,7 @@ const RaidDetailModal = ({
             {profile?.role === "admin" && (
               <button
                 onClick={handleDelete}
-                className="flex-1 py-4 rounded-2xl font-black bg-red-600 hover:bg-red-700 transition"
+                className="flex-1 py-4 rounded-2xl font-semibold bg-red-600 hover:bg-red-700 transition"
               >
                 🗑 일정 삭제
               </button>
@@ -2786,7 +2786,7 @@ const RaidDetailModal = ({
 
             <button
               onClick={onClose}
-              className="flex-1 py-4 rounded-2xl font-black bg-white/10 hover:bg-white/15 transition"
+              className="flex-1 py-4 rounded-2xl font-semibold bg-white/10 hover:bg-white/15 transition"
             >
               닫기
             </button>
@@ -2841,7 +2841,7 @@ const ParticipantItem = ({
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
       <div>
         <div className="font-bold text-white">{participant.character_name}</div>
-        <div className="text-sm text-gray-400 mt-1">
+        <div className="text-sm text-slate-400 mt-1">
           {participant.class_name} · {participant.item_level}
         </div>
       </div>
@@ -2849,8 +2849,8 @@ const ParticipantItem = ({
       <div className="flex items-center gap-3">
         <span className={`text-xs px-3 py-1 rounded-full ${
           participant.position === "서포터"
-            ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20"
-            : "bg-purple-500/15 text-purple-300 border border-purple-500/20"
+            ? "bg-blue-500/15 text-sky-300 border border-blue-500/20"
+            : "bg-blue-500/15 text-sky-300 border border-blue-500/20"
         }`}>
           {participant.position || "참가"}
         </span>
@@ -3047,16 +3047,16 @@ const JoinForm = ({
       <div className="bg-[#111827] p-6 rounded-[2rem] w-full max-w-md space-y-4 border border-white/10 backdrop-blur-2xl shadow-[0_0_40px_rgba(59,130,246,0.10)]">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-white font-black text-xl">레이드 참여</div>
-            <div className="text-xs text-gray-400 mt-1">마이룸 캐릭터를 선택하면 정보가 자동 입력돼.</div>
+            <div className="text-white font-semibold text-xl">레이드 참여</div>
+            <div className="text-xs text-slate-400 mt-1">마이룸 캐릭터를 선택하면 정보가 자동 입력돼.</div>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white">
+          <button onClick={onClose} className="text-slate-500 hover:text-white">
             <X size={20} />
           </button>
         </div>
 
         <div className="space-y-3 text-left w-full">
-          <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">
+          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">
             내 캐릭터 선택
           </label>
           <select
@@ -3079,11 +3079,11 @@ const JoinForm = ({
         </div>
 
         {myCharacters.length > 0 && selectedCharacterId && (
-          <div className="rounded-2xl border border-purple-500/20 bg-purple-500/10 px-4 py-3 text-sm">
-            <div className="font-black text-purple-200">
+          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm">
+            <div className="font-semibold text-sky-200">
               {nickname} · {playerClass}
             </div>
-            <div className="mt-1 text-xs text-purple-100/80">
+            <div className="mt-1 text-xs text-sky-100/80">
               아이템 레벨 {level || "-"} · 역할 {raid.type === "anime" ? "참가" : role}
             </div>
           </div>
@@ -3114,13 +3114,13 @@ const JoinForm = ({
           <button
             onClick={handleJoin}
             disabled={saving || characterLoading || myCharacters.length === 0}
-            className="w-full bg-green-600 py-3 rounded-2xl font-black disabled:opacity-50"
+            className="w-full bg-green-600 py-3 rounded-2xl font-semibold disabled:opacity-50"
           >
             {saving ? "참가 중..." : "참가"}
           </button>
           <button
             onClick={onClose}
-            className="w-full bg-gray-700 py-3 rounded-2xl font-black"
+            className="w-full bg-slate-700 py-3 rounded-2xl font-semibold"
           >
             취소
           </button>
@@ -3204,10 +3204,10 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
           <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <label className="text-xs text-gray-400 mb-2 block">시스템 사용 여부</label>
+                <label className="text-xs text-slate-400 mb-2 block">시스템 사용 여부</label>
                 <button
                   onClick={() => setValue({ enabled: !pointSettings.enabled })}
-                  className={cn("w-full h-[58px] rounded-2xl border font-black", pointSettings.enabled ? "bg-emerald-600 border-emerald-500 text-white" : "bg-black border-white/10 text-gray-400")}
+                  className={cn("w-full h-[58px] rounded-2xl border font-semibold", pointSettings.enabled ? "bg-blue-600 border-blue-500 text-white" : "bg-black border-white/10 text-slate-400")}
                 >
                   {pointSettings.enabled ? "활성화" : "비활성화"}
                 </button>
@@ -3227,22 +3227,22 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
               ))}
             </div>
             <div className="flex justify-end">
-              <button onClick={handleSave} className="px-6 py-3 rounded-2xl bg-purple-600 font-black">포인트 경제 저장</button>
+              <button onClick={handleSave} className="px-6 py-3 rounded-2xl bg-blue-600 font-semibold">포인트 경제 저장</button>
             </div>
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-black/20 p-6">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-purple-300 font-black">Preview</div>
-            <div className="mt-2 text-2xl font-black">강화 단계별 예시</div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-sky-300 font-semibold">Preview</div>
+            <div className="mt-2 text-2xl font-semibold">강화 단계별 예시</div>
             <div className="mt-4 space-y-3">
               {[0, 5, 10, 15, 20, 25].map((level) => (
                 <div key={level} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <div className="font-black">+{level}강 기준</div>
+                  <div className="font-semibold">+{level}강 기준</div>
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     {(["common","rare","epic","legendary"] as WeaponRarityKey[]).map((rarity) => (
                       <div key={`${rarity}-${level}`} className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 flex items-center justify-between">
                         <span>{WEAPON_RARITY_THEMES[rarity].label}</span>
-                        <span className="font-black text-amber-300">{Number(pointSettings.rate_by_rarity[rarity] || 0) + Math.floor(level / 5) * Number(pointSettings.enhancement_bonus_per_5 || 0)}P</span>
+                        <span className="font-semibold text-sky-300">{Number(pointSettings.rate_by_rarity[rarity] || 0) + Math.floor(level / 5) * Number(pointSettings.enhancement_bonus_per_5 || 0)}P</span>
                       </div>
                     ))}
                   </div>
@@ -3276,8 +3276,8 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-6xl mx-auto p-8 text-left">
       <div className="flex items-center gap-4 mb-10">
-        <Settings className="text-purple-500" size={32} />
-        <h2 className="text-4xl font-black italic uppercase tracking-tighter">
+        <Settings className="text-blue-500" size={32} />
+        <h2 className="text-4xl font-semibold uppercase tracking-tight">
           Admin Console
         </h2>
       </div>
@@ -3287,8 +3287,8 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
           <button
             key={tab}
             onClick={() => setAdminTab(tab)}
-            className={`whitespace-nowrap px-6 py-2 rounded-full text-xs font-black tracking-widest uppercase transition-all ${
-              adminTab === tab ? "bg-purple-600 text-white" : "bg-white/5 text-gray-500 hover:bg-white/10"
+            className={`whitespace-nowrap px-6 py-2 rounded-full text-xs font-semibold tracking-widest uppercase transition-all ${
+              adminTab === tab ? "bg-blue-600 text-white" : "bg-white/5 text-slate-500 hover:bg-white/10"
             }`}
           >
             {tab}
@@ -3338,7 +3338,7 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
       />
       <button
         onClick={handleSave}
-        className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all"
+        className="w-full bg-blue-600 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-blue-500 transition-all"
       >
         Update Hero Section
       </button>
@@ -3482,7 +3482,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   return (
     <div className="grid md:grid-cols-2 gap-12">
       <div className="space-y-6">
-        <h4 className="text-xs font-black uppercase text-purple-500 tracking-widest">
+        <h4 className="text-xs font-semibold uppercase text-blue-500 tracking-widest">
           Current List
         </h4>
 
@@ -3493,17 +3493,17 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
               onClick={() => loadItem(item)}
               className={`flex items-center justify-between bg-black/40 p-4 rounded-xl border cursor-pointer transition-all ${
                 editingId === item.id
-                  ? "border-purple-500"
+                  ? "border-blue-500"
                   : "border-white/5 hover:border-white/20"
               }`}
             >
-              <span className="text-sm font-bold text-gray-300">{item.name}</span>
+              <span className="text-sm font-bold text-slate-300">{item.name}</span>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   deleteItem(item.id, item.name);
                 }}
-                className="text-gray-600 hover:text-red-500"
+                className="text-slate-600 hover:text-red-500"
               >
                 <Trash2 size={16} />
               </button>
@@ -3514,7 +3514,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
       <div className="space-y-6">
         {editingId && (
-          <div className="text-xs font-black text-yellow-400 uppercase tracking-widest">
+          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-widest">
             🔧 수정 모드
           </div>
         )}
@@ -3540,8 +3540,8 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
                   onClick={() => setSelectedGate(gate)}
                   className={`px-4 py-3 rounded-xl text-xs font-bold transition-all ${
                     selectedGate === gate
-                      ? "bg-purple-600 text-white"
-                      : "bg-black border border-white/10 text-gray-400"
+                      ? "bg-blue-600 text-white"
+                      : "bg-black border border-white/10 text-slate-400"
                   }`}
                 >
                   {gate}관문
@@ -3604,13 +3604,13 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
         <div className="flex gap-4">
           <button
             onClick={handleSave}
-            className="flex-1 bg-purple-600 p-4 rounded-xl font-black uppercase hover:bg-purple-500 transition-all"
+            className="flex-1 bg-blue-600 p-4 rounded-xl font-semibold uppercase hover:bg-blue-500 transition-all"
           >
             {editingId ? "Update Content" : "Register Content"}
           </button>
 
           {editingId && (
-            <button onClick={resetForm} className="bg-gray-700 px-4 rounded-xl font-black uppercase">
+            <button onClick={resetForm} className="bg-slate-700 px-4 rounded-xl font-semibold uppercase">
               Cancel
             </button>
           )}
@@ -3678,7 +3678,7 @@ const ClassContentEditor = () => {
   return (
     <div className="grid md:grid-cols-2 gap-12">
       <div className="space-y-6">
-        <h4 className="text-xs font-black uppercase text-purple-500 tracking-widest">
+        <h4 className="text-xs font-semibold uppercase text-blue-500 tracking-widest">
           Class List
         </h4>
         <div className="grid grid-cols-2 gap-2 max-h-[500px] overflow-y-auto pr-2">
@@ -3687,10 +3687,10 @@ const ClassContentEditor = () => {
               key={item.id || item.sub_class}
               className="flex items-center justify-between bg-black/40 p-3 rounded-xl border border-white/5"
             >
-              <span className="text-[10px] font-bold text-gray-400">{item.sub_class}</span>
+              <span className="text-[10px] font-bold text-slate-400">{item.sub_class}</span>
               <button
                 onClick={() => deleteItem(item.sub_class)}
-                className="text-gray-600 hover:text-red-500 transition-colors"
+                className="text-slate-600 hover:text-red-500 transition-colors"
               >
                 <Trash2 size={14} />
               </button>
@@ -3720,7 +3720,7 @@ const ClassContentEditor = () => {
         />
         <button
           onClick={handleSave}
-          className="w-full bg-purple-600 p-4 rounded-xl font-black uppercase hover:bg-purple-500 transition-all"
+          className="w-full bg-blue-600 p-4 rounded-xl font-semibold uppercase hover:bg-blue-500 transition-all"
         >
           Update Class
         </button>
@@ -3891,11 +3891,11 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
   if (!user) {
     return (
       <div className="max-w-2xl mx-auto py-32 text-center space-y-6">
-        <Shield size={64} className="mx-auto text-gray-800" />
-        <h2 className="text-3xl font-black italic uppercase tracking-tighter">
+        <Shield size={64} className="mx-auto text-slate-800" />
+        <h2 className="text-3xl font-semibold uppercase tracking-tight">
           Access Denied
         </h2>
-        <p className="text-gray-500 font-bold">게시판은 로그인한 회원만 이용 가능합니다.</p>
+        <p className="text-slate-500 font-bold">게시판은 로그인한 회원만 이용 가능합니다.</p>
       </div>
     );
   }
@@ -3904,8 +3904,8 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-6xl mx-auto p-6 md:p-12 text-left">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
-          <h2 className="text-4xl font-black italic uppercase tracking-tighter">Bulletin Board</h2>
-          <p className="text-gray-500 font-bold mt-2">게시글 작성 +5P, 댓글 작성 +5P, 이미지 첨부와 공지 고정까지 한 번에 관리합니다.</p>
+          <h2 className="text-4xl font-semibold uppercase tracking-tight">Bulletin Board</h2>
+          <p className="text-slate-500 font-bold mt-2">게시글 작성 +5P, 댓글 작성 +5P, 이미지 첨부와 공지 고정까지 한 번에 관리합니다.</p>
         </div>
 
         <div className="flex flex-wrap gap-2 items-center">
@@ -3918,8 +3918,8 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
               key={key}
               onClick={() => setTab(key)}
               className={cn(
-                "whitespace-nowrap px-5 py-3 rounded-full text-[11px] font-black uppercase transition-all",
-                tab === key ? "bg-purple-600 text-white" : "bg-white/5 text-gray-500 hover:bg-white/10"
+                "whitespace-nowrap px-5 py-3 rounded-full text-[11px] font-semibold uppercase transition-all",
+                tab === key ? "bg-blue-600 text-white" : "bg-white/5 text-slate-500 hover:bg-white/10"
               )}
             >
               {label}
@@ -3928,7 +3928,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
 
           <button
             onClick={() => setShowWriteModal(true)}
-            className="ml-1 h-12 w-12 rounded-2xl bg-purple-600 hover:bg-purple-500 transition-all shadow-lg shadow-purple-600/20 flex items-center justify-center"
+            className="ml-1 h-12 w-12 rounded-2xl bg-blue-600 hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center"
             title="글 작성"
           >
             <Plus size={20} />
@@ -3937,14 +3937,14 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
       </div>
 
       {!commentsEnabled && (
-        <div className="mb-6 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        <div className="mb-6 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-sky-200">
           댓글 테이블이 아직 없어서 댓글 기능이 비활성화돼 있어. 함께 전달한 SQL 파일을 먼저 적용해줘.
         </div>
       )}
 
       <div className="space-y-4">
         {visiblePosts.length === 0 && (
-          <div className="rounded-[2rem] border border-dashed border-white/10 bg-white/5 p-10 text-center text-gray-500">
+          <div className="rounded-[2rem] border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-500">
             아직 게시글이 없습니다.
           </div>
         )}
@@ -3958,38 +3958,38 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
               key={post.id}
               className={cn(
                 "group p-6 md:p-8 rounded-[2rem] border transition-all relative overflow-hidden",
-                post.is_pinned ? "border-amber-500/30 bg-amber-500/10" : post.is_notice ? "border-purple-500/30 bg-purple-500/10" : "border-white/10 bg-white/5"
+                post.is_pinned ? "border-blue-500/30 bg-blue-500/10" : post.is_notice ? "border-blue-500/30 bg-blue-500/10" : "border-white/10 bg-white/5"
               )}
             >
               <div className="flex justify-between items-start mb-4 gap-4">
                 <div className="flex flex-wrap items-center gap-2">
                   {post.is_pinned && (
-                    <span className="px-2 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-300 border border-rose-500/20">
+                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/20">
                       PINNED
                     </span>
                   )}
                   {post.is_notice ? (
-                    <span className="px-2 py-1 rounded-full text-[10px] font-black bg-purple-500/15 text-purple-300 border border-purple-500/20">
+                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-500/15 text-sky-300 border border-blue-500/20">
                       공지
                     </span>
                   ) : (
-                    <span className="px-2 py-1 rounded-full text-[10px] font-black bg-white/10 text-gray-300 border border-white/10">
+                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-white/10 text-slate-300 border border-white/10">
                       {post.category || "자유"}
                     </span>
                   )}
-                  <span className="text-[10px] text-gray-500 font-black uppercase">
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase">
                     {formatDateTime(post.created_at)}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0">
                   {profile?.role === "admin" && post.is_notice && (
-                    <button onClick={() => togglePin(post)} className="text-[11px] text-amber-300 font-black">
+                    <button onClick={() => togglePin(post)} className="text-[11px] text-sky-300 font-semibold">
                       {post.is_pinned ? "고정 해제" : "고정"}
                     </button>
                   )}
                   {(profile?.role === "admin" || user?.id === post.user_id) && (
-                    <button onClick={() => handleDelete(post.id)} className="text-gray-600 hover:text-red-500 transition-colors">
+                    <button onClick={() => handleDelete(post.id)} className="text-slate-600 hover:text-red-500 transition-colors">
                       <Trash2 size={16} />
                     </button>
                   )}
@@ -4000,14 +4000,14 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
                 <img src={post.image_url} className="w-full h-56 md:h-72 object-cover rounded-2xl mb-5 border border-white/5" />
               )}
 
-              <h3 className="text-2xl font-black text-white mb-3">{post.title}</h3>
-              <p className="text-gray-300 text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
+              <h3 className="text-2xl font-semibold text-white mb-3">{post.title}</h3>
+              <p className="text-slate-300 text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
 
-              <div className="flex flex-wrap justify-between items-center gap-3 text-[10px] text-gray-500 font-black uppercase">
+              <div className="flex flex-wrap justify-between items-center gap-3 text-[10px] text-slate-500 font-semibold uppercase">
                 <span>{post.author_name || post.author || "-"}</span>
                 <button
                   onClick={() => setOpenCommentPosts((prev) => ({ ...prev, [post.id]: !Boolean(prev[post.id]) }))}
-                  className="px-3 py-2 rounded-full border border-white/10 bg-black/20 text-gray-300 hover:border-purple-500/40"
+                  className="px-3 py-2 rounded-full border border-white/10 bg-black/20 text-slate-300 hover:border-blue-500/40"
                 >
                   댓글 {postComments.length}개 {commentsOpen ? "닫기" : "열기"}
                 </button>
@@ -4017,27 +4017,27 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
                 <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4 space-y-4">
                   <div className="space-y-3">
                     {postComments.length === 0 && (
-                      <div className="text-sm text-gray-500">아직 댓글이 없습니다.</div>
+                      <div className="text-sm text-slate-500">아직 댓글이 없습니다.</div>
                     )}
 
                     {postComments.map((comment: any) => (
                       <div key={comment.id} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <div className="text-sm font-black text-white">{comment.author_name || comment.author || "-"}</div>
-                            <div className="text-[10px] text-gray-500 uppercase mt-1">{formatDateTime(comment.created_at)}</div>
+                            <div className="text-sm font-semibold text-white">{comment.author_name || comment.author || "-"}</div>
+                            <div className="text-[10px] text-slate-500 uppercase mt-1">{formatDateTime(comment.created_at)}</div>
                           </div>
 
                           {(profile?.role === "admin" || user?.id === comment.user_id) && (
                             <button
                               onClick={() => handleDeleteComment(comment.id)}
-                              className="text-gray-500 hover:text-red-400"
+                              className="text-slate-500 hover:text-red-400"
                             >
                               <Trash2 size={14} />
                             </button>
                           )}
                         </div>
-                        <div className="mt-3 text-sm text-gray-300 whitespace-pre-wrap">{comment.content}</div>
+                        <div className="mt-3 text-sm text-slate-300 whitespace-pre-wrap">{comment.content}</div>
                       </div>
                     ))}
                   </div>
@@ -4051,7 +4051,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
                     />
                     <button
                       onClick={() => submitComment(post.id)}
-                      className="md:w-36 bg-purple-600 px-5 py-4 rounded-2xl font-black text-sm hover:bg-purple-500 transition-all flex items-center justify-center gap-2"
+                      className="md:w-36 bg-blue-600 px-5 py-4 rounded-2xl font-semibold text-sm hover:bg-blue-500 transition-all flex items-center justify-center gap-2"
                     >
                       <Send size={16} />
                       댓글 작성
@@ -4159,10 +4159,10 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
         <button onClick={onClose} className="absolute top-8 right-8 text-white/50 hover:text-white">
           <X />
         </button>
-        <h3 className="text-3xl font-black italic uppercase text-purple-500 mb-3">
+        <h3 className="text-3xl font-semibold uppercase text-blue-500 mb-3">
           Create New Post
         </h3>
-        <p className="text-sm text-gray-500 mb-8">일반 글은 작성 시 +5포인트, 댓글도 +5포인트가 지급됩니다.</p>
+        <p className="text-sm text-slate-500 mb-8">일반 글은 작성 시 +5포인트, 댓글도 +5포인트가 지급됩니다.</p>
 
         <div className="space-y-5">
           <div className="grid md:grid-cols-2 gap-4">
@@ -4196,7 +4196,7 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
                 </label>
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-sm text-gray-400">
+              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-sm text-slate-400">
                 일반 게시글을 작성할 수 있어요.
               </div>
             )}
@@ -4220,7 +4220,7 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
 
           {imgUrl && (
             <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
-              <div className="text-xs text-gray-400 mb-2">첨부 이미지 미리보기</div>
+              <div className="text-xs text-slate-400 mb-2">첨부 이미지 미리보기</div>
               <img src={imgUrl} className="w-full h-56 object-cover rounded-2xl" />
             </div>
           )}
@@ -4228,7 +4228,7 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
           <button
             onClick={handlePost}
             disabled={submitting}
-            className="w-full bg-purple-600 p-6 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-500 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full bg-blue-600 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Send size={18} />
             {submitting ? "등록 중..." : "Publish"}
@@ -4281,11 +4281,11 @@ const Auth = ({ mode, setMode }: any) => {
   return (
     <div className="max-w-md mx-auto py-32 px-4">
       <div className="p-12 rounded-[4rem] border border-white/10 bg-[#0f0f0f] shadow-2xl relative overflow-hidden text-center">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-600 to-transparent" />
-        <h2 className="text-5xl font-black italic mb-2 tracking-tighter uppercase">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-600 to-transparent" />
+        <h2 className="text-5xl font-semibold mb-2 tracking-tight uppercase">
           {mode === "login" ? "Sign In" : "Join Us"}
         </h2>
-        <p className="text-gray-600 text-[10px] font-black tracking-[0.4em] mb-12 uppercase italic">
+        <p className="text-slate-600 text-[10px] font-semibold tracking-[0.4em] mb-12 uppercase">
           Authentication Required
         </p>
 
@@ -4293,7 +4293,7 @@ const Auth = ({ mode, setMode }: any) => {
           <input
             type="email"
             placeholder="E-MAIL"
-            className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white"
+            className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-blue-500 text-sm tracking-widest font-semibold text-white"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -4302,7 +4302,7 @@ const Auth = ({ mode, setMode }: any) => {
           <input
             type="password"
             placeholder="PASSWORD"
-            className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white"
+            className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-blue-500 text-sm tracking-widest font-semibold text-white"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -4312,7 +4312,7 @@ const Auth = ({ mode, setMode }: any) => {
             <input
               type="text"
               placeholder="NICKNAME"
-              className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-purple-500 text-sm tracking-widest font-black text-white"
+              className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-blue-500 text-sm tracking-widest font-semibold text-white"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               required
@@ -4321,7 +4321,7 @@ const Auth = ({ mode, setMode }: any) => {
 
           <button
             type="submit"
-            className="w-full bg-purple-600 p-6 rounded-3xl font-black uppercase tracking-[0.3em] mt-6 hover:bg-purple-500 transition-colors shadow-lg shadow-purple-600/20 active:scale-95 text-white"
+            className="w-full bg-blue-600 p-6 rounded-3xl font-semibold uppercase tracking-[0.3em] mt-6 hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20 active:scale-95 text-white"
           >
             Proceed
           </button>
@@ -4329,7 +4329,7 @@ const Auth = ({ mode, setMode }: any) => {
 
         <button
           onClick={() => setMode(mode === "login" ? "signup" : "login")}
-          className="mt-8 text-[10px] font-black text-gray-600 hover:text-white uppercase transition-all"
+          className="mt-8 text-[10px] font-semibold text-slate-600 hover:text-white uppercase transition-all"
         >
           Switch to {mode === "login" ? "signup" : "login"}
         </button>
@@ -5463,13 +5463,13 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
   return (
     <div className="max-w-6xl mx-auto py-24 px-6">
-      <h2 className="text-4xl font-black mb-10">My Room</h2>
+      <h2 className="text-4xl font-semibold mb-10">My Room</h2>
 
       <div className="bg-white/5 p-10 rounded-3xl space-y-6">
         <div className="grid md:grid-cols-5 gap-4">
           <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-            <div className="text-[11px] uppercase tracking-[0.22em] text-gray-400 font-black">닉네임</div>
-            <div className="mt-3 text-2xl font-black" style={getNicknameEffectStyle(profile)}>
+            <div className="text-[11px] uppercase tracking-[0.22em] text-slate-400 font-semibold">닉네임</div>
+            <div className="mt-3 text-2xl font-semibold" style={getNicknameEffectStyle(profile)}>
               {profile.nickname || "-"}
             </div>
           </div>
@@ -5489,8 +5489,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
               type="button"
               onClick={() => setMyRoomTab(key as "growth" | "characters")}
               className={cn(
-                "px-4 py-2 rounded-full border text-sm font-black transition",
-                myRoomTab === key ? "bg-purple-600 border-purple-500 text-white" : "bg-white/5 border-white/10 text-gray-400"
+                "px-4 py-2 rounded-full border text-sm font-semibold transition",
+                myRoomTab === key ? "bg-blue-600 border-blue-500 text-white" : "bg-white/5 border-white/10 text-slate-400"
               )}
             >
               {label}
@@ -5500,21 +5500,21 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
         {myRoomTab === "growth" && (
           <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-4">
-            <div className="rounded-[2rem] border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 via-black/30 to-transparent p-5">
-              <div className="text-[10px] uppercase tracking-[0.24em] font-black text-cyan-300">Nakwon Level</div>
-              <div className="mt-2 text-2xl font-black">낙원력 제단</div>
+            <div className="rounded-[2rem] border border-sky-500/20 bg-gradient-to-br from-sky-500/10 via-black/30 to-transparent p-5">
+              <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-sky-300">Nakwon Level</div>
+              <div className="mt-2 text-2xl font-semibold">낙원력 제단</div>
               <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <div className="text-4xl font-black text-white">Lv.{nakwonLevel}</div>
-                  <div className="mt-1 text-sm text-gray-400">누적 주입 {nakwonTotalSpent}P · 오늘 강화권 {dailyEnhanceLimit}회</div>
+                  <div className="text-4xl font-semibold text-white">Lv.{nakwonLevel}</div>
+                  <div className="mt-1 text-sm text-slate-400">누적 주입 {nakwonTotalSpent}P · 오늘 강화권 {dailyEnhanceLimit}회</div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-right">
-                  <div className="text-xs text-gray-500">다음 레벨까지</div>
-                  <div className="text-lg font-black text-cyan-300">{nakwonExp} / {nakwonRequiredExp} EXP</div>
+                  <div className="text-xs text-slate-500">다음 레벨까지</div>
+                  <div className="text-lg font-semibold text-sky-300">{nakwonExp} / {nakwonRequiredExp} EXP</div>
                 </div>
               </div>
               <div className="mt-4 h-3 rounded-full bg-white/10 overflow-hidden">
-                <div className="h-full rounded-full bg-cyan-400" style={{ width: `${nakwonProgressPercent}%` }} />
+                <div className="h-full rounded-full bg-sky-400" style={{ width: `${nakwonProgressPercent}%` }} />
               </div>
               <div className="mt-4 grid md:grid-cols-3 gap-3">
                 <MiniStat label="일일 강화 시도권" value={`${dailyEnhanceLimit}회`} />
@@ -5522,8 +5522,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                 <MiniStat label="파괴방지권" value={`${protectionTicketCount}개`} />
               </div>
               <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="text-sm font-black">포인트를 낙원 경험치로 주입</div>
-                <div className="mt-2 text-xs text-gray-400">1P = 1EXP · 낙원력이 오를수록 계정 전체 일일 강화 시도권이 증가해.</div>
+                <div className="text-sm font-semibold">포인트를 낙원 경험치로 주입</div>
+                <div className="mt-2 text-xs text-slate-400">1P = 1EXP · 낙원력이 오를수록 계정 전체 일일 강화 시도권이 증가해.</div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {[50, 100, 300, 500].map((amount) => (
                     <button
@@ -5531,7 +5531,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                       type="button"
                       onClick={() => void handleNakwonInfuse(amount)}
                       disabled={nakwonSubmitting}
-                      className="px-4 py-2 rounded-xl border border-cyan-400/30 bg-cyan-500/10 text-cyan-200 text-sm font-black"
+                      className="px-4 py-2 rounded-xl border border-sky-400/30 bg-sky-500/10 text-sky-200 text-sm font-semibold"
                     >
                       {amount}P 주입
                     </button>
@@ -5542,13 +5542,13 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                     value={nakwonSpendAmount}
                     onChange={(e) => setNakwonSpendAmount(e.target.value.replace(/[^0-9]/g, ""))}
                     placeholder="직접 입력"
-                    className="flex-1 min-w-[160px] bg-black border border-white/10 rounded-xl px-4 py-3 text-sm font-black"
+                    className="flex-1 min-w-[160px] bg-black border border-white/10 rounded-xl px-4 py-3 text-sm font-semibold"
                   />
                   <button
                     type="button"
                     onClick={() => void handleNakwonInfuse()}
                     disabled={nakwonSubmitting}
-                    className="px-5 py-3 rounded-xl bg-cyan-500 text-black font-black"
+                    className="px-5 py-3 rounded-xl bg-sky-500 text-white font-semibold"
                   >
                     {nakwonSubmitting ? "주입 중..." : "직접 주입"}
                   </button>
@@ -5556,50 +5556,50 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
               </div>
             </div>
 
-          <div className="rounded-[2rem] border border-amber-500/20 bg-gradient-to-br from-amber-500/10 via-black/30 to-transparent p-5">
-            <div className="text-[10px] uppercase tracking-[0.24em] font-black text-amber-300">Hourly Point Engine</div>
-            <div className="mt-2 text-2xl font-black">자동 포인트 현황</div>
+          <div className="rounded-[2rem] border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-black/30 to-transparent p-5">
+            <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-sky-300">Hourly Point Engine</div>
+            <div className="mt-2 text-2xl font-semibold">자동 포인트 현황</div>
             {bestPointCharacter ? (
               <>
-                <div className="mt-3 text-sm text-gray-300">
-                  기준 캐릭터 <span className="font-black text-white">{bestPointCharacter.character_name}</span> · {bestPointCharacter.equipped_weapon_name} {getEnhancementDisplay(bestPointCharacter.equipped_weapon_level)}
+                <div className="mt-3 text-sm text-slate-300">
+                  기준 캐릭터 <span className="font-semibold text-white">{bestPointCharacter.character_name}</span> · {bestPointCharacter.equipped_weapon_name} {getEnhancementDisplay(bestPointCharacter.equipped_weapon_level)}
                 </div>
                 <div className="mt-4 grid md:grid-cols-3 gap-3">
                   <MiniStat label={`${pointRateSettings.cycle_minutes}분마다`} value={`${pointPerTick}P`} />
                   <MiniStat label="다음 지급까지" value={getNextPointTickInfo(passivePointState.lastTickAt, pointRateSettings.cycle_minutes).formatted} />
                   <MiniStat label="5강 보너스" value={`+${Math.floor(normalizeEnhancementLevel(bestPointCharacter.equipped_weapon_level) / 5) * Number(pointRateSettings.enhancement_bonus_per_5 || 0)}P`} />
                 </div>
-                <div className="mt-3 text-xs text-gray-400">
+                <div className="mt-3 text-xs text-slate-400">
                   {WEAPON_RARITY_THEMES[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)].label} 기본 {pointRateSettings.rate_by_rarity[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)]}P + 강화 보너스 적용 · 시간당 예상 {bestPointCharacter.hourly_point_rate}P
                 </div>
-                <div className="mt-3 text-xs text-gray-400">
+                <div className="mt-3 text-xs text-slate-400">
                   오늘 누적 {passivePointState.passivePointsDate === getTodayKey() ? passivePointState.passivePointsToday : 0}P / 일일 최대 {pointRateSettings.daily_cap}P
                 </div>
               </>
             ) : (
-              <div className="mt-3 text-sm text-gray-500">장착 무기가 있는 캐릭터가 있어야 시간당 포인트가 계산돼.</div>
+              <div className="mt-3 text-sm text-slate-500">장착 무기가 있는 캐릭터가 있어야 시간당 포인트가 계산돼.</div>
             )}
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
-            <div className="text-[10px] uppercase tracking-[0.24em] font-black text-fuchsia-300">Nickname FX</div>
-            <div className="mt-2 text-2xl font-black">닉네임 꾸미기</div>
-            <div className="mt-3 text-3xl font-black" style={getNicknameEffectStyle(profile)}>
+            <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-sky-300">Nickname FX</div>
+            <div className="mt-2 text-2xl font-semibold">닉네임 꾸미기</div>
+            <div className="mt-3 text-3xl font-semibold" style={getNicknameEffectStyle(profile)}>
               {profile.nickname || "Guild Member"}
             </div>
             <div className="mt-4 space-y-3 max-h-[220px] overflow-y-auto pr-1">
-              <button onClick={clearNicknameEffect} className="w-full px-4 py-3 rounded-2xl bg-white/10 border border-white/10 text-sm font-black">
+              <button onClick={clearNicknameEffect} className="w-full px-4 py-3 rounded-2xl bg-white/10 border border-white/10 text-sm font-semibold">
                 기본 닉네임으로 되돌리기
               </button>
               {ownedNicknameEffects.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-gray-500">
+                <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-slate-500">
                   아직 보유한 닉네임 효과가 없어. 포인트샵 닉네임 탭에서 구매해줘.
                 </div>
               )}
               {ownedNicknameEffects.map((effect: any) => (
                 <button key={effect.id} onClick={() => equipNicknameEffect(effect)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-left">
-                  <div className="text-lg font-black" style={getNicknameEffectStyle(effect)}>{effect.title || "닉네임 이펙트"}</div>
-                  <div className="mt-1 text-xs text-gray-400">보유 수량 {Number(effect.quantity || 1)}개 · 클릭하면 즉시 적용</div>
+                  <div className="text-lg font-semibold" style={getNicknameEffectStyle(effect)}>{effect.title || "닉네임 이펙트"}</div>
+                  <div className="mt-1 text-xs text-slate-400">보유 수량 {Number(effect.quantity || 1)}개 · 클릭하면 즉시 적용</div>
                 </button>
               ))}
             </div>
@@ -5612,17 +5612,17 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
         <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.24em] font-black text-emerald-300">Point Earn Logs</div>
-              <div className="mt-2 text-2xl font-black">포인트 획득 로그</div>
+              <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-sky-300">Point Earn Logs</div>
+              <div className="mt-2 text-2xl font-semibold">포인트 획득 로그</div>
             </div>
-            <button onClick={() => void fetchPointEarnLogs()} className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-sm font-black">
+            <button onClick={() => void fetchPointEarnLogs()} className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold">
               새로고침
             </button>
           </div>
 
           <div className="mt-4 space-y-3">
             {pointEarnLogs.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-gray-500">
+              <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-slate-500">
                 아직 기록된 포인트 획득 로그가 없어. 1시간 주기가 지나면 여기 바로 쌓여.
               </div>
             ) : (
@@ -5630,12 +5630,12 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                 <div key={log.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <div className="text-base font-black text-white">{log.title || "포인트 획득"}</div>
-                      <div className="mt-1 text-sm text-gray-400">{log.description || "포인트가 지급됐어."}</div>
+                      <div className="text-base font-semibold text-white">{log.title || "포인트 획득"}</div>
+                      <div className="mt-1 text-sm text-slate-400">{log.description || "포인트가 지급됐어."}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-black text-emerald-300">+{Number(log.points || 0)}P</div>
-                      <div className="text-xs text-gray-500">{new Date(log.created_at).toLocaleString("ko-KR")}</div>
+                      <div className="text-lg font-semibold text-sky-300">+{Number(log.points || 0)}P</div>
+                      <div className="text-xs text-slate-500">{new Date(log.created_at).toLocaleString("ko-KR")}</div>
                     </div>
                   </div>
                 </div>
@@ -5649,12 +5649,12 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
         {myRoomTab === "characters" && (
           <>
         <div className="flex flex-wrap gap-3 items-center">
-          <button onClick={handleAttendance} className="bg-green-600 px-5 py-3 rounded-xl font-black">
+          <button onClick={handleAttendance} className="bg-green-600 px-5 py-3 rounded-xl font-semibold">
             출석 체크 (+10P)
           </button>
           <button
             onClick={() => setShowRegister(!showRegister)}
-            className="bg-purple-600 px-5 py-3 rounded-xl font-black"
+            className="bg-blue-600 px-5 py-3 rounded-xl font-semibold"
           >
             캐릭터 등록
           </button>
@@ -5664,13 +5664,13 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
         <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
-              <div className="text-xl font-black">보유 뱃지 관리</div>
-              <div className="text-sm text-gray-400">착용 중이 아닌 뱃지는 여기서 삭제할 수 있어.</div>
+              <div className="text-xl font-semibold">보유 뱃지 관리</div>
+              <div className="text-sm text-slate-400">착용 중이 아닌 뱃지는 여기서 삭제할 수 있어.</div>
             </div>
           </div>
 
           {ownedBadges.length === 0 ? (
-            <div className="text-sm text-gray-500">보유한 뱃지가 없습니다.</div>
+            <div className="text-sm text-slate-500">보유한 뱃지가 없습니다.</div>
           ) : (
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
               {ownedBadges.map((badge: any) => {
@@ -5688,7 +5688,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="font-black">{badge.badge_name}</div>
+                        <div className="font-semibold">{badge.badge_name}</div>
                         <div className="text-xs mt-1" style={{ color: theme.chipText }}>
                           {theme.label}
                         </div>
@@ -5697,14 +5697,14 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                         onClick={() => deleteOwnedBadge(badge)}
                         disabled={isUsed}
                         className={cn(
-                          "px-3 py-2 rounded-xl text-xs font-black transition",
-                          isUsed ? "bg-zinc-800 text-zinc-500 cursor-not-allowed" : "bg-red-500/85 hover:bg-red-500 text-white"
+                          "px-3 py-2 rounded-xl text-xs font-semibold transition",
+                          isUsed ? "bg-slate-800 text-slate-500 cursor-not-allowed" : "bg-red-500/85 hover:bg-red-500 text-white"
                         )}
                       >
                         삭제
                       </button>
                     </div>
-                    <div className="mt-3 text-xs text-gray-300">
+                    <div className="mt-3 text-xs text-slate-300">
                       {isUsed ? "현재 캐릭터가 착용 중인 뱃지" : "미착용 뱃지 · 삭제 가능"}
                     </div>
                   </div>
@@ -5718,16 +5718,16 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
         <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5 mt-5">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
-              <div className="text-xl font-black">보유 무기 파츠</div>
-              <div className="text-sm text-gray-400">뽑기로 획득한 무기는 아래에서 확인하고 각 캐릭터에 장착할 수 있어.</div>
+              <div className="text-xl font-semibold">보유 무기 파츠</div>
+              <div className="text-sm text-slate-400">뽑기로 획득한 무기는 아래에서 확인하고 각 캐릭터에 장착할 수 있어.</div>
             </div>
-            <div className="px-3 py-2 rounded-xl bg-white/5 text-sm font-black text-gray-300">
+            <div className="px-3 py-2 rounded-xl bg-white/5 text-sm font-semibold text-slate-300">
               {ownedWeapons.length}개 보유
             </div>
           </div>
 
           {ownedWeapons.length === 0 ? (
-            <div className="text-sm text-gray-500">아직 보유한 무기 파츠가 없습니다. 포인트샵 무기 뽑기에서 획득해봐.</div>
+            <div className="text-sm text-slate-500">아직 보유한 무기 파츠가 없습니다. 포인트샵 무기 뽑기에서 획득해봐.</div>
           ) : (
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
               {ownedWeapons.map((weapon: any) => {
@@ -5741,11 +5741,11 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                     <div className="flex items-start gap-3">
                       <WeaponImage weapon={weapon} className="h-14 w-14 rounded-2xl" />
                       <div className="min-w-0">
-                        <div className="font-black truncate">{weapon.name}</div>
-                        <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
+                        <div className="font-semibold truncate">{weapon.name}</div>
+                        <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-semibold border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
                           {theme.label}
                         </div>
-                        <div className="mt-2 text-xs text-gray-400 line-clamp-2">
+                        <div className="mt-2 text-xs text-slate-400 line-clamp-2">
                           {weapon.description || "길드탭 캐릭터 카드에 표시되는 장비 파츠"}
                         </div>
                       </div>
@@ -5784,18 +5784,18 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
               type="file"
               accept="image/*"
               onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-gray-400"
+              className="w-full text-sm text-slate-400"
             />
             {imageFile && (
               <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
-                <div className="text-xs text-gray-400 mb-2">미리보기</div>
+                <div className="text-xs text-slate-400 mb-2">미리보기</div>
                 <img
                   src={URL.createObjectURL(imageFile)}
                   className="w-full max-w-xs h-44 object-cover rounded-xl"
                 />
               </div>
             )}
-            <button onClick={saveCharacter} className="bg-blue-500 px-4 py-3 rounded-xl font-black">
+            <button onClick={saveCharacter} className="bg-blue-500 px-4 py-3 rounded-xl font-semibold">
               저장
             </button>
           </div>
@@ -5803,7 +5803,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
           {characters.length === 0 && (
-            <div className="md:col-span-2 rounded-2xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-gray-400">
+            <div className="md:col-span-2 rounded-2xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-slate-400">
               아직 보이는 캐릭터가 없어. 기존 캐릭터가 있는데도 안 보이면 아래 SQL 백필을 한 번 실행해줘.
             </div>
           )}
@@ -5833,7 +5833,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="font-bold text-lg">{character.character_name}</div>
-                      <div className="text-sm text-gray-400">{character.class_name}</div>
+                      <div className="text-sm text-slate-400">{character.class_name}</div>
                     </div>
                     <div className="flex flex-wrap gap-2 justify-end">
                       {getCharacterBadges(character).length > 0 ? (
@@ -5842,7 +5842,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                           return (
                           <span
                             key={`${badge.badge_item_id}-${index}`}
-                            className="px-3 py-1 rounded-full text-xs font-black"
+                            className="px-3 py-1 rounded-full text-xs font-semibold"
                             style={{
                               background: badgeTheme.chipBackground,
                               color: badgeTheme.chipText,
@@ -5868,7 +5868,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   </div>
 
 
-                  <div className="mt-4 text-sm text-gray-300 whitespace-pre-wrap">
+                  <div className="mt-4 text-sm text-slate-300 whitespace-pre-wrap">
                     {character.character_intro || "소개 문구를 넣어 캐릭터를 꾸밀 수 있어."}
                   </div>
 
@@ -5881,8 +5881,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <div className="text-xs text-gray-400 uppercase tracking-widest">장비 파츠 [무기]</div>
-                            <span className="inline-flex px-2 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] font-black text-gray-300">
+                            <div className="text-xs text-slate-400 uppercase tracking-widest">장비 파츠 [무기]</div>
+                            <span className="inline-flex px-2 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] font-semibold text-slate-300">
                               {ownedWeapons.length}개 보유
                             </span>
                           </div>
@@ -5892,18 +5892,18 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                               <WeaponImage weapon={{ image_url: character.equipped_weapon_image_url, rarity: character.equipped_weapon_rarity }} className="h-12 w-12 rounded-2xl shrink-0" />
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 min-w-0">
-                                  <div className="font-black truncate">{character.equipped_weapon_name}</div>
-                                  <span className="inline-flex px-2 py-1 rounded-full border border-amber-400/30 bg-amber-500/10 text-[10px] font-black text-amber-200 shrink-0">
+                                  <div className="font-semibold truncate">{character.equipped_weapon_name}</div>
+                                  <span className="inline-flex px-2 py-1 rounded-full border border-sky-400/30 bg-blue-500/10 text-[10px] font-semibold text-sky-200 shrink-0">
                                     {getEnhancementDisplay(character.equipped_weapon_level)}
                                   </span>
                                 </div>
-                                <div className="text-xs text-gray-400">
+                                <div className="text-xs text-slate-400">
                                   현재 장착 중 · {getWeaponTheme({ rarity: character.equipped_weapon_rarity }).label}
                                 </div>
                               </div>
                             </div>
                           ) : (
-                            <div className="mt-2 text-sm text-gray-500">아직 장착한 무기가 없습니다.</div>
+                            <div className="mt-2 text-sm text-slate-500">아직 장착한 무기가 없습니다.</div>
                           )}
                         </div>
 
@@ -5915,7 +5915,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                 e.stopPropagation();
                                 clearWeaponFromCharacter(character);
                               }}
-                              className="px-3 py-2 rounded-xl bg-zinc-800 text-xs font-black text-white"
+                              className="px-3 py-2 rounded-xl bg-slate-800 text-xs font-semibold text-white"
                             >
                               무기 해제
                             </button>
@@ -5933,7 +5933,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                     </button>
 
                     {!expandedWeaponPanels[character.id] && ownedWeapons.length > 0 && (
-                      <div className="mt-3 text-xs text-gray-500">
+                      <div className="mt-3 text-xs text-slate-500">
                         눌러서 보유 무기 목록을 펼치고 장착하거나, 현재 무기를 하루 1회 강화할 수 있어. 현재 보유 포인트 {myPoint}P · 강화석 {ownedEnhanceItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}개
                       </div>
                     )}
@@ -5948,21 +5948,21 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                           className="overflow-hidden"
                         >
                           {character.equipped_weapon_name && (
-                            <div className="mt-4 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
+                            <div className="mt-4 rounded-2xl border border-sky-400/20 bg-blue-500/10 p-4">
                               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                                 <div className="min-w-0">
-                                  <div className="text-[10px] uppercase tracking-[0.24em] text-amber-200/80 font-black">Weapon Enhance</div>
+                                  <div className="text-[10px] uppercase tracking-[0.24em] text-sky-200/80 font-semibold">Weapon Enhance</div>
                                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                                    <span className="text-lg font-black">{character.equipped_weapon_name}</span>
-                                    <span className="inline-flex px-2.5 py-1 rounded-full border border-amber-300/30 bg-black/20 text-xs font-black text-amber-100">
+                                    <span className="text-lg font-semibold">{character.equipped_weapon_name}</span>
+                                    <span className="inline-flex px-2.5 py-1 rounded-full border border-sky-300/30 bg-black/20 text-xs font-semibold text-sky-100">
                                       {getEnhancementDisplay(character.equipped_weapon_level)}
                                     </span>
                                   </div>
-                                  <div className="mt-2 text-sm text-amber-50/80">
+                                  <div className="mt-2 text-sm text-sky-100/80">
                                     성공 확률 {getEnhancementSuccessRate(character.equipped_weapon_level, (ownedEnhanceItems.filter((item: any) => Number(item.quantity || 0) > 0).sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0]?.bonus_rate) || 0)}%
                                     {ownedEnhanceItems.some((item: any) => Number(item.quantity || 0) > 0) && ` · 최고 강화석 자동 사용 (${getEnhancementItemEffectText(ownedEnhanceItems.filter((item: any) => Number(item.quantity || 0) > 0).sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0])})`}
                                   </div>
-                                  <div className="mt-1 text-xs text-amber-100/60">
+                                  <div className="mt-1 text-xs text-sky-100/60">
                                     계정 전체 일일 강화 시도권 {remainingEnhanceAttempts}/{dailyEnhanceLimit} · 1회 시도당 1P 소모 · 최대 {ENHANCEMENT_MAX_LEVEL}강
                                   </div>
                                   {getEnhancementDestroyRate(character.equipped_weapon_level) > 0 && (
@@ -5980,12 +5980,12 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                     remainingEnhanceAttempts <= 0
                                   }
                                   className={cn(
-                                    "px-4 py-3 rounded-xl text-sm font-black transition whitespace-nowrap",
+                                    "px-4 py-3 rounded-xl text-sm font-semibold transition whitespace-nowrap",
                                     enhancingCharacterId === String(character.id) ||
                                       normalizeEnhancementLevel(character.equipped_weapon_level) >= ENHANCEMENT_MAX_LEVEL ||
                                       remainingEnhanceAttempts <= 0
-                                      ? "bg-zinc-700 text-zinc-300"
-                                      : "bg-amber-500 text-black hover:bg-amber-400"
+                                      ? "bg-slate-700 text-slate-300"
+                                      : "bg-blue-500 text-white hover:bg-sky-400"
                                   )}
                                 >
                                   {enhancingCharacterId === String(character.id) ? "강화 중..." : "강화 시도"}
@@ -5999,11 +5999,11 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                     .sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))
                                     .map((item: any) => (
                                       <div key={item.id} className="px-3 py-2 rounded-xl border border-white/10 bg-black/20 text-xs">
-                                        <span className="font-black text-white">{item.item_name || item.title || (item.item_type === "enhance_protect_ticket" ? "파괴방지권" : "강화석")}</span>
-                                        <span className="text-amber-200 ml-2">
+                                        <span className="font-semibold text-white">{item.item_name || item.title || (item.item_type === "enhance_protect_ticket" ? "파괴방지권" : "강화석")}</span>
+                                        <span className="text-sky-200 ml-2">
                                           {item.item_type === "enhance_protect_ticket" ? "파손 자동 방지" : getEnhancementItemEffectText(item)}
                                         </span>
-                                        <span className="text-gray-400 ml-2">x{item.quantity}</span>
+                                        <span className="text-slate-400 ml-2">x{item.quantity}</span>
                                       </div>
                                     ))}
                                 </div>
@@ -6013,7 +6013,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
                           <div className="mt-4 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
                             {ownedWeapons.length === 0 ? (
-                              <div className="text-sm text-gray-500 md:col-span-2 xl:col-span-3">보유한 무기 파츠가 없습니다.</div>
+                              <div className="text-sm text-slate-500 md:col-span-2 xl:col-span-3">보유한 무기 파츠가 없습니다.</div>
                             ) : (
                               ownedWeapons.map((weapon: any) => {
                                 const theme = getWeaponTheme(weapon);
@@ -6030,22 +6030,22 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                       <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl shrink-0" />
                                       <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 min-w-0">
-                                          <div className="font-black truncate">{weapon.name}</div>
-                                          <span className="inline-flex px-2 py-1 rounded-full border border-amber-400/30 bg-amber-500/10 text-[10px] font-black text-amber-200 shrink-0">
+                                          <div className="font-semibold truncate">{weapon.name}</div>
+                                          <span className="inline-flex px-2 py-1 rounded-full border border-sky-400/30 bg-blue-500/10 text-[10px] font-semibold text-sky-200 shrink-0">
                                             {getEnhancementDisplay(weapon.enhancement_level)}
                                           </span>
                                         </div>
                                         <div className="text-[11px] mt-1 inline-flex px-2 py-1 rounded-full border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
                                           {theme.label}
                                         </div>
-                                        <div className="mt-2 text-xs text-gray-400 line-clamp-2">
+                                        <div className="mt-2 text-xs text-slate-400 line-clamp-2">
                                           {weapon.description || "길드탭 캐릭터 카드 장착 파츠"}
                                         </div>
                                         <button
                                           onClick={() => equipWeaponToCharacter(character, weapon)}
                                           className={cn(
-                                            "mt-3 w-full px-3 py-2 rounded-xl text-xs font-black transition",
-                                            isEquipped ? "bg-emerald-600 text-white" : "bg-purple-600 hover:bg-purple-500 text-white"
+                                            "mt-3 w-full px-3 py-2 rounded-xl text-xs font-semibold transition",
+                                            isEquipped ? "bg-blue-600 text-white" : "bg-blue-600 hover:bg-blue-500 text-white"
                                           )}
                                         >
                                           {isEquipped ? "장착 중" : "이 무기 장착"}
@@ -6065,13 +6065,13 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       onClick={() => toggleEditing(character.id, true)}
-                      className="bg-purple-600 px-4 py-2 rounded-xl text-sm font-black"
+                      className="bg-blue-600 px-4 py-2 rounded-xl text-sm font-semibold"
                     >
                       수정
                     </button>
                     <button
                       onClick={() => deleteCharacter(character.id)}
-                      className="bg-red-500 px-4 py-2 rounded-xl text-sm font-black"
+                      className="bg-red-500 px-4 py-2 rounded-xl text-sm font-semibold"
                     >
                       삭제
                     </button>
@@ -6105,10 +6105,10 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   <div className="grid md:grid-cols-2 gap-3">
                     <AdminInput label="MBTI" value={character.draft.mbti || ""} onChange={(v: any) => updateDraft(character.id, "mbti", String(v || "").toUpperCase().slice(0, 4))} placeholder="예: ENFJ" />
                     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                      <div className="text-xs text-gray-400 mb-3">착용 뱃지 (복수 선택 가능)</div>
+                      <div className="text-xs text-slate-400 mb-3">착용 뱃지 (복수 선택 가능)</div>
                       <div className="flex flex-wrap gap-2">
                         {ownedBadges.length === 0 && (
-                          <div className="text-sm text-gray-500">보유한 뱃지가 없습니다.</div>
+                          <div className="text-sm text-slate-500">보유한 뱃지가 없습니다.</div>
                         )}
                         {ownedBadges.map((badge) => {
                           const checked = (character.draft.equipped_badge_ids || []).includes(String(badge.badge_item_id));
@@ -6132,7 +6132,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                 }}
                               />
                               <span
-                                className="text-xs font-black"
+                                className="text-xs font-semibold"
                                 style={{ color: badge.badge_color || "#c4b5fd" }}
                               >
                                 {badge.badge_name}
@@ -6146,7 +6146,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   </div>
 
                   <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <div className="text-xs text-gray-400 mb-3">캐릭터 이미지 수정</div>
+                    <div className="text-xs text-slate-400 mb-3">캐릭터 이미지 수정</div>
                     <input
                       type="file"
                       accept="image/*"
@@ -6159,11 +6159,11 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                           createPreviewUrl(file, character.draft.avatar_url || character.avatar_url || "")
                         );
                       }}
-                      className="w-full text-sm text-gray-400"
+                      className="w-full text-sm text-slate-400"
                     />
                     {(character.draft.image_preview_url || character.draft.avatar_url || character.avatar_url) && (
                       <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-3">
-                        <div className="text-xs text-gray-400 mb-2">현재/새 미리보기</div>
+                        <div className="text-xs text-slate-400 mb-2">현재/새 미리보기</div>
                         <img
                           src={character.draft.image_preview_url || character.draft.avatar_url || character.avatar_url}
                           className="w-full max-w-xs h-44 object-cover rounded-xl"
@@ -6178,7 +6178,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                           updateDraft(character.id, "avatar_url", "");
                           updateDraft(character.id, "image_preview_url", "");
                         }}
-                        className="px-3 py-2 rounded-xl bg-zinc-800 text-xs font-black"
+                        className="px-3 py-2 rounded-xl bg-slate-800 text-xs font-semibold"
                       >
                         이미지 제거
                       </button>
@@ -6189,7 +6189,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                           updateDraft(character.id, "avatar_url", character.avatar_url || "");
                           updateDraft(character.id, "image_preview_url", character.avatar_url || "");
                         }}
-                        className="px-3 py-2 rounded-xl bg-zinc-700 text-xs font-black"
+                        className="px-3 py-2 rounded-xl bg-slate-700 text-xs font-semibold"
                       >
                         원래 이미지로 복원
                       </button>
@@ -6198,7 +6198,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
                   <div className="grid md:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-gray-400">캐릭터 테마색</label>
+                      <label className="text-xs text-slate-400">캐릭터 테마색</label>
                       <div className="flex gap-2 mt-2 flex-wrap">
                         {BADGE_PRESET_COLORS.map((color) => (
                           <button
@@ -6224,13 +6224,13 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => saveCharacterEdit(character)}
-                      className="bg-blue-500 px-4 py-3 rounded-xl font-black"
+                      className="bg-blue-500 px-4 py-3 rounded-xl font-semibold"
                     >
                       저장
                     </button>
                     <button
                       onClick={() => toggleEditing(character.id, false)}
-                      className="bg-zinc-700 px-4 py-3 rounded-xl font-black"
+                      className="bg-slate-700 px-4 py-3 rounded-xl font-semibold"
                     >
                       취소
                     </button>
@@ -6320,7 +6320,7 @@ const RankingPage = ({ user, profile }: any) => {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto py-32 text-center">
-        <div className="text-gray-500 font-black">LOADING RANKING...</div>
+        <div className="text-slate-500 font-semibold">LOADING RANKING...</div>
       </div>
     );
   }
@@ -6329,8 +6329,8 @@ const RankingPage = ({ user, profile }: any) => {
     <div className="max-w-5xl mx-auto py-24 px-6 text-left">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
-          <h2 className="text-4xl font-black italic uppercase tracking-tight">Guild Ranking</h2>
-          <p className="text-gray-500 font-bold mt-2">포인트, 주간 활동, 서폿 기여도, 참여율 랭킹을 볼 수 있습니다.</p>
+          <h2 className="text-4xl font-semibold uppercase tracking-tight">Guild Ranking</h2>
+          <p className="text-slate-500 font-bold mt-2">포인트, 주간 활동, 서폿 기여도, 참여율 랭킹을 볼 수 있습니다.</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -6344,8 +6344,8 @@ const RankingPage = ({ user, profile }: any) => {
               key={key}
               onClick={() => setTab(key)}
               className={cn(
-                "px-4 py-2 rounded-full text-sm font-black border",
-                tab === key ? "bg-purple-600 border-purple-500" : "bg-white/5 border-white/10 text-gray-400"
+                "px-4 py-2 rounded-full text-sm font-semibold border",
+                tab === key ? "bg-blue-600 border-blue-500" : "bg-white/5 border-white/10 text-slate-400"
               )}
             >
               {label}
@@ -6360,17 +6360,17 @@ const RankingPage = ({ user, profile }: any) => {
             key={member.id || member.profile_id || `${member.nickname}-${index}`}
             className={`flex justify-between items-center p-6 rounded-2xl border transition-all ${
               user?.id === (member.id || member.profile_id)
-                ? "bg-purple-600/10 border-purple-500"
+                ? "bg-blue-600/10 border-blue-500"
                 : "bg-white/5 border-white/10"
             }`}
           >
             <div className="flex items-center gap-6">
-              <div className="text-2xl font-black w-12 text-center">
+              <div className="text-2xl font-semibold w-12 text-center">
                 {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
               </div>
               <div>
-                <div className="text-lg font-black">{member.nickname || member.owner_nickname}</div>
-                <div className="text-xs text-gray-500 uppercase">
+                <div className="text-lg font-semibold">{member.nickname || member.owner_nickname}</div>
+                <div className="text-xs text-slate-500 uppercase">
                   {tab === "points"
                     ? member.rank_name || "Seed"
                     : tab === "weekly"
@@ -6382,15 +6382,15 @@ const RankingPage = ({ user, profile }: any) => {
               </div>
             </div>
 
-            <div className="text-xl font-black text-purple-400">{renderValue(member)}</div>
+            <div className="text-xl font-semibold text-sky-400">{renderValue(member)}</div>
           </div>
         ))}
       </div>
 
       {user && myRank && (
         <div className="mt-12 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl">
-          <div className="text-sm text-gray-400 mb-2 uppercase">My Rank</div>
-          <div className="text-3xl font-black text-yellow-400">#{myRank}</div>
+          <div className="text-sm text-slate-400 mb-2 uppercase">My Rank</div>
+          <div className="text-3xl font-semibold text-yellow-400">#{myRank}</div>
         </div>
       )}
     </div>
@@ -6509,8 +6509,8 @@ const GuildMembersPage = () => {
     <div className="max-w-6xl mx-auto px-6 py-20">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
-          <h1 className="text-3xl md:text-4xl font-black">길드 캐릭터</h1>
-          <p className="text-gray-400 mt-2">메인/부캐, 템렙, 캐릭터 레벨, 전투력, 생일, MBTI, 장착 뱃지와 장비 파츠 [무기]까지 한 번에 볼 수 있습니다.</p>
+          <h1 className="text-3xl md:text-4xl font-semibold">길드 캐릭터</h1>
+          <p className="text-slate-400 mt-2">메인/부캐, 템렙, 캐릭터 레벨, 전투력, 생일, MBTI, 장착 뱃지와 장비 파츠 [무기]까지 한 번에 볼 수 있습니다.</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -6523,8 +6523,8 @@ const GuildMembersPage = () => {
               key={key}
               onClick={() => setFilter(key)}
               className={cn(
-                "px-4 py-2 rounded-full text-sm font-black border transition",
-                filter === key ? "bg-purple-600 border-purple-500 text-white" : "bg-white/5 border-white/10 text-gray-400"
+                "px-4 py-2 rounded-full text-sm font-semibold border transition",
+                filter === key ? "bg-blue-600 border-blue-500 text-white" : "bg-white/5 border-white/10 text-slate-400"
               )}
             >
               {label}
@@ -6534,7 +6534,7 @@ const GuildMembersPage = () => {
       </div>
 
       {loading ? (
-        <div className="text-center text-gray-500 py-10">길드원 불러오는 중...</div>
+        <div className="text-center text-slate-500 py-10">길드원 불러오는 중...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredMembers.map((member: any) => {
@@ -6561,17 +6561,17 @@ const GuildMembersPage = () => {
                       <div className="min-w-0">
                         <div className="flex flex-wrap gap-2 mb-2">
                           {member.is_main ? (
-                            <span className="px-2 py-1 rounded-full text-[10px] font-black bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 inline-flex items-center gap-1">
+                            <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 inline-flex items-center gap-1">
                               <Crown size={11} />
                               MAIN
                             </span>
                           ) : (
-                            <span className="px-2 py-1 rounded-full text-[10px] font-black bg-white/10 text-gray-300 border border-white/10">
+                            <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-white/10 text-slate-300 border border-white/10">
                               부캐
                             </span>
                           )}
                           {member.role_hint === "서포터" && (
-                            <span className="px-2 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+                            <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-500/15 text-sky-300 border border-blue-500/20">
                               서폿
                             </span>
                           )}
@@ -6580,7 +6580,7 @@ const GuildMembersPage = () => {
                             return (
                               <span
                                 key={`${badge.badge_item_id}-${index}`}
-                                className="px-2 py-1 rounded-full text-[10px] font-black border"
+                                className="px-2 py-1 rounded-full text-[10px] font-semibold border"
                                 style={{
                                   color: badgeTheme.chipText,
                                   borderColor: badgeTheme.chipBorder,
@@ -6593,9 +6593,9 @@ const GuildMembersPage = () => {
                             );
                           })}
                         </div>
-                        <div className="text-xl font-black truncate">{member.character_name}</div>
-                        <div className="text-sm text-gray-300/80 truncate">{member.class_name}</div>
-                        <div className="mt-1 text-purple-200 font-black">아이템 Lv. {member.item_level}</div>
+                        <div className="text-xl font-semibold truncate">{member.character_name}</div>
+                        <div className="text-sm text-slate-300/80 truncate">{member.class_name}</div>
+                        <div className="mt-1 text-sky-200 font-semibold">아이템 Lv. {member.item_level}</div>
                       </div>
                     </div>
 
@@ -6616,19 +6616,19 @@ const GuildMembersPage = () => {
                   </div>
 
                   <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">장비 파츠 [무기]</div>
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-semibold">장비 파츠 [무기]</div>
                     {member.equipped_weapon_name ? (
                       <div className="mt-3 flex items-center gap-3">
                         <WeaponImage weapon={{ image_url: member.equipped_weapon_image_url, rarity: member.equipped_weapon_rarity }} className="h-14 w-14 rounded-2xl" />
                         <div className="min-w-0">
-                          <div className="font-black truncate">{getEnhancedWeaponName(member.equipped_weapon_name, member.equipped_weapon_level)}</div>
-                          <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: weaponTheme.text, borderColor: weaponTheme.border, background: weaponTheme.background }}>
+                          <div className="font-semibold truncate">{getEnhancedWeaponName(member.equipped_weapon_name, member.equipped_weapon_level)}</div>
+                          <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-semibold border" style={{ color: weaponTheme.text, borderColor: weaponTheme.border, background: weaponTheme.background }}>
                             {weaponTheme.label}
                           </div>
                         </div>
                       </div>
                     ) : (
-                      <div className="mt-3 text-sm text-gray-500">장착한 무기가 없습니다.</div>
+                      <div className="mt-3 text-sm text-slate-500">장착한 무기가 없습니다.</div>
                     )}
                   </div>
 
@@ -6644,7 +6644,7 @@ const GuildMembersPage = () => {
                   </div>
 
                   {member.character_intro && (
-                    <div className="mt-4 text-sm text-gray-300 whitespace-pre-wrap border-t border-white/5 pt-4">
+                    <div className="mt-4 text-sm text-slate-300 whitespace-pre-wrap border-t border-white/5 pt-4">
                       {member.character_intro}
                     </div>
                   )}
@@ -6695,7 +6695,7 @@ const AdminCharacterManager = () => {
         <div key={char.id} className="flex justify-between bg-black/40 p-4 rounded border border-white/10">
           <div>
             <div>{char.character_name}</div>
-            <div className="text-xs text-gray-400">{char.class_name}</div>
+            <div className="text-xs text-slate-400">{char.class_name}</div>
           </div>
 
           <button onClick={() => deleteChar(char.id)} className="text-red-500">
@@ -6745,7 +6745,7 @@ const AdminRaidManager = () => {
         <div key={raid.id} className="flex justify-between bg-black/40 p-4 rounded border border-white/10">
           <div>
             <div>{raid.raid_name}</div>
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-slate-400">
               {raid.raid_date} {raid.raid_time}
             </div>
           </div>
@@ -6790,7 +6790,7 @@ const AdminUserManager = () => {
         <div key={member.id} className="flex justify-between bg-black/40 p-4 rounded border border-white/10">
           <div>
             <div>{member.nickname}</div>
-            <div className="text-xs text-gray-400">{member.rank_name}</div>
+            <div className="text-xs text-slate-400">{member.rank_name}</div>
           </div>
 
           <button onClick={() => deleteUser(member.id)} className="text-red-500">
@@ -7051,7 +7051,7 @@ const PointShopPage = ({ user, profile }: any) => {
   const renderShopCards = (shopItems: any[], emptyText: string) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
       {shopItems.length === 0 && (
-        <div className="lg:col-span-2 xl:col-span-3 rounded-[2rem] border border-dashed border-white/10 bg-black/20 px-6 py-14 text-center text-gray-500">
+        <div className="lg:col-span-2 xl:col-span-3 rounded-[2rem] border border-dashed border-white/10 bg-black/20 px-6 py-14 text-center text-slate-500">
           {emptyText}
         </div>
       )}
@@ -7075,11 +7075,11 @@ const PointShopPage = ({ user, profile }: any) => {
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-white/10 bg-white/5 text-white/70">
                       {getShopRewardTypeLabel(item)}
                     </span>
                     <span
-                      className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border"
+                      className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border"
                       style={{
                         color: item.reward_type === "badge" ? badgeTheme.chipText : item.reward_type === "enhance_stone" ? "#fde68a" : "#c4b5fd",
                         borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : item.reward_type === "enhance_stone" ? "rgba(250,204,21,0.35)" : "rgba(196,181,253,0.45)",
@@ -7089,7 +7089,7 @@ const PointShopPage = ({ user, profile }: any) => {
                       {getShopItemStatusText(item)}
                     </span>
                   </div>
-                  <div className="mt-4 text-2xl font-black leading-tight break-words">{item.title}</div>
+                  <div className="mt-4 text-2xl font-semibold leading-tight break-words">{item.title}</div>
                   <div className="mt-2 text-sm text-white/70">{moodLine}</div>
                 </div>
                 <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center backdrop-blur-md">
@@ -7100,7 +7100,7 @@ const PointShopPage = ({ user, profile }: any) => {
               <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">Live Card Mood</div>
+                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-semibold">Live Card Mood</div>
                     <div className="mt-1 text-sm font-bold text-white/85">
                       {item.reward_type === "badge"
                         ? `${badgeTheme.label} 길드 카드`
@@ -7110,13 +7110,13 @@ const PointShopPage = ({ user, profile }: any) => {
                     </div>
                   </div>
                   {item.reward_type === "enhance_stone" && (
-                    <span className="px-3 py-1 rounded-full text-xs font-black border border-amber-400/30 bg-amber-500/10 text-amber-200">
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold border border-sky-400/30 bg-blue-500/10 text-sky-200">
                       {getEnhancementItemEffectText(item)}
                     </span>
                   )}
                   {item.reward_type !== "enhance_stone" && (
                     <span
-                      className="px-3 py-1 rounded-full text-xs font-black border"
+                      className="px-3 py-1 rounded-full text-xs font-semibold border"
                       style={{
                         color: item.reward_type === "badge" ? badgeTheme.chipText : "#ddd6fe",
                         borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(221,214,254,0.35)",
@@ -7137,13 +7137,13 @@ const PointShopPage = ({ user, profile }: any) => {
                 </div>
 
                 <div className="mt-4 flex items-end justify-between gap-4">
-                  <div className="text-3xl font-black">{item.price}P</div>
+                  <div className="text-3xl font-semibold">{item.price}P</div>
                   <button
                     onClick={() => purchase(item)}
                     disabled={!available || !user}
                     className={cn(
-                      "px-4 py-3 rounded-xl font-black text-sm transition",
-                      available && user ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-zinc-800 text-zinc-400 cursor-not-allowed"
+                      "px-4 py-3 rounded-xl font-semibold text-sm transition",
+                      available && user ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
                     )}
                   >
                     {available ? (user ? "구매하기" : "로그인 필요") : "구매 불가"}
@@ -7161,13 +7161,13 @@ const PointShopPage = ({ user, profile }: any) => {
     <div className="max-w-7xl mx-auto py-24 px-6 text-left">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
-          <h2 className="text-4xl font-black italic uppercase tracking-tight">Point Shop</h2>
-          <p className="text-gray-500 font-bold mt-2">뱃지, 닉네임 효과, 강화석, 무기 가챠 상품.</p>
+          <h2 className="text-4xl font-semibold uppercase tracking-tight">Point Shop</h2>
+          <p className="text-slate-500 font-bold mt-2">뱃지, 닉네임 효과, 강화석, 무기 가챠 상품.</p>
         </div>
 
-        <div className="rounded-[2rem] border border-purple-500/20 bg-purple-500/10 px-5 py-4">
-          <div className="text-[10px] uppercase tracking-widest text-purple-300 font-black">My Point</div>
-          <div className="text-2xl font-black">{myPoint} P</div>
+        <div className="rounded-[2rem] border border-blue-500/20 bg-blue-500/10 px-5 py-4">
+          <div className="text-[10px] uppercase tracking-widest text-sky-300 font-semibold">My Point</div>
+          <div className="text-2xl font-semibold">{myPoint} P</div>
         </div>
       </div>
 
@@ -7182,8 +7182,8 @@ const PointShopPage = ({ user, profile }: any) => {
             key={key}
             onClick={() => setShopTab(key as "guild" | "nickname" | "enhance" | "gacha")}
             className={cn(
-              "px-4 py-2 rounded-full text-sm font-black border transition",
-              shopTab === key ? "bg-purple-600 border-purple-500 text-white" : "bg-white/5 border-white/10 text-gray-400"
+              "px-4 py-2 rounded-full text-sm font-semibold border transition",
+              shopTab === key ? "bg-blue-600 border-blue-500 text-white" : "bg-white/5 border-white/10 text-slate-400"
             )}
           >
             {label}
@@ -7192,7 +7192,7 @@ const PointShopPage = ({ user, profile }: any) => {
       </div>
 
       {loading ? (
-        <div className="py-16 text-center text-gray-500">포인트샵 불러오는 중...</div>
+        <div className="py-16 text-center text-slate-500">포인트샵 불러오는 중...</div>
       ) : shopTab === "guild" ? (
         renderShopCards(guildItems, "아직 등록된 뱃지 상품이 없습니다.")
       ) : shopTab === "nickname" ? (
@@ -7202,7 +7202,7 @@ const PointShopPage = ({ user, profile }: any) => {
       ) : (
         <div className="space-y-8">
           {gachaProducts.length === 0 && (
-            <div className="rounded-[2rem] border border-dashed border-white/10 bg-black/20 px-6 py-14 text-center text-gray-500">
+            <div className="rounded-[2rem] border border-dashed border-white/10 bg-black/20 px-6 py-14 text-center text-slate-500">
               아직 등록된 무기 가챠 상품이 없습니다.
             </div>
           )}
@@ -7227,17 +7227,17 @@ const PointShopPage = ({ user, profile }: any) => {
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-white/10 bg-white/5 text-white/70">
                             Weapon Gacha
                           </span>
-                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-blue-500/30 bg-blue-500/15 text-sky-300">
                             {getWeaponGachaStatusText(product)}
                           </span>
-                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-sky-500/30 bg-sky-500/12 text-sky-200">
                             10회 내 Rare+ 보장
                           </span>
                         </div>
-                        <div className="mt-4 text-2xl font-black leading-tight break-words">{product.title}</div>
+                        <div className="mt-4 text-2xl font-semibold leading-tight break-words">{product.title}</div>
                         <div className="mt-2 text-sm text-white/75">{product.promo_text || product.description || "무기 파츠를 랜덤으로 획득할 수 있는 가챠 상품"}</div>
                       </div>
                       <div className="h-16 w-16 rounded-[1.4rem] border border-white/10 bg-black/25 flex items-center justify-center overflow-hidden">
@@ -7248,20 +7248,20 @@ const PointShopPage = ({ user, profile }: any) => {
                     <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-black">Reward Pool</div>
+                          <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-semibold">Reward Pool</div>
                           <div className="mt-1 text-sm font-bold text-white/85">
                             총 {rewards.length}종 · Rare 이상 {rarePool.length}종 · 합계 {formatProbabilityText(probabilityTotal)}
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-2xl font-black">{product.price}P</div>
-                          <div className="text-xs text-gray-500">1회 기준</div>
+                          <div className="text-2xl font-semibold">{product.price}P</div>
+                          <div className="text-xs text-slate-500">1회 기준</div>
                         </div>
                       </div>
 
                       <div className="mt-4 space-y-2 max-h-56 overflow-y-auto pr-1">
                         {rewards.length === 0 && (
-                          <div className="text-sm text-gray-500">등록된 보상 무기가 없습니다.</div>
+                          <div className="text-sm text-slate-500">등록된 보상 무기가 없습니다.</div>
                         )}
                         {rewards.map((item: any, index: number) => {
                           const theme = getWeaponTheme(item);
@@ -7273,24 +7273,24 @@ const PointShopPage = ({ user, profile }: any) => {
                               <WeaponImage weapon={item} className="h-12 w-12 rounded-2xl shrink-0" />
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <div className="font-black truncate">{item.name || "무기 파츠"}</div>
+                                  <div className="font-semibold truncate">{item.name || "무기 파츠"}</div>
                                   {item.is_featured && (
-                                    <span className="px-2 py-1 rounded-full text-[10px] font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
+                                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold border border-sky-500/30 bg-sky-500/12 text-sky-200">
                                       Featured
                                     </span>
                                   )}
                                   <span
-                                    className="px-2 py-1 rounded-full text-[10px] font-black border"
+                                    className="px-2 py-1 rounded-full text-[10px] font-semibold border"
                                     style={{ color: theme.text, borderColor: theme.border, background: theme.background }}
                                   >
                                     {theme.label}
                                   </span>
                                 </div>
-                                <div className="mt-1 text-xs text-gray-400">{item.description || "길드 캐릭터 카드 장착용 무기 파츠"}</div>
+                                <div className="mt-1 text-xs text-slate-400">{item.description || "길드 캐릭터 카드 장착용 무기 파츠"}</div>
                               </div>
                               <div className="text-right shrink-0">
-                                <div className="text-sm font-black">{formatProbabilityText(item.probability)}</div>
-                                <div className="text-[11px] text-gray-500">가챠 확률</div>
+                                <div className="text-sm font-semibold">{formatProbabilityText(item.probability)}</div>
+                                <div className="text-[11px] text-slate-500">가챠 확률</div>
                               </div>
                             </div>
                           );
@@ -7302,8 +7302,8 @@ const PointShopPage = ({ user, profile }: any) => {
                           onClick={() => drawWeaponGacha(product, 1)}
                           disabled={!available || drawBusy || !user}
                           className={cn(
-                            "px-4 py-3 rounded-xl font-black text-sm transition",
-                            available && !drawBusy && user ? "bg-purple-600 hover:bg-purple-500 text-white" : "bg-zinc-800 text-zinc-400 cursor-not-allowed"
+                            "px-4 py-3 rounded-xl font-semibold text-sm transition",
+                            available && !drawBusy && user ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
                           )}
                         >
                           {drawBusy ? "처리 중..." : "1회 뽑기"}
@@ -7312,8 +7312,8 @@ const PointShopPage = ({ user, profile }: any) => {
                           onClick={() => drawWeaponGacha(product, 10)}
                           disabled={!available || drawBusy || !user}
                           className={cn(
-                            "px-4 py-3 rounded-xl font-black text-sm transition",
-                            available && !drawBusy && user ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-zinc-800 text-zinc-400 cursor-not-allowed"
+                            "px-4 py-3 rounded-xl font-semibold text-sm transition",
+                            available && !drawBusy && user ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
                           )}
                         >
                           {drawBusy ? "처리 중..." : "10회 뽑기"}
@@ -7330,15 +7330,15 @@ const PointShopPage = ({ user, profile }: any) => {
             <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-purple-300 font-black">Latest Draw Result</div>
-                  <div className="mt-2 text-2xl font-black">{drawSession.product_title || "무기 가챠 결과"}</div>
-                  <div className="mt-1 text-sm text-gray-400">
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-sky-300 font-semibold">Latest Draw Result</div>
+                  <div className="mt-2 text-2xl font-semibold">{drawSession.product_title || "무기 가챠 결과"}</div>
+                  <div className="mt-1 text-sm text-slate-400">
                     총 {drawSession.draw_count}회 · 사용 {drawSession.total_cost}P · Rare 이상 {drawSession.rare_or_better_count}개
                   </div>
                 </div>
                 <button
                   onClick={() => setDrawSession(null)}
-                  className="px-4 py-2 rounded-xl bg-white/10 text-sm font-black"
+                  className="px-4 py-2 rounded-xl bg-white/10 text-sm font-semibold"
                 >
                   결과 닫기
                 </button>
@@ -7356,18 +7356,18 @@ const PointShopPage = ({ user, profile }: any) => {
                       <div className="flex items-start gap-3">
                         <WeaponImage weapon={item} className="h-14 w-14 rounded-2xl shrink-0" />
                         <div className="min-w-0">
-                          <div className="font-black truncate">{item.name || item.weapon_name || "무기 파츠"}</div>
+                          <div className="font-semibold truncate">{item.name || item.weapon_name || "무기 파츠"}</div>
                           <div
-                            className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-black border"
+                            className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-semibold border"
                             style={{ color: theme.text, borderColor: theme.border, background: theme.background }}
                           >
                             {theme.label}
                           </div>
-                          <div className="mt-2 text-xs text-gray-400 line-clamp-2">
+                          <div className="mt-2 text-xs text-slate-400 line-clamp-2">
                             {item.description || "새로운 무기 파츠를 획득했습니다."}
                           </div>
                           {item.is_duplicate && (
-                            <div className="mt-2 text-xs text-amber-300">
+                            <div className="mt-2 text-xs text-sky-300">
                               중복 보상 · 환급 {drawSession.duplicate_refund_points || 0}P
                             </div>
                           )}
@@ -7778,7 +7778,7 @@ const AdminPointShopManager = () => {
               else if (tab.key === "enhance_stone") setRewardType("enhance_stone");
               else setRewardType("badge");
             }}
-            className={cn("px-4 py-2 rounded-full text-xs font-black tracking-[0.18em] uppercase border", managerTab === tab.key ? "bg-purple-600 border-purple-500 text-white" : "bg-black/30 border-white/10 text-gray-400")}
+            className={cn("px-4 py-2 rounded-full text-xs font-semibold tracking-[0.18em] uppercase border", managerTab === tab.key ? "bg-blue-600 border-blue-500 text-white" : "bg-black/30 border-white/10 text-slate-400")}
           >
             {tab.label}
           </button>
@@ -7787,9 +7787,9 @@ const AdminPointShopManager = () => {
       <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
         <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-purple-300">Point Shop Item Builder</div>
-            <div className="mt-2 text-2xl font-black">포인트샵 상품 생성</div>
-            <div className="text-sm text-gray-400 mt-1">길드/닉네임/무기/강화석 탭으로 분리해서 관리할 수 있어.</div>
+            <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-sky-300">Point Shop Item Builder</div>
+            <div className="mt-2 text-2xl font-semibold">포인트샵 상품 생성</div>
+            <div className="text-sm text-slate-400 mt-1">길드/닉네임/무기/강화석 탭으로 분리해서 관리할 수 있어.</div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-4">
@@ -7797,7 +7797,7 @@ const AdminPointShopManager = () => {
               <AdminInput label="상품명" value={title} onChange={setTitle} placeholder={rewardType === "badge" ? "예: 여왕의 빛 뱃지" : rewardType === "nickname_effect" ? "예: 황혼 그라데이션 닉네임" : "예: 고급 강화석"} />
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-2 block">상품 타입</label>
+              <label className="text-xs text-slate-400 mb-2 block">상품 타입</label>
               <select
                 className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
                 value={rewardType}
@@ -7822,16 +7822,16 @@ const AdminPointShopManager = () => {
               <AdminInput label="강화확률 증가 효과(%)" value={enhanceBonusRate} onChange={setEnhanceBonusRate} placeholder="예: 7" />
             ) : (
               <div>
-                <label className="text-xs text-gray-400 mb-2 block">대표 색상</label>
+                <label className="text-xs text-slate-400 mb-2 block">대표 색상</label>
                 <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeColor} onChange={(e) => setBadgeColor(e.target.value)} />
               </div>
             )}
           </div>
 
           <div>
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">설명</label>
+            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">설명</label>
             <textarea
-              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-purple-500 font-bold text-sm text-white min-h-[120px]"
+              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-blue-500 font-bold text-sm text-white min-h-[120px]"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={rewardType === "badge" ? "상품 설명 / 구매 욕구 자극 문구" : rewardType === "nickname_effect" ? "예: 마이룸 닉네임에 그라데이션과 글로우를 적용" : "예: 무기 강화 시 성공 확률을 높여주는 보조 아이템"}
@@ -7842,7 +7842,7 @@ const AdminPointShopManager = () => {
             <div className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-gray-400 mb-2 block">닉네임 이펙트 프리셋</label>
+                  <label className="text-xs text-slate-400 mb-2 block">닉네임 이펙트 프리셋</label>
                   <select className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4" value={nicknameEffectKey} onChange={(e) => setNicknameEffectKey(e.target.value as NicknameEffectKey)}>
                     {Object.entries(NICKNAME_EFFECT_PRESETS).map(([key, value]) => (
                       <option key={key} value={key}>{value.label}</option>
@@ -7850,23 +7850,23 @@ const AdminPointShopManager = () => {
                   </select>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                  <div className="text-xs text-gray-400">미리보기</div>
-                  <div className="mt-3 text-2xl font-black" style={getNicknameEffectStyle({ nickname_effect_key: nicknameEffectKey, nickname_gradient_from: nicknameGradientFrom, nickname_gradient_to: nicknameGradientTo, nickname_glow_color: nicknameGlowColor })}>
+                  <div className="text-xs text-slate-400">미리보기</div>
+                  <div className="mt-3 text-2xl font-semibold" style={getNicknameEffectStyle({ nickname_effect_key: nicknameEffectKey, nickname_gradient_from: nicknameGradientFrom, nickname_gradient_to: nicknameGradientTo, nickname_glow_color: nicknameGlowColor })}>
                     {title || "닉네임 EFFECT"}
                   </div>
                 </div>
               </div>
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-xs text-gray-400 mb-2 block">시작 색상</label>
+                  <label className="text-xs text-slate-400 mb-2 block">시작 색상</label>
                   <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={nicknameGradientFrom} onChange={(e) => setNicknameGradientFrom(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 mb-2 block">끝 색상</label>
+                  <label className="text-xs text-slate-400 mb-2 block">끝 색상</label>
                   <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={nicknameGradientTo} onChange={(e) => setNicknameGradientTo(e.target.value)} />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 mb-2 block">글로우 색상</label>
+                  <label className="text-xs text-slate-400 mb-2 block">글로우 색상</label>
                   <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={nicknameGlowColor} onChange={(e) => setNicknameGlowColor(e.target.value)} />
                 </div>
               </div>
@@ -7877,7 +7877,7 @@ const AdminPointShopManager = () => {
             <>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-gray-400 mb-2 block">카드 이펙트 프리셋</label>
+                  <label className="text-xs text-slate-400 mb-2 block">카드 이펙트 프리셋</label>
                   <select
                     className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
                     value={badgeCardEffect}
@@ -7892,15 +7892,15 @@ const AdminPointShopManager = () => {
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="text-xs text-gray-400 mb-2 block">시작</label>
+                    <label className="text-xs text-slate-400 mb-2 block">시작</label>
                     <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientFrom} onChange={(e) => setBadgeGradientFrom(e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-2 block">끝</label>
+                    <label className="text-xs text-slate-400 mb-2 block">끝</label>
                     <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGradientTo} onChange={(e) => setBadgeGradientTo(e.target.value)} />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-2 block">글로우</label>
+                    <label className="text-xs text-slate-400 mb-2 block">글로우</label>
                     <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeGlowColor} onChange={(e) => setBadgeGlowColor(e.target.value)} />
                   </div>
                 </div>
@@ -7915,7 +7915,7 @@ const AdminPointShopManager = () => {
 
           <button
             onClick={createItem}
-            className="w-full bg-purple-600 p-4 rounded-2xl font-black uppercase hover:bg-purple-500 transition-all"
+            className="w-full bg-blue-600 p-4 rounded-2xl font-semibold uppercase hover:bg-blue-500 transition-all"
           >
             {rewardType === "badge" ? "뱃지 상품 생성" : rewardType === "nickname_effect" ? "닉네임 상품 생성" : "강화석 상품 생성"}
           </button>
@@ -7925,7 +7925,7 @@ const AdminPointShopManager = () => {
           <div className="rounded-[2rem] border p-5 relative overflow-hidden" style={{ background: rewardType === "badge" ? previewTheme.cardBackground : "linear-gradient(135deg, rgba(251,191,36,0.16), rgba(139,92,246,0.16), rgba(15,23,42,0.94))", borderColor: rewardType === "badge" ? previewTheme.cardBorder : "rgba(250,204,21,0.28)", boxShadow: rewardType === "badge" ? previewTheme.cardShadow : "0 0 0 1px rgba(250,204,21,0.12) inset, 0 24px 48px rgba(250,204,21,0.12)" }}>
             <div className="absolute inset-0 pointer-events-none" style={{ background: rewardType === "badge" ? previewTheme.aura : "radial-gradient(circle at top right, rgba(250,204,21,0.22), transparent 40%)" }} />
             <div className="relative z-10">
-              <div className="text-[10px] uppercase tracking-[0.28em] font-black" style={{ color: rewardType === "badge" ? previewTheme.chipText : "#fde68a" }}>
+              <div className="text-[10px] uppercase tracking-[0.28em] font-semibold" style={{ color: rewardType === "badge" ? previewTheme.chipText : "#fde68a" }}>
                 {rewardType === "badge" ? "Guild Card Live Preview" : rewardType === "nickname_effect" ? "Nickname Effect Preview" : "Enhance Item Preview"}
               </div>
               <div className="mt-4 flex items-center gap-4">
@@ -7933,7 +7933,7 @@ const AdminPointShopManager = () => {
                   <ShoppingBag className="text-white/80" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-lg font-black truncate">{previewItem.title}</div>
+                  <div className="text-lg font-semibold truncate">{previewItem.title}</div>
                   <div className="text-sm text-white/70">
                     {rewardType === "badge" ? previewTheme.label : rewardType === "nickname_effect" ? getNicknameEffectTheme(previewItem).label : getEnhancementItemEffectText(previewItem)}
                   </div>
@@ -7946,18 +7946,18 @@ const AdminPointShopManager = () => {
             <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: previewCardBackground }} />
             <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: previewAuraBackground }} />
             <div className="relative z-10">
-              <div className="text-[10px] uppercase tracking-[0.28em] font-black text-white/70">Point Shop Live Preview</div>
+              <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-white/70">Point Shop Live Preview</div>
               <div className="mt-4 flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-white/10 bg-white/5 text-white/70">
                       {getShopRewardTypeLabel(previewItem)}
                     </span>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border" style={{ color: rewardType === "badge" ? previewTheme.chipText : "#fde68a", borderColor: rewardType === "badge" ? previewTheme.chipBorder : "rgba(250,204,21,0.35)", background: rewardType === "badge" ? previewTheme.chipBackground : "rgba(245,158,11,0.16)" }}>
+                    <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border" style={{ color: rewardType === "badge" ? previewTheme.chipText : "#fde68a", borderColor: rewardType === "badge" ? previewTheme.chipBorder : "rgba(250,204,21,0.35)", background: rewardType === "badge" ? previewTheme.chipBackground : "rgba(245,158,11,0.16)" }}>
                       {getShopItemStatusText(previewItem)}
                     </span>
                   </div>
-                  <div className="mt-4 text-2xl font-black leading-tight break-words">{previewItem.title}</div>
+                  <div className="mt-4 text-2xl font-semibold leading-tight break-words">{previewItem.title}</div>
                   <div className="mt-2 text-sm text-white/70">{getShopMoodLine(previewItem)}</div>
                 </div>
                 <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center backdrop-blur-md">
@@ -7974,7 +7974,7 @@ const AdminPointShopManager = () => {
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 text-3xl font-black">{previewItem.price}P</div>
+                <div className="mt-4 text-3xl font-semibold">{previewItem.price}P</div>
               </div>
             </div>
           </div>
@@ -7984,15 +7984,15 @@ const AdminPointShopManager = () => {
       <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-6">
         <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.28em] font-black text-fuchsia-300">Weapon Part Builder</div>
-            <div className="mt-2 text-2xl font-black">장비 파츠 [무기] 등록</div>
-            <div className="text-sm text-gray-400 mt-1">뽑기 보상으로 들어갈 실제 무기 파츠를 먼저 만들어.</div>
+            <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-sky-300">Weapon Part Builder</div>
+            <div className="mt-2 text-2xl font-semibold">장비 파츠 [무기] 등록</div>
+            <div className="text-sm text-slate-400 mt-1">뽑기 보상으로 들어갈 실제 무기 파츠를 먼저 만들어.</div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
             <AdminInput label="무기 이름" value={weaponName} onChange={setWeaponName} placeholder="예: 별빛 대검" />
             <div>
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">희귀도</label>
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">희귀도</label>
               <select className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl" value={weaponRarity} onChange={(e) => setWeaponRarity(e.target.value as WeaponRarityKey)}>
                 <option value="common">Common</option>
                 <option value="rare">Rare</option>
@@ -8003,9 +8003,9 @@ const AdminPointShopManager = () => {
           </div>
 
           <div>
-            <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">무기 설명</label>
+            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">무기 설명</label>
             <textarea
-              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-fuchsia-500 font-bold text-sm text-white min-h-[120px]"
+              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-sky-500 font-bold text-sm text-white min-h-[120px]"
               value={weaponDescription}
               onChange={(e) => setWeaponDescription(e.target.value)}
               placeholder="길드 캐릭터 카드에 표시될 무기 설명"
@@ -8014,7 +8014,7 @@ const AdminPointShopManager = () => {
 
           <AdminInput label="무기 이미지 URL" value={weaponImageUrl} onChange={setWeaponImageUrl} placeholder="https://..." />
 
-          <button onClick={createWeaponPart} className="w-full bg-fuchsia-600 p-4 rounded-2xl font-black uppercase hover:bg-fuchsia-500 transition-all">
+          <button onClick={createWeaponPart} className="w-full bg-sky-600 p-4 rounded-2xl font-semibold uppercase hover:bg-sky-500 transition-all">
             무기 파츠 등록
           </button>
 
@@ -8027,14 +8027,14 @@ const AdminPointShopManager = () => {
                     <WeaponImage weapon={weapon} className="h-14 w-14 rounded-2xl shrink-0" />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className="font-black truncate">{weapon.name}</div>
-                        <span className="px-2 py-1 rounded-full text-[10px] font-black border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
+                        <div className="font-semibold truncate">{weapon.name}</div>
+                        <span className="px-2 py-1 rounded-full text-[10px] font-semibold border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
                           {theme.label}
                         </span>
                       </div>
-                      <div className="mt-1 text-sm text-gray-400">{weapon.description || "설명 없음"}</div>
+                      <div className="mt-1 text-sm text-slate-400">{weapon.description || "설명 없음"}</div>
                     </div>
-                    <button onClick={() => deleteWeaponPart(weapon.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
+                    <button onClick={() => deleteWeaponPart(weapon.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-semibold text-sm">
                       삭제
                     </button>
                   </div>
@@ -8047,9 +8047,9 @@ const AdminPointShopManager = () => {
         <div className="space-y-6">
           <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.28em] font-black text-sky-300">Weapon Gacha Builder</div>
-              <div className="mt-2 text-2xl font-black">무기 가챠 상품 생성</div>
-              <div className="text-sm text-gray-400 mt-1">원하는 무기 파츠를 선택하고 확률을 지정해 가챠 상품을 만든다.</div>
+              <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-sky-300">Weapon Gacha Builder</div>
+              <div className="mt-2 text-2xl font-semibold">무기 가챠 상품 생성</div>
+              <div className="text-sm text-slate-400 mt-1">원하는 무기 파츠를 선택하고 확률을 지정해 가챠 상품을 만든다.</div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
@@ -8058,7 +8058,7 @@ const AdminPointShopManager = () => {
             </div>
 
             <div>
-              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">설명</label>
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">설명</label>
               <textarea
                 className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-sky-500 font-bold text-sm text-white min-h-[110px]"
                 value={gachaDescription}
@@ -8078,7 +8078,7 @@ const AdminPointShopManager = () => {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <div className="text-sm font-black mb-3">보상 무기 선택</div>
+              <div className="text-sm font-semibold mb-3">보상 무기 선택</div>
               <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
                 {weaponParts.map((weapon: any) => {
                   const selected = selectedWeaponIds.includes(String(weapon.id));
@@ -8092,8 +8092,8 @@ const AdminPointShopManager = () => {
                       />
                       <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <div className="font-black truncate">{weapon.name}</div>
-                        <div className="text-xs text-gray-400 mt-1">{weapon.description || "설명 없음"}</div>
+                        <div className="font-semibold truncate">{weapon.name}</div>
+                        <div className="text-xs text-slate-400 mt-1">{weapon.description || "설명 없음"}</div>
                         {selected && (
                           <div className="grid grid-cols-2 gap-3 mt-3">
                             <AdminInput
@@ -8103,13 +8103,13 @@ const AdminPointShopManager = () => {
                               placeholder="예: 12.5"
                             />
                             <div>
-                              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">대표 무기 여부</label>
+                              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">대표 무기 여부</label>
                               <button
                                 type="button"
                                 onClick={() => setFeaturedWeaponId(String(weapon.id))}
                                 className={cn(
-                                  "mt-3 w-full h-[58px] rounded-2xl border font-black text-sm",
-                                  featuredWeaponId === String(weapon.id) ? "bg-fuchsia-600 border-fuchsia-500 text-white" : "bg-black border-white/10 text-gray-400"
+                                  "mt-3 w-full h-[58px] rounded-2xl border font-semibold text-sm",
+                                  featuredWeaponId === String(weapon.id) ? "bg-sky-600 border-sky-500 text-white" : "bg-black border-white/10 text-slate-400"
                                 )}
                               >
                                 {featuredWeaponId === String(weapon.id) ? "대표 무기" : "대표로 설정"}
@@ -8122,28 +8122,28 @@ const AdminPointShopManager = () => {
                   );
                 })}
               </div>
-              <div className={cn("mt-4 text-sm font-black", isProbabilityValid ? "text-emerald-300" : "text-amber-300")}>
+              <div className={cn("mt-4 text-sm font-semibold", isProbabilityValid ? "text-sky-300" : "text-sky-300")}>
                 확률 총합: {formatProbabilityText(totalProbability)}
               </div>
             </div>
 
-            <button onClick={createGachaProduct} className="w-full bg-sky-600 p-4 rounded-2xl font-black uppercase hover:bg-sky-500 transition-all">
+            <button onClick={createGachaProduct} className="w-full bg-sky-600 p-4 rounded-2xl font-semibold uppercase hover:bg-sky-500 transition-all">
               무기 가챠 생성
             </button>
 
             {gachaPreviewWeapons.length > 0 && (
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="text-sm font-black mb-3">가챠 보상 미리보기</div>
+                <div className="text-sm font-semibold mb-3">가챠 보상 미리보기</div>
                 <div className="space-y-3">
                   {gachaPreviewWeapons.map((weapon: any) => (
                     <div key={`preview-${weapon.id}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-3 py-3">
                       <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <div className="font-black truncate">{weapon.name}</div>
-                        <div className="text-xs text-gray-400">{formatProbabilityText(weapon.probability)}</div>
+                        <div className="font-semibold truncate">{weapon.name}</div>
+                        <div className="text-xs text-slate-400">{formatProbabilityText(weapon.probability)}</div>
                       </div>
                       {featuredWeaponId === String(weapon.id) && (
-                        <span className="px-2 py-1 rounded-full text-[10px] font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
+                        <span className="px-2 py-1 rounded-full text-[10px] font-semibold border border-sky-500/30 bg-sky-500/12 text-sky-200">
                           Featured
                         </span>
                       )}
@@ -8165,11 +8165,11 @@ const AdminPointShopManager = () => {
                     <div className="relative z-10 flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-white/10 bg-white/5 text-white/70">
                             {getShopRewardTypeLabel(item)}
                           </span>
                           <span
-                            className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border"
+                            className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border"
                             style={{
                               color: item.reward_type === "badge" ? badgeTheme.chipText : "#fde68a",
                               borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(250,204,21,0.35)",
@@ -8179,19 +8179,19 @@ const AdminPointShopManager = () => {
                             {item.reward_type === "enhance_stone" ? getEnhancementItemEffectText(item) : getShopItemStatusText(item)}
                           </span>
                         </div>
-                        <div className="mt-3 text-xl font-black break-words">{item.title}</div>
+                        <div className="mt-3 text-xl font-semibold break-words">{item.title}</div>
                         <div className="mt-2 text-sm text-white/70">{getShopMoodLine(item)}</div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="text-2xl font-black text-purple-300">{item.price}P</div>
-                        <div className="text-xs text-gray-500">{item.reward_type === "badge" ? "뱃지 상품" : "강화석 상품"}</div>
+                        <div className="text-2xl font-semibold text-sky-300">{item.price}P</div>
+                        <div className="text-xs text-slate-500">{item.reward_type === "badge" ? "뱃지 상품" : "강화석 상품"}</div>
                       </div>
                     </div>
                     <div className="mt-4 flex gap-2">
-                      <button onClick={() => toggleActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-black text-sm">
+                      <button onClick={() => toggleActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-semibold text-sm">
                         {item.is_active ? "비활성화" : "활성화"}
                       </button>
-                      <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
+                      <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-semibold text-sm">
                         삭제
                       </button>
                     </div>
@@ -8210,19 +8210,19 @@ const AdminPointShopManager = () => {
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-white/10 bg-white/5 text-white/70">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-white/10 bg-white/5 text-white/70">
                             Weapon Gacha
                           </span>
-                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-black border border-amber-500/30 bg-amber-500/15 text-amber-300">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-blue-500/30 bg-blue-500/15 text-sky-300">
                             {getWeaponGachaStatusText(item)}
                           </span>
                         </div>
-                        <div className="mt-3 text-xl font-black break-words">{item.title}</div>
+                        <div className="mt-3 text-xl font-semibold break-words">{item.title}</div>
                         <div className="mt-2 text-sm text-white/70">{item.promo_text || item.description || "설명 없음"}</div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="text-2xl font-black text-sky-300">{item.price}P</div>
-                        <div className="text-xs text-gray-500">보상 {rewards.length}종</div>
+                        <div className="text-2xl font-semibold text-sky-300">{item.price}P</div>
+                        <div className="text-xs text-slate-500">보상 {rewards.length}종</div>
                       </div>
                     </div>
 
@@ -8232,11 +8232,11 @@ const AdminPointShopManager = () => {
                           <div key={`${item.id}-reward-${index}`} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-3">
                             <WeaponImage weapon={reward} className="h-10 w-10 rounded-xl shrink-0" />
                             <div className="min-w-0 flex-1">
-                              <div className="font-black truncate">{reward.name}</div>
-                              <div className="text-xs text-gray-400">{formatProbabilityText(reward.probability)}</div>
+                              <div className="font-semibold truncate">{reward.name}</div>
+                              <div className="text-xs text-slate-400">{formatProbabilityText(reward.probability)}</div>
                             </div>
                             {reward.is_featured && (
-                              <span className="px-2 py-1 rounded-full text-[10px] font-black border border-fuchsia-500/30 bg-fuchsia-500/12 text-fuchsia-200">
+                              <span className="px-2 py-1 rounded-full text-[10px] font-semibold border border-sky-500/30 bg-sky-500/12 text-sky-200">
                                 Featured
                               </span>
                             )}
@@ -8246,10 +8246,10 @@ const AdminPointShopManager = () => {
                     )}
 
                     <div className="mt-4 flex gap-2">
-                      <button onClick={() => toggleGachaActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-black text-sm">
+                      <button onClick={() => toggleGachaActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-semibold text-sm">
                         {item.is_active ? "비활성화" : "활성화"}
                       </button>
-                      <button onClick={() => deleteGachaProduct(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-black text-sm">
+                      <button onClick={() => deleteGachaProduct(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-semibold text-sm">
                         삭제
                       </button>
                     </div>
