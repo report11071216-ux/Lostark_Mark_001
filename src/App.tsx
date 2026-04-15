@@ -757,6 +757,247 @@ const WeaponImage = ({
       style={{ background: theme.background, borderColor: theme.border, boxShadow: `0 0 18px ${theme.glow}` }}
     >
       <Swords size={18} style={{ color: theme.text }} />
+      <AnimatePresence>
+        {showRegister && (
+          <ModalFrame
+            onClose={() => {
+              setShowRegister(false);
+              setImageFile(null);
+            }}
+          >
+            <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
+              <div className="relative border-b border-white/10 px-6 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">Character Create</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">캐릭터 등록</div>
+                    <div className="mt-2 text-sm text-slate-400">새 캐릭터 정보를 입력하고 마이룸에 추가해.</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowRegister(false);
+                      setImageFile(null);
+                    }}
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative space-y-5 px-6 py-6">
+                <div className="grid md:grid-cols-2 gap-3">
+                  <AdminInput label="캐릭터명" value={characterName} onChange={setCharacterName} />
+                  <AdminInput label="직업" value={className} onChange={setClassName} />
+                </div>
+                <div className="grid md:grid-cols-3 gap-3">
+                  <AdminInput label="아이템레벨" value={itemLevel} onChange={setItemLevel} />
+                  <AdminInput label="캐릭터 레벨" value={characterLevel} onChange={setCharacterLevel} />
+                  <AdminInput label="전투력" value={combatPower} onChange={setCombatPower} />
+                </div>
+                <div className="grid md:grid-cols-2 gap-3">
+                  <AdminInput label="생일" type="date" value={birthday} onChange={setBirthday} />
+                  <AdminInput label="MBTI" value={mbti} onChange={(value: string) => setMbti(String(value || "").toUpperCase().slice(0, 4))} placeholder="예: INFP" />
+                </div>
+                <div className="space-y-3">
+                  <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">역할</label>
+                  <select
+                    value={roleHint}
+                    onChange={(e) => setRoleHint(e.target.value)}
+                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                  >
+                    <option value="딜러">딜러</option>
+                    <option value="서포터">서포터</option>
+                  </select>
+                </div>
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">캐릭터 이미지</div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                    className="mt-3 w-full text-sm text-slate-400"
+                  />
+                  {imageFile && (
+                    <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-3">
+                      <div className="mb-2 text-xs text-slate-400">미리보기</div>
+                      <img src={URL.createObjectURL(imageFile)} className="h-44 w-full max-w-xs rounded-xl object-cover" />
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <button
+                    onClick={() => {
+                      setShowRegister(false);
+                      setImageFile(null);
+                    }}
+                    className="rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={saveCharacter}
+                    className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
+                  >
+                    저장
+                  </button>
+                </div>
+              </div>
+            </div>
+          </ModalFrame>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingCharacter && editingCharacter.draft && (
+          <ModalFrame
+            onClose={() => {
+              setEditingCharacterId(null);
+              fetchCharacters();
+            }}
+          >
+            <div className="relative w-full max-w-4xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
+              <div className="relative border-b border-white/10 px-6 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">Character Edit</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{editingCharacter.character_name}</div>
+                    <div className="mt-2 text-sm text-slate-400">캐릭터 정보, 이미지, 뱃지 장착을 이 창에서 수정할 수 있어.</div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingCharacterId(null);
+                      fetchCharacters();
+                    }}
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative space-y-5 px-6 py-6">
+                <div className="grid md:grid-cols-2 gap-3">
+                  <AdminInput label="캐릭터명" value={editingCharacter.draft.character_name} onChange={(v: any) => updateDraft(editingCharacter.id, "character_name", v)} />
+                  <AdminInput label="직업" value={editingCharacter.draft.class_name} onChange={(v: any) => updateDraft(editingCharacter.id, "class_name", v)} />
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-3">
+                  <AdminInput label="아이템레벨" value={String(editingCharacter.draft.item_level || "")} onChange={(v: any) => updateDraft(editingCharacter.id, "item_level", v)} />
+                  <AdminInput label="캐릭터 레벨" value={String(editingCharacter.draft.character_level || "")} onChange={(v: any) => updateDraft(editingCharacter.id, "character_level", v)} />
+                  <AdminInput label="전투력" value={String(editingCharacter.draft.combat_power || "")} onChange={(v: any) => updateDraft(editingCharacter.id, "combat_power", v)} />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div className="space-y-3">
+                    <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">역할</label>
+                    <select
+                      value={editingCharacter.draft.role_hint}
+                      onChange={(e) => updateDraft(editingCharacter.id, "role_hint", e.target.value)}
+                      className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                    >
+                      <option value="딜러">딜러</option>
+                      <option value="서포터">서포터</option>
+                    </select>
+                  </div>
+                  <AdminInput label="생일" type="date" value={editingCharacter.draft.birthday || ""} onChange={(v: any) => updateDraft(editingCharacter.id, "birthday", v)} />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-3">
+                  <AdminInput label="MBTI" value={editingCharacter.draft.mbti || ""} onChange={(v: any) => updateDraft(editingCharacter.id, "mbti", String(v || "").toUpperCase().slice(0, 4))} placeholder="예: ENFJ" />
+                  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
+                    <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">착용 뱃지</div>
+                    <div className="flex flex-wrap gap-2">
+                      {ownedBadges.length === 0 && (
+                        <div className="text-sm text-slate-500">보유한 뱃지가 없습니다.</div>
+                      )}
+                      {ownedBadges.map((badge) => {
+                        const checked = (editingCharacter.draft.equipped_badge_ids || []).includes(String(badge.badge_item_id));
+                        return (
+                          <label
+                            key={badge.badge_item_id}
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2"
+                            style={{
+                              borderColor: checked ? badge.badge_color || "#8b5cf6" : "rgba(255,255,255,0.08)",
+                              backgroundColor: checked ? `${badge.badge_color || "#8b5cf6"}22` : "rgba(255,255,255,0.03)",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(e) => {
+                                const next = new Set(editingCharacter.draft.equipped_badge_ids || []);
+                                if (e.target.checked) next.add(String(badge.badge_item_id));
+                                else next.delete(String(badge.badge_item_id));
+                                updateDraft(editingCharacter.id, "equipped_badge_ids", Array.from(next));
+                              }}
+                            />
+                            <span className="text-xs font-semibold" style={{ color: badge.badge_color || "#c4b5fd" }}>
+                              {badge.badge_name}
+                              {normalizeBadgeEffectKey(badge.badge_card_effect) !== "none" ? ` · ${getBadgeVisualTheme(badge).label}` : ""}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
+                  <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">캐릭터 이미지 수정</div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      updateDraft(editingCharacter.id, "new_image_file", file);
+                      updateDraft(
+                        editingCharacter.id,
+                        "image_preview_url",
+                        createPreviewUrl(file, editingCharacter.draft.avatar_url || editingCharacter.avatar_url || "")
+                      );
+                    }}
+                    className="w-full text-sm text-slate-400"
+                  />
+                  {(editingCharacter.draft.image_preview_url || editingCharacter.draft.avatar_url || editingCharacter.avatar_url) && (
+                    <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-3">
+                      <div className="mb-2 text-xs text-slate-400">미리보기</div>
+                      <img
+                        src={editingCharacter.draft.image_preview_url || editingCharacter.draft.avatar_url || editingCharacter.avatar_url}
+                        className="h-48 w-full rounded-xl object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <button
+                    onClick={() => {
+                      setEditingCharacterId(null);
+                      fetchCharacters();
+                    }}
+                    className="rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await saveCharacterEdit(editingCharacter);
+                      setEditingCharacterId(null);
+                    }}
+                    className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
+                  >
+                    수정 저장
+                  </button>
+                </div>
+              </div>
+            </div>
+          </ModalFrame>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };
@@ -5033,6 +5274,7 @@ const Auth = ({ mode, setMode }: any) => {
 const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   const [rankIcon, setRankIcon] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
+  const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
   const [characterName, setCharacterName] = useState("");
   const [className, setClassName] = useState("");
   const [itemLevel, setItemLevel] = useState("");
@@ -6026,7 +6268,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     });
 
     if (!error) {
-      alert("캐릭터 등록 완료");
+      alert("캐릭터 추가 완료");
       setCharacterName("");
       setClassName("");
       setItemLevel("");
@@ -6043,6 +6285,35 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     }
   };
 
+
+  const buildCharacterDraft = (item: any) => ({
+    character_name: item.character_name || "",
+    class_name: item.class_name || "",
+    item_level: item.item_level || "",
+    character_level: item.character_level || "",
+    combat_power: item.combat_power || "",
+    role_hint: item.role_hint || "딜러",
+    birthday: item.birthday || "",
+    mbti: item.mbti || "",
+    profile_theme: item.profile_theme || "#8b5cf6",
+    character_intro: item.character_intro || "",
+    avatar_url: item.avatar_url || "",
+    new_image_file: null,
+    image_preview_url: item.avatar_url || "",
+    equipped_badge_ids: getCharacterBadges(item).map((badge: any) => String(badge.badge_item_id)),
+  });
+
+  const openCharacterEditModal = (id: string) => {
+    setCharacters((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, draft: buildCharacterDraft(item), isEditing: false }
+          : item
+      )
+    );
+    setEditingCharacterId(id);
+  };
+
   const toggleEditing = (id: string, next: boolean) => {
     setCharacters((prev) =>
       prev.map((item) =>
@@ -6050,24 +6321,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           ? {
               ...item,
               isEditing: next,
-              draft: next
-                ? {
-                    character_name: item.character_name || "",
-                    class_name: item.class_name || "",
-                    item_level: item.item_level || "",
-                    character_level: item.character_level || "",
-                    combat_power: item.combat_power || "",
-                    role_hint: item.role_hint || "딜러",
-                    birthday: item.birthday || "",
-                    mbti: item.mbti || "",
-                    profile_theme: item.profile_theme || "#8b5cf6",
-                    character_intro: item.character_intro || "",
-                    avatar_url: item.avatar_url || "",
-                    new_image_file: null,
-                    image_preview_url: item.avatar_url || "",
-                    equipped_badge_ids: getCharacterBadges(item).map((badge: any) => String(badge.badge_item_id)),
-                  }
-                : item.draft,
+              draft: next ? buildCharacterDraft(item) : item.draft,
             }
           : item
       )
@@ -6149,6 +6403,9 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     alert("캐릭터 수정 완료");
     fetchCharacters();
   };
+
+
+  const editingCharacter = characters.find((item: any) => item.id === editingCharacterId) || null;
 
   if (!user || !profile) return null;
 
@@ -6344,7 +6601,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
             출석 체크 (+10P)
           </button>
           <button
-            onClick={() => setShowRegister(!showRegister)}
+            onClick={() => setShowRegister(true)}
             className="bg-blue-600 px-5 py-3 rounded-xl font-semibold"
           >
             캐릭터 등록
@@ -6448,49 +6705,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           )}
         </div>
 
-        {showRegister && (
-          <div className="space-y-3 border border-white/10 rounded-2xl p-5 bg-black/20">
-            <div className="grid md:grid-cols-2 gap-3">
-              <AdminInput label="캐릭터명" value={characterName} onChange={setCharacterName} />
-              <AdminInput label="직업" value={className} onChange={setClassName} />
-            </div>
-            <div className="grid md:grid-cols-3 gap-3">
-              <AdminInput label="아이템레벨" value={itemLevel} onChange={setItemLevel} />
-              <AdminInput label="캐릭터 레벨" value={characterLevel} onChange={setCharacterLevel} />
-              <AdminInput label="전투력" value={combatPower} onChange={setCombatPower} />
-            </div>
-            <div className="grid md:grid-cols-2 gap-3">
-              <AdminInput label="생일" type="date" value={birthday} onChange={setBirthday} />
-              <AdminInput label="MBTI" value={mbti} onChange={(value: string) => setMbti(String(value || "").toUpperCase().slice(0, 4))} placeholder="예: INFP" />
-            </div>
-            <select
-              value={roleHint}
-              onChange={(e) => setRoleHint(e.target.value)}
-              className="w-full bg-black border border-white/10 rounded-xl p-4"
-            >
-              <option value="딜러">딜러</option>
-              <option value="서포터">서포터</option>
-            </select>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-slate-400"
-            />
-            {imageFile && (
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
-                <div className="text-xs text-slate-400 mb-2">미리보기</div>
-                <img
-                  src={URL.createObjectURL(imageFile)}
-                  className="w-full max-w-xs h-44 object-cover rounded-xl"
-                />
-              </div>
-            )}
-            <button onClick={saveCharacter} className="bg-blue-500 px-4 py-3 rounded-xl font-semibold">
-              저장
-            </button>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
           {characters.length === 0 && (
@@ -6755,7 +6969,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
-                      onClick={() => toggleEditing(character.id, true)}
+                      onClick={() => openCharacterEditModal(character.id)}
                       className="bg-blue-600 px-4 py-2 rounded-xl text-sm font-semibold"
                     >
                       수정
