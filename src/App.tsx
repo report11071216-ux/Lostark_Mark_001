@@ -1577,18 +1577,27 @@ const fetchInitialData = async () => {
 const PageShell = ({ children }: { children: React.ReactNode }) => (
   <div className="min-h-screen relative overflow-hidden bg-[#07111f] text-white font-sans selection:bg-sky-400/30">
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(96,165,250,0.22),_transparent_30%),radial-gradient(circle_at_20%_80%,_rgba(59,130,246,0.14),_transparent_26%),radial-gradient(circle_at_80%_30%,_rgba(191,219,254,0.12),_transparent_22%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.24),transparent_35%),radial-gradient(circle_at_80%_28%,rgba(125,211,252,0.16),transparent_30%),radial-gradient(circle_at_50%_82%,rgba(37,99,235,0.12),transparent_40%)]" />
+      <div className="absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full bg-sky-500/18 blur-3xl" />
+      <div className="absolute top-[18%] right-[6%] h-[360px] w-[360px] rounded-full bg-blue-400/14 blur-3xl" />
+      <div className="absolute bottom-[-120px] left-[28%] h-[520px] w-[520px] rounded-full bg-blue-500/12 blur-3xl" />
       <div
-        className="absolute inset-0 opacity-[0.14]"
+        className="absolute inset-0 opacity-[0.08]"
         style={{
           backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.9) 0.8px, transparent 0.8px)",
-          backgroundSize: "28px 28px",
+            "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
         }}
       />
-      <div className="absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full bg-sky-500/20 blur-3xl" />
-      <div className="absolute top-[18%] right-[6%] h-[360px] w-[360px] rounded-full bg-sky-400/14 blur-3xl" />
-      <div className="absolute bottom-[-120px] left-[28%] h-[520px] w-[520px] rounded-full bg-sky-400/14 blur-3xl" />
+      <div
+        className="absolute inset-0 opacity-[0.03]"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.28) 1px, transparent 1px)",
+          backgroundSize: "3px 3px",
+        }}
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,17,31,0.16),rgba(7,17,31,0.72))]" />
     </div>
     {children}
   </div>
