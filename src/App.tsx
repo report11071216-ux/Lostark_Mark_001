@@ -214,6 +214,22 @@ const toNumber = (value: any) => {
 const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
+type ToastType = "info" | "success" | "error";
+
+const showToast = (message: string, type: ToastType = "info") => {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent("app-toast", {
+      detail: {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        message,
+        type,
+      },
+    })
+  );
+};
+
+
 
 type BadgeEffectKey = "none" | "violet" | "sunset" | "ocean" | "emerald" | "rose" | "gold";
 
@@ -1433,6 +1449,7 @@ const fetchInitialData = async () => {
 
   return (
     <PageShell>
+      <ToastViewport />
       <div className="relative z-10">
         {profile?.role === "admin" && (
           <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-blue-950 via-slate-900 to-blue-900 text-[10px] font-semibold py-1 text-center tracking-[0.24em] uppercase">
@@ -1574,6 +1591,62 @@ const fetchInitialData = async () => {
     </PageShell>
   );
 }
+
+
+const ToastViewport = () => {
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
+
+  useEffect(() => {
+    const handleToast = (event: Event) => {
+      const customEvent = event as CustomEvent<{ id: string; message: string; type: ToastType }>;
+      const detail = customEvent.detail;
+      if (!detail?.message) return;
+
+      setToasts((prev) => [...prev, detail]);
+
+      window.setTimeout(() => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== detail.id));
+      }, 2800);
+    };
+
+    window.addEventListener("app-toast", handleToast as EventListener);
+    return () => window.removeEventListener("app-toast", handleToast as EventListener);
+  }, []);
+
+  const toneClass = (type: ToastType) => {
+    if (type === "success") return "border-emerald-400/20 bg-emerald-400/10 text-emerald-100";
+    if (type === "error") return "border-rose-400/20 bg-rose-400/10 text-rose-100";
+    return "border-sky-400/20 bg-sky-400/10 text-sky-100";
+  };
+
+  const labelText = (type: ToastType) => {
+    if (type === "success") return "Success";
+    if (type === "error") return "Error";
+    return "Notice";
+  };
+
+  return (
+    <div className="pointer-events-none fixed right-4 top-20 z-[250] flex w-[min(360px,calc(100vw-2rem))] flex-col gap-3">
+      <AnimatePresence>
+        {toasts.map((toast) => (
+          <motion.div
+            key={toast.id}
+            initial={{ opacity: 0, y: -12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.98 }}
+            transition={{ duration: 0.18 }}
+            className={`pointer-events-auto overflow-hidden rounded-[1.35rem] border px-4 py-3 shadow-[0_18px_50px_rgba(2,6,23,0.38)] backdrop-blur-xl ${toneClass(toast.type)}`}
+          >
+            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] opacity-80">
+              {labelText(toast.type)}
+            </div>
+            <div className="mt-1 text-sm font-medium leading-6">{toast.message}</div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const PageShell = ({ children }: { children: React.ReactNode }) => (
   <div className="min-h-screen relative overflow-hidden bg-[#07111f] text-white font-sans selection:bg-sky-400/30">
@@ -2046,7 +2119,7 @@ const ImageUploader = ({
       onUpload(data.publicUrl);
     } catch (err: any) {
       console.error("Upload Error:", err);
-      alert(`이미지 업로드 실패: ${err.message}`);
+      showToast(`이미지 업로드 실패: ${err.message}`, "error");
     } finally {
       setUploading(false);
     }
@@ -3060,7 +3133,7 @@ const CreateRaidModal = ({
 
   const save = async () => {
     if (!form.raid_name) {
-      alert("레이드 이름을 선택하세요.");
+      showToast("레이드 이름을 선택하세요.");
       return;
     }
 
@@ -3081,16 +3154,16 @@ const CreateRaidModal = ({
       });
 
       if (error) {
-        alert(error.message);
+        showToast(error.message, "error");
         return;
       }
 
-      alert("일정 생성 완료");
+      showToast("일정 생성 완료", "success");
       onRefresh();
       onClose();
     } catch (error: any) {
       console.error("create raid error:", error);
-      alert(error.message || "일정 생성 실패");
+      showToast(error.message || "일정 생성 실패", "error");
     } finally {
       setLoading(false);
     }
@@ -3297,7 +3370,7 @@ const RaidDetailModal = ({
 
   const handleDelete = async () => {
     if (profile?.role !== "admin") {
-      alert("관리자만 삭제할 수 있어.");
+      showToast("관리자만 삭제할 수 있어.", "error");
       return;
     }
 
@@ -3310,7 +3383,7 @@ const RaidDetailModal = ({
       onRefresh();
     } catch (error) {
       console.error(error);
-      alert("일정 삭제 실패");
+      showToast("일정 삭제 실패", "error");
     }
   };
 
@@ -3493,7 +3566,7 @@ const ParticipantItem = ({
     if (!error) {
       onRefresh();
     } else {
-      alert(error.message || "취소 실패");
+      showToast(error.message || "취소 실패", "error");
     }
   };
 
@@ -3644,17 +3717,17 @@ const JoinForm = ({
 
   const handleJoin = async () => {
     if (!user?.id) {
-      alert("로그인 후 참여할 수 있어.");
+      showToast("로그인 후 참여할 수 있어.", "error");
       return;
     }
 
     if (myCharacters.length === 0) {
-      alert("마이룸에 등록된 캐릭터가 없어. 먼저 캐릭터를 등록해줘.");
+      showToast("마이룸에 등록된 캐릭터가 없어. 먼저 캐릭터를 등록해줘.", "error");
       return;
     }
 
     if (!nickname || !level || !playerClass) {
-      alert("캐릭터 정보가 비어 있어. 마이룸 캐릭터를 다시 선택해줘.");
+      showToast("캐릭터 정보가 비어 있어. 마이룸 캐릭터를 다시 선택해줘.", "error");
       return;
     }
 
@@ -3663,17 +3736,17 @@ const JoinForm = ({
     );
 
     if (alreadyJoined) {
-      alert("같은 캐릭터가 이미 참가 중이야.");
+      showToast("같은 캐릭터가 이미 참가 중이야.");
       return;
     }
 
     if (raid.type !== "anime") {
       if (role === "딜러" && dealers >= capacity.dealerLimit) {
-        alert("딜러 자리가 가득 찼습니다.");
+        showToast("딜러 자리가 가득 찼습니다.", "error");
         return;
       }
       if (role === "서포터" && supports >= capacity.supportLimit) {
-        alert("서포터 자리가 가득 찼습니다.");
+        showToast("서포터 자리가 가득 찼습니다.", "error");
         return;
       }
     }
@@ -3692,11 +3765,11 @@ const JoinForm = ({
       if (!error) {
         onSuccess();
       } else {
-        alert(error.message || "참여 실패");
+        showToast(error.message || "참여 실패", "error");
       }
     } catch (error: any) {
       console.error("handleJoin error:", error);
-      alert(error.message || "참여 실패");
+      showToast(error.message || "참여 실패", "error");
     } finally {
       setSaving(false);
     }
@@ -3879,12 +3952,12 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
       point_rate_settings: normalizePointRateSettings(settings?.point_rate_settings),
     });
     const { error, payload: savedPayload } = await saveSingletonSettings(payload);
-    if (error) alert(error.message);
+    if (error) showToast(error.message, "error");
     else {
       const nextSettings = normalizeAppSettings(savedPayload);
       setSettings(nextSettings);
       writeCache(CACHE_KEYS.settings, nextSettings);
-      alert("포인트 경제 설정 저장 완료!");
+      showToast("포인트 경제 설정 저장 완료!", "success");
     }
   };
 
@@ -4006,12 +4079,12 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
   const handleSave = async () => {
     const { error, payload } = await saveSingletonSettings(settings);
-    if (error) alert(error.message);
+    if (error) showToast(error.message, "error");
     else {
       const nextSettings = normalizeAppSettings(payload);
       setSettings(nextSettings);
       writeCache(CACHE_KEYS.settings, nextSettings);
-      alert("길드 설정 업데이트 완료!");
+      showToast("길드 설정 업데이트 완료!", "success");
     }
   };
 
@@ -4118,7 +4191,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   };
 
   const handleSave = async () => {
-    if (!form.name) return alert("이름을 입력하세요.");
+    if (!form.name) return showToast("이름을 입력하세요.");
 
     const { data, error: cErr } = await supabase
       .from("contents")
@@ -4134,7 +4207,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       .select()
       .single();
 
-    if (cErr) return alert(cErr.message);
+    if (cErr) return showToast(cErr.message, "error");
 
     const { error: dErr } = await supabase.from("content_details").upsert(
       {
@@ -4150,11 +4223,11 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     );
 
     if (dErr) {
-      alert(dErr.message);
+      showToast(dErr.message, "error");
       return;
     }
 
-    alert(editingId ? "수정 완료!" : "등록 완료!");
+    showToast(editingId ? "수정 완료!" : "등록 완료!");
     await fetchList();
     resetForm();
   };
@@ -4164,7 +4237,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     await supabase.from("content_details").delete().eq("content_id", id);
     const { error } = await supabase.from("contents").delete().eq("id", id);
     if (!error) {
-      alert("삭제 완료");
+      showToast("삭제 완료", "success");
       fetchList();
       resetForm();
     }
@@ -4336,7 +4409,7 @@ const ClassContentEditor = () => {
   };
 
   const handleSave = async () => {
-    if (!form.sub) return alert("직업명을 입력하세요.");
+    if (!form.sub) return showToast("직업명을 입력하세요.");
     const { error } = await supabase.from("class_infos").upsert(
       {
         root_class: form.root,
@@ -4349,11 +4422,11 @@ const ClassContentEditor = () => {
     );
 
     if (!error) {
-      alert("저장 완료!");
+      showToast("저장 완료!", "success");
       fetchList();
       setForm({ root: "", sub: "", eng_job: "", link: "", image_url: "" });
     } else {
-      alert(error.message);
+      showToast(error.message, "error");
     }
   };
 
@@ -4361,7 +4434,7 @@ const ClassContentEditor = () => {
     if (!confirm(`[${subClass}] 클래스를 삭제하시겠습니까?`)) return;
     const { error } = await supabase.from("class_infos").delete().eq("sub_class", subClass);
     if (!error) {
-      alert("삭제 완료");
+      showToast("삭제 완료", "success");
       fetchList();
     }
   };
@@ -4503,17 +4576,17 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
         console.error("post_comments delete skipped:", commentDeleteError);
       }
       const { error } = await client.from("posts").delete().eq("id", postId);
-      if (error) return alert(error.message);
+      if (error) return showToast(error.message, "error");
       onRefresh();
       void fetchComments();
     } catch (error: any) {
-      alert(error?.message || "게시글 삭제 중 오류가 발생했어요.");
+      showToast(error?.message || "게시글 삭제 중 오류가 발생했어요.", "error");
     }
   };
 
   const togglePin = async (post: any) => {
     if (profile?.role !== "admin") return;
-    if (!post.is_notice) return alert("공지글만 고정 가능합니다.");
+    if (!post.is_notice) return showToast("공지글만 고정 가능합니다.");
 
     const client = getSupabaseOrThrow();
 
@@ -4522,15 +4595,15 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
     }
 
     const { error } = await client.from("posts").update({ is_pinned: !post.is_pinned }).eq("id", post.id);
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
     onRefresh();
   };
 
   const submitComment = async (postId: string) => {
-    if (!user) return alert("로그인 후 댓글을 작성할 수 있어요.");
-    if (!commentsEnabled) return alert("댓글 기능용 SQL이 아직 적용되지 않았어요.");
+    if (!user) return showToast("로그인 후 댓글을 작성할 수 있어요.", "error");
+    if (!commentsEnabled) return showToast("댓글 기능용 SQL이 아직 적용되지 않았어요.", "success");
     const content = (commentDrafts[postId] || "").trim();
-    if (!content) return alert("댓글 내용을 입력해줘.");
+    if (!content) return showToast("댓글 내용을 입력해줘.");
 
     try {
       const client = getSupabaseOrThrow();
@@ -4544,7 +4617,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
 
       const { error } = await client.from("post_comments").insert([payload]);
       if (error) {
-        alert(error.message);
+        showToast(error.message, "error");
         return;
       }
 
@@ -4557,9 +4630,9 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
       setCommentDrafts((prev) => ({ ...prev, [postId]: "" }));
       setOpenCommentPosts((prev) => ({ ...prev, [postId]: true }));
       await fetchComments();
-      alert("댓글 작성 완료! +5 포인트 획득 🎉");
+      showToast("댓글 작성 완료! +5 포인트 획득 🎉", "success");
     } catch (error: any) {
-      alert(error?.message || "댓글 등록 중 오류가 발생했어요.");
+      showToast(error?.message || "댓글 등록 중 오류가 발생했어요.", "error");
     }
   };
 
@@ -4570,12 +4643,12 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
       const client = getSupabaseOrThrow();
       const { error } = await client.from("post_comments").delete().eq("id", commentId);
       if (error) {
-        alert(error.message);
+        showToast(error.message, "error");
         return;
       }
       await fetchComments();
     } catch (error: any) {
-      alert(error?.message || "댓글 삭제 중 오류가 발생했어요.");
+      showToast(error?.message || "댓글 삭제 중 오류가 발생했어요.", "error");
     }
   };
 
@@ -4785,7 +4858,7 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
 
   const handlePost = async () => {
     if (!title.trim() || !content.trim()) {
-      alert("제목과 내용을 입력하세요.");
+      showToast("제목과 내용을 입력하세요.");
       return;
     }
 
@@ -4813,7 +4886,7 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
         .single();
 
       if (error) {
-        alert(error.message);
+        showToast(error.message, "error");
         return;
       }
 
@@ -4834,11 +4907,11 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
         });
       }
 
-      alert(isNotice ? "공지 작성 완료!" : "게시글 작성 완료! +5 포인트 획득 🎉");
+      showToast(isNotice ? "공지 작성 완료!" : "게시글 작성 완료! +5 포인트 획득 🎉");
       await onRefresh();
       onClose();
     } catch (err: any) {
-      alert(err?.message || "게시글 작성 중 오류가 발생했어요.");
+      showToast(err?.message || "게시글 작성 중 오류가 발생했어요.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -4957,7 +5030,7 @@ const Auth = ({ mode, setMode }: any) => {
           },
         ]);
 
-        alert("회원가입 성공! 이메일을 확인하세요.");
+        showToast("회원가입 성공! 이메일을 확인하세요.", "success");
         setMode("login");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -4965,7 +5038,7 @@ const Auth = ({ mode, setMode }: any) => {
         setMode("home");
       }
     } catch (err: any) {
-      alert(err.message);
+      showToast(err.message, "error");
     }
   };
 
@@ -5087,7 +5160,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     const today = new Date().toISOString().split("T")[0];
 
     if (profile.last_attendance === today) {
-      alert("오늘은 이미 출석했습니다 ✅");
+      showToast("오늘은 이미 출석했습니다 ✅");
       return;
     }
 
@@ -5098,13 +5171,13 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     });
 
     if (error) {
-      alert("출석 실패");
+      showToast("출석 실패", "error");
       return;
     }
 
     await supabase.from("profiles").update({ last_attendance: today }).eq("id", user.id);
 
-    alert("출석 완료! +10 포인트 🎉");
+    showToast("출석 완료! +10 포인트 🎉", "success");
     window.location.reload();
   };
 
@@ -5350,10 +5423,10 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     .reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0);
 
   const handleNakwonInfuse = async (amountLike?: number) => {
-    if (!user?.id) return alert("로그인 후 사용 가능합니다.");
+    if (!user?.id) return showToast("로그인 후 사용 가능합니다.", "error");
     const amount = Math.max(0, Math.floor(Number(amountLike ?? nakwonSpendAmount)));
-    if (!Number.isFinite(amount) || amount <= 0) return alert("주입할 포인트를 입력해줘.");
-    if (myPoint < amount) return alert("포인트가 부족해.");
+    if (!Number.isFinite(amount) || amount <= 0) return showToast("주입할 포인트를 입력해줘.");
+    if (myPoint < amount) return showToast("포인트가 부족해.");
     if (!confirm(`${amount}P를 낙원 경험치로 주입할까요?`)) return;
 
     const result = applyNakwonExpGain(profile?.nakwon_level, profile?.nakwon_exp, amount);
@@ -5374,7 +5447,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     setNakwonSubmitting(false);
 
     if (error) {
-      alert(`${error.message}\n\n낙원력 컬럼 SQL을 먼저 적용해줘.`);
+      showToast(`${error.message}\n\n낙원력 컬럼 SQL을 먼저 적용해줘.`, "error");
       return;
     }
 
@@ -5382,7 +5455,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     await fetchProfile(user.id);
     await fetchMyPoint();
 
-    alert(
+    showToast(
       result.leveledUp
         ? `낙원력이 상승했어! Lv.${nakwonLevel} → Lv.${result.level}`
         : `낙원 경험치 +${amount} 완료!`
@@ -5616,7 +5689,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       nickname_glow_color: effect?.nickname_glow_color || null,
     }).eq("id", user.id);
 
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
     setProfile((prev: any) =>
       prev
         ? {
@@ -5628,7 +5701,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           }
         : prev
     );
-    alert("닉네임 효과 적용 완료!");
+    showToast("닉네임 효과 적용 완료!", "success");
     await fetchProfile(user.id);
     await fetchCharacters();
   };
@@ -5642,7 +5715,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       nickname_glow_color: null,
     }).eq("id", user.id);
 
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
     setProfile((prev: any) =>
       prev
         ? {
@@ -5654,7 +5727,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           }
         : prev
     );
-    alert("닉네임 효과 해제 완료!");
+    showToast("닉네임 효과 해제 완료!", "success");
     await fetchProfile(user.id);
     await fetchCharacters();
   };
@@ -5695,12 +5768,12 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
     const { error } = await client.from("guild_members").update(payload).eq("id", character.id);
     if (error) {
-      alert(error.message);
+      showToast(error.message, "error");
       return;
     }
 
     await fetchCharacters();
-    alert(`${character.character_name}에게 ${payload.equipped_weapon_name || "무기"}를 장착했어.`);
+    showToast(`${character.character_name}에게 ${payload.equipped_weapon_name || "무기"}를 장착했어.`);
   };
 
   const clearWeaponFromCharacter = async (character: any) => {
@@ -5720,7 +5793,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       .eq("id", character.id);
 
     if (error) {
-      alert(error.message);
+      showToast(error.message, "error");
       return;
     }
 
@@ -5728,11 +5801,11 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   };
 
   const enhanceEquippedWeapon = async (character: any) => {
-    if (!user?.id) return alert("로그인 후 사용 가능합니다.");
-    if (!character?.equipped_weapon_name) return alert("먼저 장착한 무기가 있어야 해.");
+    if (!user?.id) return showToast("로그인 후 사용 가능합니다.", "error");
+    if (!character?.equipped_weapon_name) return showToast("먼저 장착한 무기가 있어야 해.");
     const currentLevel = normalizeEnhancementLevel(character?.equipped_weapon_level);
     if (currentLevel >= ENHANCEMENT_MAX_LEVEL) {
-      alert("이미 최대 강화 단계야.");
+      showToast("이미 최대 강화 단계야.");
       return;
     }
 
@@ -5741,7 +5814,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       ownedWeapons.find((item: any) => String(item.weapon_id || item.id || "") === String(character.equipped_weapon_id || ""));
 
     if (!inventoryWeapon) {
-      alert("장착 무기 인벤토리 정보를 찾지 못했어. 무기를 다시 장착한 뒤 시도해줘.");
+      showToast("장착 무기 인벤토리 정보를 찾지 못했어. 무기를 다시 장착한 뒤 시도해줘.");
       return;
     }
 
@@ -5750,12 +5823,12 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     const dailyLimit = getNakwonDailyEnhanceLimit(profile?.nakwon_level);
 
     if (attemptsUsed >= dailyLimit) {
-      alert(`오늘 사용 가능한 계정 전체 강화 시도권을 모두 썼어. (${attemptsUsed}/${dailyLimit})`);
+      showToast(`오늘 사용 가능한 계정 전체 강화 시도권을 모두 썼어. (${attemptsUsed}/${dailyLimit})`);
       return;
     }
 
     if (myPoint < 1) {
-      alert("강화에는 1포인트가 필요해.");
+      showToast("강화에는 1포인트가 필요해.");
       return;
     }
 
@@ -5797,7 +5870,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     const { error: pointError } = await client.from("profiles").update({ points: nextPoint }).eq("id", user.id);
     if (pointError) {
       setEnhancingCharacterId(null);
-      alert(pointError.message);
+      showToast(pointError.message, "error");
       return;
     }
 
@@ -5811,7 +5884,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
       if (stoneError) {
         setEnhancingCharacterId(null);
-        alert(stoneError.message);
+        showToast(stoneError.message, "error");
         return;
       }
     }
@@ -5835,7 +5908,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
       if (protectionError) {
         setEnhancingCharacterId(null);
-        alert(protectionError.message);
+        showToast(protectionError.message, "error");
         return;
       }
     }
@@ -5851,7 +5924,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
     if (weaponError) {
       setEnhancingCharacterId(null);
-      alert(`${weaponError.message}\n\n강화 컬럼 SQL을 먼저 적용해줘.`);
+      showToast(`${weaponError.message}\n\n강화 컬럼 SQL을 먼저 적용해줘.`, "error");
       return;
     }
 
@@ -5866,7 +5939,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
     if (characterError) {
       setEnhancingCharacterId(null);
-      alert(`${characterError.message}\n\n길드 캐릭터 무기 강화 컬럼 SQL을 먼저 적용해줘.`);
+      showToast(`${characterError.message}\n\n길드 캐릭터 무기 강화 컬럼 SQL을 먼저 적용해줘.`, "error");
       return;
     }
 
@@ -5882,7 +5955,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     setEnhancingCharacterId(null);
 
     if (attemptsError) {
-      alert(`${attemptsError.message}\n\n낙원력/계정 시도권 SQL을 먼저 적용해줘.`);
+      showToast(`${attemptsError.message}\n\n낙원력/계정 시도권 SQL을 먼저 적용해줘.`, "error");
       return;
     }
 
@@ -5895,21 +5968,21 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     await Promise.all([fetchCharacters(), fetchOwnedWeapons(), fetchOwnedEnhanceItems(), fetchMyPoint(), fetchProfile(user.id)]);
 
     if (isSuccess) {
-      alert(`강화 성공! ${character.equipped_weapon_name} ${getEnhancementDisplay(currentLevel)} → ${getEnhancementDisplay(nextLevel)}`);
+      showToast(`강화 성공! ${character.equipped_weapon_name} ${getEnhancementDisplay(currentLevel)} → ${getEnhancementDisplay(nextLevel)}`);
       return;
     }
 
     if (isDestroyed && protectionUsed) {
-      alert(`강화 실패! 파손 판정이 있었지만 파괴방지권이 자동으로 사용되어 ${getEnhancementDisplay(currentLevel)} 상태를 지켰어.`);
+      showToast(`강화 실패! 파손 판정이 있었지만 파괴방지권이 자동으로 사용되어 ${getEnhancementDisplay(currentLevel)} 상태를 지켰어.`, "error");
       return;
     }
 
     if (isDestroyed) {
-      alert(`강화 실패! 무기가 파손되어 ${getEnhancementDisplay(currentLevel)} → ${getEnhancementDisplay(nextLevel)} 로 하락했어.`);
+      showToast(`강화 실패! 무기가 파손되어 ${getEnhancementDisplay(currentLevel)} → ${getEnhancementDisplay(nextLevel)} 로 하락했어.`, "error");
       return;
     }
 
-    alert(`강화 실패. 하지만 ${character.equipped_weapon_name}의 강화 수치는 ${getEnhancementDisplay(currentLevel)}로 유지됐어.`);
+    showToast(`강화 실패. 하지만 ${character.equipped_weapon_name}의 강화 수치는 ${getEnhancementDisplay(currentLevel)}로 유지됐어.`, "error");
   };
 
   const deleteCharacter = async (id: string) => {
@@ -5921,12 +5994,12 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   const deleteOwnedBadge = async (badge: any) => {
     const badgeItemId = String(badge.badge_item_id || badge.id || "");
     if (!badgeItemId) {
-      alert("삭제할 뱃지 정보를 찾지 못했어.");
+      showToast("삭제할 뱃지 정보를 찾지 못했어.");
       return;
     }
 
     if (usedBadgeIds.has(badgeItemId)) {
-      alert("이 뱃지는 현재 캐릭터가 착용 중이야. 먼저 장착 해제 후 삭제해줘.");
+      showToast("이 뱃지는 현재 캐릭터가 착용 중이야. 먼저 장착 해제 후 삭제해줘.");
       return;
     }
 
@@ -5941,7 +6014,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       });
 
       if (!rpcError && rpcDeleted) {
-        alert("뱃지를 삭제했어.");
+        showToast("뱃지를 삭제했어.");
         await fetchOwnedBadges();
         return;
       }
@@ -5980,17 +6053,17 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     }
 
     if (!deleted) {
-      alert("뱃지 삭제에 실패했어. 함께 보낸 SQL 파일 적용 후 다시 시도해줘.");
+      showToast("뱃지 삭제에 실패했어. 함께 보낸 SQL 파일 적용 후 다시 시도해줘.", "error");
       return;
     }
 
-    alert("뱃지를 삭제했어.");
+    showToast("뱃지를 삭제했어.");
     await fetchOwnedBadges();
   };
 
   const saveCharacter = async () => {
     if (!characterName.trim() || !className.trim()) {
-      alert("캐릭터명과 직업을 입력해줘.");
+      showToast("캐릭터명과 직업을 입력해줘.");
       return;
     }
 
@@ -6002,7 +6075,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       }
     } catch (error: any) {
       console.error("image upload error:", error);
-      alert(`이미지 업로드 실패: ${error?.message || "storage 정책을 확인해줘."}`);
+      showToast(`이미지 업로드 실패: ${error?.message || "storage 정책을 확인해줘."}`, "error");
       return;
     }
 
@@ -6027,7 +6100,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     });
 
     if (!error) {
-      alert("캐릭터 추가 완료");
+      showToast("캐릭터 추가 완료", "success");
       setCharacterName("");
       setClassName("");
       setItemLevel("");
@@ -6040,7 +6113,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       fetchCharacters();
       setShowRegister(false);
     } else {
-      alert(error.message);
+      showToast(error.message, "error");
     }
   };
 
@@ -6113,7 +6186,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       }
     } catch (error: any) {
       console.error("character edit image upload error:", error);
-      alert(`수정 이미지 업로드 실패: ${error?.message || "storage 정책을 확인해줘."}`);
+      showToast(`수정 이미지 업로드 실패: ${error?.message || "storage 정책을 확인해줘."}`, "error");
       return;
     }
 
@@ -6157,9 +6230,9 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
     const client = getSupabaseOrThrow();
     const { error } = await client.from("guild_members").update(payload).eq("id", character.id);
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
 
-    alert("캐릭터 수정 완료");
+    showToast("캐릭터 수정 완료", "success");
     fetchCharacters();
   };
 
@@ -7797,9 +7870,9 @@ const PointShopPage = ({ user, profile }: any) => {
   };
 
   const purchase = async (item: any) => {
-    if (!user) return alert("로그인 후 사용 가능합니다.");
-    if (!isShopItemAvailable(item)) return alert("지금은 구매 가능한 시간이 아니야.");
-    if (myPoint < item.price) return alert("포인트가 부족합니다.");
+    if (!user) return showToast("로그인 후 사용 가능합니다.", "error");
+    if (!isShopItemAvailable(item)) return showToast("지금은 구매 가능한 시간이 아니야.", "success");
+    if (myPoint < item.price) return showToast("포인트가 부족합니다.");
     if (!confirm(`${item.title} 구매 시 ${item.price}P가 차감됩니다. 진행할까요?`)) return;
 
     const client = getSupabaseOrThrow();
@@ -7807,7 +7880,7 @@ const PointShopPage = ({ user, profile }: any) => {
     if (item.reward_type === "enhance_stone") {
       const nextPoint = Math.max(0, myPoint - Number(item.price || 0));
       const { error: pointError } = await client.from("profiles").update({ points: nextPoint }).eq("id", user.id);
-      if (pointError) return alert(pointError.message);
+      if (pointError) return showToast(pointError.message, "error");
 
       const { data: existingRow, error: inventoryReadError } = await client
         .from("user_owned_enhance_items")
@@ -7817,7 +7890,7 @@ const PointShopPage = ({ user, profile }: any) => {
         .maybeSingle();
 
       if (inventoryReadError) {
-        return alert(`${inventoryReadError.message}\n\n강화석 인벤토리 SQL을 먼저 적용해줘.`);
+        return showToast(`${inventoryReadError.message}\n\n강화석 인벤토리 SQL을 먼저 적용해줘.`, "error");
       }
 
       if (existingRow?.id) {
@@ -7831,7 +7904,7 @@ const PointShopPage = ({ user, profile }: any) => {
           .eq("id", existingRow.id)
           .eq("user_id", user.id);
 
-        if (inventoryUpdateError) return alert(inventoryUpdateError.message);
+        if (inventoryUpdateError) return showToast(inventoryUpdateError.message, "error");
       } else {
         const { error: inventoryInsertError } = await client.from("user_owned_enhance_items").insert({
           user_id: user.id,
@@ -7841,10 +7914,10 @@ const PointShopPage = ({ user, profile }: any) => {
           quantity: 1,
         });
 
-        if (inventoryInsertError) return alert(`${inventoryInsertError.message}\n\n강화석 인벤토리 SQL을 먼저 적용해줘.`);
+        if (inventoryInsertError) return showToast(`${inventoryInsertError.message}\n\n강화석 인벤토리 SQL을 먼저 적용해줘.`, "error");
       }
 
-      alert(`${item.title} 구매 완료! 마이룸에서 강화 시 자동으로 사용돼.`);
+      showToast(`${item.title} 구매 완료! 마이룸에서 강화 시 자동으로 사용돼.`, "success");
       fetchShop();
       return;
     }
@@ -7852,7 +7925,7 @@ const PointShopPage = ({ user, profile }: any) => {
     if (item.reward_type === "nickname_effect") {
       const nextPoint = Math.max(0, myPoint - Number(item.price || 0));
       const { error: pointError } = await client.from("profiles").update({ points: nextPoint }).eq("id", user.id);
-      if (pointError) return alert(pointError.message);
+      if (pointError) return showToast(pointError.message, "error");
 
       const { data: existingRow, error: inventoryReadError } = await client
         .from("user_owned_nickname_effects")
@@ -7861,7 +7934,7 @@ const PointShopPage = ({ user, profile }: any) => {
         .eq("shop_item_id", item.id)
         .maybeSingle();
 
-      if (inventoryReadError) return alert(`${inventoryReadError.message}\n\n닉네임 이펙트 SQL을 먼저 적용해줘.`);
+      if (inventoryReadError) return showToast(`${inventoryReadError.message}\n\n닉네임 이펙트 SQL을 먼저 적용해줘.`, "error");
 
       if (existingRow?.id) {
         const { error: inventoryUpdateError } = await client
@@ -7870,7 +7943,7 @@ const PointShopPage = ({ user, profile }: any) => {
           .eq("id", existingRow.id)
           .eq("user_id", user.id);
 
-        if (inventoryUpdateError) return alert(inventoryUpdateError.message);
+        if (inventoryUpdateError) return showToast(inventoryUpdateError.message, "error");
       } else {
         const { error: inventoryInsertError } = await client.from("user_owned_nickname_effects").insert({
           user_id: user.id,
@@ -7883,10 +7956,10 @@ const PointShopPage = ({ user, profile }: any) => {
           nickname_glow_color: item.nickname_glow_color || null,
         });
 
-        if (inventoryInsertError) return alert(`${inventoryInsertError.message}\n\n닉네임 이펙트 SQL을 먼저 적용해줘.`);
+        if (inventoryInsertError) return showToast(`${inventoryInsertError.message}\n\n닉네임 이펙트 SQL을 먼저 적용해줘.`, "error");
       }
 
-      alert(`${item.title} 구매 완료! 마이룸에서 바로 적용할 수 있어.`);
+      showToast(`${item.title} 구매 완료! 마이룸에서 바로 적용할 수 있어.`, "success");
       fetchShop();
       return;
     }
@@ -7896,17 +7969,17 @@ const PointShopPage = ({ user, profile }: any) => {
       p_item_id: item.id,
     });
 
-    if (error) return alert(error.message);
-    alert(item.reward_type === "badge" ? "뱃지를 구매했어. 이제 마이룸에서 캐릭터에게 착용할 수 있어!" : "구매 요청 완료");
+    if (error) return showToast(error.message, "error");
+    showToast(item.reward_type === "badge" ? "뱃지를 구매했어. 이제 마이룸에서 캐릭터에게 착용할 수 있어!" : "구매 요청 완료");
     fetchShop();
   };
 
   const drawWeaponGacha = async (product: any, drawCount = 1) => {
-    if (!user) return alert("로그인 후 사용 가능합니다.");
-    if (!isWeaponGachaAvailable(product)) return alert("지금은 판매 시간이 아니야.");
+    if (!user) return showToast("로그인 후 사용 가능합니다.", "error");
+    if (!isWeaponGachaAvailable(product)) return showToast("지금은 판매 시간이 아니야.");
 
     const totalCost = Number(product.price || 0) * drawCount;
-    if (myPoint < totalCost) return alert("포인트가 부족합니다.");
+    if (myPoint < totalCost) return showToast("포인트가 부족합니다.");
 
     const confirmText =
       drawCount === 10
@@ -7927,7 +8000,7 @@ const PointShopPage = ({ user, profile }: any) => {
     setDrawingProductId(null);
 
     if (error) {
-      alert(error.message);
+      showToast(error.message, "error");
       return;
     }
 
@@ -8446,7 +8519,7 @@ const AdminPointShopManager = () => {
   };
 
   const createItem = async () => {
-    if (!title.trim() || !price) return alert("상품명과 가격을 입력하세요.");
+    if (!title.trim() || !price) return showToast("상품명과 가격을 입력하세요.");
 
     const basePayload: Record<string, any> = {
       title,
@@ -8485,13 +8558,13 @@ const AdminPointShopManager = () => {
       error = retry.error;
     }
 
-    if (error) return alert(`상품 생성 실패: ${error.message}`);
+    if (error) return showToast(`상품 생성 실패: ${error.message}`, "error");
     resetItemForm();
     fetchItems();
   };
 
   const createWeaponPart = async () => {
-    if (!weaponName.trim()) return alert("무기 이름을 입력하세요.");
+    if (!weaponName.trim()) return showToast("무기 이름을 입력하세요.");
     const { error } = await supabase.from("weapon_parts").insert({
       name: weaponName,
       description: weaponDescription,
@@ -8500,7 +8573,7 @@ const AdminPointShopManager = () => {
       is_active: true,
     });
 
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
 
     setWeaponName("");
     setWeaponDescription("");
@@ -8535,17 +8608,17 @@ const AdminPointShopManager = () => {
   };
 
   const createGachaProduct = async () => {
-    if (!gachaTitle.trim() || !gachaPrice) return alert("뽑기 이름과 가격을 입력하세요.");
-    if (selectedWeaponIds.length === 0) return alert("뽑기 보상으로 들어갈 무기를 하나 이상 선택하세요.");
+    if (!gachaTitle.trim() || !gachaPrice) return showToast("뽑기 이름과 가격을 입력하세요.");
+    if (selectedWeaponIds.length === 0) return showToast("뽑기 보상으로 들어갈 무기를 하나 이상 선택하세요.");
 
     const invalidWeapon = selectedWeaponIds.find((weaponId) => getProbabilityNumber(gachaProbabilityMap[weaponId]) <= 0);
     if (invalidWeapon) {
       const invalidMeta = weaponParts.find((item: any) => String(item.id) === String(invalidWeapon));
-      return alert(`${invalidMeta?.name || "선택한 무기"}의 확률을 0보다 크게 입력해줘.`);
+      return showToast(`${invalidMeta?.name || "선택한 무기"}의 확률을 0보다 크게 입력해줘.`);
     }
 
     if (!isProbabilityValid) {
-      return alert(`확률 총합이 100%가 되어야 해. 현재 총합은 ${formatProbabilityText(totalProbability)}야.`);
+      return showToast(`확률 총합이 100%가 되어야 해. 현재 총합은 ${formatProbabilityText(totalProbability)}야.`);
     }
 
     const client = getSupabaseOrThrow();
@@ -8566,7 +8639,7 @@ const AdminPointShopManager = () => {
       .select("*")
       .single();
 
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
 
     const rewardRows = selectedWeaponIds.map((weaponId) => {
       const probability = getProbabilityNumber(gachaProbabilityMap[weaponId]);
@@ -8580,7 +8653,7 @@ const AdminPointShopManager = () => {
     });
 
     const { error: rewardError } = await client.from("weapon_gacha_reward_items").insert(rewardRows);
-    if (rewardError) return alert(rewardError.message);
+    if (rewardError) return showToast(rewardError.message, "error");
 
     setGachaTitle("");
     setGachaDescription("");
@@ -8597,20 +8670,20 @@ const AdminPointShopManager = () => {
 
   const toggleActive = async (item: any) => {
     const { error } = await supabase.from("point_shop_items").update({ is_active: !item.is_active }).eq("id", item.id);
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
     fetchItems();
   };
 
   const deleteItem = async (itemId: string) => {
     if (!confirm("상품을 완전히 삭제할까요?")) return;
     const { error } = await supabase.from("point_shop_items").delete().eq("id", itemId);
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
     fetchItems();
   };
 
   const toggleGachaActive = async (item: any) => {
     const { error } = await supabase.from("weapon_gacha_products").update({ is_active: !item.is_active }).eq("id", item.id);
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
     fetchGachaProducts();
   };
 
@@ -8619,14 +8692,14 @@ const AdminPointShopManager = () => {
     const client = getSupabaseOrThrow();
     await client.from("weapon_gacha_reward_items").delete().eq("product_id", itemId);
     const { error } = await client.from("weapon_gacha_products").delete().eq("id", itemId);
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
     fetchGachaProducts();
   };
 
   const deleteWeaponPart = async (weaponId: string) => {
     if (!confirm("이 무기 파츠를 삭제할까요?")) return;
     const { error } = await supabase.from("weapon_parts").delete().eq("id", weaponId);
-    if (error) return alert(error.message);
+    if (error) return showToast(error.message, "error");
     fetchWeaponParts();
     fetchGachaProducts();
   };
