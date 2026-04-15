@@ -2926,102 +2926,175 @@ const CreateRaidModal = ({
 
   return (
     <ModalFrame onClose={onClose}>
-      <div className="w-full max-w-md space-y-4 rounded-[2rem] border border-white/10 bg-[#10131f] p-8 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.3em] text-sky-300 font-semibold mb-2">
-              Create Schedule
+      <div className="relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/92 shadow-[0_28px_90px_rgba(2,6,23,0.56)] backdrop-blur-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.18),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_46%)]" />
+        <div className="relative border-b border-white/10 px-6 py-5 md:px-7">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">
+                Create Schedule
+              </div>
+              <h3 className="text-2xl font-semibold text-white">{date}</h3>
+              <p className="mt-2 text-sm text-slate-400">
+                일정 유형과 시간을 설정하고 바로 캘린더에 추가할 수 있어.
+              </p>
             </div>
-            <h3 className="text-2xl font-semibold">{date}</h3>
-          </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white">
-            <X size={22} />
-          </button>
-        </div>
-
-        <select
-          value={form.raid_name}
-          onChange={(e) => setForm({ ...form, raid_name: e.target.value })}
-          className="w-full p-4 bg-black border border-white/10 rounded-2xl"
-        >
-          <option value="">레이드 선택</option>
-          {raidList.map((raid) => (
-            <option key={raid.id} value={raid.name}>
-              {raid.name}
-            </option>
-          ))}
-        </select>
-
-        <div className="grid grid-cols-2 gap-3">
-          <select
-            value={form.type}
-            onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-            className="w-full p-4 bg-black border border-white/10 rounded-2xl"
-          >
-            {CONTENT_MODE_OPTIONS.map((mode) => (
-              <option key={mode} value={mode}>
-                {mode === "raid" ? "레이드" : "영화 · 애니 시청"}
-              </option>
-            ))}
-          </select>
-
-          <input
-            type="time"
-            value={form.raid_time}
-            onChange={(e) => setForm({ ...form, raid_time: e.target.value })}
-            className="w-full p-4 bg-black border border-white/10 rounded-2xl"
-          />
-        </div>
-
-        {form.type === "raid" && (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              <select
-                value={form.raid_type}
-                onChange={(e) => setForm({ ...form, raid_type: e.target.value })}
-                className="w-full p-4 bg-black border border-white/10 rounded-2xl"
-              >
-                {RAID_TYPE_OPTIONS.map((raidType) => (
-                  <option key={raidType} value={raidType}>
-                    {raidType}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={form.difficulty}
-                onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
-                className="w-full p-4 bg-black border border-white/10 rounded-2xl"
-              >
-                {difficultyOptions.map((difficulty) => (
-                  <option key={difficulty} value={difficulty}>
-                    {difficulty}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <select
-              value={form.experience}
-              onChange={(e) => setForm({ ...form, experience: e.target.value })}
-              className="w-full p-4 bg-black border border-white/10 rounded-2xl"
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
             >
-              {RAID_EXPERIENCE_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative space-y-5 px-6 py-6 md:px-7 md:py-7">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                일정 날짜
+              </div>
+              <div className="mt-2 text-sm font-semibold text-white">{date}</div>
+            </div>
+            <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                일정 상태
+              </div>
+              <div className="mt-2 text-sm font-semibold text-sky-200">Draft Ready</div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+              레이드 선택
+            </label>
+            <select
+              value={form.raid_name}
+              onChange={(e) => setForm({ ...form, raid_name: e.target.value })}
+              className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+            >
+              <option value="">레이드 선택</option>
+              {raidList.map((raid) => (
+                <option key={raid.id} value={raid.name}>
+                  {raid.name}
                 </option>
               ))}
             </select>
-          </>
-        )}
+          </div>
 
-        <button
-          onClick={save}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-blue-600 to-blue-600 py-4 rounded-2xl font-semibold hover:opacity-90 transition"
-        >
-          {loading ? "생성 중..." : "일정 생성"}
-        </button>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
+              <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                컨텐츠 유형
+              </label>
+              <select
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value as any })}
+                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+              >
+                {CONTENT_MODE_OPTIONS.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {mode === "raid" ? "레이드" : "영화 · 애니 시청"}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-3">
+              <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                시작 시간
+              </label>
+              <input
+                type="time"
+                value={form.raid_time}
+                onChange={(e) => setForm({ ...form, raid_time: e.target.value })}
+                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+              />
+            </div>
+          </div>
+
+          {form.type === "raid" && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3">
+                  <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                    레이드 인원
+                  </label>
+                  <select
+                    value={form.raid_type}
+                    onChange={(e) => setForm({ ...form, raid_type: e.target.value })}
+                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                  >
+                    {RAID_TYPE_OPTIONS.map((raidType) => (
+                      <option key={raidType} value={raidType}>
+                        {raidType}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                    난이도
+                  </label>
+                  <select
+                    value={form.difficulty}
+                    onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
+                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                  >
+                    {difficultyOptions.map((difficulty) => (
+                      <option key={difficulty} value={difficulty}>
+                        {difficulty}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                  숙련도
+                </label>
+                <select
+                  value={form.experience}
+                  onChange={(e) => setForm({ ...form, experience: e.target.value })}
+                  className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                >
+                  {RAID_EXPERIENCE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              Preview
+            </div>
+            <div className="mt-2 text-sm text-slate-300">
+              {form.raid_name || "레이드 미선택"} · {form.raid_time} · {form.type === "raid" ? `${form.raid_type} / ${form.difficulty} / ${form.experience}` : "시청형 일정"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <button
+              onClick={onClose}
+              className="rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
+            >
+              취소
+            </button>
+            <button
+              onClick={save}
+              disabled={loading}
+              className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110 disabled:opacity-60"
+            >
+              {loading ? "생성 중..." : "일정 생성"}
+            </button>
+          </div>
+        </div>
       </div>
     </ModalFrame>
   );
@@ -3071,31 +3144,34 @@ const RaidDetailModal = ({
 
   return (
     <ModalFrame onClose={onClose}>
-      <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c1020]/95 backdrop-blur-2xl shadow-[0_0_60px_rgba(99,102,241,0.16)]">
-        <div className={`p-6 md:p-8 border-b border-white/10 bg-gradient-to-r ${raid.type === "anime" ? "from-blue-950/60 to-blue-950/40" : "from-blue-950/60 to-blue-950/40"}`}>
+      <div className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.16),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_48%)]" />
+
+        <div className="relative border-b border-white/10 px-6 py-6 md:px-8 md:py-7">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className={`text-[10px] font-semibold uppercase tracking-[0.3em] mb-2 ${colors.badge}`}>
+            <div className="min-w-0">
+              <div className={`mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] ${colors.badge}`}>
                 {raid.type === "anime" ? "Watch Party" : "Raid Detail"}
               </div>
-              <h3 className="text-3xl font-semibold">{raid.raid_name}</h3>
-              <div className="flex flex-wrap gap-2 mt-3">
-                <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
+              <h3 className="truncate text-3xl font-semibold text-white">{raid.raid_name}</h3>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200">
                   {formatShortDate(raid.raid_date)}
                 </span>
-                <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
+                <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200">
                   {raid.raid_time}
                 </span>
                 {!isAnime && (
                   <>
-                    <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
+                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200">
                       {raid.raid_type}
                     </span>
-                    <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
+                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200">
                       {raid.difficulty}
                     </span>
                     {raid.experience && (
-                      <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
+                      <span className="rounded-full border border-blue-300/15 bg-blue-400/10 px-3 py-1.5 text-xs text-sky-200">
                         {raid.experience}
                       </span>
                     )}
@@ -3104,25 +3180,64 @@ const RaidDetailModal = ({
               </div>
             </div>
 
-            <button onClick={onClose} className="text-slate-500 hover:text-white">
-              <X size={24} />
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
+            >
+              <X size={18} />
             </button>
           </div>
         </div>
 
-        <div className="p-6 md:p-8">
-          <div className="grid md:grid-cols-3 gap-4 mb-6">
+        <div className="relative space-y-6 px-6 py-6 md:px-8 md:py-7">
+          <div className="grid gap-3 md:grid-cols-4">
             <SummaryChip icon={<Users size={14} />} label="총 인원" value={`${parts.length}/${capacity.maxParticipants}`} />
             <SummaryChip icon={<Swords size={14} />} label="딜러" value={isAnime ? "-" : `${dealers}/${capacity.dealerLimit}`} />
             <SummaryChip icon={<Shield size={14} />} label="서포터" value={isAnime ? "-" : `${supports}/${capacity.supportLimit}`} />
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md transition-all">
+              <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-300">
+                <Clock size={14} />
+                상태
+              </div>
+              <div className="text-2xl font-semibold text-white">{isFull ? "Full" : "Open"}</div>
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-black/30 p-4 md:p-5">
-            <div className="text-sm font-semibold mb-4">참가자 목록</div>
+          <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm font-semibold text-white">참가 현황</div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {isAnime ? "참가형 일정" : `딜러 ${dealers}/${capacity.dealerLimit} · 서포터 ${supports}/${capacity.supportLimit}`}
+                </div>
+              </div>
+              <div className={`rounded-full px-3 py-1 text-xs font-semibold ${isFull ? "bg-rose-400/12 text-rose-200" : "bg-emerald-400/12 text-emerald-200"}`}>
+                {isFull ? "모집 완료" : "참여 가능"}
+              </div>
+            </div>
 
-            <div className="space-y-3 max-h-[320px] overflow-y-auto">
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-sky-300"
+                style={{ width: `${Math.min(100, (parts.length / capacity.maxParticipants) * 100)}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm font-semibold text-white">참가자 목록</div>
+                <div className="mt-1 text-xs text-slate-400">현재 등록된 참가자 정보를 확인할 수 있어.</div>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                {parts.length} entries
+              </div>
+            </div>
+
+            <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
               {parts.length === 0 && (
-                <div className="text-slate-500 text-sm py-6 text-center">
+                <div className="rounded-[1.35rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-slate-500">
                   아직 참가자가 없습니다.
                 </div>
               )}
@@ -3138,28 +3253,28 @@ const RaidDetailModal = ({
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-3 mt-6">
+          <div className="grid gap-3 md:grid-cols-3">
             {user && !isFull && (
               <button
                 onClick={() => setShowJoin(true)}
-                className="flex-1 py-4 rounded-2xl font-semibold bg-gradient-to-r from-blue-600 to-blue-600 hover:opacity-90 transition"
+                className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
               >
-                ⚔️ 참여하기
+                참여하기
               </button>
             )}
 
             {profile?.role === "admin" && (
               <button
                 onClick={handleDelete}
-                className="flex-1 py-4 rounded-2xl font-semibold bg-red-600 hover:bg-red-700 transition"
+                className="rounded-[1.35rem] border border-rose-400/20 bg-rose-400/10 px-4 py-3.5 text-sm font-semibold text-rose-200 transition-all hover:bg-rose-400/16"
               >
-                🗑 일정 삭제
+                일정 삭제
               </button>
             )}
 
             <button
               onClick={onClose}
-              className="flex-1 py-4 rounded-2xl font-semibold bg-white/10 hover:bg-white/15 transition"
+              className="rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
             >
               닫기
             </button>
@@ -3416,87 +3531,119 @@ const JoinForm = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[220] p-4">
-      <div className="bg-[#111827] p-6 rounded-[2rem] w-full max-w-md space-y-4 border border-white/10 backdrop-blur-2xl shadow-[0_0_40px_rgba(59,130,246,0.10)]">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-white font-semibold text-xl">레이드 참여</div>
-            <div className="text-xs text-slate-400 mt-1">마이룸 캐릭터를 선택하면 정보가 자동 입력돼.</div>
+    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
+
+        <div className="relative border-b border-white/10 px-6 py-5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">
+                Join Schedule
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-white">레이드 참여</div>
+              <div className="mt-2 text-sm text-slate-400">
+                마이룸 캐릭터를 선택하면 정보가 자동으로 입력돼.
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
+            >
+              <X size={18} />
+            </button>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white">
-            <X size={20} />
-          </button>
         </div>
 
-        <div className="space-y-3 text-left w-full">
-          <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">
-            내 캐릭터 선택
-          </label>
-          <select
-            value={selectedCharacterId}
-            onChange={(e) => handleCharacterChange(e.target.value)}
-            disabled={characterLoading || myCharacters.length === 0}
-            className="w-full p-4 bg-black border border-white/10 rounded-2xl text-white disabled:opacity-60"
-          >
-            {characterLoading && <option value="">마이룸 캐릭터 불러오는 중...</option>}
-            {!characterLoading && myCharacters.length === 0 && (
-              <option value="">등록된 캐릭터 없음</option>
-            )}
-            {!characterLoading &&
-              myCharacters.map((character: any) => (
-                <option key={character.id} value={String(character.id)}>
-                  {character.character_name} · {character.class_name} · {character.item_level || 0}
-                </option>
-              ))}
-          </select>
-        </div>
-
-        {myCharacters.length > 0 && selectedCharacterId && (
-          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm">
-            <div className="font-semibold text-sky-200">
-              {nickname} · {playerClass}
+        <div className="relative space-y-5 px-6 py-6">
+          <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-4 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              대상 일정
             </div>
-            <div className="mt-1 text-xs text-sky-100/80">
-              아이템 레벨 {level || "-"} · 역할 {raid.type === "anime" ? "참가" : role}
+            <div className="mt-2 text-sm font-semibold text-white">{raid.raid_name}</div>
+            <div className="mt-1 text-xs text-slate-400">
+              {formatShortDate(raid.raid_date)} · {raid.raid_time}
             </div>
           </div>
-        )}
 
-        <AdminInput label="닉네임" value={nickname} onChange={setNickname} />
-        <AdminInput label="아이템 레벨" value={level} onChange={setLevel} />
-        <AdminInput label="클래스" value={playerClass} onChange={setPlayerClass} />
-
-        {raid.type !== "anime" && (
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="w-full p-4 bg-black border border-white/10 rounded-2xl"
-          >
-            <option value="딜러">딜러</option>
-            <option value="서포터">서포터</option>
-          </select>
-        )}
-
-        {myCharacters.length === 0 && !characterLoading && (
-          <div className="rounded-2xl border border-dashed border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            마이룸에 등록된 캐릭터가 없어. 마이룸에서 캐릭터를 먼저 만들어줘.
+          <div className="space-y-3 text-left">
+            <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+              내 캐릭터 선택
+            </label>
+            <select
+              value={selectedCharacterId}
+              onChange={(e) => handleCharacterChange(e.target.value)}
+              disabled={characterLoading || myCharacters.length === 0}
+              className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04] disabled:opacity-60"
+            >
+              {characterLoading && <option value="">마이룸 캐릭터 불러오는 중...</option>}
+              {!characterLoading && myCharacters.length === 0 && (
+                <option value="">등록된 캐릭터 없음</option>
+              )}
+              {!characterLoading &&
+                myCharacters.map((character: any) => (
+                  <option key={character.id} value={String(character.id)}>
+                    {character.character_name} · {character.class_name} · {character.item_level || 0}
+                  </option>
+                ))}
+            </select>
           </div>
-        )}
 
-        <div className="grid grid-cols-2 gap-3 pt-2">
-          <button
-            onClick={handleJoin}
-            disabled={saving || characterLoading || myCharacters.length === 0}
-            className="w-full bg-green-600 py-3 rounded-2xl font-semibold disabled:opacity-50"
-          >
-            {saving ? "참가 중..." : "참가"}
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full bg-slate-700 py-3 rounded-2xl font-semibold"
-          >
-            취소
-          </button>
+          {myCharacters.length > 0 && selectedCharacterId && (
+            <div className="rounded-[1.5rem] border border-blue-300/15 bg-blue-400/10 px-4 py-4 text-sm">
+              <div className="font-semibold text-sky-100">
+                {nickname} · {playerClass}
+              </div>
+              <div className="mt-1 text-xs text-sky-100/80">
+                아이템 레벨 {level || "-"} · 역할 {raid.type === "anime" ? "참가" : role}
+              </div>
+            </div>
+          )}
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <AdminInput label="닉네임" value={nickname} onChange={setNickname} />
+            <AdminInput label="아이템 레벨" value={level} onChange={setLevel} />
+          </div>
+
+          <AdminInput label="클래스" value={playerClass} onChange={setPlayerClass} />
+
+          {raid.type !== "anime" && (
+            <div className="space-y-3">
+              <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+                역할 선택
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+              >
+                <option value="딜러">딜러</option>
+                <option value="서포터">서포터</option>
+              </select>
+            </div>
+          )}
+
+          {myCharacters.length === 0 && !characterLoading && (
+            <div className="rounded-[1.5rem] border border-dashed border-rose-400/30 bg-rose-400/10 px-4 py-4 text-sm text-rose-200">
+              마이룸에 등록된 캐릭터가 없어. 마이룸에서 캐릭터를 먼저 만들어줘.
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <button
+              onClick={onClose}
+              className="rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleJoin}
+              disabled={saving || characterLoading || myCharacters.length === 0}
+              className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110 disabled:opacity-60"
+            >
+              {saving ? "참가 중..." : "참가"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -3514,23 +3661,22 @@ const ModalFrame = ({
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/90 p-4 backdrop-blur-xl"
+    className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-[rgba(2,6,23,0.76)] p-4 backdrop-blur-xl"
     onClick={onClose}
   >
+    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(96,165,250,0.12),transparent_28%),radial-gradient(circle_at_bottom,rgba(59,130,246,0.08),transparent_24%)]" />
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.96 }}
       transition={{ duration: 0.18 }}
       onClick={(e) => e.stopPropagation()}
-      className="flex w-full items-center justify-center py-6"
+      className="relative flex w-full items-center justify-center py-6"
     >
       {children}
     </motion.div>
   </motion.div>
 );
-
-
 
 const PointEconomyManager = ({ settings, setSettings }: any) => {
   const pointSettings = normalizePointRateSettings(settings?.point_rate_settings);
