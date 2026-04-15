@@ -1814,6 +1814,9 @@ const Hero = ({ settings, posts }: any) => {
 };
 
 const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
+
   const navItems = [
     { id: "home", label: "홈" },
     { id: "posts", label: "게시판" },
@@ -1824,39 +1827,191 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
     ...(user ? [] : [{ id: "login", label: "로그인" }, { id: "signup", label: "회원가입" }]),
   ];
 
-  return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-950/70 backdrop-blur-2xl border-b border-white/10 shadow-[0_8px_30px_rgba(2,6,23,0.28)]">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div className="w-10" />
+  const displayName =
+    profile?.nickname ||
+    profile?.display_name ||
+    profile?.character_name ||
+    profile?.email ||
+    (user?.email ? String(user.email).split("@")[0] : "Guest");
 
-        <div className="hidden md:flex gap-8 items-center">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`text-xs font-semibold tracking-[0.2em] transition-all uppercase ${
-                activeTab === item.id
-                  ? "text-sky-400"
-                  : "text-slate-500 hover:text-white"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-          {user && (
-            <button
-              onClick={onLogout}
-              className="text-xs font-semibold text-slate-500 hover:text-red-400 uppercase tracking-widest transition-colors"
-            >
-              Logout
-            </button>
+  const roleLabel = profile?.role === "admin" ? "Administrator" : user ? "Guild Member" : "Guest";
+  const avatarSeed = String(displayName || "G").trim();
+  const avatarText = avatarSeed.slice(0, 1).toUpperCase();
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleMove = (tab: string) => {
+    setActiveTab(tab);
+    setIsProfileMenuOpen(false);
+  };
+
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-slate-950/72 backdrop-blur-2xl shadow-[0_14px_40px_rgba(2,6,23,0.34)]">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => handleMove("home")}
+            className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.07]"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-300/15 bg-blue-400/10 text-sky-200 shadow-[0_8px_24px_rgba(59,130,246,0.12)]">
+              <Shield size={16} />
+            </div>
+            <div className="hidden text-left sm:block">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sky-300/80">
+                Guild Service
+              </div>
+              <div className="text-sm font-semibold text-white">
+                {profile?.role === "admin" ? "Control Center" : "Guild Workspace"}
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <div className="hidden items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 backdrop-blur-md md:flex">
+          {navItems.map((item) => {
+            const active = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleMove(item.id)}
+                className={`relative rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+                  active
+                    ? "bg-blue-500/12 text-sky-200 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.12)]"
+                    : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                }`}
+              >
+                <span className="relative z-10">{item.label}</span>
+                {active && (
+                  <span className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full bg-gradient-to-r from-blue-400 to-sky-300" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-3">
+          {user ? (
+            <>
+              <button
+                className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/20 hover:bg-blue-400/[0.07] hover:text-white md:flex"
+                title="알림"
+              >
+                <Bell size={16} />
+              </button>
+
+              <div className="relative" ref={profileMenuRef}>
+                <button
+                  onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.07]"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-sm font-semibold text-sky-100 shadow-[0_8px_24px_rgba(59,130,246,0.12)]">
+                    {avatarText}
+                  </div>
+                  <div className="hidden text-left sm:block">
+                    <div className="max-w-[140px] truncate text-sm font-semibold text-white">
+                      {displayName}
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      {roleLabel}
+                    </div>
+                  </div>
+                  <ChevronRight
+                    size={16}
+                    className={`text-slate-500 transition-transform ${
+                      isProfileMenuOpen ? "rotate-90 text-sky-300" : ""
+                    }`}
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {isProfileMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                      transition={{ duration: 0.16 }}
+                      className="absolute right-0 top-[calc(100%+12px)] z-[80] w-64 overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.5)] backdrop-blur-2xl"
+                    >
+                      <div className="rounded-[1.2rem] border border-white/8 bg-white/[0.04] p-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-300">
+                          Signed In
+                        </div>
+                        <div className="mt-2 text-base font-semibold text-white">{displayName}</div>
+                        <div className="mt-1 text-xs text-slate-400">{roleLabel}</div>
+                      </div>
+
+                      <div className="mt-2 space-y-1">
+                        <button
+                          onClick={() => handleMove("myroom")}
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300 transition-all hover:bg-white/[0.05] hover:text-white"
+                        >
+                          <span>마이룸 이동</span>
+                          <ChevronRight size={15} />
+                        </button>
+
+                        <button
+                          onClick={() => handleMove("home")}
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300 transition-all hover:bg-white/[0.05] hover:text-white"
+                        >
+                          <span>홈으로 이동</span>
+                          <ChevronRight size={15} />
+                        </button>
+
+                        {profile?.role === "admin" && (
+                          <button
+                            onClick={() => handleMove("admin")}
+                            className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300 transition-all hover:bg-white/[0.05] hover:text-white"
+                          >
+                            <span>관리자 패널</span>
+                            <ChevronRight size={15} />
+                          </button>
+                        )}
+
+                        <div className="my-1 h-px bg-white/8" />
+
+                        <button
+                          onClick={onLogout}
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-rose-300 transition-all hover:bg-rose-400/10 hover:text-rose-200"
+                        >
+                          <span>로그아웃</span>
+                          <ChevronRight size={15} />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleMove("login")}
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-slate-300 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.07] hover:text-white"
+              >
+                로그인
+              </button>
+              <button
+                onClick={() => handleMove("signup")}
+                className="rounded-2xl border border-blue-300/15 bg-blue-500/12 px-4 py-2.5 text-sm font-semibold text-sky-200 transition-all hover:bg-blue-500/20"
+              >
+                회원가입
+              </button>
+            </div>
           )}
         </div>
       </div>
     </nav>
   );
 };
-
 
 const ImageUploader = ({
   onUpload,
