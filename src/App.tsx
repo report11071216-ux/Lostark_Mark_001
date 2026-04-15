@@ -1466,6 +1466,7 @@ const fetchInitialData = async () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
+                <Hero settings={settings} posts={posts} />
                 <HomeNoticeSection user={user} profile={profile} />
                 <RaidCalendar user={user} profile={profile} />
 
@@ -1603,9 +1604,81 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-const Hero = ({ settings }: any) => {
+const Hero = ({ settings, posts }: any) => {
+  const [heroStats, setHeroStats] = useState({
+    memberCount: 0,
+    upcomingRaids: 0,
+    nextRaidLabel: "예정된 일정 없음",
+    nextRaidDate: "",
+  });
+
+  const noticeCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_notice).length : 0;
+  const pinnedCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_pinned).length : 0;
+  const latestNotice = Array.isArray(posts) ? posts.find((post: any) => post?.is_notice) : null;
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchHeroStats = async () => {
+      if (!supabase) return;
+
+      try {
+        const today = getTodayKey();
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        const nextWeekKey = formatDate(nextWeek.getFullYear(), nextWeek.getMonth(), nextWeek.getDate());
+
+        const [membersRes, upcomingRes, nextRaidRes] = await Promise.allSettled([
+          supabase.from("profiles").select("id", { count: "exact", head: true }),
+          supabase
+            .from("raid_schedules")
+            .select("id", { count: "exact", head: true })
+            .gte("raid_date", today)
+            .lte("raid_date", nextWeekKey),
+          supabase
+            .from("raid_schedules")
+            .select("raid_name, raid_date, raid_time")
+            .gte("raid_date", today)
+            .order("raid_date", { ascending: true })
+            .order("raid_time", { ascending: true })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+
+        if (!mounted) return;
+
+        const nextStats = {
+          memberCount:
+            membersRes.status === "fulfilled" ? Number(membersRes.value.count || 0) : 0,
+          upcomingRaids:
+            upcomingRes.status === "fulfilled" ? Number(upcomingRes.value.count || 0) : 0,
+          nextRaidLabel: "예정된 일정 없음",
+          nextRaidDate: "",
+        };
+
+        if (nextRaidRes.status === "fulfilled" && nextRaidRes.value.data) {
+          const nextRaid = nextRaidRes.value.data as any;
+          nextStats.nextRaidLabel = nextRaid?.raid_name || "다음 레이드";
+          nextStats.nextRaidDate = [formatShortDate(nextRaid?.raid_date), nextRaid?.raid_time]
+            .filter(Boolean)
+            .join(" · ");
+        }
+
+        setHeroStats(nextStats);
+      } catch (error) {
+        console.error("Hero stats fetch error:", error);
+      }
+    };
+
+    void fetchHeroStats();
+
+    return () => {
+      mounted = false;
+    };
+  }, [posts]);
+
   return (
-    <section className="relative h-[58vh] md:h-[72vh] flex items-center overflow-hidden">
+    <section className="relative h-[62vh] md:h-[72vh] flex items-center overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.24),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.18),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.16),rgba(8,15,32,0.88))]" />
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-12 px-6 md:grid-cols-[minmax(0,1fr)_420px]">
@@ -1627,6 +1700,27 @@ const Hero = ({ settings }: any) => {
           <p className="mt-5 max-w-2xl text-sm font-medium leading-7 text-slate-300 md:text-lg">
             {settings?.guild_description}
           </p>
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 md:justify-start">
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                공지
+              </div>
+              <div className="mt-1 text-xl font-semibold text-white">{noticeCount}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                7일 일정
+              </div>
+              <div className="mt-1 text-xl font-semibold text-white">{heroStats.upcomingRaids}</div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                길드원
+              </div>
+              <div className="mt-1 text-xl font-semibold text-white">{heroStats.memberCount}</div>
+            </div>
+          </div>
         </motion.div>
 
         <motion.div
@@ -1647,51 +1741,66 @@ const Hero = ({ settings }: any) => {
                 </div>
               </div>
               <div className="rounded-2xl border border-blue-300/15 bg-blue-400/10 px-3 py-2 text-xs font-semibold text-blue-100">
-                Active
+                Live
               </div>
             </div>
 
             <div className="mt-6 grid grid-cols-3 gap-3">
               <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                  Status
+                  공지
                 </div>
-                <div className="mt-2 text-lg font-semibold text-white">Online</div>
+                <div className="mt-2 text-lg font-semibold text-white">{noticeCount}</div>
               </div>
               <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                  Schedule
+                  고정 공지
                 </div>
-                <div className="mt-2 text-lg font-semibold text-white">Ready</div>
+                <div className="mt-2 text-lg font-semibold text-white">{pinnedCount}</div>
               </div>
               <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                  Members
+                  길드원
                 </div>
-                <div className="mt-2 text-lg font-semibold text-white">Guild</div>
+                <div className="mt-2 text-lg font-semibold text-white">{heroStats.memberCount}</div>
               </div>
             </div>
 
             <div className="mt-6 space-y-4">
               <div className="rounded-2xl border border-white/8 bg-slate-950/30 p-4">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-slate-300">Weekly Progress</span>
-                  <span className="font-semibold text-blue-200">82%</span>
+                  <span className="font-medium text-slate-300">다음 7일 레이드 일정</span>
+                  <span className="font-semibold text-blue-200">{heroStats.upcomingRaids}건</span>
                 </div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
-                  <div className="h-full w-[82%] rounded-full bg-gradient-to-r from-blue-400 to-sky-300" />
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-blue-400 to-sky-300 transition-all"
+                    style={{ width: `${Math.min(100, Math.max(12, heroStats.upcomingRaids * 16))}%` }}
+                  />
                 </div>
               </div>
 
               <div className="rounded-2xl border border-white/8 bg-slate-950/30 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm font-medium text-slate-200">Raid Scheduling</div>
-                    <div className="mt-1 text-xs text-slate-400">공지, 일정, 길드 운영을 한 곳에서 관리</div>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-slate-200">다음 레이드</div>
+                    <div className="mt-1 truncate text-base font-semibold text-white">
+                      {heroStats.nextRaidLabel}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      {heroStats.nextRaidDate || "등록된 일정이 아직 없습니다."}
+                    </div>
                   </div>
                   <div className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-200">
-                    Stable
+                    Upcoming
                   </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/8 bg-slate-950/30 p-4">
+                <div className="text-sm font-medium text-slate-200">최근 공지</div>
+                <div className="mt-2 line-clamp-2 text-sm text-slate-300">
+                  {latestNotice?.title || "등록된 공지사항이 없습니다."}
                 </div>
               </div>
             </div>
