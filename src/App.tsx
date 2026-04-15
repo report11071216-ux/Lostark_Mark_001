@@ -2385,6 +2385,8 @@ const RaidCalendar = ({ user, profile }: any) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedRaid, setSelectedRaid] = useState<any>(null);
   const [calendarLoading, setCalendarLoading] = useState(true);
+  const [scheduleView, setScheduleView] = useState<"all" | "mine">("all");
+  const [myCharacterNames, setMyCharacterNames] = useState<string[]>([]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -2396,6 +2398,51 @@ const RaidCalendar = ({ user, profile }: any) => {
   useEffect(() => {
     fetchCalendarData();
   }, [year, month]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchMyCharacters = async () => {
+      if (!user?.id || !supabase) {
+        if (mounted) {
+          setMyCharacterNames([]);
+          setScheduleView("all");
+        }
+        return;
+      }
+
+      try {
+        const client = getSupabaseOrThrow();
+        const { data, error } = await client
+          .from("guild_members")
+          .select("character_name")
+          .or(`user_id.eq.${user.id},owner_id.eq.${user.id}`);
+
+        if (error) {
+          console.error("fetchMyCharacters in RaidCalendar error:", error);
+          if (mounted) setMyCharacterNames([]);
+          return;
+        }
+
+        if (!mounted) return;
+
+        setMyCharacterNames(
+          (data || [])
+            .map((item: any) => String(item?.character_name || "").trim())
+            .filter(Boolean)
+        );
+      } catch (error) {
+        console.error("fetchMyCharacters in RaidCalendar unexpected error:", error);
+        if (mounted) setMyCharacterNames([]);
+      }
+    };
+
+    fetchMyCharacters();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id]);
 
   const fetchCalendarData = async () => {
     setCalendarLoading(true);
@@ -2446,21 +2493,69 @@ const RaidCalendar = ({ user, profile }: any) => {
     }
   };
 
+  const normalizedMyCharacterNames = useMemo(
+    () =>
+      myCharacterNames
+        .map((name) => String(name || "").trim())
+        .filter(Boolean),
+    [myCharacterNames]
+  );
+
+  const myRaidIds = useMemo(() => {
+    if (normalizedMyCharacterNames.length === 0) return new Set<string>();
+
+    const myNameSet = new Set(normalizedMyCharacterNames);
+    return new Set(
+      participants
+        .filter((participant: any) => myNameSet.has(String(participant?.character_name || "").trim()))
+        .map((participant: any) => String(participant.schedule_id))
+    );
+  }, [participants, normalizedMyCharacterNames]);
+
+  const visibleRaids = useMemo(() => {
+    if (scheduleView !== "mine") return raids;
+    return raids.filter((raid: any) => myRaidIds.has(String(raid.id)));
+  }, [raids, scheduleView, myRaidIds]);
+
+  const visibleRaidIdSet = useMemo(
+    () => new Set(visibleRaids.map((raid: any) => String(raid.id))),
+    [visibleRaids]
+  );
+
+  const visibleParticipants = useMemo(
+    () => participants.filter((participant: any) => visibleRaidIdSet.has(String(participant.schedule_id))),
+    [participants, visibleRaidIdSet]
+  );
+
+  const mineStats = useMemo(() => {
+    const upcomingMineCount = visibleRaids.length;
+    const joinedCharacters = new Set(
+      visibleParticipants
+        .map((participant: any) => String(participant?.character_name || "").trim())
+        .filter((name) => normalizedMyCharacterNames.includes(name))
+    ).size;
+
+    return {
+      upcomingMineCount,
+      joinedCharacters,
+    };
+  }, [visibleRaids, visibleParticipants, normalizedMyCharacterNames]);
+
   const monthStats = useMemo(() => {
-    const totalRaids = raids.length;
-    const totalParticipants = participants.length;
-    const fullCount = raids.filter((raid) => {
-      const raidParticipants = participants.filter((p) => p.schedule_id === raid.id);
+    const totalRaids = visibleRaids.length;
+    const totalParticipants = visibleParticipants.length;
+    const fullCount = visibleRaids.filter((raid) => {
+      const raidParticipants = visibleParticipants.filter((p) => p.schedule_id === raid.id);
       return raidParticipants.length >= getCapacity(raid).maxParticipants;
     }).length;
 
     return { totalRaids, totalParticipants, fullCount };
-  }, [raids, participants]);
+  }, [visibleRaids, visibleParticipants]);
 
   const monthlyCharacterStats = useMemo(() => {
     const map = new Map<string, { nickname: string; count: number; raidCount: number }>();
 
-    participants.forEach((participant: any) => {
+    visibleParticipants.forEach((participant: any) => {
       const nickname = (participant.character_name || "이름없음").trim();
       const existing = map.get(nickname) || {
         nickname,
@@ -2472,8 +2567,8 @@ const RaidCalendar = ({ user, profile }: any) => {
       map.set(nickname, existing);
     });
 
-    raids.forEach((raid) => {
-      const raidParticipants = participants.filter((p: any) => p.schedule_id === raid.id);
+    visibleRaids.forEach((raid) => {
+      const raidParticipants = visibleParticipants.filter((p: any) => p.schedule_id === raid.id);
       const uniqueNicknames = Array.from(
         new Set(raidParticipants.map((p: any) => (p.character_name || "이름없음").trim()))
       );
@@ -2490,16 +2585,43 @@ const RaidCalendar = ({ user, profile }: any) => {
       if (b.count !== a.count) return b.count - a.count;
       return a.nickname.localeCompare(b.nickname, "ko");
     });
-  }, [participants, raids]);
+  }, [visibleParticipants, visibleRaids]);
 
   return (
     <section className="max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-white/5">
       <div className="grid lg:grid-cols-[1.2fr,0.8fr] gap-6 mb-8">
         <SectionPanel
           title="Raid Calendar"
-          description="월별 레이드 일정."
+          description={scheduleView === "mine" ? "내 캐릭터가 참여한 일정만 확인." : "월별 레이드 일정."}
           action={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 backdrop-blur-md">
+                <button
+                  onClick={() => setScheduleView("all")}
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+                    scheduleView === "all"
+                      ? "bg-blue-500/12 text-sky-200 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.12)]"
+                      : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                  }`}
+                >
+                  전체 일정
+                </button>
+                <button
+                  onClick={() => {
+                    if (!user) return;
+                    setScheduleView("mine");
+                  }}
+                  disabled={!user}
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
+                    scheduleView === "mine"
+                      ? "bg-blue-500/12 text-sky-200 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.12)]"
+                      : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                  } disabled:cursor-not-allowed disabled:opacity-45`}
+                >
+                  내 일정
+                </button>
+              </div>
+
               <button
                 onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
                 className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/30 hover:bg-blue-400/10 hover:text-white hover:shadow-[0_12px_30px_rgba(59,130,246,0.14)]"
@@ -2515,55 +2637,80 @@ const RaidCalendar = ({ user, profile }: any) => {
             </div>
           }
         >
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-300">
-                Monthly View
+                {scheduleView === "mine" ? "My Schedule View" : "Monthly View"}
               </div>
               <h2 className="text-4xl font-semibold tracking-tight">{formatMonthLabel(year, month)}</h2>
+              {!user && (
+                <div className="mt-2 text-sm text-slate-500">
+                  로그인하면 내 캐릭터가 참가한 일정만 따로 볼 수 있어.
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-3 w-full md:w-auto">
-              <SummaryChip icon={<CalendarDays size={14} />} label="일정" value={monthStats.totalRaids} />
-              <SummaryChip icon={<Users size={14} />} label="참여" value={monthStats.totalParticipants} />
+              <SummaryChip icon={<CalendarDays size={14} />} label={scheduleView === "mine" ? "내 일정" : "일정"} value={monthStats.totalRaids} />
+              <SummaryChip icon={<Users size={14} />} label={scheduleView === "mine" ? "내 참가" : "참여"} value={scheduleView === "mine" ? mineStats.joinedCharacters : monthStats.totalParticipants} />
               <SummaryChip icon={<Trophy size={14} />} label="마감" value={monthStats.fullCount} />
             </div>
           </div>
         </SectionPanel>
 
         <SectionPanel
-          title="월별 참여 랭킹"
-          description="이번 달 기준 캐릭터 참가횟수 확인."
+          title={scheduleView === "mine" ? "내 일정 참여 현황" : "월별 참여 랭킹"}
+          description={scheduleView === "mine" ? "내 캐릭터가 참가한 일정 기준으로 확인." : "이번 달 기준 캐릭터 참가횟수 확인."}
         >
-          <div className="space-y-3">
-            {monthlyCharacterStats.length === 0 && (
-              <div className="rounded-[1.75rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-7 text-center text-sm text-slate-500">
-                아직 이번 달 참여 데이터가 없습니다.
+          {scheduleView === "mine" ? (
+            <div className="space-y-3">
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">내 일정 수</div>
+                <div className="mt-2 text-2xl font-semibold text-white">{mineStats.upcomingMineCount}</div>
+                <div className="mt-1 text-xs text-slate-500">이번 달 내가 참가한 일정 개수</div>
               </div>
-            )}
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">참가 캐릭터</div>
+                <div className="mt-2 text-2xl font-semibold text-white">{mineStats.joinedCharacters}</div>
+                <div className="mt-1 text-xs text-slate-500">참가 기록이 있는 내 캐릭터 수</div>
+              </div>
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">보기 상태</div>
+                <div className="mt-2 text-base font-semibold text-sky-200">{user ? "로그인 사용자 기준 필터 적용" : "로그인 필요"}</div>
+                <div className="mt-1 text-xs text-slate-500">참가자 이름과 내 캐릭터 이름을 기준으로 필터링</div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {monthlyCharacterStats.length === 0 && (
+                <div className="rounded-[1.75rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-7 text-center text-sm text-slate-500">
+                  아직 이번 달 참여 데이터가 없습니다.
+                </div>
+              )}
 
-            {monthlyCharacterStats.slice(0, 6).map((item, index) => (
-              <div
-                key={item.nickname}
-                className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-sm font-semibold text-sky-200">
-                    #{index + 1}
+              {monthlyCharacterStats.slice(0, 6).map((item, index) => (
+                <div
+                  key={item.nickname}
+                  className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-sm font-semibold text-sky-200">
+                      #{index + 1}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold">{item.nickname}</div>
+                      <div className="text-xs text-slate-500">월간 레이드 참여 요약</div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="truncate font-semibold">{item.nickname}</div>
-                    <div className="text-xs text-slate-500">월간 레이드 참여 요약</div>
+
+                  <div className="shrink-0 text-right">
+                    <div className="text-lg font-semibold text-white">{item.raidCount}회</div>
+                    <div className="text-xs text-slate-500">등록 {item.count}건</div>
                   </div>
                 </div>
-
-                <div className="shrink-0 text-right">
-                  <div className="text-lg font-semibold text-white">{item.raidCount}회</div>
-                  <div className="text-xs text-slate-500">등록 {item.count}건</div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </SectionPanel>
       </div>
 
@@ -2587,11 +2734,11 @@ const RaidCalendar = ({ user, profile }: any) => {
 
             {days.map((day) => {
               const dateStr = formatDate(year, month, day);
-              const dayRaids = raids.filter((raid) => raid.raid_date === dateStr);
+              const dayRaids = visibleRaids.filter((raid) => raid.raid_date === dateStr);
               const today = new Date();
               const isToday = isSameDay(new Date(year, month, day), today);
               const dayParticipantCount = dayRaids.reduce((sum, raid) => {
-                return sum + participants.filter((p) => p.schedule_id === raid.id).length;
+                return sum + visibleParticipants.filter((p) => p.schedule_id === raid.id).length;
               }, 0);
 
               return (
@@ -2630,7 +2777,7 @@ const RaidCalendar = ({ user, profile }: any) => {
                         </div>
                       )}
 
-                      {profile?.role === "admin" && (
+                      {profile?.role === "admin" && scheduleView === "all" && (
                         <button
                           onClick={() => {
                             setSelectedDate(dateStr);
@@ -2658,7 +2805,7 @@ const RaidCalendar = ({ user, profile }: any) => {
                   <div className="space-y-2">
                     {dayRaids.length === 0 && (
                       <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-3 py-4 text-center text-[11px] font-medium text-slate-500">
-                        일정 없음
+                        {scheduleView === "mine" ? "내 일정 없음" : "일정 없음"}
                       </div>
                     )}
 
@@ -2666,7 +2813,7 @@ const RaidCalendar = ({ user, profile }: any) => {
                       <RaidCard
                         key={raid.id}
                         raid={raid}
-                        parts={participants.filter((p) => p.schedule_id === raid.id)}
+                        parts={visibleParticipants.filter((p) => p.schedule_id === raid.id)}
                         onOpen={() => setSelectedRaid(raid)}
                       />
                     ))}
@@ -2678,14 +2825,39 @@ const RaidCalendar = ({ user, profile }: any) => {
         </div>
 
         <SectionPanel
-          title="월별 통계 보드"
-          description="이번 달 참여 많이 한 캐릭터를 전체로 확인할 수 있어."
+          title={scheduleView === "mine" ? "내 일정 목록" : "월별 통계 보드"}
+          description={scheduleView === "mine" ? "내가 실제로 참가한 일정만 모아서 보여줘." : "이번 달 참여 많이 한 캐릭터를 전체로 확인할 수 있어."}
         >
           {calendarLoading ? (
             <div className="py-12 text-center font-medium text-slate-500">불러오는 중...</div>
           ) : monthlyCharacterStats.length === 0 ? (
             <div className="rounded-[1.75rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-slate-500">
-              집계할 참여 데이터가 없어.
+              {scheduleView === "mine" ? "표시할 내 일정이 없어." : "집계할 참여 데이터가 없어."}
+            </div>
+          ) : scheduleView === "mine" ? (
+            <div className="space-y-3 max-h-[620px] overflow-y-auto pr-1">
+              {visibleRaids.map((raid: any) => {
+                const raidParts = visibleParticipants.filter((p: any) => p.schedule_id === raid.id);
+                return (
+                  <button
+                    key={raid.id}
+                    onClick={() => setSelectedRaid(raid)}
+                    className="w-full rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 text-left transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="truncate text-base font-semibold text-white">{raid.raid_name}</div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          {formatShortDate(raid.raid_date)} · {raid.raid_time}
+                        </div>
+                      </div>
+                      <div className="rounded-full border border-blue-300/15 bg-blue-400/10 px-3 py-1 text-xs font-semibold text-sky-200">
+                        {raidParts.length}/{getCapacity(raid).maxParticipants}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <div className="space-y-3 max-h-[620px] overflow-y-auto pr-1">
