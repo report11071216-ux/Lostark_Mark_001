@@ -2678,7 +2678,7 @@ const RaidCard = ({
 
       <div className="flex flex-wrap gap-2 mt-2 mb-3">
         {raid.experience && raid.type !== "anime" && (
-          <span className={colors.chip}>🎯 {raid.experience}</span>
+          <span className={colors.chip}>{raid.experience}</span>
         )}
         <span className="bg-white/5 text-slate-300 border border-white/10 text-[10px] px-2 py-1 rounded-full">
           <Clock size={10} className="inline mr-1" />
@@ -2771,7 +2771,7 @@ const CreateRaidModal = ({
 
   return (
     <ModalFrame onClose={onClose}>
-      <div className="bg-[#10131f] border border-white/10 p-8 rounded-[2rem] w-full max-w-md space-y-4 shadow-2xl">
+      <div className="w-full max-w-md space-y-4 rounded-[2rem] border border-white/10 bg-[#10131f] p-8 shadow-2xl">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.3em] text-sky-300 font-semibold mb-2">
@@ -2916,7 +2916,7 @@ const RaidDetailModal = ({
 
   return (
     <ModalFrame onClose={onClose}>
-      <div className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[#0c1020]/95 backdrop-blur-2xl overflow-hidden shadow-[0_0_60px_rgba(99,102,241,0.16)]">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c1020]/95 backdrop-blur-2xl shadow-[0_0_60px_rgba(99,102,241,0.16)]">
         <div className={`p-6 md:p-8 border-b border-white/10 bg-gradient-to-r ${raid.type === "anime" ? "from-blue-950/60 to-blue-950/40" : "from-blue-950/60 to-blue-950/40"}`}>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -3359,7 +3359,7 @@ const ModalFrame = ({
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
+    className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-black/90 p-4 backdrop-blur-xl"
     onClick={onClose}
   >
     <motion.div
@@ -3368,7 +3368,7 @@ const ModalFrame = ({
       exit={{ opacity: 0, y: 20, scale: 0.96 }}
       transition={{ duration: 0.18 }}
       onClick={(e) => e.stopPropagation()}
-      className="w-full"
+      className="flex w-full items-center justify-center py-6"
     >
       {children}
     </motion.div>
