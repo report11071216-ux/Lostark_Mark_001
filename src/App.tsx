@@ -1605,35 +1605,104 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
 
 const Hero = ({ settings }: any) => {
   return (
-    <section className="relative h-[58vh] md:h-[72vh] flex items-center justify-center overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(125,211,252,0.16),transparent_25%),radial-gradient(circle_at_70%_30%,rgba(59,130,246,0.16),transparent_28%),linear-gradient(180deg,rgba(7,17,31,0.12),rgba(7,17,31,0.9))]" />
+    <section className="relative h-[58vh] md:h-[72vh] flex items-center overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.24),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.18),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.16),rgba(8,15,32,0.88))]" />
 
-      <div className="relative z-10 text-center px-4">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-12 px-6 md:grid-cols-[minmax(0,1fr)_420px]">
         <motion.div
           initial={{ opacity: 0, y: 26 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9 }}
+          className="text-center md:text-left"
         >
-          <span className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/5 text-sky-200 text-[11px] font-semibold mb-6 border border-white/10 tracking-[0.28em] uppercase">
+          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-5 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-blue-200">
             <Sparkles size={12} />
             Lost Ark Guild System
           </span>
 
-          <h1 className="text-6xl md:text-8xl font-semibold mb-6 tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-white/20 font-mono leading-none">
+          <h1 className="mt-6 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-5xl font-black leading-none tracking-tight text-transparent md:text-7xl">
             {settings?.guild_name}
           </h1>
 
-          <p className="text-slate-300 text-base md:text-xl max-w-2xl mx-auto font-medium tracking-tight opacity-85">
+          <p className="mt-5 max-w-2xl text-sm font-medium leading-7 text-slate-300 md:text-lg">
             {settings?.guild_description}
           </p>
         </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.9, delay: 0.08 }}
+          className="relative hidden lg:block"
+        >
+          <div className="absolute inset-0 rounded-[2.5rem] bg-blue-400/10 blur-3xl" />
+          <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-white/5 p-6 backdrop-blur-2xl shadow-[0_30px_80px_rgba(37,99,235,0.18)]">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[11px] font-bold uppercase tracking-[0.28em] text-blue-200/80">
+                  Guild Overview
+                </div>
+                <div className="mt-2 text-2xl font-semibold text-white">
+                  {settings?.guild_name}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-blue-300/15 bg-blue-400/10 px-3 py-2 text-xs font-semibold text-blue-100">
+                Active
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  Status
+                </div>
+                <div className="mt-2 text-lg font-semibold text-white">Online</div>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  Schedule
+                </div>
+                <div className="mt-2 text-lg font-semibold text-white">Ready</div>
+              </div>
+              <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  Members
+                </div>
+                <div className="mt-2 text-lg font-semibold text-white">Guild</div>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <div className="rounded-2xl border border-white/8 bg-slate-950/30 p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium text-slate-300">Weekly Progress</span>
+                  <span className="font-semibold text-blue-200">82%</span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
+                  <div className="h-full w-[82%] rounded-full bg-gradient-to-r from-blue-400 to-sky-300" />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/8 bg-slate-950/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">Raid Scheduling</div>
+                    <div className="mt-1 text-xs text-slate-400">공지, 일정, 길드 운영을 한 곳에서 관리</div>
+                  </div>
+                  <div className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-200">
+                    Stable
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#07111f] to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#091120] to-transparent" />
     </section>
   );
 };
-
 
 const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
   const navItems = [
