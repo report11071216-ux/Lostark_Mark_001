@@ -1585,7 +1585,6 @@ const fetchInitialData = async () => {
 
   return (
     <PageShell>
-      <AnimatedBackground />
       <ToastViewport />
       <div className="relative z-10">
         {profile?.role === "admin" && (
@@ -1768,77 +1767,64 @@ const ToastViewport = () => {
 };
 
 
-const AnimatedBackground = () => {
-  const particles = Array.from({ length: 18 }, (_, i) => ({
-    id: i,
-    top: `${(i * 37) % 100}%`,
-    left: `${(i * 19 + 11) % 100}%`,
-    delay: `${(i % 7) * 0.9}s`,
-    duration: `${6 + (i % 5)}s`,
-  }));
-
-  return (
+const PageShell = ({ children }: { children: React.ReactNode }) => (
+  <div className="relative min-h-screen overflow-hidden bg-[#07111f] font-sans text-white selection:bg-sky-400/30">
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       <motion.div
-        className="absolute -left-24 -top-24 h-[360px] w-[360px] rounded-full bg-blue-500/16 blur-3xl md:h-[520px] md:w-[520px]"
-        animate={{ x: [0, 36, 0], y: [0, 22, 0], scale: [1, 1.08, 1] }}
+        className="absolute -left-24 -top-24 h-[420px] w-[420px] rounded-full bg-blue-500/26 blur-3xl md:h-[620px] md:w-[620px]"
+        animate={{ x: [0, 60, 0], y: [0, 36, 0], scale: [1, 1.12, 1] }}
         transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute right-[-120px] top-[18%] h-[300px] w-[300px] rounded-full bg-sky-400/12 blur-3xl md:h-[440px] md:w-[440px]"
-        animate={{ x: [0, -42, 0], y: [0, 28, 0], scale: [1, 1.12, 1] }}
+        className="absolute right-[-120px] top-[16%] h-[360px] w-[360px] rounded-full bg-sky-400/22 blur-3xl md:h-[520px] md:w-[520px]"
+        animate={{ x: [0, -70, 0], y: [0, 40, 0], scale: [1, 1.14, 1] }}
         transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-[-120px] left-[28%] h-[260px] w-[260px] rounded-full bg-indigo-400/12 blur-3xl md:h-[360px] md:w-[360px]"
-        animate={{ x: [0, 24, 0], y: [0, -32, 0], scale: [1, 1.06, 1] }}
+        className="absolute bottom-[-140px] left-[26%] h-[320px] w-[320px] rounded-full bg-indigo-400/20 blur-3xl md:h-[440px] md:w-[440px]"
+        animate={{ x: [0, 34, 0], y: [0, -48, 0], scale: [1, 1.1, 1] }}
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      <div className="absolute inset-0 opacity-[0.22] [background-image:linear-gradient(rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:72px_72px]" />
+      <motion.div
+        className="absolute inset-0 opacity-[0.14]"
+        animate={{ opacity: [0.09, 0.16, 0.09] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+          backgroundSize: "52px 52px",
+        }}
+      />
 
-      {particles.map((particle) => (
+      <div
+        className="absolute inset-0 opacity-[0.05]"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.55) 1px, transparent 1px)",
+          backgroundSize: "3px 3px",
+        }}
+      />
+
+      {Array.from({ length: 22 }).map((_, i) => (
         <motion.span
-          key={particle.id}
-          className="absolute h-1 w-1 rounded-full bg-white/28"
-          style={{ top: particle.top, left: particle.left }}
-          animate={{ y: [0, -22, 0], opacity: [0.18, 0.8, 0.18] }}
+          key={i}
+          className="absolute h-1.5 w-1.5 rounded-full bg-white/35"
+          style={{
+            top: `${(i * 29 + 7) % 100}%`,
+            left: `${(i * 17 + 13) % 100}%`,
+          }}
+          animate={{ y: [0, -28, 0], opacity: [0.18, 0.85, 0.18] }}
           transition={{
-            duration: parseFloat(particle.duration),
-            delay: parseFloat(particle.delay),
+            duration: 6 + (i % 5),
+            delay: (i % 6) * 0.8,
             repeat: Infinity,
             ease: "easeInOut",
           }}
         />
       ))}
-    </div>
-  );
-};
 
-const PageShell = ({ children }: { children: React.ReactNode }) => (
-  <div className="min-h-screen relative overflow-hidden bg-[#07111f] text-white font-sans selection:bg-sky-400/30">
-    <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(59,130,246,0.24),transparent_35%),radial-gradient(circle_at_80%_28%,rgba(125,211,252,0.16),transparent_30%),radial-gradient(circle_at_50%_82%,rgba(37,99,235,0.12),transparent_40%)]" />
-      <div className="absolute -top-24 left-[8%] h-[420px] w-[420px] rounded-full bg-sky-500/18 blur-3xl" />
-      <div className="absolute top-[18%] right-[6%] h-[360px] w-[360px] rounded-full bg-blue-400/14 blur-3xl" />
-      <div className="absolute bottom-[-120px] left-[28%] h-[520px] w-[520px] rounded-full bg-blue-500/12 blur-3xl" />
-      <div
-        className="absolute inset-0 opacity-[0.08]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
-      />
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.28) 1px, transparent 1px)",
-          backgroundSize: "3px 3px",
-        }}
-      />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,17,31,0.16),rgba(7,17,31,0.72))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,17,31,0.14),rgba(7,17,31,0.54))]" />
     </div>
     {children}
   </div>
@@ -1918,7 +1904,7 @@ const Hero = ({ settings, posts }: any) => {
 
   return (
     <section className="relative flex min-h-[200px] items-center overflow-hidden md:min-h-[235px]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.22),transparent_26%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.14),transparent_22%),linear-gradient(180deg,rgba(8,15,32,0.12),rgba(8,15,32,0.78))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.10),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.06),rgba(8,15,32,0.46))]" />
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 md:grid-cols-[minmax(0,1fr)_260px] md:py-7">
         <motion.div
