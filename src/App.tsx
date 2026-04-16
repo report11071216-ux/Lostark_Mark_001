@@ -2,8 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Shield,
+import {Shield,
   Plus,
   X,
   Clock,
@@ -23,8 +22,7 @@ import {
   Bell,
   Crown,
   Pin,
-  ShoppingBag,
-} from "lucide-react";
+  ShoppingBag,, GripVertical} from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
@@ -4860,6 +4858,9 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
 };
 
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
+  const [draggingId, setDraggingId] = useState<HomeSectionLayout["id"] | null>(null);
+  const [dragOverId, setDragOverId] = useState<HomeSectionLayout["id"] | null>(null);
+
   const handleSave = async () => {
     const { error, payload } = await saveSingletonSettings(settings);
     if (error) showToast(error.message, "error");
@@ -4901,6 +4902,18 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
     );
   };
 
+  const reorderSections = (fromId: HomeSectionLayout["id"], toId: HomeSectionLayout["id"]) => {
+    if (fromId === toId) return;
+    const next = [...homeSections];
+    const fromIndex = next.findIndex((item) => item.id === fromId);
+    const toIndex = next.findIndex((item) => item.id === toId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    updateHomeSections(next);
+  };
+
   return (
     <div className="space-y-8">
       <AdminInput
@@ -4916,70 +4929,111 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
 
       <AdminSectionCard
         title="메인 레이아웃 설정"
-        description="홈 화면 섹션의 노출 여부, 순서, 밀도를 관리할 수 있어."
+        description="드래그해서 순서를 바꾸고, 섹션별 표시 여부와 밀도를 함께 관리할 수 있어."
       >
+        <div className="mb-4 rounded-[1.25rem] border border-blue-300/15 bg-blue-400/[0.06] px-4 py-3 text-sm text-slate-300">
+          <span className="font-semibold text-sky-200">사용 방법:</span> 왼쪽 핸들을 잡고 위아래로 옮기면 홈 화면 순서가 바뀐다.
+        </div>
+
         <div className="space-y-3">
-          {homeSections.map((section, index) => (
-            <div
-              key={section.id}
-              className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4"
-            >
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-white">{section.label}</div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    order #{index + 1} · id: {section.id}
+          {homeSections.map((section, index) => {
+            const isDragging = draggingId === section.id;
+            const isDragOver = dragOverId === section.id && draggingId !== section.id;
+
+            return (
+              <div
+                key={section.id}
+                draggable
+                onDragStart={() => {
+                  setDraggingId(section.id);
+                  setDragOverId(section.id);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (dragOverId !== section.id) setDragOverId(section.id);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggingId) reorderSections(draggingId, section.id);
+                  setDraggingId(null);
+                  setDragOverId(null);
+                }}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDragOverId(null);
+                }}
+                className={cn(
+                  "rounded-[1.35rem] border bg-black/20 p-4 transition-all",
+                  isDragging
+                    ? "border-sky-300/30 bg-sky-400/[0.08] opacity-70"
+                    : isDragOver
+                    ? "border-blue-300/28 bg-blue-400/[0.06] shadow-[0_16px_36px_rgba(37,99,235,0.12)]"
+                    : "border-white/10"
+                )}
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 cursor-grab items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 active:cursor-grabbing">
+                      <GripVertical size={16} />
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-white">{section.label}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        order #{index + 1} · id: {section.id}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updateSection(section.id, { enabled: !section.enabled })}
+                      className={cn(
+                        "rounded-xl border px-3 py-2 text-xs font-semibold transition-all",
+                        section.enabled
+                          ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+                          : "border-white/10 bg-white/[0.04] text-slate-400"
+                      )}
+                    >
+                      {section.enabled ? "표시 중" : "숨김"}
+                    </button>
+
+                    <select
+                      value={section.density}
+                      onChange={(e) => updateSection(section.id, { density: e.target.value as HomeSectionDensity })}
+                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white outline-none"
+                    >
+                      <option value="compact">compact</option>
+                      <option value="default">default</option>
+                      <option value="spacious">spacious</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={() => moveSection(section.id, "up")}
+                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 transition-all hover:bg-white/[0.08]"
+                    >
+                      위로
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveSection(section.id, "down")}
+                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 transition-all hover:bg-white/[0.08]"
+                    >
+                      아래로
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => updateSection(section.id, { enabled: !section.enabled })}
-                    className={cn(
-                      "rounded-xl border px-3 py-2 text-xs font-semibold transition-all",
-                      section.enabled
-                        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
-                        : "border-white/10 bg-white/[0.04] text-slate-400"
-                    )}
-                  >
-                    {section.enabled ? "표시 중" : "숨김"}
-                  </button>
-
-                  <select
-                    value={section.density}
-                    onChange={(e) => updateSection(section.id, { density: e.target.value as HomeSectionDensity })}
-                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white outline-none"
-                  >
-                    <option value="compact">compact</option>
-                    <option value="default">default</option>
-                    <option value="spacious">spacious</option>
-                  </select>
-
-                  <button
-                    type="button"
-                    onClick={() => moveSection(section.id, "up")}
-                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 transition-all hover:bg-white/[0.08]"
-                  >
-                    위로
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => moveSection(section.id, "down")}
-                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 transition-all hover:bg-white/[0.08]"
-                  >
-                    아래로
-                  </button>
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </AdminSectionCard>
 
       <button
         onClick={handleSave}
-        className="w-full bg-blue-600 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-blue-500 transition-all"
+        className="w-full rounded-2xl bg-blue-600 p-6 font-semibold uppercase tracking-widest transition-all hover:bg-blue-500"
       >
         Update Hero Section
       </button>
