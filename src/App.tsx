@@ -82,11 +82,11 @@ const CONTENT_MODE_OPTIONS = ["raid", "anime"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const defaultHomeSections = [
-  { id: "hero", label: "Hero", enabled: true, density: "compact", width: "default" },
-  { id: "portal", label: "핵심 카드", enabled: true, density: "compact", width: "default" },
-  { id: "content", label: "콘텐츠 카드", enabled: true, density: "compact", width: "default" },
-  { id: "notice", label: "공지사항", enabled: true, density: "compact", width: "default" },
-  { id: "calendar", label: "캘린더", enabled: true, density: "compact", width: "default" },
+  { id: "hero", label: "Hero", enabled: true, density: "compact" },
+  { id: "portal", label: "핵심 카드", enabled: true, density: "compact" },
+  { id: "content", label: "콘텐츠 카드", enabled: true, density: "compact" },
+  { id: "notice", label: "공지사항", enabled: true, density: "compact" },
+  { id: "calendar", label: "캘린더", enabled: true, density: "compact" },
 ] as const;
 
 const defaultSettings = {
@@ -1144,14 +1144,12 @@ const BADGE_PRESET_COLORS = [
 ];
 
 type HomeSectionDensity = "compact" | "default" | "spacious";
-type HomeSectionWidth = "compact" | "default" | "full";
 
 type HomeSectionLayout = {
   id: "hero" | "portal" | "content" | "notice" | "calendar";
   label: string;
   enabled: boolean;
   density: HomeSectionDensity;
-  width: HomeSectionWidth;
 };
 
 type PointRateSettings = {
@@ -1173,14 +1171,10 @@ const normalizeHomeSections = (value: any): HomeSectionLayout[] => {
     const density = ["compact", "default", "spacious"].includes(String(current?.density || ""))
       ? (current.density as HomeSectionDensity)
       : base.density;
-    const width = ["compact", "default", "full"].includes(String(current?.width || ""))
-      ? (current.width as HomeSectionWidth)
-      : base.width;
     return {
       ...base,
       enabled: current?.enabled !== undefined ? current.enabled !== false : base.enabled,
       density,
-      width,
     };
   }).sort((a, b) => {
     const aIndex = raw.findIndex((item: any) => String(item?.id || "") === a.id);
@@ -1225,12 +1219,6 @@ const getHomeSectionLayouts = (settingsLike: any): HomeSectionLayout[] =>
 const getSectionDensity = (settingsLike: any, sectionId: HomeSectionLayout["id"]): HomeSectionDensity => {
   const target = getHomeSectionLayouts(settingsLike).find((section) => section.id === sectionId);
   return target?.density || "default";
-};
-
-const getSectionLayoutClass = (width: HomeSectionWidth) => {
-  if (width === "compact") return "mx-auto w-full max-w-5xl";
-  if (width === "full") return "mx-auto w-full max-w-[96rem]";
-  return "mx-auto w-full max-w-7xl";
 };
 
 const fetchSingletonSettingsRow = async () => {
@@ -1689,33 +1677,29 @@ const fetchInitialData = async () => {
                 {getHomeSectionLayouts(settings)
                   .filter((section) => section.enabled)
                   .map((section) => {
-                    let content: React.ReactNode = null;
-
                     if (section.id === "hero") {
-                      content = <Hero settings={settings} posts={posts} density={section.density} />;
-                    } else if (section.id === "portal") {
-                      content = (
+                      return <Hero key={section.id} settings={settings} posts={posts} density={section.density} />;
+                    }
+                    if (section.id === "portal") {
+                      return (
                         <HomeFeaturePortal
+                          key={section.id}
                           contentView={contentView}
                           setContentView={setContentView}
                           density={section.density}
                         />
                       );
-                    } else if (section.id === "content") {
-                      content = <MainContentViewer type={contentView} density={section.density} />;
-                    } else if (section.id === "notice") {
-                      content = <HomeNoticeSection user={user} profile={profile} density={section.density} />;
-                    } else if (section.id === "calendar") {
-                      content = <RaidCalendar user={user} profile={profile} density={section.density} />;
                     }
-
-                    if (!content) return null;
-
-                    return (
-                      <div key={section.id} className={getSectionLayoutClass(section.width)}>
-                        {content}
-                      </div>
-                    );
+                    if (section.id === "content") {
+                      return <MainContentViewer key={section.id} type={contentView} density={section.density} />;
+                    }
+                    if (section.id === "notice") {
+                      return <HomeNoticeSection key={section.id} user={user} profile={profile} density={section.density} />;
+                    }
+                    if (section.id === "calendar") {
+                      return <RaidCalendar key={section.id} user={user} profile={profile} density={section.density} />;
+                    }
+                    return null;
                   })}
               </motion.div>
             )}
@@ -4925,7 +4909,7 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
 
       <AdminSectionCard
         title="메인 레이아웃 설정"
-        description="드래그해서 순서를 바꾸고, 섹션별 표시 여부 / 밀도 / 폭 프리셋을 함께 관리할 수 있어."
+        description="드래그해서 순서를 바꾸고, 섹션별 표시 여부와 밀도를 함께 관리할 수 있어."
       >
         <div className="mb-4 rounded-[1.25rem] border border-blue-300/15 bg-blue-400/[0.06] px-4 py-3 text-sm text-slate-300">
           <span className="font-semibold text-sky-200">사용 방법:</span> 왼쪽 핸들을 잡고 위아래로 옮기면 홈 화면 순서가 바뀐다.
@@ -5003,16 +4987,6 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
                       <option value="compact">compact</option>
                       <option value="default">default</option>
                       <option value="spacious">spacious</option>
-                    </select>
-
-                    <select
-                      value={section.width}
-                      onChange={(e) => updateSection(section.id, { width: e.target.value as HomeSectionWidth })}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white outline-none"
-                    >
-                      <option value="compact">폭 compact</option>
-                      <option value="default">폭 default</option>
-                      <option value="full">폭 full</option>
                     </select>
 
                     <button
