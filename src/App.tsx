@@ -206,6 +206,14 @@ const formatDateTime = (value?: string | null) => {
   return date.toLocaleString("ko-KR");
 };
 
+
+const getDisplayGuildName = (name?: string | null) => {
+  const normalized = String(name || "").trim();
+  if (!normalized) return "쁘밍";
+  if (normalized === "아래향") return "쁘밍";
+  return normalized;
+};
+
 const toNumber = (value: any) => {
   const num = Number(String(value ?? "").replace(/,/g, ""));
   return Number.isFinite(num) ? num : 0;
@@ -1577,6 +1585,7 @@ const fetchInitialData = async () => {
 
   return (
     <PageShell>
+      <AnimatedBackground />
       <ToastViewport />
       <div className="relative z-10">
         {profile?.role === "admin" && (
@@ -1758,6 +1767,54 @@ const ToastViewport = () => {
   );
 };
 
+
+const AnimatedBackground = () => {
+  const particles = Array.from({ length: 18 }, (_, i) => ({
+    id: i,
+    top: `${(i * 37) % 100}%`,
+    left: `${(i * 19 + 11) % 100}%`,
+    delay: `${(i % 7) * 0.9}s`,
+    duration: `${6 + (i % 5)}s`,
+  }));
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      <motion.div
+        className="absolute -left-24 -top-24 h-[360px] w-[360px] rounded-full bg-blue-500/16 blur-3xl md:h-[520px] md:w-[520px]"
+        animate={{ x: [0, 36, 0], y: [0, 22, 0], scale: [1, 1.08, 1] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute right-[-120px] top-[18%] h-[300px] w-[300px] rounded-full bg-sky-400/12 blur-3xl md:h-[440px] md:w-[440px]"
+        animate={{ x: [0, -42, 0], y: [0, 28, 0], scale: [1, 1.12, 1] }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-[-120px] left-[28%] h-[260px] w-[260px] rounded-full bg-indigo-400/12 blur-3xl md:h-[360px] md:w-[360px]"
+        animate={{ x: [0, 24, 0], y: [0, -32, 0], scale: [1, 1.06, 1] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+      />
+
+      <div className="absolute inset-0 opacity-[0.22] [background-image:linear-gradient(rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:72px_72px]" />
+
+      {particles.map((particle) => (
+        <motion.span
+          key={particle.id}
+          className="absolute h-1 w-1 rounded-full bg-white/28"
+          style={{ top: particle.top, left: particle.left }}
+          animate={{ y: [0, -22, 0], opacity: [0.18, 0.8, 0.18] }}
+          transition={{
+            duration: parseFloat(particle.duration),
+            delay: parseFloat(particle.delay),
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
 const PageShell = ({ children }: { children: React.ReactNode }) => (
   <div className="min-h-screen relative overflow-hidden bg-[#07111f] text-white font-sans selection:bg-sky-400/30">
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
@@ -1876,7 +1933,7 @@ const Hero = ({ settings, posts }: any) => {
           </span>
 
           <h1 className="mt-3 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-semibold leading-none tracking-tight text-transparent md:text-4xl">
-            {settings?.guild_name || "쁘밍"}
+            {getDisplayGuildName(settings?.guild_name)}
           </h1>
 
           <p className="mt-2 max-w-xl text-sm font-medium leading-5 text-slate-300">
@@ -1919,7 +1976,7 @@ const Hero = ({ settings, posts }: any) => {
                   Overview
                 </div>
                 <div className="mt-1.5 text-lg font-semibold text-white">
-                  {settings?.guild_name || "쁘밍"}
+                  {getDisplayGuildName(settings?.guild_name)}
                 </div>
               </div>
               <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-100">
