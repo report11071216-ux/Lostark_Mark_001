@@ -909,7 +909,7 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
       .eq("is_notice", true)
       .order("is_pinned", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(5);
+      .limit(6);
 
     if (error) {
       console.error(error);
@@ -921,76 +921,149 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-6 pt-8 md:pt-12 pb-6">
-      <div className="rounded-[2rem] border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-white/5 to-transparent overflow-hidden">
-        <div className="p-6 md:p-8 border-b border-white/10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/20 bg-blue-500/10 text-sky-300 text-[11px] font-semibold tracking-[0.2em] uppercase">
-                <Bell size={14} />
-                Guild Notice
+    <section className="max-w-7xl mx-auto px-6 pt-4 md:pt-6 pb-6">
+      <div className="grid gap-4 xl:grid-cols-[1.1fr,0.9fr]">
+        <div className="overflow-hidden rounded-[1.85rem] border border-blue-500/15 bg-gradient-to-br from-blue-500/8 via-white/[0.04] to-transparent">
+          <div className="border-b border-white/10 px-5 py-5 md:px-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-300">
+                  <Bell size={13} />
+                  Guild Notice
+                </div>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">
+                  공지사항
+                </h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  중요한 공지를 한 곳에서 빠르게 확인해.
+                </p>
               </div>
-              <h2 className="mt-4 text-3xl md:text-5xl font-semibold tracking-tight">
-                길드 공지사항
-              </h2>
-              <p className="mt-2 text-slate-400">
-                공지사항.
-              </p>
-            </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 min-w-fit">
-              <MiniStat label="공지" value={notices.length} />
-              <MiniStat label="고정" value={notices.filter((x) => x.is_pinned).length} />
-              <MiniStat label="권한" value={profile?.role === "admin" ? "관리자" : user ? "길드원" : "게스트"} />
+              <div className="hidden rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-right md:block">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                  Latest
+                </div>
+                <div className="mt-1 text-lg font-semibold text-sky-200">{notices.length} Items</div>
+              </div>
             </div>
+          </div>
+
+          <div className="space-y-2 p-3 md:p-4">
+            {loading && (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-slate-500">
+                공지 불러오는 중...
+              </div>
+            )}
+
+            {!loading && notices.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-slate-500">
+                아직 등록된 공지가 없어.
+              </div>
+            )}
+
+            {!loading &&
+              notices.map((notice) => (
+                <button
+                  key={notice.id}
+                  className={cn(
+                    "w-full rounded-[1.35rem] border px-4 py-3 text-left transition-all hover:border-sky-400/35 hover:bg-white/[0.06]",
+                    notice.is_pinned
+                      ? "border-blue-400/18 bg-blue-500/[0.08]"
+                      : "border-white/10 bg-white/[0.03]"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        {notice.is_pinned && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/12 px-2 py-1 text-[10px] font-semibold text-rose-300">
+                            <Pin size={11} />
+                            PIN
+                          </span>
+                        )}
+                        <span className="inline-flex rounded-full border border-blue-500/20 bg-blue-500/12 px-2 py-1 text-[10px] font-semibold text-sky-300">
+                          공지
+                        </span>
+                        <span className="text-[11px] text-slate-500">{formatDateTime(notice.created_at)}</span>
+                      </div>
+
+                      <div className="truncate text-sm font-semibold text-white md:text-base">
+                        {notice.title}
+                      </div>
+                      <div className="mt-1 line-clamp-1 text-xs text-slate-400 md:text-sm">
+                        {notice.content}
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-[11px] font-medium text-slate-300">
+                      보기
+                    </div>
+                  </div>
+                </button>
+              ))}
           </div>
         </div>
 
-        <div className="p-4 md:p-6 space-y-3">
-          {loading && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-slate-500">
-              공지 불러오는 중...
+        <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-2">
+          <CompactStatCard
+            label="공지 수"
+            value={notices.length}
+            hint="현재 메인 노출 개수"
+            icon={<Bell size={16} />}
+          />
+          <CompactStatCard
+            label="고정 공지"
+            value={notices.filter((x) => x.is_pinned).length}
+            hint="상단 우선 노출"
+            icon={<Pin size={16} />}
+          />
+          <CompactStatCard
+            label="접근 권한"
+            value={profile?.role === "admin" ? "관리자" : user ? "길드원" : "게스트"}
+            hint="현재 세션 기준"
+            icon={<Users size={16} />}
+          />
+          <div className="rounded-[1.65rem] border border-white/10 bg-white/[0.04] p-5 md:col-span-3 xl:col-span-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              Quick Summary
             </div>
-          )}
-
-          {!loading && notices.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-slate-500">
-              아직 등록된 공지가 없어.
+            <div className="mt-3 text-lg font-semibold text-white">
+              {notices[0]?.title || "최신 공지가 없습니다."}
             </div>
-          )}
-
-          {!loading &&
-            notices.map((notice) => (
-              <button
-                key={notice.id}
-                className={cn(
-                  "w-full text-left rounded-2xl border p-4 md:p-5 transition hover:border-sky-400/40",
-                  notice.is_pinned
-                    ? "bg-blue-500/10 border-blue-500/20"
-                    : "bg-white/5 border-white/10"
-                )}
-              >
-                <div className="flex flex-wrap items-center gap-2 mb-2">
-                  {notice.is_pinned && (
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/20">
-                      <Pin size={12} />
-                      PIN
-                    </span>
-                  )}
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-500/15 text-sky-300 border border-blue-500/20">
-                    공지
-                  </span>
-                  <span className="text-xs text-slate-500">{formatDateTime(notice.created_at)}</span>
-                </div>
-                <div className="text-lg md:text-xl font-semibold">{notice.title}</div>
-                <div className="mt-2 text-sm text-slate-300 line-clamp-2">{notice.content}</div>
-              </button>
-            ))}
+            <div className="mt-2 line-clamp-3 text-sm leading-6 text-slate-400">
+              {notices[0]?.content || "공지사항을 등록하면 이 영역에 최신 공지가 요약되어 표시됩니다."}
+            </div>
+          </div>
         </div>
       </div>
     </section>
   );
 };
+
+const CompactStatCard = ({
+  label,
+  value,
+  hint,
+  icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint: string;
+  icon: React.ReactNode;
+}) => (
+  <div className="rounded-[1.65rem] border border-white/10 bg-white/[0.04] p-5">
+    <div className="flex items-center justify-between gap-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+        {label}
+      </div>
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-300/15 bg-blue-400/10 text-sky-200">
+        {icon}
+      </div>
+    </div>
+    <div className="mt-3 text-2xl font-semibold text-white">{value}</div>
+    <div className="mt-1 text-xs text-slate-500">{hint}</div>
+  </div>
+);
 
 const MiniStat = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
