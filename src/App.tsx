@@ -2,27 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {Shield,
-  Plus,
-  X,
-  Clock,
-  ChevronLeft,
-  ChevronRight,
-  Trash2,
-  Settings,
-  Image as ImageIcon,
-  Send,
-  Edit3,
-  CalendarDays,
-  Users,
-  Sparkles,
-  Swords,
-  Trophy,
-  BarChart3,
-  Bell,
-  Crown,
-  Pin,
-  ShoppingBag,, GripVertical} from "lucide-react";
+import {Shield, Plus, X, Clock, ChevronLeft, ChevronRight, Trash2, Settings, Image as ImageIcon, Send, Edit3, CalendarDays, Users, Sparkles, Swords, Trophy, BarChart3, Bell, Crown, Pin, ShoppingBag, GripVertical} from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
