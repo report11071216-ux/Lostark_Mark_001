@@ -4886,8 +4886,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
           return quantity ? `${name} x${quantity}` : name;
         })
         .filter(Boolean)
-        .join("
-");
+        .join("\n");
     }
     if (typeof value === "string") return value;
     try {
