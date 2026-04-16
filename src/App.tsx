@@ -855,7 +855,7 @@ const HomeFeaturePortal = ({
               whileHover={{ y: -4, scale: 1.01 }}
               onClick={() => setContentView(card.key)}
               className={cn(
-                "group relative overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[0.04] px-3 py-2.5 text-left backdrop-blur-xl transition-all",
+                "group relative overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-3 text-left backdrop-blur-xl transition-all",
                 active ? card.activeClass : "hover:border-white/20 hover:bg-white/[0.06]"
               )}
             >
@@ -864,7 +864,7 @@ const HomeFeaturePortal = ({
 
               <div className="relative z-10">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.07] text-sky-100 shadow-[0_8px_20px_rgba(15,23,42,0.18)]">
+                  <div className="flex h-[34px] w-[34px] items-center justify-center rounded-xl border border-white/10 bg-white/[0.07] text-sky-100 shadow-[0_8px_20px_rgba(15,23,42,0.18)]">
                     {card.icon}
                   </div>
                   <div className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300">
@@ -874,7 +874,7 @@ const HomeFeaturePortal = ({
 
                 <div className="mt-2.5">
                   <div className="text-base font-semibold text-white">{card.title}</div>
-                  <div className="mt-1 text-[11px] leading-5 text-slate-300">
+                  <div className="mt-1 text-xs leading-[1.35rem] text-slate-300">
                     {card.subtitle}
                   </div>
                 </div>
@@ -1375,6 +1375,7 @@ export default function App() {
   const [contentView, setContentView] = useState("레이드");
   const [posts, setPosts] = useState<PostLike[]>([]);
   const [settings, setSettings] = useState(defaultSettings);
+  const [isRaidCalendarModalOpen, setIsRaidCalendarModalOpen] = useState(false);
 
 
 useEffect(() => {
@@ -1619,10 +1620,20 @@ const fetchInitialData = async () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <Hero settings={settings} posts={posts} />
+                <Hero
+                  settings={settings}
+                  posts={posts}
+                  onOpenRaidCalendar={() => setIsRaidCalendarModalOpen(true)}
+                />
                 <HomeFeaturePortal contentView={contentView} setContentView={setContentView} />
                 <MainContentViewer type={contentView} />
                 <HomeNoticeSection user={user} profile={profile} />
+                <MonthlyRaidCalendarModal
+                  open={isRaidCalendarModalOpen}
+                  onClose={() => setIsRaidCalendarModalOpen(false)}
+                  user={user}
+                  profile={profile}
+                />
               </motion.div>
             )}
 
@@ -1829,232 +1840,12 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-
-const MonthlyRaidScheduleModal = ({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) => {
-  const [loading, setLoading] = useState(false);
-  const [schedules, setSchedules] = useState<any[]>([]);
-  const [monthLabel, setMonthLabel] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-
-    let mounted = true;
-
-    const fetchMonthlySchedules = async () => {
-      if (!supabase) {
-        if (mounted) {
-          setSchedules([]);
-          const now = new Date();
-          setMonthLabel(formatMonthLabel(now.getFullYear(), now.getMonth()));
-        }
-        return;
-      }
-
-      setLoading(true);
-
-      try {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const monthStart = formatDate(year, month, 1);
-        const monthEndDate = new Date(year, month + 1, 0);
-        const monthEnd = formatDate(monthEndDate.getFullYear(), monthEndDate.getMonth(), monthEndDate.getDate());
-
-        const { data, error } = await supabase
-          .from("raid_schedules")
-          .select("id, raid_name, difficulty, raid_date, raid_time, raid_type, experience, type, max_participants")
-          .gte("raid_date", monthStart)
-          .lte("raid_date", monthEnd)
-          .order("raid_date", { ascending: true })
-          .order("raid_time", { ascending: true });
-
-        if (error) throw error;
-        if (!mounted) return;
-
-        setSchedules(data || []);
-        setMonthLabel(formatMonthLabel(year, month));
-      } catch (error) {
-        console.error("Monthly raid schedule modal fetch error:", error);
-        if (mounted) {
-          setSchedules([]);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void fetchMonthlySchedules();
-
-    return () => {
-      mounted = false;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  const groupedSchedules = schedules.reduce((acc: Record<string, any[]>, item: any) => {
-    const key = item.raid_date || "기타";
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(item);
-    return acc;
-  }, {});
-
-  return (
-    <AnimatePresence>
-      <motion.div
-        key="monthly-raid-modal"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/72 px-4 py-6 backdrop-blur-md"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 18, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 12, scale: 0.98 }}
-          transition={{ duration: 0.2 }}
-          className="relative w-full max-w-3xl overflow-hidden rounded-[1.9rem] border border-white/10 bg-[#091120]/95 shadow-[0_28px_80px_rgba(2,6,23,0.55)]"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <div className="border-b border-white/10 px-5 py-4 md:px-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-300">
-                  <CalendarDays size={13} />
-                  Monthly Raid
-                </div>
-                <h3 className="mt-3 text-xl font-semibold tracking-tight text-white md:text-2xl">
-                  월별 레이드 일정
-                </h3>
-                <p className="mt-1 text-sm text-slate-400">
-                  {monthLabel || "이번 달"} 기준으로 등록된 레이드 일정을 한 번에 확인해.
-                </p>
-              </div>
-
-              <button
-                onClick={onClose}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition hover:bg-white/[0.08] hover:text-white"
-                aria-label="월별 레이드 일정 닫기"
-              >
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-
-          <div className="max-h-[75vh] overflow-y-auto px-5 py-5 md:px-6">
-            {loading && (
-              <div className="rounded-[1.5rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-10 text-center text-sm text-slate-400">
-                월별 레이드 일정을 불러오는 중...
-              </div>
-            )}
-
-            {!loading && schedules.length === 0 && (
-              <div className="rounded-[1.5rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-10 text-center text-sm text-slate-500">
-                이번 달에 등록된 레이드 일정이 없습니다.
-              </div>
-            )}
-
-            {!loading && schedules.length > 0 && (
-              <div className="space-y-5">
-                {Object.entries(groupedSchedules).map(([dateKey, items]) => (
-                  <div key={dateKey} className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-4 md:p-5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-white">{formatShortDate(dateKey)}</div>
-                        <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                          {items.length} Schedule{items.length > 1 ? "s" : ""}
-                        </div>
-                      </div>
-                      <div className="rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-[11px] font-semibold text-sky-200">
-                        {dateKey}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 space-y-3">
-                      {items.map((item: any) => {
-                        const capacity = getCapacity(item);
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex flex-col gap-3 rounded-[1.3rem] border border-white/10 bg-slate-950/35 px-4 py-3 md:flex-row md:items-center md:justify-between"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <div className="text-base font-semibold text-white">{item.raid_name || "이름 없는 일정"}</div>
-                                {item.difficulty && (
-                                  <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold text-slate-300">
-                                    {item.difficulty}
-                                  </span>
-                                )}
-                                {item.experience && (
-                                  <span className="rounded-full border border-blue-400/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-semibold text-sky-200">
-                                    {item.experience}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                                <span>{item.raid_time || "시간 미정"}</span>
-                                <span>·</span>
-                                <span>{item.raid_type || `${capacity.maxParticipants}인`}</span>
-                                <span>·</span>
-                                <span>정원 {capacity.maxParticipants}명</span>
-                              </div>
-                            </div>
-
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-300">
-                              {item.type === "anime" ? "애니/이벤트 일정" : "레이드 일정"}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
-};
-
-
-const Hero = ({ settings, posts }: any) => {
-  const [isMonthlyRaidModalOpen, setIsMonthlyRaidModalOpen] = useState(false);
+const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
   const [heroStats, setHeroStats] = useState({
     memberCount: 0,
     upcomingRaids: 0,
     nextRaidLabel: "예정된 일정 없음",
     nextRaidDate: "",
-    thisMonthRaids: 0,
   });
 
   const noticeCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_notice).length : 0;
@@ -2072,12 +1863,7 @@ const Hero = ({ settings, posts }: any) => {
         nextWeek.setDate(nextWeek.getDate() + 7);
         const nextWeekKey = formatDate(nextWeek.getFullYear(), nextWeek.getMonth(), nextWeek.getDate());
 
-        const now = new Date();
-        const monthStart = formatDate(now.getFullYear(), now.getMonth(), 1);
-        const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        const monthEnd = formatDate(monthEndDate.getFullYear(), monthEndDate.getMonth(), monthEndDate.getDate());
-
-        const [membersRes, upcomingRes, nextRaidRes, monthRaidRes] = await Promise.allSettled([
+        const [membersRes, upcomingRes, nextRaidRes] = await Promise.allSettled([
           supabase.from("profiles").select("id", { count: "exact", head: true }),
           supabase
             .from("raid_schedules")
@@ -2092,11 +1878,6 @@ const Hero = ({ settings, posts }: any) => {
             .order("raid_time", { ascending: true })
             .limit(1)
             .maybeSingle(),
-          supabase
-            .from("raid_schedules")
-            .select("id", { count: "exact", head: true })
-            .gte("raid_date", monthStart)
-            .lte("raid_date", monthEnd),
         ]);
 
         if (!mounted) return;
@@ -2108,8 +1889,6 @@ const Hero = ({ settings, posts }: any) => {
             upcomingRes.status === "fulfilled" ? Number(upcomingRes.value.count || 0) : 0,
           nextRaidLabel: "예정된 일정 없음",
           nextRaidDate: "",
-          thisMonthRaids:
-            monthRaidRes.status === "fulfilled" ? Number(monthRaidRes.value.count || 0) : 0,
         };
 
         if (nextRaidRes.status === "fulfilled" && nextRaidRes.value.data) {
@@ -2134,158 +1913,196 @@ const Hero = ({ settings, posts }: any) => {
   }, [posts]);
 
   return (
-    <>
-      <section className="relative flex min-h-[220px] items-center overflow-hidden md:min-h-[255px]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.10),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.06),rgba(8,15,32,0.46))]" />
+    <section className="relative flex min-h-[200px] items-center overflow-hidden md:min-h-[235px]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.10),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.06),rgba(8,15,32,0.46))]" />
 
-        <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 md:grid-cols-[minmax(0,1fr)_300px] md:py-7">
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.72 }}
-            className="text-center md:text-left"
-          >
-            <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-blue-200">
-              <Sparkles size={11} />
-              Guild System
-            </span>
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 md:grid-cols-[minmax(0,1fr)_260px] md:py-7">
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.72 }}
+          className="text-center md:text-left"
+        >
+          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-blue-200">
+            <Sparkles size={11} />
+            Guild System
+          </span>
 
-            <h1 className="mt-3 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-semibold leading-none tracking-tight text-transparent md:text-4xl">
-              {getDisplayGuildName(settings?.guild_name)}
-            </h1>
+          <h1 className="mt-3 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-semibold leading-none tracking-tight text-transparent md:text-4xl">
+            {getDisplayGuildName(settings?.guild_name)}
+          </h1>
 
-            <p className="mt-2 max-w-xl text-sm font-medium leading-5 text-slate-300">
-              {settings?.guild_description}
-            </p>
+          <p className="mt-2 max-w-xl text-sm font-medium leading-5 text-slate-300">
+            {settings?.guild_description}
+          </p>
 
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                공지
+              </div>
+              <div className="mt-1 text-base font-semibold text-white">{noticeCount}</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                7일 일정
+              </div>
+              <div className="mt-1 text-base font-semibold text-white">{heroStats.upcomingRaids}</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                길드원
+              </div>
+              <div className="mt-1 text-base font-semibold text-white">{heroStats.memberCount}</div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex justify-center md:justify-start">
+            <button
+              type="button"
+              onClick={onOpenRaidCalendar}
+              className="group inline-flex items-center gap-2 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 py-2.5 text-sm font-semibold text-sky-100 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-blue-200/35 hover:bg-blue-400/15 hover:text-white hover:shadow-[0_14px_34px_rgba(59,130,246,0.18)]"
+            >
+              <CalendarDays size={16} className="transition-transform group-hover:scale-105" />
+              월별 레이드 일정
+            </button>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, x: 18 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.76, delay: 0.05 }}
+          className="relative hidden lg:block"
+        >
+          <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
+          <div className="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-white/5 p-3.5 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
+                  Overview
+                </div>
+                <div className="mt-1.5 text-lg font-semibold text-white">
+                  {getDisplayGuildName(settings?.guild_name)}
+                </div>
+              </div>
+              <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-100">
+                Live
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-white/8 bg-white/5 p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   공지
                 </div>
-                <div className="mt-1 text-base font-semibold text-white">{noticeCount}</div>
+                <div className="mt-1.5 text-sm font-semibold text-white">{noticeCount}</div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  7일 일정
+              <div className="rounded-xl border border-white/8 bg-white/5 p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  고정
                 </div>
-                <div className="mt-1 text-base font-semibold text-white">{heroStats.upcomingRaids}</div>
+                <div className="mt-1.5 text-sm font-semibold text-white">{pinnedCount}</div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              <div className="rounded-xl border border-white/8 bg-white/5 p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   길드원
                 </div>
-                <div className="mt-1 text-base font-semibold text-white">{heroStats.memberCount}</div>
+                <div className="mt-1.5 text-sm font-semibold text-white">{heroStats.memberCount}</div>
               </div>
             </div>
 
-            <div className="mt-4 flex justify-center md:justify-start">
+            <div className="mt-3 rounded-xl border border-white/8 bg-slate-950/30 p-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-slate-300">다음 7일 일정</span>
+                <span className="font-semibold text-blue-200">{heroStats.upcomingRaids}건</span>
+              </div>
+              <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-white/8">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-400 to-sky-300 transition-all"
+                  style={{ width: `${Math.min(100, Math.max(12, heroStats.upcomingRaids * 16))}%` }}
+                />
+              </div>
+              <div className="mt-3 text-sm font-semibold text-white truncate">
+                {heroStats.nextRaidLabel}
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">
+                {heroStats.nextRaidDate || "등록된 일정이 아직 없습니다."}
+              </div>
+            
               <button
-                onClick={() => setIsMonthlyRaidModalOpen(true)}
-                className="group inline-flex items-center gap-3 rounded-[1.2rem] border border-blue-400/20 bg-blue-500/10 px-4 py-3 text-left backdrop-blur-xl transition hover:border-sky-300/35 hover:bg-blue-500/14"
+                type="button"
+                onClick={onOpenRaidCalendar}
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-300/15 bg-blue-400/10 px-3 py-2 text-sm font-semibold text-sky-100 transition-all hover:border-blue-200/30 hover:bg-blue-400/15 hover:text-white"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-sky-200">
-                  <CalendarDays size={18} />
-                </div>
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-300">
-                    Monthly Raid
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-white">월별 레이드 일정 보기</div>
-                  <div className="mt-1 text-xs text-slate-400">
-                    이번 달 등록 일정 {heroStats.thisMonthRaids}건 · 클릭 시 모달 오픈
-                  </div>
-                </div>
+                <CalendarDays size={15} />
+                월별 레이드 일정 보기
               </button>
             </div>
-          </motion.div>
+          </div>
+        </motion.div>
+      </div>
 
+      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#091120] to-transparent" />
+    </section>
+  );
+};
+
+const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
+  useEffect(() => {
+    if (!open) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [open]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/72 px-4 py-6 backdrop-blur-md"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
           <motion.div
-            initial={{ opacity: 0, x: 18 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.76, delay: 0.05 }}
-            className="relative hidden lg:block"
+            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ duration: 0.22 }}
+            className="relative flex max-h-[88vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#091120]/95 shadow-[0_30px_120px_rgba(2,6,23,0.7)]"
+            onClick={(event) => event.stopPropagation()}
           >
-            <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
-            <div className="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-white/5 p-3.5 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
-                    Overview
-                  </div>
-                  <div className="mt-1.5 text-lg font-semibold text-white">
-                    {getDisplayGuildName(settings?.guild_name)}
-                  </div>
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 md:px-6">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-sky-300">
+                  Monthly Raid Calendar
                 </div>
-                <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-100">
-                  Live
-                </div>
-              </div>
-
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <div className="rounded-xl border border-white/8 bg-white/5 p-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                    공지
-                  </div>
-                  <div className="mt-1.5 text-sm font-semibold text-white">{noticeCount}</div>
-                </div>
-                <div className="rounded-xl border border-white/8 bg-white/5 p-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                    고정
-                  </div>
-                  <div className="mt-1.5 text-sm font-semibold text-white">{pinnedCount}</div>
-                </div>
-                <div className="rounded-xl border border-white/8 bg-white/5 p-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                    월간 일정
-                  </div>
-                  <div className="mt-1.5 text-sm font-semibold text-white">{heroStats.thisMonthRaids}</div>
-                </div>
-              </div>
-
-              <div className="mt-3 rounded-xl border border-white/8 bg-slate-950/30 p-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-medium text-slate-300">다음 7일 일정</span>
-                  <span className="font-semibold text-blue-200">{heroStats.upcomingRaids}건</span>
-                </div>
-                <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-white/8">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-blue-400 to-sky-300 transition-all"
-                    style={{ width: `${Math.min(100, Math.max(12, heroStats.upcomingRaids * 16))}%` }}
-                  />
-                </div>
-                <div className="mt-3 text-sm font-semibold text-white truncate">
-                  {heroStats.nextRaidLabel}
-                </div>
-                <div className="mt-1 text-[11px] text-slate-400">
-                  {heroStats.nextRaidDate || "등록된 일정이 아직 없습니다."}
-                </div>
+                <h3 className="mt-1 text-lg font-semibold text-white md:text-xl">월별 레이드 일정</h3>
               </div>
 
               <button
-                onClick={() => setIsMonthlyRaidModalOpen(true)}
-                className="mt-3 flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-left transition hover:border-sky-300/30 hover:bg-white/[0.07]"
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+                aria-label="월별 레이드 일정 닫기"
               >
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-300">
-                    Modal Shortcut
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-white">월별 레이드 일정 열기</div>
-                </div>
-                <CalendarDays size={18} className="text-sky-200" />
+                <X size={18} />
               </button>
             </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <RaidCalendar user={user} profile={profile} embedded hideRanking />
+            </div>
           </motion.div>
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#091120] to-transparent" />
-      </section>
-
-      <MonthlyRaidScheduleModal
-        open={isMonthlyRaidModalOpen}
-        onClose={() => setIsMonthlyRaidModalOpen(false)}
-      />
-    </>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
@@ -3333,7 +3150,7 @@ const DetailInfoCard = ({
   </div>
 );
 
-const RaidCalendar = ({ user, profile }: any) => {
+const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [raids, setRaids] = useState<ScheduleLike[]>([]);
   const [participants, setParticipants] = useState<ParticipantLike[]>([]);
@@ -3544,8 +3361,9 @@ const RaidCalendar = ({ user, profile }: any) => {
   }, [visibleParticipants, visibleRaids]);
 
   return (
-    <section className="max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-white/5">
-      <div className="grid lg:grid-cols-[1.2fr,0.8fr] gap-6 mb-8">
+    <section className={cn("max-w-7xl mx-auto px-6", embedded ? "py-6 md:py-7 border-t-0" : "py-16 md:py-24 border-t border-white/5")}>
+
+      <div className={cn("grid gap-6 mb-8", hideRanking ? "lg:grid-cols-1" : "lg:grid-cols-[1.2fr,0.8fr]")}>
         <SectionPanel
           title="Raid Calendar"
           description={scheduleView === "mine" ? "내 캐릭터가 참여한 일정만 확인." : "월별 레이드 일정."}
@@ -3614,11 +3432,12 @@ const RaidCalendar = ({ user, profile }: any) => {
           </div>
         </SectionPanel>
 
-        <SectionPanel
-          title={scheduleView === "mine" ? "내 일정 참여 현황" : "월별 참여 랭킹"}
-          description={scheduleView === "mine" ? "내 캐릭터가 참가한 일정 기준으로 확인." : "이번 달 기준 캐릭터 참가횟수 확인."}
-        >
-          {scheduleView === "mine" ? (
+        {!hideRanking && (
+          <SectionPanel
+            title={scheduleView === "mine" ? "내 일정 참여 현황" : "월별 참여 랭킹"}
+            description={scheduleView === "mine" ? "내 캐릭터가 참가한 일정 기준으로 확인." : "이번 달 기준 캐릭터 참가횟수 확인."}
+          >
+            {scheduleView === "mine" ? (
             <div className="space-y-3">
               <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">내 일정 수</div>
@@ -3666,8 +3485,9 @@ const RaidCalendar = ({ user, profile }: any) => {
                 </div>
               ))}
             </div>
-          )}
-        </SectionPanel>
+            )}
+          </SectionPanel>
+        )}
       </div>
 
       <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-6">
