@@ -4060,6 +4060,35 @@ const CreateRaidModal = ({
         return;
       }
 
+      try {
+        const raidDifficultyLabel =
+          form.type === "anime"
+            ? "시청"
+            : form.difficulty || (form.experience ? `${form.experience}` : "미정");
+
+        const raidTypeLabel = form.type === "anime" ? "시청" : form.raid_type || "레이드";
+        const discordLines = [
+          "📢 새로운 레이드 일정이 등록되었습니다.",
+          `🗓️ 날짜: ${date}`,
+          `⏰ 시간: ${form.raid_time}`,
+          `🎯 레이드: ${form.raid_name}`,
+          `⚔️ 난이도: ${raidDifficultyLabel}`,
+          `👥 구분: ${raidTypeLabel}`,
+        ];
+
+        await fetch("/api/discord", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: discordLines.join("\n"),
+          }),
+        });
+      } catch (discordError) {
+        console.error("discord webhook send error:", discordError);
+      }
+
       showToast("일정 생성 완료", "success");
       onRefresh();
       onClose();
