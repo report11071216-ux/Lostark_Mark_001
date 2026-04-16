@@ -779,6 +779,120 @@ const WeaponImage = ({
 
 
 
+
+const HomeFeaturePortal = ({
+  contentView,
+  setContentView,
+}: {
+  contentView: string;
+  setContentView: (value: string) => void;
+}) => {
+  const cards = [
+    {
+      key: "레이드",
+      title: "레이드",
+      subtitle: "주간 레이드 공략과 콘텐츠 정보 확인",
+      badge: "Core Content",
+      icon: <Swords size={22} />,
+      stats: "주요 레이드 콘텐츠",
+      glow: "from-blue-500/16 via-sky-400/10 to-transparent",
+      activeClass: "border-blue-300/25 bg-blue-400/[0.08] shadow-[0_18px_50px_rgba(59,130,246,0.18)]",
+    },
+    {
+      key: "가디언 토벌",
+      title: "가디언 토벌",
+      subtitle: "토벌 콘텐츠와 보상 흐름을 빠르게 확인",
+      badge: "Field Hunt",
+      icon: <Shield size={22} />,
+      stats: "토벌 정보 바로가기",
+      glow: "from-violet-400/14 via-fuchsia-400/8 to-transparent",
+      activeClass: "border-violet-300/25 bg-violet-400/[0.08] shadow-[0_18px_50px_rgba(139,92,246,0.16)]",
+    },
+    {
+      key: "클래스",
+      title: "클래스",
+      subtitle: "직업별 특징과 세팅 정보를 한 번에 탐색",
+      badge: "Class Index",
+      icon: <Sparkles size={22} />,
+      stats: "캐릭터 빌드 탐색",
+      glow: "from-cyan-400/14 via-emerald-300/8 to-transparent",
+      activeClass: "border-cyan-300/25 bg-cyan-400/[0.08] shadow-[0_18px_50px_rgba(34,211,238,0.16)]",
+    },
+  ];
+
+  return (
+    <section className="mx-auto max-w-7xl px-6 pb-6 md:pb-8">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-300">Feature Gateway</div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-white md:text-3xl">
+            핵심 콘텐츠 바로가기
+          </h2>
+          <p className="mt-2 text-sm text-slate-400">
+            레이드, 가디언 토벌, 클래스 정보를 더 눈에 띄게 모아봤어.
+          </p>
+        </div>
+        <div className="hidden rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-right md:block">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">현재 선택</div>
+          <div className="mt-1 text-base font-semibold text-sky-200">{contentView}</div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        {cards.map((card) => {
+          const active = contentView === card.key;
+          return (
+            <motion.button
+              key={card.key}
+              whileHover={{ y: -4, scale: 1.01 }}
+              onClick={() => setContentView(card.key)}
+              className={cn(
+                "group relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.04] p-5 text-left backdrop-blur-xl transition-all",
+                active ? card.activeClass : "hover:border-white/20 hover:bg-white/[0.06]"
+              )}
+            >
+              <div className={`absolute inset-0 bg-gradient-to-br ${card.glow} opacity-90`} />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+
+              <div className="relative z-10">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.07] text-sky-100 shadow-[0_8px_20px_rgba(15,23,42,0.18)]">
+                    {card.icon}
+                  </div>
+                  <div className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300">
+                    {card.badge}
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <div className="text-2xl font-semibold text-white">{card.title}</div>
+                  <div className="mt-2 text-sm leading-6 text-slate-300">
+                    {card.subtitle}
+                  </div>
+                </div>
+
+                <div className="mt-6 flex items-center justify-between gap-3">
+                  <div className="text-xs font-medium text-slate-400">{card.stats}</div>
+                  <div
+                    className={cn(
+                      "rounded-xl border px-3 py-2 text-xs font-semibold transition-all",
+                      active
+                        ? "border-white/10 bg-white/[0.08] text-white"
+                        : "border-white/10 bg-white/[0.04] text-slate-300 group-hover:text-white"
+                    )}
+                  >
+                    {active ? "현재 선택됨" : "열기"}
+                  </div>
+                </div>
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
 const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: ProfileLike }) => {
   const [notices, setNotices] = useState<PostLike[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1484,28 +1598,10 @@ const fetchInitialData = async () => {
                 exit={{ opacity: 0 }}
               >
                 <Hero settings={settings} posts={posts} />
+                <HomeFeaturePortal contentView={contentView} setContentView={setContentView} />
+                <MainContentViewer type={contentView} />
                 <HomeNoticeSection user={user} profile={profile} />
                 <RaidCalendar user={user} profile={profile} />
-
-                <div className="max-w-7xl mx-auto px-6 mb-12">
-                  <div className="flex justify-center gap-6 md:gap-12 border-b border-white/5 pb-6 overflow-x-auto">
-                    {["레이드", "가디언 토벌", "클래스"].map((tab) => (
-                      <button
-                        key={tab}
-                        onClick={() => setContentView(tab)}
-                        className={`text-lg md:text-xl font-semibold uppercase transition-all whitespace-nowrap ${
-                          contentView === tab
-                            ? "text-sky-400 scale-105 underline underline-offset-8"
-                            : "text-slate-600 hover:text-slate-400"
-                        }`}
-                      >
-                        {tab}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <MainContentViewer type={contentView} />
               </motion.div>
             )}
 
@@ -2249,7 +2345,7 @@ const MainContentViewer = ({ type }: { type: string }) => {
   }, [type]);
 
   return (
-    <section className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 py-10">
+    <section className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 pt-2 pb-12">
       {items.length === 0 && (
         <div className="col-span-full text-center text-slate-600 font-semibold py-10 uppercase">
           No Contents Registered.
@@ -2261,21 +2357,21 @@ const MainContentViewer = ({ type }: { type: string }) => {
           whileHover={{ y: -5 }}
           key={item.id ?? item.sub_class}
           onClick={() => setSelectedItem(item)}
-          className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black aspect-square cursor-pointer shadow-xl"
+          className="group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950/70 aspect-[0.95/1] cursor-pointer shadow-[0_18px_40px_rgba(2,6,23,0.3)] backdrop-blur-md"
         >
           <img
             src={
               item.image_url ||
               "https://images.unsplash.com/photo-1542751371-adc38448a05e"
             }
-            className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000"
+            className="absolute inset-0 h-full w-full object-cover opacity-55 transition-transform duration-1000 group-hover:scale-110"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07111f] via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#07111f] via-[#07111f]/35 to-transparent" />
           <div className="absolute bottom-4 left-4 right-4 text-left">
-            <span className="text-[8px] font-semibold text-blue-500 uppercase tracking-widest mb-1 block">
+            <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-300">
               {type}
             </span>
-            <h3 className="text-sm font-semibold uppercase tracking-tight leading-tight truncate">
+            <h3 className="text-base font-semibold tracking-tight leading-tight truncate text-white">
               {item.name || item.sub_class}
             </h3>
           </div>
