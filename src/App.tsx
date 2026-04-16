@@ -85,6 +85,8 @@ const defaultHomeSections = [
   { id: "hero", label: "Hero", enabled: true, density: "compact", width: "default" },
   { id: "portal", label: "핵심 카드", enabled: true, density: "compact", width: "default" },
   { id: "content", label: "콘텐츠 카드", enabled: true, density: "compact", width: "default" },
+  { id: "notice", label: "공지사항", enabled: true, density: "compact", width: "default" },
+  { id: "calendar", label: "캘린더", enabled: true, density: "compact", width: "default" },
 ] as const;
 
 const defaultSettings = {
@@ -1145,7 +1147,7 @@ type HomeSectionDensity = "compact" | "default" | "spacious";
 type HomeSectionWidth = "compact" | "default" | "full";
 
 type HomeSectionLayout = {
-  id: "hero" | "portal" | "content";
+  id: "hero" | "portal" | "content" | "notice" | "calendar";
   label: string;
   enabled: boolean;
   density: HomeSectionDensity;
@@ -1685,7 +1687,7 @@ const fetchInitialData = async () => {
                 exit={{ opacity: 0 }}
               >
                 {getHomeSectionLayouts(settings)
-                  .filter((section) => section.enabled && !["notice", "calendar"].includes(section.id))
+                  .filter((section) => section.enabled)
                   .map((section) => {
                     let content: React.ReactNode = null;
 
@@ -1701,6 +1703,10 @@ const fetchInitialData = async () => {
                       );
                     } else if (section.id === "content") {
                       content = <MainContentViewer type={contentView} density={section.density} />;
+                    } else if (section.id === "notice") {
+                      content = <HomeNoticeSection user={user} profile={profile} density={section.density} />;
+                    } else if (section.id === "calendar") {
+                      content = <RaidCalendar user={user} profile={profile} density={section.density} />;
                     }
 
                     if (!content) return null;
@@ -3684,58 +3690,38 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
         </SectionPanel>
 
         <SectionPanel
-          title={scheduleView === "mine" ? "내 일정 참여 현황" : "월별 참여 랭킹"}
-          description={scheduleView === "mine" ? "내 캐릭터가 참가한 일정 기준으로 확인." : "이번 달 기준 캐릭터 참가횟수 확인."}
+          title={scheduleView === "mine" ? "내 일정 보조 패널" : "월간 보조 패널"}
+          description={scheduleView === "mine" ? "내 캐릭터 기준 일정 확인." : "월간 참여 카드는 제거하고, 필요한 보조 정보만 유지."}
         >
-          {scheduleView === "mine" ? (
-            <div className="space-y-3">
-              <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] px-4 py-3.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">내 일정 수</div>
-                <div className="mt-2 text-xl font-semibold text-white">{mineStats.upcomingMineCount}</div>
-                <div className="mt-1 text-[11px] text-slate-500">이번 달 내가 참가한 일정 개수</div>
-              </div>
-              <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] px-4 py-3.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">참가 캐릭터</div>
-                <div className="mt-2 text-xl font-semibold text-white">{mineStats.joinedCharacters}</div>
-                <div className="mt-1 text-[11px] text-slate-500">참가 기록이 있는 내 캐릭터 수</div>
-              </div>
-              <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] px-4 py-3.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">보기 상태</div>
-                <div className="mt-2 text-sm font-semibold text-sky-200">{user ? "로그인 사용자 기준 필터 적용" : "로그인 필요"}</div>
-                <div className="mt-1 text-[11px] text-slate-500">참가자 이름과 내 캐릭터 이름을 기준으로 필터링</div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2.5">
-              {monthlyCharacterStats.length === 0 && (
-                <div className="rounded-[1.55rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-7 text-center text-sm text-slate-500">
-                  아직 이번 달 참여 데이터가 없습니다.
+          <div className="space-y-3">
+            {scheduleView === "mine" ? (
+              <>
+                <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] px-4 py-3.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">내 일정 수</div>
+                  <div className="mt-2 text-xl font-semibold text-white">{mineStats.upcomingMineCount}</div>
+                  <div className="mt-1 text-[11px] text-slate-500">이번 달 내가 참가한 일정 개수</div>
                 </div>
-              )}
-
-              {monthlyCharacterStats.slice(0, 6).map((item, index) => (
-                <div
-                  key={item.nickname}
-                  className="flex items-center justify-between gap-4 rounded-[1.3rem] border border-white/10 bg-white/[0.03] px-3.5 py-3 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-blue-300/15 bg-blue-400/10 text-[11px] font-semibold text-sky-200">
-                      #{index + 1}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">{item.nickname}</div>
-                      <div className="text-[11px] text-slate-500">월간 레이드 참여 요약</div>
-                    </div>
-                  </div>
-
-                  <div className="shrink-0 text-right">
-                    <div className="text-base font-semibold text-white">{item.raidCount}회</div>
-                    <div className="text-[10px] text-slate-500">등록 {item.count}건</div>
-                  </div>
+                <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] px-4 py-3.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">참가 캐릭터</div>
+                  <div className="mt-2 text-xl font-semibold text-white">{mineStats.joinedCharacters}</div>
+                  <div className="mt-1 text-[11px] text-slate-500">참가 기록이 있는 내 캐릭터 수</div>
                 </div>
-              ))}
-            </div>
-          )}
+              </>
+            ) : (
+              <>
+                <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] px-4 py-3.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">이달 일정</div>
+                  <div className="mt-2 text-xl font-semibold text-white">{monthStats.totalRaids}</div>
+                  <div className="mt-1 text-[11px] text-slate-500">이번 달 전체 일정 수</div>
+                </div>
+                <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] px-4 py-3.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">보기 상태</div>
+                  <div className="mt-2 text-sm font-semibold text-sky-200">월간 참여 랭킹은 Hero 요약에서 확인</div>
+                  <div className="mt-1 text-[11px] text-slate-500">이 영역은 캘린더 보조 정보만 표시</div>
+                </div>
+              </>
+            )}
+          </div>
         </SectionPanel>
       </div>
 
