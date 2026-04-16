@@ -104,7 +104,7 @@ const CONTENT_MODE_OPTIONS = ["raid", "anime"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const defaultSettings = {
-  guild_name: "쁘밍",
+  guild_name: "INXX",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
   point_rate_settings: {
     enabled: true,
@@ -1854,12 +1854,8 @@ const Hero = ({ settings, posts }: any) => {
     nextRaidDate: "",
   });
 
-  const noticePosts = Array.isArray(posts) ? posts.filter((post: any) => post?.is_notice) : [];
-  const noticeCount = noticePosts.length;
-  const pinnedCount = noticePosts.filter((post: any) => post?.is_pinned).length;
-  const latestNotices = [...noticePosts]
-    .sort((a: any, b: any) => new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime())
-    .slice(0, 2);
+  const noticeCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_notice).length : 0;
+  const pinnedCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_pinned).length : 0;
 
   useEffect(() => {
     let mounted = true;
@@ -1923,23 +1919,23 @@ const Hero = ({ settings, posts }: any) => {
   }, [posts]);
 
   return (
-    <section className="relative flex min-h-[230px] items-center overflow-hidden md:min-h-[270px]">
+    <section className="relative flex min-h-[240px] items-center overflow-hidden md:min-h-[290px]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.22),transparent_26%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.14),transparent_22%),linear-gradient(180deg,rgba(8,15,32,0.12),rgba(8,15,32,0.78))]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-7 md:grid-cols-[minmax(0,1fr)_320px_280px] md:py-8">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-5 px-6 py-8 md:grid-cols-[minmax(0,1fr)_280px] md:py-10">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.72 }}
           className="text-center md:text-left"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-blue-200">
+          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-blue-200">
             <Sparkles size={11} />
             Guild System
           </span>
 
           <h1 className="mt-4 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-semibold leading-none tracking-tight text-transparent md:text-5xl">
-            {settings?.guild_name || "쁘밍"}
+            {settings?.guild_name}
           </h1>
 
           <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-slate-300">
@@ -1969,62 +1965,6 @@ const Hero = ({ settings, posts }: any) => {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.76, delay: 0.04 }}
-          className="relative hidden md:block"
-        >
-          <div className="absolute inset-0 rounded-[1.9rem] bg-sky-400/10 blur-3xl" />
-          <div className="relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/5 p-4 backdrop-blur-2xl shadow-[0_20px_60px_rgba(37,99,235,0.12)]">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-200/80">
-                  Notice Feed
-                </div>
-                <div className="mt-1.5 text-lg font-semibold text-white">
-                  최근 공지
-                </div>
-              </div>
-              <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-100">
-                {noticeCount}
-              </div>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {latestNotices.length > 0 ? (
-                latestNotices.map((notice: any) => (
-                  <div
-                    key={notice.id}
-                    className="rounded-[1.2rem] border border-white/10 bg-slate-950/30 p-3.5"
-                  >
-                    <div className="flex items-center gap-2">
-                      {notice?.is_pinned && (
-                        <span className="rounded-full border border-rose-400/18 bg-rose-400/10 px-2 py-0.5 text-[10px] font-semibold text-rose-200">
-                          PIN
-                        </span>
-                      )}
-                      <span className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-                        {formatDateTime(notice?.created_at)}
-                      </span>
-                    </div>
-                    <div className="mt-2 truncate text-sm font-semibold text-white">
-                      {notice?.title}
-                    </div>
-                    <div className="mt-1 line-clamp-1 text-xs text-slate-400">
-                      {notice?.content}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-[1.2rem] border border-dashed border-white/10 bg-slate-950/20 px-4 py-8 text-center text-sm text-slate-500">
-                  등록된 공지가 없습니다.
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
           initial={{ opacity: 0, x: 18 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.76, delay: 0.05 }}
@@ -2038,7 +1978,7 @@ const Hero = ({ settings, posts }: any) => {
                   Overview
                 </div>
                 <div className="mt-1.5 text-lg font-semibold text-white">
-                  {settings?.guild_name || "쁘밍"}
+                  {settings?.guild_name}
                 </div>
               </div>
               <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-100">
@@ -2078,7 +2018,7 @@ const Hero = ({ settings, posts }: any) => {
                   style={{ width: `${Math.min(100, Math.max(12, heroStats.upcomingRaids * 16))}%` }}
                 />
               </div>
-              <div className="mt-3 truncate text-sm font-semibold text-white">
+              <div className="mt-3 text-sm font-semibold text-white truncate">
                 {heroStats.nextRaidLabel}
               </div>
               <div className="mt-1 text-[11px] text-slate-400">
@@ -2089,7 +2029,7 @@ const Hero = ({ settings, posts }: any) => {
         </motion.div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#091120] to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#091120] to-transparent" />
     </section>
   );
 };
