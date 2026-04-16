@@ -2439,162 +2439,426 @@ const MainContentViewer = ({ type }: { type: string }) => {
   );
 };
 
+
+const getDifficultyTone = (difficulty: string) => {
+  const value = String(difficulty || "").trim();
+  if (value === "하드") {
+    return {
+      chip: "border-violet-300/20 bg-violet-400/10 text-violet-100",
+      active: "border-violet-300/28 bg-violet-400/14 text-white shadow-[0_14px_34px_rgba(139,92,246,0.18)]",
+      ring: "from-violet-400 to-fuchsia-300",
+    };
+  }
+  if (value === "나이트메어") {
+    return {
+      chip: "border-rose-300/20 bg-rose-400/10 text-rose-100",
+      active: "border-rose-300/28 bg-rose-400/14 text-white shadow-[0_14px_34px_rgba(244,63,94,0.18)]",
+      ring: "from-rose-400 to-orange-300",
+    };
+  }
+  return {
+    chip: "border-sky-300/20 bg-sky-400/10 text-sky-100",
+    active: "border-sky-300/28 bg-sky-400/14 text-white shadow-[0_14px_34px_rgba(59,130,246,0.18)]",
+    ring: "from-blue-400 to-sky-300",
+  };
+};
+
+const getDetailNarratives = (details: any) => {
+  if (!details) return [];
+  const candidates = [
+    {
+      label: "공략 메모",
+      value:
+        details.guide ||
+        details.description ||
+        details.desc ||
+        details.memo ||
+        details.note ||
+        details.notes ||
+        details.summary ||
+        "",
+    },
+    {
+      label: "주요 기믹",
+      value:
+        details.mechanics ||
+        details.pattern ||
+        details.patterns ||
+        details.mechanic ||
+        details.mechanic_summary ||
+        "",
+    },
+    {
+      label: "추천 포인트",
+      value:
+        details.tip ||
+        details.tips ||
+        details.recommendation ||
+        details.recommend ||
+        details.comment ||
+        "",
+    },
+  ];
+
+  return candidates.filter((item) => String(item.value || "").trim());
+};
+
+const formatLargeNumber = (value: any) => {
+  const num = Number(String(value ?? "").replace(/,/g, ""));
+  if (!Number.isFinite(num) || num <= 0) return "-";
+  return num.toLocaleString();
+};
+
 const DetailPopup = ({ item, type, onClose }: any) => {
   const [gate, setGate] = useState(1);
   const [diff, setDiff] = useState("노말");
-  const [details, setDetails] = useState<any>(null);
+  const [allDetails, setAllDetails] = useState<any[]>([]);
+  const [loading, setLoading] = useState(type !== "클래스");
 
   useEffect(() => {
-    if (type === "클래스") return;
+    let mounted = true;
 
-    const fetchDetail = async () => {
+    const fetchDetailBundle = async () => {
+      if (type === "클래스") return;
+
+      setLoading(true);
+
       try {
-        let query = supabase.from("content_details").select("*").eq("content_id", item.id);
+        const { data, error } = await supabase
+          .from("content_details")
+          .select("*")
+          .eq("content_id", item.id)
+          .order("difficulty", { ascending: true })
+          .order("gate_num", { ascending: true });
 
-        if (type === "레이드") {
-          query = query.eq("difficulty", diff).eq("gate_num", gate);
-        } else {
-          query = query.eq("gate_num", 0);
+        if (error) {
+          console.error("fetchDetailBundle error:", error);
+          if (mounted) setAllDetails([]);
+          return;
         }
 
-        const data = await safeSingle(query);
-        setDetails(data);
+        if (!mounted) return;
+        setAllDetails(data || []);
       } catch (error) {
-        console.error("fetchDetail error:", error);
-        setDetails(null);
+        console.error("fetchDetailBundle unexpected error:", error);
+        if (mounted) setAllDetails([]);
+      } finally {
+        if (mounted) setLoading(false);
       }
     };
 
-    fetchDetail();
-  }, [gate, diff, item, type]);
+    fetchDetailBundle();
+
+    return () => {
+      mounted = false;
+    };
+  }, [item, type]);
+
+  const availableDifficulties = useMemo(() => {
+    if (type !== "레이드") return [];
+    const fromData = Array.from(
+      new Set(
+        allDetails
+          .map((detail: any) => String(detail?.difficulty || "").trim())
+          .filter(Boolean)
+      )
+    );
+    return fromData.length > 0 ? fromData : difficultyOptions;
+  }, [allDetails, type]);
+
+  useEffect(() => {
+    if (type !== "레이드") return;
+    if (availableDifficulties.length === 0) return;
+    if (!availableDifficulties.includes(diff)) {
+      setDiff(availableDifficulties[0]);
+    }
+  }, [availableDifficulties, diff, type]);
+
+  const gateOptions = useMemo(() => {
+    if (type !== "레이드") return [0];
+    const matching = allDetails.filter((detail: any) => String(detail?.difficulty || "").trim() === diff);
+    const gates = Array.from(
+      new Set(
+        matching
+          .map((detail: any) => Number(detail?.gate_num))
+          .filter((value: number) => Number.isFinite(value) && value > 0)
+      )
+    ).sort((a, b) => a - b);
+
+    return gates.length > 0 ? gates : [1, 2, 3, 4];
+  }, [allDetails, diff, type]);
+
+  useEffect(() => {
+    if (type !== "레이드") return;
+    if (!gateOptions.includes(gate)) {
+      setGate(gateOptions[0] || 1);
+    }
+  }, [gateOptions, gate, type]);
+
+  const details = useMemo(() => {
+    if (type === "클래스") return null;
+    if (type === "레이드") {
+      return (
+        allDetails.find(
+          (detail: any) =>
+            String(detail?.difficulty || "").trim() === diff && Number(detail?.gate_num) === gate
+        ) || null
+      );
+    }
+    return allDetails.find((detail: any) => Number(detail?.gate_num || 0) === 0) || allDetails[0] || null;
+  }, [allDetails, diff, gate, type]);
+
+  const narratives = useMemo(() => getDetailNarratives(details), [details]);
+  const tone = getDifficultyTone(diff);
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(2,6,23,0.86)] p-4 text-left backdrop-blur-xl md:p-6"
     >
-      <div className="bg-[#111] border border-white/10 p-10 rounded-[3rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto relative shadow-2xl">
+      <motion.div
+        initial={{ opacity: 0, y: 22, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 18, scale: 0.98 }}
+        transition={{ duration: 0.18 }}
+        className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[2.3rem] border border-white/10 bg-slate-950/96 shadow-[0_30px_100px_rgba(2,6,23,0.6)]"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.14),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_46%)]" />
         <button
           onClick={onClose}
-          className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors"
+          className="absolute right-5 top-5 z-20 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
         >
-          <X size={32} />
+          <X size={20} />
         </button>
 
-        <div className="flex flex-col md:flex-row gap-8 mb-10">
-          <img
-            src={
-              item.image_url ||
-              "https://images.unsplash.com/photo-1542751371-adc38448a05e"
-            }
-            className="w-full md:w-48 h-48 object-cover rounded-3xl border border-white/10 shadow-2xl"
-          />
-          <div className="flex flex-col justify-end">
-            <h2 className="text-4xl md:text-5xl font-semibold uppercase text-blue-500 mb-2">
-              {item.name || item.sub_class}
-            </h2>
-            <p className="text-slate-500 font-bold uppercase tracking-widest">
-              {type} Specification
-            </p>
+        <div className="relative border-b border-white/10 px-6 py-6 md:px-8 md:py-7">
+          <div className="grid gap-6 md:grid-cols-[220px,minmax(0,1fr)]">
+            <div className="overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/[0.03]">
+              <img
+                src={item.image_url || "https://images.unsplash.com/photo-1542751371-adc38448a05e"}
+                className="h-full min-h-[180px] w-full object-cover"
+              />
+            </div>
+
+            <div className="min-w-0 self-end">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-300">
+                  {type}
+                </span>
+                {type === "레이드" && (
+                  <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${tone.chip}`}>
+                    {diff}
+                  </span>
+                )}
+              </div>
+
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white md:text-5xl">
+                {item.name || item.sub_class}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-400 md:text-base">
+                {type === "레이드"
+                  ? "난이도와 관문을 선택해서 주요 스펙과 보상을 한 번에 확인할 수 있어."
+                  : type === "가디언 토벌"
+                  ? "토벌 콘텐츠 핵심 정보와 보상을 확인해."
+                  : "클래스 핵심 세팅과 각인을 정리했어."}
+              </p>
+
+              {type === "레이드" && (
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <CompactDetailMetric label="현재 난이도" value={diff} />
+                  <CompactDetailMetric label="선택 관문" value={`${gate}관문`} />
+                  <CompactDetailMetric label="총 관문 수" value={`${gateOptions.length}개`} />
+                  <CompactDetailMetric
+                    label="클리어 골드"
+                    value={`${formatLargeNumber(details?.clear_gold)} G`}
+                    accent="text-yellow-300"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {type === "레이드" && (
-          <div className="flex flex-col md:flex-row gap-4 mb-8">
-            <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5 flex-wrap">
-              {[1, 2, 3, 4].map((g) => (
-                <button
-                  key={g}
-                  onClick={() => setGate(g)}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-                    gate === g
-                      ? "bg-blue-600 shadow-lg shadow-blue-600/20"
-                      : "text-slate-500"
-                  }`}
-                >
-                  {g}관문
-                </button>
-              ))}
-            </div>
-
-            <div className="flex gap-2 p-1 bg-black rounded-xl border border-white/5 flex-wrap">
-              {difficultyOptions.map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setDiff(d)}
-                  className={`px-6 py-2 rounded-lg font-semibold text-xs transition-all ${
-                    diff === d ? "bg-white text-black" : "text-slate-500"
-                  }`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {type === "클래스" ? (
-            <>
-              <StatCard label="직업 각인" value={item.engraving_job || "-"} />
-              <StatCard
-                label="공용 각인"
-                value={item.engraving_common?.join(", ") || "-"}
-                wide
-              />
-              <StatCard
-                label="아크 패시브"
-                value={item.ark_passive?.join(" / ") || "-"}
-                full
-              />
-            </>
-          ) : details ? (
-            <>
-              <StatCard label="HP (체력)" value={details.hp || "-"} />
-              <StatCard label="계열" value={details.element_type || "-"} />
-              <StatCard label="속성" value={details.attribute || "-"} />
-              <div className="p-6 bg-white/5 rounded-2xl border border-blue-500/20 md:col-span-3">
-                <label className="text-[10px] font-semibold text-blue-500/50 uppercase tracking-widest mb-2 block">
-                  클리어 골드
-                </label>
-                <div className="text-2xl font-semibold text-yellow-400">
-                  {details.clear_gold?.toLocaleString() || "0"} G
+        <div className="relative space-y-6 px-6 py-6 md:px-8 md:py-7">
+          {type === "레이드" && (
+            <div className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
+              <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                  난이도 선택
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {availableDifficulties.map((difficulty) => {
+                    const difficultyTone = getDifficultyTone(difficulty);
+                    const active = diff === difficulty;
+                    return (
+                      <button
+                        key={difficulty}
+                        onClick={() => setDiff(difficulty)}
+                        className={cn(
+                          "rounded-full border px-4 py-2 text-sm font-semibold transition-all",
+                          active
+                            ? difficultyTone.active
+                            : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"
+                        )}
+                      >
+                        {difficulty}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-            </>
+
+              <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                  관문 선택
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {gateOptions.map((gateNumber) => {
+                    const active = gate === gateNumber;
+                    return (
+                      <button
+                        key={gateNumber}
+                        onClick={() => setGate(gateNumber)}
+                        className={cn(
+                          "relative overflow-hidden rounded-[1.35rem] border p-4 text-left transition-all",
+                          active
+                            ? `border-white/10 bg-white/[0.08] shadow-[0_18px_40px_rgba(2,6,23,0.34)]`
+                            : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
+                        )}
+                      >
+                        <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${tone.ring} ${active ? "opacity-100" : "opacity-0"}`} />
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                          Gate
+                        </div>
+                        <div className="mt-2 text-lg font-semibold text-white">{gateNumber}관문</div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          {active ? "현재 선택됨" : "상세 보기"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="rounded-[1.85rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-16 text-center text-sm text-slate-500">
+              상세 데이터를 불러오는 중...
+            </div>
+          ) : type === "클래스" ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <DetailInfoCard label="직업 각인" value={item.engraving_job || "-"} />
+              <DetailInfoCard label="공용 각인" value={item.engraving_common?.join(", ") || "-"} wide />
+              <DetailInfoCard label="아크 패시브" value={item.ark_passive?.join(" / ") || "-"} full />
+            </div>
+          ) : details ? (
+            <div className="grid gap-5 xl:grid-cols-[0.95fr,1.05fr]">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <DetailInfoCard label="HP (체력)" value={formatLargeNumber(details.hp)} />
+                  <DetailInfoCard label="계열" value={details.element_type || "-"} />
+                  <DetailInfoCard label="속성" value={details.attribute || "-"} />
+                  <DetailInfoCard
+                    label="클리어 골드"
+                    value={`${formatLargeNumber(details.clear_gold)} G`}
+                    accent="text-yellow-300"
+                  />
+                </div>
+
+                <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    관문 요약
+                  </div>
+                  <div className="mt-3 text-base font-semibold text-white">
+                    {type === "레이드" ? `${diff} · ${gate}관문` : item.name || type}
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-slate-400">
+                    선택한 관문 기준의 핵심 수치와 공략 메모를 오른쪽에서 확인할 수 있어.
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {narratives.length > 0 ? (
+                  narratives.map((entry) => (
+                    <div key={entry.label} className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                        {entry.label}
+                      </div>
+                      <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-300">
+                        {entry.value}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-[1.85rem] border border-dashed border-white/10 bg-white/[0.03] px-5 py-10 text-center text-sm text-slate-500">
+                    이 관문에 등록된 추가 공략 메모가 아직 없습니다.
+                  </div>
+                )}
+
+                <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                    관리자 입력 구조 추천
+                  </div>
+                  <div className="mt-3 text-sm leading-7 text-slate-300">
+                    난이도 탭과 관문 카드 UI를 더 살리려면, 관리자 페이지에서 관문별 메모 / 주요 기믹 / 추천 포인트를 각각 따로 입력받는 형태가 가장 좋아.
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
-            <div className="col-span-3 py-20 text-center text-slate-700 font-semibold uppercase tracking-widest">
-              데이터가 없습니다.
+            <div className="rounded-[1.85rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-16 text-center text-sm text-slate-500">
+              선택한 난이도와 관문에 대한 데이터가 아직 없습니다.
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   );
 };
 
-const StatCard = ({
+const CompactDetailMetric = ({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: React.ReactNode;
+  accent?: string;
+}) => (
+  <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3.5">
+    <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">{label}</div>
+    <div className={cn("mt-2 text-base font-semibold text-white", accent)}>{value}</div>
+  </div>
+);
+
+const DetailInfoCard = ({
   label,
   value,
   wide = false,
   full = false,
+  accent,
 }: {
   label: string;
-  value: string;
+  value: React.ReactNode;
   wide?: boolean;
   full?: boolean;
+  accent?: string;
 }) => (
   <div
-    className={`p-6 bg-white/5 rounded-2xl border border-white/5 ${
-      full ? "md:col-span-3" : wide ? "md:col-span-2" : ""
-    }`}
+    className={cn(
+      "rounded-[1.65rem] border border-white/10 bg-white/[0.03] p-5",
+      full && "md:col-span-3",
+      wide && "md:col-span-2"
+    )}
   >
-    <label className="text-[10px] font-semibold text-blue-500/50 uppercase tracking-widest mb-2 block">
+    <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
       {label}
-    </label>
-    <div className="text-lg font-semibold">{value}</div>
+    </div>
+    <div className={cn("mt-3 break-words text-lg font-semibold text-white", accent)}>{value}</div>
   </div>
 );
 
