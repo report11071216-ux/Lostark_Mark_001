@@ -4738,6 +4738,79 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
   );
 };
 
+const AdminSectionCard = ({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) => (
+  <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5 md:p-6">
+    <div className="mb-4">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-300">{title}</div>
+      {description && <div className="mt-2 text-sm leading-6 text-slate-400">{description}</div>}
+    </div>
+    {children}
+  </div>
+);
+
+const AdminSelect = ({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+}) => (
+  <div className="space-y-3">
+    <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">{label}</label>
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded-[1.25rem] border border-white/10 bg-black/30 px-4 py-4 text-sm font-medium text-white outline-none transition-all focus:border-blue-300/20 focus:bg-blue-400/[0.04]"
+    >
+      {placeholder && <option value="">{placeholder}</option>}
+      {options.map((option) => (
+        <option key={option} value={option}>
+          {option}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+
+const AdminTextarea = ({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 4,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) => (
+  <div className="space-y-3">
+    <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">{label}</label>
+    <textarea
+      value={value}
+      rows={rows}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full rounded-[1.35rem] border border-white/10 bg-black/30 px-4 py-4 text-sm leading-7 text-white outline-none transition-all focus:border-blue-300/20 focus:bg-blue-400/[0.04]"
+    />
+  </div>
+);
+
 const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const [list, setList] = useState<any[]>([]);
   const [selectedGate, setSelectedGate] = useState(1);
@@ -4753,6 +4826,8 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     guide: "",
     mechanics: "",
     tip: "",
+    reward_items: "",
+    reward_materials: "",
   });
 
   const elementOptions = ["악마형", "야수형", "인간형", "정령형", "기계형", "고대", "불사", "신"];
@@ -4796,7 +4871,31 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     guide: "",
     mechanics: "",
     tip: "",
+    reward_items: "",
+    reward_materials: "",
   });
+
+  const normalizeRewardText = (value: any) => {
+    if (!value) return "";
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => {
+          if (typeof item === "string") return item;
+          const name = String(item?.name || item?.item || item?.title || item?.material || "").trim();
+          const quantity = String(item?.quantity || item?.count || "").trim();
+          return quantity ? `${name} x${quantity}` : name;
+        })
+        .filter(Boolean)
+        .join("
+");
+    }
+    if (typeof value === "string") return value;
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return "";
+    }
+  };
 
   const loadItem = async (item: any, activateEdit = true) => {
     if (activateEdit) setEditingId(item.id);
@@ -4822,6 +4921,8 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       guide: data?.guide || data?.description || data?.desc || data?.memo || data?.note || "",
       mechanics: data?.mechanics || data?.pattern || data?.patterns || data?.mechanic || "",
       tip: data?.tip || data?.tips || data?.recommendation || data?.recommend || data?.comment || "",
+      reward_items: normalizeRewardText(data?.reward_items || data?.rewards || data?.drop_items || data?.drops),
+      reward_materials: normalizeRewardText(data?.reward_materials || data?.material_rewards || data?.drop_materials || data?.reward_summary),
     });
   };
 
@@ -4862,6 +4963,8 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       guide: form.guide || null,
       mechanics: form.mechanics || null,
       tip: form.tip || null,
+      reward_items: form.reward_items || null,
+      reward_materials: form.reward_materials || null,
     };
 
     let dErr: any = null;
@@ -4889,7 +4992,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       dErr = fallback.error;
 
       if (!dErr) {
-        showToast("기본 데이터는 저장됐지만, 메모/기믹/추천 포인트 컬럼이 아직 DB에 없어. SQL 마이그레이션이 필요해.", "info");
+        showToast("기본 데이터는 저장됐지만, 상세 메모/보상 컬럼이 아직 DB에 없어. SQL 마이그레이션이 필요해.", "info");
       }
     }
 
@@ -4915,194 +5018,248 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   };
 
   return (
-    <div className="grid gap-10 md:grid-cols-2">
-      <div className="space-y-6">
-        <h4 className="text-xs font-semibold uppercase tracking-widest text-blue-500">
-          Current List
-        </h4>
-
-        <div className="max-h-[560px] space-y-2 overflow-y-auto pr-2">
-          {list.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => loadItem(item)}
-              className={`flex cursor-pointer items-center justify-between rounded-xl border bg-black/40 p-4 transition-all ${
-                editingId === item.id
-                  ? "border-blue-500"
-                  : "border-white/5 hover:border-white/20"
-              }`}
-            >
-              <span className="text-sm font-bold text-slate-300">{item.name}</span>
+    <div className="grid gap-8 xl:grid-cols-[0.78fr,1.22fr]">
+      <div className="space-y-5">
+        <AdminSectionCard
+          title="Content Library"
+          description={`${isRaid ? "레이드" : "가디언 토벌"} 콘텐츠를 선택하면 우측에서 상세 데이터를 편집할 수 있어.`}
+        >
+          <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
+            {list.map((item) => (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteItem(item.id, item.name);
-                }}
-                className="text-slate-600 hover:text-red-500"
+                key={item.id}
+                onClick={() => loadItem(item)}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-[1.35rem] border px-4 py-4 text-left transition-all",
+                  editingId === item.id
+                    ? "border-blue-300/22 bg-blue-400/[0.08] shadow-[0_16px_36px_rgba(37,99,235,0.12)]"
+                    : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
+                )}
               >
-                <Trash2 size={16} />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-white">{item.name}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {editingId === item.id ? "현재 편집 중" : "클릭하여 상세 편집"}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteItem(item.id, item.name);
+                  }}
+                  className="ml-4 shrink-0 text-slate-600 transition-colors hover:text-red-400"
+                >
+                  <Trash2 size={16} />
+                </button>
               </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </AdminSectionCard>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         {editingId && (
-          <div className="text-xs font-semibold uppercase tracking-widest text-yellow-400">
-            🔧 수정 모드
+          <div className="rounded-[1.35rem] border border-yellow-400/20 bg-yellow-400/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-yellow-200">
+            수정 모드 활성화
           </div>
         )}
 
-        <AdminInput
-          label="Content Name"
-          value={form.name}
-          onChange={(v: any) => setForm({ ...form, name: v })}
-        />
-
-        <ImageUploader
-          label="Image"
-          onUpload={(url) => setForm({ ...form, image_url: url })}
-        />
+        <AdminSectionCard
+          title="기본 정보"
+          description="콘텐츠 이름과 대표 이미지를 관리해. 공통 메타 영역이야."
+        >
+          <div className="grid gap-4 md:grid-cols-[1fr,0.9fr]">
+            <AdminInput
+              label="Content Name"
+              value={form.name}
+              onChange={(v: any) => setForm({ ...form, name: v })}
+            />
+            <div className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
+              <ImageUploader
+                label="Image"
+                onUpload={(url) => setForm({ ...form, image_url: url })}
+              />
+              {form.image_url && (
+                <img
+                  src={form.image_url}
+                  className="mt-4 h-36 w-full rounded-2xl object-cover"
+                />
+              )}
+            </div>
+          </div>
+        </AdminSectionCard>
 
         {isRaid && (
-          <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              레이드 상세 편집 위치
-            </div>
+          <AdminSectionCard
+            title="관문 / 난이도 편집 위치"
+            description="현재 편집할 관문과 난이도를 먼저 선택해. 선택 변경 시 해당 위치의 저장 데이터가 즉시 로드돼."
+          >
+            <div className="grid gap-4 lg:grid-cols-[1fr,1fr,0.9fr]">
+              <div>
+                <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Gate</div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {[1, 2, 3, 4].map((gate) => (
+                    <button
+                      key={gate}
+                      type="button"
+                      onClick={() => setSelectedGate(gate)}
+                      className={cn(
+                        "rounded-[1.15rem] border px-4 py-3 text-sm font-semibold transition-all",
+                        selectedGate === gate
+                          ? "border-blue-300/22 bg-blue-400/[0.10] text-white shadow-[0_12px_28px_rgba(37,99,235,0.14)]"
+                          : "border-white/10 bg-black/20 text-slate-400 hover:border-white/20 hover:text-white"
+                      )}
+                    >
+                      {gate}관문
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-            <div className="mt-4">
-              <div className="mb-2 text-xs font-semibold text-slate-400">관문 선택</div>
-              <div className="flex flex-wrap gap-2">
-                {[1, 2, 3, 4].map((gate) => (
-                  <button
-                    key={gate}
-                    type="button"
-                    onClick={() => setSelectedGate(gate)}
-                    className={`rounded-xl px-4 py-3 text-xs font-bold transition-all ${
-                      selectedGate === gate
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                        : "border border-white/10 bg-black text-slate-400"
-                    }`}
-                  >
-                    {gate}관문
-                  </button>
-                ))}
+              <div>
+                <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Difficulty</div>
+                <div className="flex flex-wrap gap-2">
+                  {difficultyOptions.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDifficulty(d)}
+                      className={cn(
+                        "rounded-full border px-4 py-3 text-sm font-semibold transition-all",
+                        difficulty === d
+                          ? "border-white/10 bg-white text-black"
+                          : "border-white/10 bg-black/20 text-slate-400 hover:border-white/20 hover:text-white"
+                      )}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Current Slot</div>
+                <div className="mt-3 text-lg font-semibold text-white">{difficulty}</div>
+                <div className="mt-1 text-sm text-sky-300">{selectedGate}관문</div>
+                <div className="mt-2 text-xs leading-5 text-slate-500">이 위치에 저장되는 메모/보상/수치가 모달에 그대로 연결돼.</div>
               </div>
             </div>
-
-            <div className="mt-4">
-              <div className="mb-2 text-xs font-semibold text-slate-400">난이도 선택</div>
-              <div className="flex flex-wrap gap-2">
-                {difficultyOptions.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setDifficulty(d)}
-                    className={`rounded-xl px-4 py-3 text-xs font-bold transition-all ${
-                      difficulty === d
-                        ? "bg-white text-black"
-                        : "border border-white/10 bg-black text-slate-400"
-                    }`}
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-400">
-              현재 편집 위치: <span className="font-semibold text-sky-300">{difficulty}</span> · <span className="font-semibold text-sky-300">{selectedGate}관문</span>
-            </div>
-          </div>
+          </AdminSectionCard>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          <AdminInput label="HP" value={form.hp} onChange={(v: any) => setForm({ ...form, hp: v })} />
-          <AdminInput
-            label="Gold"
-            type="number"
-            value={form.gold}
-            onChange={(v: any) => setForm({ ...form, gold: v })}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <select
-            className="rounded-xl border border-white/10 bg-black p-4 text-xs font-bold"
-            value={form.element}
-            onChange={(e) => setForm({ ...form, element: e.target.value })}
+        <div className="grid gap-5 xl:grid-cols-[0.95fr,1.05fr]">
+          <AdminSectionCard
+            title="전투 수치"
+            description="관문별 핵심 스펙과 숫자형 보상을 입력해."
           >
-            <option value="">계열 선택</option>
-            {elementOptions.map((element) => (
-              <option key={element} value={element}>
-                {element}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="rounded-xl border border-white/10 bg-black p-4 text-xs font-bold"
-            value={form.attribute}
-            onChange={(e) => setForm({ ...form, attribute: e.target.value })}
-          >
-            <option value="">속성 선택</option>
-            {attributeOptions.map((attribute) => (
-              <option key={attribute} value={attribute}>
-                {attribute}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5 space-y-4">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              공략 메모
+            <div className="grid gap-4 md:grid-cols-2">
+              <AdminInput label="HP" value={form.hp} onChange={(v: any) => setForm({ ...form, hp: v })} />
+              <AdminInput
+                label="Gold"
+                type="number"
+                value={form.gold}
+                onChange={(v: any) => setForm({ ...form, gold: v })}
+              />
             </div>
-            <textarea
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <AdminSelect
+                label="계열"
+                value={form.element}
+                onChange={(value) => setForm({ ...form, element: value })}
+                options={elementOptions}
+                placeholder="계열 선택"
+              />
+              <AdminSelect
+                label="속성"
+                value={form.attribute}
+                onChange={(value) => setForm({ ...form, attribute: value })}
+                options={attributeOptions}
+                placeholder="속성 선택"
+              />
+            </div>
+          </AdminSectionCard>
+
+          <AdminSectionCard
+            title="보상 데이터"
+            description="한 줄에 하나씩 입력해. 예: 찬란한 명예의 돌파석 x8"
+          >
+            <div className="space-y-4">
+              <AdminTextarea
+                label="드랍 아이템"
+                value={form.reward_items}
+                onChange={(value) => setForm({ ...form, reward_items: value })}
+                placeholder={"예시
+비밀의 보물 상자 x1
+빛나는 명예의 돌파석 x12"}
+                rows={5}
+              />
+              <AdminTextarea
+                label="드랍 재료"
+                value={form.reward_materials}
+                onChange={(value) => setForm({ ...form, reward_materials: value })}
+                placeholder={"예시
+정제된 파괴강석 x24
+정제된 수호강석 x36"}
+                rows={5}
+              />
+            </div>
+          </AdminSectionCard>
+        </div>
+
+        <div className="grid gap-5 xl:grid-cols-3">
+          <AdminSectionCard
+            title="공략 메모"
+            description="전체 진행 흐름이나 주의사항을 적어."
+          >
+            <AdminTextarea
+              label="Guide"
               value={form.guide}
-              onChange={(e) => setForm({ ...form, guide: e.target.value })}
-              placeholder="관문 전체 요약, 핵심 진행 순서, 주의사항 등을 입력"
-              className="mt-3 min-h-[110px] w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition-all focus:border-blue-300/20"
+              onChange={(value) => setForm({ ...form, guide: value })}
+              placeholder="공략 메모를 입력"
+              rows={6}
             />
-          </div>
+          </AdminSectionCard>
 
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              주요 기믹
-            </div>
-            <textarea
+          <AdminSectionCard
+            title="주요 기믹"
+            description="패턴, 카운터, 협동 포인트를 적어."
+          >
+            <AdminTextarea
+              label="Mechanics"
               value={form.mechanics}
-              onChange={(e) => setForm({ ...form, mechanics: e.target.value })}
-              placeholder="패턴, 기믹, 카운터 타이밍, 협동 포인트 등을 입력"
-              className="mt-3 min-h-[110px] w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition-all focus:border-blue-300/20"
+              onChange={(value) => setForm({ ...form, mechanics: value })}
+              placeholder="기믹/패턴을 입력"
+              rows={6}
             />
-          </div>
+          </AdminSectionCard>
 
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              추천 포인트
-            </div>
-            <textarea
+          <AdminSectionCard
+            title="추천 포인트"
+            description="실전 팁, 아이템 추천, 파티 조합 팁을 적어."
+          >
+            <AdminTextarea
+              label="Tip"
               value={form.tip}
-              onChange={(e) => setForm({ ...form, tip: e.target.value })}
-              placeholder="파티 구성 팁, 추천 전투 아이템, 실전 팁 등을 입력"
-              className="mt-3 min-h-[110px] w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition-all focus:border-blue-300/20"
+              onChange={(value) => setForm({ ...form, tip: value })}
+              placeholder="추천 포인트를 입력"
+              rows={6}
             />
-          </div>
+          </AdminSectionCard>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={handleSave}
-            className="flex-1 rounded-xl bg-blue-600 p-4 font-semibold uppercase transition-all hover:bg-blue-500"
+            className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-6 py-4 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
           >
             {editingId ? "Update Content" : "Register Content"}
           </button>
 
           {editingId && (
-            <button onClick={resetForm} className="rounded-xl bg-slate-700 px-4 font-semibold uppercase">
+            <button
+              onClick={resetForm}
+              className="rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-6 py-4 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
+            >
               Cancel
             </button>
           )}
