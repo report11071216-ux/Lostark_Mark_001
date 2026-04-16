@@ -5187,18 +5187,14 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
                 label="드랍 아이템"
                 value={form.reward_items}
                 onChange={(value) => setForm({ ...form, reward_items: value })}
-                placeholder={"예시
-비밀의 보물 상자 x1
-빛나는 명예의 돌파석 x12"}
+                placeholder={"예시\n비밀의 보물 상자 x1\n빛나는 명예의 돌파석 x12"}
                 rows={5}
               />
               <AdminTextarea
                 label="드랍 재료"
                 value={form.reward_materials}
                 onChange={(value) => setForm({ ...form, reward_materials: value })}
-                placeholder={"예시
-정제된 파괴강석 x24
-정제된 수호강석 x36"}
+                placeholder={"예시\n정제된 파괴강석 x24\n정제된 수호강석 x36"}
                 rows={5}
               />
             </div>
