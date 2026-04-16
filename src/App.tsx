@@ -3676,7 +3676,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
             {Array.from({ length: firstDayOffset }).map((_, i) => (
               <div
                 key={`empty-${i}`}
-                className="min-h-[156px] md:min-h-[190px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]"
+                className="min-h-[132px] md:min-h-[156px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]"
               />
             ))}
 
@@ -3693,7 +3693,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                 <div
                   key={day}
                   className={cn(
-                    "group relative min-h-[156px] md:min-h-[190px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-3 transition-all duration-200 hover:z-[1] hover:bg-blue-400/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(147,197,253,0.16)]",
+                    "group relative min-h-[132px] md:min-h-[156px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-3 transition-all duration-200 hover:z-[1] hover:bg-blue-400/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(147,197,253,0.16)]",
                     isToday && "bg-blue-500/[0.08] shadow-[inset_0_0_0_1px_rgba(96,165,250,0.28),0_0_0_1px_rgba(96,165,250,0.1)]"
                   )}
                 >
@@ -3750,21 +3750,32 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                     )}
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {dayRaids.length === 0 && (
-                      <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-3 py-4 text-center text-[11px] font-medium text-slate-500">
+                      <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-3 py-3 text-center text-[11px] font-medium text-slate-500">
                         {scheduleView === "mine" ? "내 일정 없음" : "일정 없음"}
                       </div>
                     )}
 
-                    {dayRaids.map((raid) => (
+                    {dayRaids.slice(0, 2).map((raid) => (
                       <RaidCard
                         key={raid.id}
                         raid={raid}
                         parts={visibleParticipants.filter((p) => p.schedule_id === raid.id)}
                         onOpen={() => setSelectedRaid(raid)}
+                        compact
                       />
                     ))}
+
+                    {dayRaids.length > 2 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRaid(dayRaids[0])}
+                        className="w-full rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-left text-[11px] font-medium text-slate-400 transition-colors hover:border-blue-300/20 hover:bg-blue-400/[0.04] hover:text-slate-200"
+                      >
+                        +{dayRaids.length - 2}개 일정 더 보기
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -3918,10 +3929,12 @@ const RaidCard = ({
   raid,
   parts,
   onOpen,
+  compact = false,
 }: {
   raid: any;
   parts: any[];
   onOpen: () => void;
+  compact?: boolean;
 }) => {
   const colors = classNameByMode(raid.type);
   const capacity = getCapacity(raid);
@@ -3930,40 +3943,52 @@ const RaidCard = ({
 
   return (
     <motion.button
-      whileHover={{ y: -2, scale: 1.01 }}
+      whileHover={{ y: -1 }}
       onClick={onOpen}
-      className={`w-full relative overflow-hidden rounded-[1.35rem] border p-3 text-left shadow-[0_16px_34px_rgba(2,6,23,0.24)] transition-all ${
+      className={cn(
+        "relative w-full overflow-hidden rounded-[1.1rem] border text-left transition-all",
+        compact ? "p-2.5" : "p-3",
         isFull
-          ? "border-rose-400/30 bg-[linear-gradient(135deg,rgba(59,130,246,0.14),rgba(15,23,42,0.9))]"
-          : "border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] hover:border-blue-300/20 hover:bg-[linear-gradient(135deg,rgba(59,130,246,0.14),rgba(255,255,255,0.03))]"
-      }`}>
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${colors.badge}`}>
-          {raid.type === "anime" ? "📺 시청" : `${raid.raid_type} · ${raid.difficulty}`}
-        </span>
-        <span className={`text-[10px] font-semibold ${isFull ? "text-red-300" : "text-slate-400"}`}>
-          {parts.length}/{capacity.maxParticipants}
-          {isFull ? " FULL" : ""}
-        </span>
+          ? "border-rose-400/25 bg-[linear-gradient(135deg,rgba(59,130,246,0.12),rgba(15,23,42,0.88))]"
+          : "border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] hover:border-blue-300/18 hover:bg-[linear-gradient(135deg,rgba(59,130,246,0.12),rgba(255,255,255,0.03))]"
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            {raid.experience && raid.type !== "anime" && (
+              <span className={cn(colors.chip, "px-2 py-0.5 text-[9px]")}>{raid.experience}</span>
+            )}
+            <span className="truncate text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
+              {raid.type === "anime" ? "시청" : `${raid.raid_type} · ${raid.difficulty}`}
+            </span>
+          </div>
+
+          <div className="mt-2 truncate text-[13px] font-semibold leading-tight text-white">
+            {raid.raid_name}
+          </div>
+
+          <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
+            <span className="inline-flex items-center gap-1 rounded-full border border-white/8 bg-white/[0.04] px-2 py-1">
+              <Clock size={10} />
+              {raid.raid_time}
+            </span>
+          </div>
+        </div>
+
+        <div className="shrink-0 text-right">
+          <div className={cn("text-[11px] font-semibold", isFull ? "text-rose-300" : "text-slate-300")}>
+            {parts.length}/{capacity.maxParticipants}
+          </div>
+          {parts.length > 0 && <div className="mt-1 h-2 w-2 rounded-full bg-sky-300" />}
+        </div>
       </div>
 
-      <div className="text-sm font-semibold leading-tight text-white truncate">
-        {raid.raid_name}
-      </div>
-
-      <div className="flex flex-wrap gap-2 mt-2 mb-3">
-        {raid.experience && raid.type !== "anime" && (
-          <span className={colors.chip}>{raid.experience}</span>
-        )}
-        <span className="bg-white/5 text-slate-300 border border-white/10 text-[10px] px-2 py-1 rounded-full">
-          <Clock size={10} className="inline mr-1" />
-          {raid.raid_time}
-        </span>
-      </div>
-
-      <div className="mt-2 h-[5px] bg-black/40 rounded-full overflow-hidden">
-        <div style={{ width: `${percent}%` }} className={`h-full ${isFull ? "bg-red-500" : colors.bar}`} />
-      </div>
+      {!compact && (
+        <div className="mt-3 h-1 overflow-hidden rounded-full bg-black/30">
+          <div style={{ width: `${percent}%` }} className={cn("h-full rounded-full", isFull ? "bg-rose-400" : colors.bar)} />
+        </div>
+      )}
     </motion.button>
   );
 };
