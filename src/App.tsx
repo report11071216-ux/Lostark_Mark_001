@@ -2445,21 +2445,30 @@ const getDifficultyTone = (difficulty: string) => {
   if (value === "하드") {
     return {
       chip: "border-violet-300/20 bg-violet-400/10 text-violet-100",
+      chipSoft: "border-violet-300/18 bg-violet-400/12 text-violet-100",
       active: "border-violet-300/28 bg-violet-400/14 text-white shadow-[0_14px_34px_rgba(139,92,246,0.18)]",
       ring: "from-violet-400 to-fuchsia-300",
+      accentText: "text-violet-200",
+      badge: "HARD",
     };
   }
   if (value === "나이트메어") {
     return {
       chip: "border-rose-300/20 bg-rose-400/10 text-rose-100",
+      chipSoft: "border-rose-300/18 bg-rose-400/12 text-rose-100",
       active: "border-rose-300/28 bg-rose-400/14 text-white shadow-[0_14px_34px_rgba(244,63,94,0.18)]",
       ring: "from-rose-400 to-orange-300",
+      accentText: "text-rose-200",
+      badge: "NIGHTMARE",
     };
   }
   return {
     chip: "border-sky-300/20 bg-sky-400/10 text-sky-100",
+    chipSoft: "border-sky-300/18 bg-sky-400/12 text-sky-100",
     active: "border-sky-300/28 bg-sky-400/14 text-white shadow-[0_14px_34px_rgba(59,130,246,0.18)]",
     ring: "from-blue-400 to-sky-300",
+    accentText: "text-sky-200",
+    badge: "NORMAL",
   };
 };
 
@@ -2611,6 +2620,36 @@ const DetailPopup = ({ item, type, onClose }: any) => {
   const narratives = useMemo(() => getDetailNarratives(details), [details]);
   const tone = getDifficultyTone(diff);
 
+  const rewardCards = useMemo(() => {
+    if (!details) return [];
+    return [
+      {
+        label: "클리어 골드",
+        value: `${formatLargeNumber(details.clear_gold)} G`,
+        hint: "관문 클리어 기준",
+        accent: "text-yellow-300",
+      },
+      {
+        label: "계열",
+        value: details.element_type || "-",
+        hint: "보스 계열 정보",
+        accent: tone.accentText,
+      },
+      {
+        label: "속성",
+        value: details.attribute || "-",
+        hint: "취약 속성 기준",
+        accent: "text-white",
+      },
+      {
+        label: "HP",
+        value: formatLargeNumber(details.hp),
+        hint: "관문 체력 정보",
+        accent: "text-white",
+      },
+    ];
+  }, [details, tone.accentText]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -2635,11 +2674,47 @@ const DetailPopup = ({ item, type, onClose }: any) => {
 
         <div className="relative border-b border-white/10 px-6 py-6 md:px-8 md:py-7">
           <div className="grid gap-6 md:grid-cols-[220px,minmax(0,1fr)]">
-            <div className="overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/[0.03]">
+            <div className="relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/[0.03]">
               <img
                 src={item.image_url || "https://images.unsplash.com/photo-1542751371-adc38448a05e"}
                 className="h-full min-h-[180px] w-full object-cover"
               />
+              {type === "레이드" && (
+                <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
+                  {availableDifficulties.map((difficulty) => {
+                    const difficultyTone = getDifficultyTone(difficulty);
+                    const active = diff === difficulty;
+                    return (
+                      <button
+                        key={difficulty}
+                        onClick={() => setDiff(difficulty)}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] backdrop-blur-xl transition-all",
+                          active
+                            ? difficultyTone.active
+                            : "border-black/20 bg-black/45 text-white/85 hover:bg-black/60"
+                        )}
+                      >
+                        {difficulty}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-transparent" />
+              {type === "레이드" && (
+                <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/65">
+                      Selected
+                    </div>
+                    <div className="mt-1 text-lg font-semibold text-white">{gate}관문</div>
+                  </div>
+                  <div className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] backdrop-blur-md ${tone.chipSoft}`}>
+                    {tone.badge}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="min-w-0 self-end">
@@ -2659,7 +2734,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
               </h2>
               <p className="mt-2 text-sm leading-6 text-slate-400 md:text-base">
                 {type === "레이드"
-                  ? "난이도와 관문을 선택해서 주요 스펙과 보상을 한 번에 확인할 수 있어."
+                  ? "난이도와 관문을 선택해서 관문별 보상과 핵심 정보를 한 번에 확인할 수 있어."
                   : type === "가디언 토벌"
                   ? "토벌 콘텐츠 핵심 정보와 보상을 확인해."
                   : "클래스 핵심 세팅과 각인을 정리했어."}
@@ -2667,11 +2742,11 @@ const DetailPopup = ({ item, type, onClose }: any) => {
 
               {type === "레이드" && (
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <CompactDetailMetric label="현재 난이도" value={diff} />
+                  <CompactDetailMetric label="현재 난이도" value={diff} accent={tone.accentText} />
                   <CompactDetailMetric label="선택 관문" value={`${gate}관문`} />
                   <CompactDetailMetric label="총 관문 수" value={`${gateOptions.length}개`} />
                   <CompactDetailMetric
-                    label="클리어 골드"
+                    label="대표 보상"
                     value={`${formatLargeNumber(details?.clear_gold)} G`}
                     accent="text-yellow-300"
                   />
@@ -2755,17 +2830,39 @@ const DetailPopup = ({ item, type, onClose }: any) => {
               <DetailInfoCard label="아크 패시브" value={item.ark_passive?.join(" / ") || "-"} full />
             </div>
           ) : details ? (
-            <div className="grid gap-5 xl:grid-cols-[0.95fr,1.05fr]">
+            <div className="grid gap-5 xl:grid-cols-[1.05fr,0.95fr]">
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <DetailInfoCard label="HP (체력)" value={formatLargeNumber(details.hp)} />
-                  <DetailInfoCard label="계열" value={details.element_type || "-"} />
-                  <DetailInfoCard label="속성" value={details.attribute || "-"} />
-                  <DetailInfoCard
-                    label="클리어 골드"
-                    value={`${formatLargeNumber(details.clear_gold)} G`}
-                    accent="text-yellow-300"
-                  />
+                <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                        관문별 보상
+                      </div>
+                      <div className="mt-2 text-lg font-semibold text-white">
+                        {diff} · {gate}관문 Reward Board
+                      </div>
+                    </div>
+                    <div className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${tone.chip}`}>
+                      {gate} Gate
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {rewardCards.map((reward) => (
+                      <div
+                        key={reward.label}
+                        className="rounded-[1.35rem] border border-white/10 bg-slate-950/35 p-4"
+                      >
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                          {reward.label}
+                        </div>
+                        <div className={cn("mt-2 text-xl font-semibold", reward.accent)}>
+                          {reward.value}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-400">{reward.hint}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
@@ -2776,7 +2873,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                     {type === "레이드" ? `${diff} · ${gate}관문` : item.name || type}
                   </div>
                   <div className="mt-2 text-sm leading-6 text-slate-400">
-                    선택한 관문 기준의 핵심 수치와 공략 메모를 오른쪽에서 확인할 수 있어.
+                    선택한 관문 기준의 핵심 보상과 공략 메모를 오른쪽에서 바로 읽을 수 있게 정리했어.
                   </div>
                 </div>
               </div>
@@ -2801,10 +2898,10 @@ const DetailPopup = ({ item, type, onClose }: any) => {
 
                 <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                    관리자 입력 구조 추천
+                    난이도 가시성 개선
                   </div>
                   <div className="mt-3 text-sm leading-7 text-slate-300">
-                    난이도 탭과 관문 카드 UI를 더 살리려면, 관리자 페이지에서 관문별 메모 / 주요 기믹 / 추천 포인트를 각각 따로 입력받는 형태가 가장 좋아.
+                    난이도는 이미지 좌상단 오버레이와 본문 탭을 같이 두는 방식이 가장 잘 보여. 처음 들어왔을 때도 한눈에 보이고, 스크롤 중에도 본문 탭으로 다시 바꾸기 쉽기 때문이야.
                   </div>
                 </div>
               </div>
