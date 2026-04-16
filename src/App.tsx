@@ -855,7 +855,7 @@ const HomeFeaturePortal = ({
               whileHover={{ y: -4, scale: 1.01 }}
               onClick={() => setContentView(card.key)}
               className={cn(
-                "group relative overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-3.5 text-left backdrop-blur-xl transition-all",
+                "group relative overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[0.04] px-3.5 py-3 text-left backdrop-blur-xl transition-all",
                 active ? card.activeClass : "hover:border-white/20 hover:bg-white/[0.06]"
               )}
             >
@@ -873,7 +873,7 @@ const HomeFeaturePortal = ({
                 </div>
 
                 <div className="mt-2.5">
-                  <div className="text-lg font-semibold text-white">{card.title}</div>
+                  <div className="text-base font-semibold text-white">{card.title}</div>
                   <div className="mt-1 text-xs leading-5 text-slate-300">
                     {card.subtitle}
                   </div>
@@ -1614,34 +1614,38 @@ const fetchInitialData = async () => {
         <main className={profile?.role === "admin" ? "pt-20" : "pt-16"}>
           <AnimatePresence mode="wait">
             {activeTab === "home" && (
-              <motion.div
-                key="home"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                <Hero settings={settings} posts={posts} onOpenRaidCalendar={() => setIsRaidCalendarModalOpen(true)} />
-                <HomeFeaturePortal contentView={contentView} setContentView={setContentView} />
-                <MainContentViewer type={contentView} />
-                <HomeNoticeSection user={user} profile={profile} />
-              </motion.div>
+              <React.Fragment key="home">
+                <motion.div
+                  key="home"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <Hero
+                    settings={settings}
+                    posts={posts}
+                    onOpenRaidCalendar={() => setIsRaidCalendarModalOpen(true)}
+                  />
+                  <HomeFeaturePortal contentView={contentView} setContentView={setContentView} />
+                  <MainContentViewer type={contentView} />
+                  <HomeNoticeSection user={user} profile={profile} />
+                </motion.div>
 
-              <AnimatePresence>
-                {isRaidCalendarModalOpen && (
-                  <ModalFrame onClose={() => setIsRaidCalendarModalOpen(false)}>
-                    <div className="w-full max-w-[1280px]">
-                      <RaidCalendar
-                        user={user}
-                        profile={profile}
-                        compact
-                        hideRankingSection
-                        inModal
-                        onRequestClose={() => setIsRaidCalendarModalOpen(false)}
-                      />
-                    </div>
-                  </ModalFrame>
-                )}
-              </AnimatePresence>
+                <AnimatePresence>
+                  {isRaidCalendarModalOpen && (
+                    <ModalFrame onClose={() => setIsRaidCalendarModalOpen(false)}>
+                      <div className="w-full max-w-[1380px]">
+                        <RaidCalendar
+                          user={user}
+                          profile={profile}
+                          hideRankingSection
+                          inModal
+                        />
+                      </div>
+                    </ModalFrame>
+                  )}
+                </AnimatePresence>
+              </React.Fragment>
             )}
 
             {activeTab === "posts" && (
@@ -1945,10 +1949,11 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
             <button
-              onClick={onOpenRaidCalendar}
-              className="group inline-flex items-center gap-2 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 py-2.5 text-sm font-semibold text-sky-100 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-blue-200/35 hover:bg-blue-400/16 hover:shadow-[0_18px_40px_rgba(59,130,246,0.18)]"
+              type="button"
+              onClick={() => onOpenRaidCalendar?.()}
+              className="inline-flex items-center gap-2 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 py-2 text-sm font-semibold text-blue-100 transition-all hover:-translate-y-0.5 hover:border-blue-200/35 hover:bg-blue-400/15 hover:text-white hover:shadow-[0_12px_30px_rgba(59,130,246,0.2)]"
             >
-              <CalendarDays size={16} className="transition-transform group-hover:scale-105" />
+              <CalendarDays size={16} />
               월별 레이드 일정
             </button>
           </div>
@@ -3089,7 +3094,7 @@ const DetailInfoCard = ({
   </div>
 );
 
-const RaidCalendar = ({ user, profile, compact = false, hideRankingSection = false, inModal = false, onRequestClose }: any) => {
+const RaidCalendar = ({ user, profile, hideRankingSection = false, inModal = false }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [raids, setRaids] = useState<ScheduleLike[]>([]);
   const [participants, setParticipants] = useState<ParticipantLike[]>([]);
@@ -3300,24 +3305,8 @@ const RaidCalendar = ({ user, profile, compact = false, hideRankingSection = fal
   }, [visibleParticipants, visibleRaids]);
 
   return (
-    <section className={cn("max-w-7xl mx-auto px-6 border-t border-white/5", compact ? "py-8 md:py-10" : "py-16 md:py-24", inModal && "max-w-none rounded-[2rem] border border-white/10 bg-[#0b1220]/96 px-4 py-4 md:px-6 md:py-6 shadow-[0_28px_90px_rgba(2,6,23,0.55)]")}>
-      {inModal && (
-        <div className="mb-5 flex items-start justify-between gap-4 rounded-[1.6rem] border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-xl">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-300">Monthly Raid Calendar</div>
-            <h2 className="mt-2 text-xl font-semibold tracking-tight text-white md:text-2xl">월별 레이드 일정</h2>
-            <p className="mt-1 text-sm text-slate-400">기존 캘린더 기능은 그대로 유지하고 모달 안에서만 보이도록 구성했어.</p>
-          </div>
-          <button
-            onClick={onRequestClose}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-slate-300 transition-all hover:border-blue-300/30 hover:bg-blue-400/10 hover:text-white"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      )}
-
-      <div className={cn("grid gap-6 mb-8", hideRankingSection ? "lg:grid-cols-1" : "lg:grid-cols-[1.2fr,0.8fr]")}>
+    <section className="max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-white/5">
+      <div className="grid lg:grid-cols-[1.2fr,0.8fr] gap-6 mb-8">
         <SectionPanel
           title="Raid Calendar"
           description={scheduleView === "mine" ? "내 캐릭터가 참여한 일정만 확인." : "월별 레이드 일정."}
@@ -3387,10 +3376,10 @@ const RaidCalendar = ({ user, profile, compact = false, hideRankingSection = fal
         </SectionPanel>
 
         {!hideRankingSection && (
-        <SectionPanel
-          title={scheduleView === "mine" ? "내 일정 참여 현황" : "월별 참여 랭킹"}
-          description={scheduleView === "mine" ? "내 캐릭터가 참가한 일정 기준으로 확인." : "이번 달 기준 캐릭터 참가횟수 확인."}
-        >
+          <SectionPanel
+            title={scheduleView === "mine" ? "내 일정 참여 현황" : "월별 참여 랭킹"}
+            description={scheduleView === "mine" ? "내 캐릭터가 참가한 일정 기준으로 확인." : "이번 달 기준 캐릭터 참가횟수 확인."}
+          >
           {scheduleView === "mine" ? (
             <div className="space-y-3">
               <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
@@ -3440,11 +3429,11 @@ const RaidCalendar = ({ user, profile, compact = false, hideRankingSection = fal
               ))}
             </div>
           )}
-        </SectionPanel>
+          </SectionPanel>
         )}
       </div>
 
-      <div className={cn("grid gap-6", inModal ? "xl:grid-cols-[1.45fr,0.55fr]" : "xl:grid-cols-[1.35fr,0.65fr]")}>
+      <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-6">
         <div className="overflow-hidden rounded-[2rem] md:rounded-[2.5rem] border border-white/10 bg-slate-950/50 backdrop-blur-xl shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
           <div className="grid grid-cols-7 border-b border-white/5 bg-white/[0.03] text-center text-[10px] md:text-xs uppercase tracking-[0.22em] text-slate-400">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
