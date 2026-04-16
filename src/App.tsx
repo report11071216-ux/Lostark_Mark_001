@@ -85,8 +85,6 @@ const defaultHomeSections = [
   { id: "hero", label: "Hero", enabled: true, density: "compact", width: "default" },
   { id: "portal", label: "핵심 카드", enabled: true, density: "compact", width: "default" },
   { id: "content", label: "콘텐츠 카드", enabled: true, density: "compact", width: "default" },
-  { id: "notice", label: "공지사항", enabled: true, density: "compact", width: "default" },
-  { id: "calendar", label: "캘린더", enabled: true, density: "compact", width: "default" },
 ] as const;
 
 const defaultSettings = {
@@ -1147,7 +1145,7 @@ type HomeSectionDensity = "compact" | "default" | "spacious";
 type HomeSectionWidth = "compact" | "default" | "full";
 
 type HomeSectionLayout = {
-  id: "hero" | "portal" | "content" | "notice" | "calendar";
+  id: "hero" | "portal" | "content";
   label: string;
   enabled: boolean;
   density: HomeSectionDensity;
@@ -1687,7 +1685,7 @@ const fetchInitialData = async () => {
                 exit={{ opacity: 0 }}
               >
                 {getHomeSectionLayouts(settings)
-                  .filter((section) => section.enabled)
+                  .filter((section) => section.enabled && !["notice", "calendar"].includes(section.id))
                   .map((section) => {
                     let content: React.ReactNode = null;
 
@@ -1703,11 +1701,7 @@ const fetchInitialData = async () => {
                       );
                     } else if (section.id === "content") {
                       content = <MainContentViewer type={contentView} density={section.density} />;
-                    } else if (section.id === "notice") {
-                      content = <HomeNoticeSection user={user} profile={profile} density={section.density} />;
-                    } else if (section.id === "calendar") {
-                      content = <RaidCalendar user={user} profile={profile} density={section.density} />;
-                    }
+
 
                     if (!content) return null;
 
@@ -2070,10 +2064,10 @@ const Hero = ({ settings, posts, density = "default" }: any) => {
 
   const heroGridClass =
     density === "compact"
-      ? "relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 lg:grid-cols-[minmax(0,0.95fr)_360px_260px] md:py-7"
+      ? "relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_280px_250px] md:py-7"
       : density === "spacious"
-      ? "relative z-10 mx-auto grid w-full max-w-7xl items-center gap-6 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_400px_290px] md:py-9"
-      : "relative z-10 mx-auto grid w-full max-w-7xl items-center gap-5 px-6 py-7 lg:grid-cols-[minmax(0,1fr)_380px_280px] md:py-8";
+      ? "relative z-10 mx-auto grid w-full max-w-7xl items-center gap-5 px-6 py-7 lg:grid-cols-[minmax(0,1fr)_330px_280px] md:py-8"
+      : "relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_300px_260px] md:py-7";
 
   return (
     <section className={heroSectionClass}>
@@ -2127,69 +2121,77 @@ const Hero = ({ settings, posts, density = "default" }: any) => {
           transition={{ duration: 0.78, delay: 0.04 }}
           className="relative hidden lg:block"
         >
-          <div className="absolute inset-0 rounded-[1.8rem] bg-sky-400/10 blur-3xl" />
-          <div className="relative overflow-hidden rounded-[1.8rem] border border-white/10 bg-white/5 p-4 backdrop-blur-2xl shadow-[0_20px_60px_rgba(37,99,235,0.12)]">
+          <div className="absolute inset-0 rounded-[1.5rem] bg-sky-400/5 blur-3xl" />
+          <div className="relative overflow-hidden rounded-[1.5rem] border border-white/8 bg-white/[0.04] p-3 backdrop-blur-xl shadow-[0_10px_24px_rgba(37,99,235,0.06)]">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-200/80">
-                  Hero Live Panel
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-200/70">
+                  Hero Live
                 </div>
-                <div className="mt-1.5 text-lg font-semibold text-white">
+                <div className="mt-1 text-sm font-semibold text-white">
                   이번 달 요약
                 </div>
               </div>
-              <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-100">
+              <div className="rounded-lg border border-blue-300/12 bg-blue-400/8 px-2 py-1 text-[10px] font-semibold text-blue-100">
                 {livePanel.monthRaidCount}
               </div>
             </div>
 
-            <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-slate-950/30 p-3.5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Monthly Raid
+            <div className="mt-3 rounded-[1rem] border border-white/8 bg-slate-950/24 px-3 py-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Monthly Raid
+                  </div>
+                  <div className="mt-1 text-base font-semibold text-white">{livePanel.monthRaidCount}</div>
+                </div>
+                <div className="text-[10px] text-slate-500">예정 레이드 수</div>
               </div>
-              <div className="mt-2 text-2xl font-semibold text-white">{livePanel.monthRaidCount}</div>
-              <div className="mt-1 text-xs text-slate-500">이번 달 예정 레이드 수</div>
             </div>
 
-            <div className="mt-3 rounded-[1.2rem] border border-white/10 bg-slate-950/30 p-3.5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <div className="mt-2 rounded-[1rem] border border-white/8 bg-slate-950/24 px-3 py-2">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                 Upcoming
               </div>
-              <div className="mt-3 space-y-2.5">
+              <div className="space-y-1.5">
                 {livePanel.upcoming.length > 0 ? (
                   livePanel.upcoming.map((raid) => (
-                    <div key={raid.id} className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
-                      <div className="truncate text-sm font-semibold text-white">{raid.raid_name}</div>
-                      <div className="mt-1 text-[11px] text-slate-400">
-                        {formatShortDate(raid.raid_date)} · {raid.raid_time}
-                        {raid.difficulty ? ` · ${raid.difficulty}` : ""}
+                    <div key={raid.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-[12px] font-semibold text-white">{raid.raid_name}</div>
+                        <div className="mt-0.5 text-[10px] text-slate-400">
+                          {formatShortDate(raid.raid_date)} · {raid.raid_time}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-[10px] font-medium text-slate-400">
+                        {raid.difficulty || "-"}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-3 py-6 text-center text-xs text-slate-500">
+                  <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.03] px-3 py-4 text-center text-[11px] text-slate-500">
                     예정된 일정이 없습니다.
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="mt-3 rounded-[1.2rem] border border-white/10 bg-slate-950/30 p-3.5">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <div className="mt-2 rounded-[1rem] border border-white/8 bg-slate-950/24 px-3 py-2">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                 Monthly Top 3
               </div>
-              <div className="mt-3 space-y-2">
+              <div className="space-y-1.5">
                 {livePanel.ranking.length > 0 ? (
                   livePanel.ranking.map((item, index) => (
-                    <div key={item.nickname} className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
-                      <div className="min-w-0 truncate text-sm font-semibold text-white">
+                    <div key={item.nickname} className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
+                      <div className="min-w-0 truncate text-[12px] font-semibold text-white">
                         #{index + 1} {item.nickname}
                       </div>
-                      <div className="shrink-0 text-xs font-semibold text-sky-200">{item.raidCount}회</div>
+                      <div className="shrink-0 text-[10px] font-semibold text-sky-200">{item.raidCount}회</div>
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-3 py-6 text-center text-xs text-slate-500">
+                  <div className="rounded-lg border border-dashed border-white/10 bg-white/[0.03] px-3 py-4 text-center text-[11px] text-slate-500">
                     참여 랭킹 데이터가 없습니다.
                   </div>
                 )}
