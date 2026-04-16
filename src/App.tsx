@@ -2163,19 +2163,19 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
             </div>
 
             <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className="rounded-xl border border-white/7 bg-white/[0.04] p-3"
+              <div className="rounded-xl border border-white/7 bg-white/[0.04] p-3">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   공지
                 </div>
                 <div className="mt-1.5 text-sm font-medium text-white">{noticeCount}</div>
               </div>
-              <div className="rounded-xl border border-white/7 bg-white/[0.04] p-3"
+              <div className="rounded-xl border border-white/7 bg-white/[0.04] p-3">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   고정
                 </div>
                 <div className="mt-1.5 text-sm font-medium text-white">{pinnedCount}</div>
               </div>
-              <div className="rounded-xl border border-white/7 bg-white/[0.04] p-3"
+              <div className="rounded-xl border border-white/7 bg-white/[0.04] p-3">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   길드원
                 </div>
@@ -2268,7 +2268,7 @@ const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-1"
+            <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-1">
               <RaidCalendar user={user} profile={profile} embedded hideRanking />
             </div>
           </motion.div>
