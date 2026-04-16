@@ -1920,65 +1920,65 @@ const Hero = ({ settings, posts }: any) => {
   }, [posts]);
 
   return (
-    <section className="relative h-[62vh] md:h-[72vh] flex items-center overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.24),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.18),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.16),rgba(8,15,32,0.88))]" />
+    <section className="relative flex min-h-[420px] items-center overflow-hidden md:min-h-[500px]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.24),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.18),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.14),rgba(8,15,32,0.82))]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-12 px-6 md:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-8 px-6 py-12 md:grid-cols-[minmax(0,1fr)_360px] md:py-16">
         <motion.div
-          initial={{ opacity: 0, y: 26 }}
+          initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9 }}
+          transition={{ duration: 0.8 }}
           className="text-center md:text-left"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-5 py-2 text-[10px] font-black uppercase tracking-[0.3em] text-blue-200">
+          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-blue-200">
             <Sparkles size={12} />
             Lost Ark Guild System
           </span>
 
-          <h1 className="mt-6 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-5xl font-black leading-none tracking-tight text-transparent md:text-7xl">
+          <h1 className="mt-5 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-4xl font-semibold leading-none tracking-tight text-transparent md:text-6xl">
             {settings?.guild_name}
           </h1>
 
-          <p className="mt-5 max-w-2xl text-sm font-medium leading-7 text-slate-300 md:text-lg">
+          <p className="mt-4 max-w-2xl text-sm font-medium leading-6 text-slate-300 md:text-base">
             {settings?.guild_description}
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 md:justify-start">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 md:justify-start">
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                 공지
               </div>
-              <div className="mt-1 text-xl font-semibold text-white">{noticeCount}</div>
+              <div className="mt-1 text-lg font-semibold text-white">{noticeCount}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                 7일 일정
               </div>
-              <div className="mt-1 text-xl font-semibold text-white">{heroStats.upcomingRaids}</div>
+              <div className="mt-1 text-lg font-semibold text-white">{heroStats.upcomingRaids}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                 길드원
               </div>
-              <div className="mt-1 text-xl font-semibold text-white">{heroStats.memberCount}</div>
+              <div className="mt-1 text-lg font-semibold text-white">{heroStats.memberCount}</div>
             </div>
           </div>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, x: 24 }}
+          initial={{ opacity: 0, x: 22 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.9, delay: 0.08 }}
+          transition={{ duration: 0.85, delay: 0.06 }}
           className="relative hidden lg:block"
         >
-          <div className="absolute inset-0 rounded-[2.5rem] bg-blue-400/10 blur-3xl" />
-          <div className="relative overflow-hidden rounded-[2.5rem] border border-white/10 bg-white/5 p-6 backdrop-blur-2xl shadow-[0_30px_80px_rgba(37,99,235,0.18)]">
+          <div className="absolute inset-0 rounded-[2.25rem] bg-blue-400/10 blur-3xl" />
+          <div className="relative overflow-hidden rounded-[2.25rem] border border-white/10 bg-white/5 p-5 backdrop-blur-2xl shadow-[0_24px_70px_rgba(37,99,235,0.16)]">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-[0.28em] text-blue-200/80">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-blue-200/80">
                   Guild Overview
                 </div>
-                <div className="mt-2 text-2xl font-semibold text-white">
+                <div className="mt-2 text-xl font-semibold text-white">
                   {settings?.guild_name}
                 </div>
               </div>
@@ -1987,28 +1987,28 @@ const Hero = ({ settings, posts }: any) => {
               </div>
             </div>
 
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+            <div className="mt-5 grid grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-white/8 bg-white/5 p-3.5">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                   공지
                 </div>
-                <div className="mt-2 text-lg font-semibold text-white">{noticeCount}</div>
+                <div className="mt-2 text-base font-semibold text-white">{noticeCount}</div>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                  고정 공지
+              <div className="rounded-2xl border border-white/8 bg-white/5 p-3.5">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                  고정
                 </div>
-                <div className="mt-2 text-lg font-semibold text-white">{pinnedCount}</div>
+                <div className="mt-2 text-base font-semibold text-white">{pinnedCount}</div>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              <div className="rounded-2xl border border-white/8 bg-white/5 p-3.5">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                   길드원
                 </div>
-                <div className="mt-2 text-lg font-semibold text-white">{heroStats.memberCount}</div>
+                <div className="mt-2 text-base font-semibold text-white">{heroStats.memberCount}</div>
               </div>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="mt-5 space-y-3">
               <div className="rounded-2xl border border-white/8 bg-slate-950/30 p-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-slate-300">다음 7일 레이드 일정</span>
@@ -2023,19 +2023,12 @@ const Hero = ({ settings, posts }: any) => {
               </div>
 
               <div className="rounded-2xl border border-white/8 bg-slate-950/30 p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-slate-200">다음 레이드</div>
-                    <div className="mt-1 truncate text-base font-semibold text-white">
-                      {heroStats.nextRaidLabel}
-                    </div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      {heroStats.nextRaidDate || "등록된 일정이 아직 없습니다."}
-                    </div>
-                  </div>
-                  <div className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-200">
-                    Upcoming
-                  </div>
+                <div className="text-sm font-medium text-slate-200">다음 레이드</div>
+                <div className="mt-1 truncate text-base font-semibold text-white">
+                  {heroStats.nextRaidLabel}
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {heroStats.nextRaidDate || "등록된 일정이 아직 없습니다."}
                 </div>
               </div>
 
@@ -2050,7 +2043,7 @@ const Hero = ({ settings, posts }: any) => {
         </motion.div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#091120] to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#091120] to-transparent" />
     </section>
   );
 };
