@@ -1856,7 +1856,6 @@ const Hero = ({ settings, posts }: any) => {
 
   const noticeCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_notice).length : 0;
   const pinnedCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_pinned).length : 0;
-  const latestNotice = Array.isArray(posts) ? posts.find((post: any) => post?.is_notice) : null;
 
   useEffect(() => {
     let mounted = true;
@@ -1920,130 +1919,117 @@ const Hero = ({ settings, posts }: any) => {
   }, [posts]);
 
   return (
-    <section className="relative flex min-h-[420px] items-center overflow-hidden md:min-h-[500px]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.24),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.18),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.14),rgba(8,15,32,0.82))]" />
+    <section className="relative flex min-h-[240px] items-center overflow-hidden md:min-h-[290px]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.22),transparent_26%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.14),transparent_22%),linear-gradient(180deg,rgba(8,15,32,0.12),rgba(8,15,32,0.78))]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-8 px-6 py-12 md:grid-cols-[minmax(0,1fr)_360px] md:py-16">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-5 px-6 py-8 md:grid-cols-[minmax(0,1fr)_280px] md:py-10">
         <motion.div
-          initial={{ opacity: 0, y: 22 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.72 }}
           className="text-center md:text-left"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-blue-200">
-            <Sparkles size={12} />
-            Lost Ark Guild System
+          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-blue-200">
+            <Sparkles size={11} />
+            Guild System
           </span>
 
-          <h1 className="mt-5 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-4xl font-semibold leading-none tracking-tight text-transparent md:text-6xl">
+          <h1 className="mt-4 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-semibold leading-none tracking-tight text-transparent md:text-5xl">
             {settings?.guild_name}
           </h1>
 
-          <p className="mt-4 max-w-2xl text-sm font-medium leading-6 text-slate-300 md:text-base">
+          <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-slate-300">
             {settings?.guild_description}
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3 md:justify-start">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 backdrop-blur-md">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 공지
               </div>
-              <div className="mt-1 text-lg font-semibold text-white">{noticeCount}</div>
+              <div className="mt-1 text-base font-semibold text-white">{noticeCount}</div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 backdrop-blur-md">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 7일 일정
               </div>
-              <div className="mt-1 text-lg font-semibold text-white">{heroStats.upcomingRaids}</div>
+              <div className="mt-1 text-base font-semibold text-white">{heroStats.upcomingRaids}</div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 backdrop-blur-md">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 길드원
               </div>
-              <div className="mt-1 text-lg font-semibold text-white">{heroStats.memberCount}</div>
+              <div className="mt-1 text-base font-semibold text-white">{heroStats.memberCount}</div>
             </div>
           </div>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, x: 22 }}
+          initial={{ opacity: 0, x: 18 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.85, delay: 0.06 }}
+          transition={{ duration: 0.76, delay: 0.05 }}
           className="relative hidden lg:block"
         >
-          <div className="absolute inset-0 rounded-[2.25rem] bg-blue-400/10 blur-3xl" />
-          <div className="relative overflow-hidden rounded-[2.25rem] border border-white/10 bg-white/5 p-5 backdrop-blur-2xl shadow-[0_24px_70px_rgba(37,99,235,0.16)]">
-            <div className="flex items-center justify-between">
+          <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
+          <div className="relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/5 p-4 backdrop-blur-2xl shadow-[0_20px_60px_rgba(37,99,235,0.14)]">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-blue-200/80">
-                  Guild Overview
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
+                  Overview
                 </div>
-                <div className="mt-2 text-xl font-semibold text-white">
+                <div className="mt-1.5 text-lg font-semibold text-white">
                   {settings?.guild_name}
                 </div>
               </div>
-              <div className="rounded-2xl border border-blue-300/15 bg-blue-400/10 px-3 py-2 text-xs font-semibold text-blue-100">
+              <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-100">
                 Live
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-3.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+            <div className="mt-4 grid grid-cols-3 gap-2.5">
+              <div className="rounded-xl border border-white/8 bg-white/5 p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   공지
                 </div>
-                <div className="mt-2 text-base font-semibold text-white">{noticeCount}</div>
+                <div className="mt-1.5 text-sm font-semibold text-white">{noticeCount}</div>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-3.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <div className="rounded-xl border border-white/8 bg-white/5 p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   고정
                 </div>
-                <div className="mt-2 text-base font-semibold text-white">{pinnedCount}</div>
+                <div className="mt-1.5 text-sm font-semibold text-white">{pinnedCount}</div>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/5 p-3.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+              <div className="rounded-xl border border-white/8 bg-white/5 p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   길드원
                 </div>
-                <div className="mt-2 text-base font-semibold text-white">{heroStats.memberCount}</div>
+                <div className="mt-1.5 text-sm font-semibold text-white">{heroStats.memberCount}</div>
               </div>
             </div>
 
-            <div className="mt-5 space-y-3">
-              <div className="rounded-2xl border border-white/8 bg-slate-950/30 p-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-slate-300">다음 7일 레이드 일정</span>
-                  <span className="font-semibold text-blue-200">{heroStats.upcomingRaids}건</span>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/8">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-blue-400 to-sky-300 transition-all"
-                    style={{ width: `${Math.min(100, Math.max(12, heroStats.upcomingRaids * 16))}%` }}
-                  />
-                </div>
+            <div className="mt-4 rounded-xl border border-white/8 bg-slate-950/30 p-3.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-slate-300">다음 7일 일정</span>
+                <span className="font-semibold text-blue-200">{heroStats.upcomingRaids}건</span>
               </div>
-
-              <div className="rounded-2xl border border-white/8 bg-slate-950/30 p-4">
-                <div className="text-sm font-medium text-slate-200">다음 레이드</div>
-                <div className="mt-1 truncate text-base font-semibold text-white">
-                  {heroStats.nextRaidLabel}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {heroStats.nextRaidDate || "등록된 일정이 아직 없습니다."}
-                </div>
+              <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-white/8">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-400 to-sky-300 transition-all"
+                  style={{ width: `${Math.min(100, Math.max(12, heroStats.upcomingRaids * 16))}%` }}
+                />
               </div>
-
-              <div className="rounded-2xl border border-white/8 bg-slate-950/30 p-4">
-                <div className="text-sm font-medium text-slate-200">최근 공지</div>
-                <div className="mt-2 line-clamp-2 text-sm text-slate-300">
-                  {latestNotice?.title || "등록된 공지사항이 없습니다."}
-                </div>
+              <div className="mt-3 text-sm font-semibold text-white truncate">
+                {heroStats.nextRaidLabel}
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">
+                {heroStats.nextRaidDate || "등록된 일정이 아직 없습니다."}
               </div>
             </div>
           </div>
         </motion.div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-[#091120] to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#091120] to-transparent" />
     </section>
   );
 };
