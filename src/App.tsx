@@ -2518,6 +2518,87 @@ const formatLargeNumber = (value: any) => {
   return num.toLocaleString();
 };
 
+const parseRewardList = (value: any): Array<{ name: string; quantity?: string; type?: string }> => {
+  if (!value) return [];
+
+  const normalizeItem = (item: any) => {
+    if (!item) return null;
+    if (typeof item === "string") {
+      const raw = item.trim();
+      if (!raw) return null;
+      const quantityMatch = raw.match(/(.+?)[xX×]\s*(\d+)$/);
+      if (quantityMatch) {
+        return {
+          name: quantityMatch[1].trim(),
+          quantity: quantityMatch[2].trim(),
+          type: "item",
+        };
+      }
+      return { name: raw, type: "item" };
+    }
+
+    if (typeof item === "object") {
+      const name = String(item.name || item.item || item.title || item.material || "").trim();
+      if (!name) return null;
+      return {
+        name,
+        quantity: item.quantity != null ? String(item.quantity) : item.count != null ? String(item.count) : "",
+        type: String(item.type || item.kind || "item"),
+      };
+    }
+
+    return null;
+  };
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeItem).filter(Boolean) as Array<{ name: string; quantity?: string; type?: string }>;
+  }
+
+  if (typeof value === "string") {
+    const raw = value.trim();
+    if (!raw) return [];
+
+    if ((raw.startsWith("[") && raw.endsWith("]")) || (raw.startsWith("{") && raw.endsWith("}"))) {
+      try {
+        const parsed = JSON.parse(raw);
+        return parseRewardList(parsed);
+      } catch (error) {
+        console.error("parseRewardList json parse failed:", error);
+      }
+    }
+
+    return raw
+      .split(/\n|,|\//)
+      .map((part) => normalizeItem(part))
+      .filter(Boolean) as Array<{ name: string; quantity?: string; type?: string }>;
+  }
+
+  return [];
+};
+
+const buildRewardCards = (details: any) => {
+  if (!details) return [];
+
+  const rewardItems = [
+    ...parseRewardList(details.reward_items),
+    ...parseRewardList(details.reward_materials),
+    ...parseRewardList(details.material_rewards),
+    ...parseRewardList(details.rewards),
+    ...parseRewardList(details.drop_items),
+    ...parseRewardList(details.drop_materials),
+    ...parseRewardList(details.reward_summary),
+    ...parseRewardList(details.drops),
+  ];
+
+  const uniqueMap = new Map<string, { name: string; quantity?: string; type?: string }>();
+  rewardItems.forEach((item) => {
+    const key = `${item.name}-${item.quantity || ""}-${item.type || ""}`;
+    if (!uniqueMap.has(key)) uniqueMap.set(key, item);
+  });
+
+  return Array.from(uniqueMap.values());
+};
+
 const DetailPopup = ({ item, type, onClose }: any) => {
   const [gate, setGate] = useState(1);
   const [diff, setDiff] = useState("노말");
@@ -2649,6 +2730,8 @@ const DetailPopup = ({ item, type, onClose }: any) => {
       },
     ];
   }, [details, tone.accentText]);
+
+  const dropItemCards = useMemo(() => buildRewardCards(details), [details]);
 
   return (
     <motion.div
@@ -2863,6 +2946,42 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                       </div>
                     ))}
                   </div>
+
+                  <div className="mt-5">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                      드랍 아이템 / 재료
+                    </div>
+
+                    {dropItemCards.length > 0 ? (
+                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {dropItemCards.map((reward, index) => (
+                          <div
+                            key={`${reward.name}-${index}`}
+                            className="flex items-center gap-3 rounded-[1.35rem] border border-white/10 bg-slate-950/35 p-4"
+                          >
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-sky-200">
+                              <Gift size={18} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-semibold text-white">
+                                {reward.name}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-400">
+                                {reward.type === "material" ? "재료 아이템" : "드랍 아이템"}
+                              </div>
+                            </div>
+                            <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-200">
+                              {reward.quantity ? `x${reward.quantity}` : "획득"}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded-[1.35rem] border border-dashed border-white/10 bg-slate-950/20 px-4 py-6 text-center text-sm text-slate-500">
+                        등록된 드랍 아이템/재료 데이터가 아직 없습니다.
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
@@ -2873,7 +2992,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                     {type === "레이드" ? `${diff} · ${gate}관문` : item.name || type}
                   </div>
                   <div className="mt-2 text-sm leading-6 text-slate-400">
-                    .
+                    선택한 관문 기준의 핵심 보상과 공략 메모를 오른쪽에서 바로 읽을 수 있게 정리했어.
                   </div>
                 </div>
               </div>
@@ -2901,7 +3020,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                     난이도 가시성 개선
                   </div>
                   <div className="mt-3 text-sm leading-7 text-slate-300">
-                    .
+                    난이도는 이미지 좌상단 오버레이와 본문 탭을 같이 두는 방식이 가장 잘 보여. 처음 들어왔을 때도 한눈에 보이고, 스크롤 중에도 본문 탭으로 다시 바꾸기 쉽기 때문이야.
                   </div>
                 </div>
               </div>
