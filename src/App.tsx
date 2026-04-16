@@ -1990,37 +1990,37 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
     weeklyRaids[0];
 
   return (
-    <section className="relative flex min-h-[260px] items-center overflow-hidden md:min-h-[300px]">
+    <section className="relative flex min-h-[230px] items-center overflow-hidden md:min-h-[270px]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_22%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_50%_38%,rgba(56,189,248,0.08),transparent_22%),radial-gradient(circle_at_84%_30%,rgba(96,165,250,0.10),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.06),rgba(8,15,32,0.46))]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-stretch gap-5 px-6 py-7 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.15fr)_300px]">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-stretch gap-4 px-6 py-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.15fr)_280px]">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.72 }}
-          className="flex min-h-[250px] flex-col justify-center text-center xl:text-left"
+          className="flex min-h-[228px] flex-col justify-center text-center xl:text-left"
         >
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-blue-200">
+            <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200">
               <Sparkles size={11} />
               Guild System
             </span>
 
-            <h1 className="mt-3 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-semibold leading-none tracking-tight text-transparent md:text-4xl">
+            <h1 className="mt-3 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-[2rem] font-semibold leading-none tracking-tight text-transparent md:text-[2.65rem]">
               {getDisplayGuildName(settings?.guild_name)}
             </h1>
 
-            <p className="mt-2 max-w-xl text-sm font-medium leading-5 text-slate-300 xl:max-w-md">
+            <p className="mt-2 max-w-lg text-[13px] font-medium leading-5 text-slate-300 xl:max-w-sm">
               {settings?.guild_description}
             </p>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2 xl:justify-start">
-            <div className="min-w-[86px] rounded-2xl border border-white/10 bg-white/5 px-3.5 py-3 backdrop-blur-md">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 xl:justify-start">
+            <div className="min-w-[80px] rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 공지
               </div>
-              <div className="mt-1 text-[1.15rem] font-semibold text-white">{noticeCount}</div>
+              <div className="mt-1 text-base font-semibold text-white">{noticeCount}</div>
             </div>
             <div className="min-w-[86px] rounded-2xl border border-white/10 bg-white/5 px-3.5 py-3 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
@@ -2040,7 +2040,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
             <button
               type="button"
               onClick={onOpenRaidCalendar}
-              className="group inline-flex items-center gap-2 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 py-2.5 text-sm font-semibold text-sky-100 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-blue-200/35 hover:bg-blue-400/15 hover:text-white hover:shadow-[0_14px_34px_rgba(59,130,246,0.18)]"
+              className="group inline-flex items-center gap-2 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-3.5 py-2 text-[13px] font-semibold text-sky-100 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-blue-200/35 hover:bg-blue-400/15 hover:text-white hover:shadow-[0_14px_34px_rgba(59,130,246,0.18)]"
             >
               <CalendarDays size={16} className="transition-transform group-hover:scale-105" />
               월별 레이드 일정
@@ -2055,14 +2055,14 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           className="hidden xl:block"
         >
           <div className="relative h-full">
-            <div className="absolute inset-0 rounded-[2rem] bg-blue-400/10 blur-3xl" />
-            <div className="relative flex h-full min-h-[250px] flex-col rounded-[2rem] border border-white/10 bg-white/5 p-4 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
+            <div className="absolute inset-0 rounded-[1.8rem] bg-blue-400/10 blur-3xl" />
+            <div className="relative flex h-full min-h-[228px] flex-col rounded-[1.8rem] border border-white/10 bg-white/5 p-3.5 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
                     Weekly Raid Schedule
                   </div>
-                  <div className="mt-1.5 text-[1.45rem] font-semibold leading-none text-white">
+                  <div className="mt-1 text-[1.2rem] font-semibold leading-none text-white">
                     이번 주 레이드
                   </div>
                 </div>
@@ -2070,14 +2070,14 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                 <button
                   type="button"
                   onClick={onOpenRaidCalendar}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-blue-100 transition-all hover:border-blue-200/30 hover:bg-blue-400/15 hover:text-white"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-blue-100 transition-all hover:border-blue-200/30 hover:bg-blue-400/15 hover:text-white"
                   aria-label="월별 레이드 일정 열기"
                 >
                   <CalendarDays size={16} />
                 </button>
               </div>
 
-              <div className="mt-4 grid grid-cols-7 gap-2">
+              <div className="mt-3.5 grid grid-cols-7 gap-1.5">
                 {weeklyRaids.map((day) => {
                   const isSelected = selectedWeekDay?.key === day.key;
                   const hasRaid = day.raids.length > 0;
@@ -2088,15 +2088,15 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                       type="button"
                       onClick={() => setSelectedRaidDay(day.key)}
                       className={[
-                        "relative flex h-[56px] flex-col items-center justify-center rounded-2xl border text-center transition-all",
+                        "relative flex h-[50px] flex-col items-center justify-center rounded-2xl border text-center transition-all",
                         hasRaid
                           ? "border-cyan-400/40 bg-cyan-400/10 text-white shadow-[0_0_0_1px_rgba(34,211,238,0.1)_inset]"
                           : "border-white/8 bg-white/[0.04] text-slate-300 hover:border-white/15 hover:bg-white/[0.06]",
                         isSelected ? "ring-1 ring-cyan-300/70" : "",
                       ].join(" ")}
                     >
-                      <span className="text-[11px] font-semibold">{day.dayLabel}</span>
-                      <span className="mt-1 text-[1.05rem] font-semibold leading-none">{day.dayNumber}</span>
+                      <span className="text-[10px] font-semibold">{day.dayLabel}</span>
+                      <span className="mt-0.5 text-[0.95rem] font-semibold leading-none">{day.dayNumber}</span>
                       {hasRaid ? (
                         <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.95)]" />
                       ) : null}
@@ -2105,9 +2105,9 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                 })}
               </div>
 
-              <div className="mt-4 flex-1 rounded-[1.6rem] border border-white/8 bg-slate-950/34 p-4">
+              <div className="mt-3.5 flex-1 rounded-[1.5rem] border border-white/8 bg-slate-950/34 p-3.5">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-lg font-semibold text-white">
+                  <div className="text-base font-semibold text-white">
                     {selectedWeekDay ? `${selectedWeekDay.dayLabel}요일 일정` : "이번 주 일정"}
                   </div>
                   <div className="text-xs font-medium text-slate-400">
@@ -2116,22 +2116,22 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                 </div>
 
                 {selectedWeekDay?.raids?.length ? (
-                  <div className="mt-3 space-y-2.5">
+                  <div className="mt-3 space-y-2">
                     {selectedWeekDay.raids.slice(0, 2).map((raid: any) => (
                       <div
                         key={raid.id}
-                        className="rounded-2xl border border-cyan-400/20 bg-[linear-gradient(180deg,rgba(13,35,68,0.88),rgba(10,26,48,0.92))] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                        className="rounded-2xl border border-cyan-400/20 bg-[linear-gradient(180deg,rgba(13,35,68,0.88),rgba(10,26,48,0.92))] px-3.5 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="truncate text-[1.05rem] font-semibold text-white">
+                            <div className="truncate text-[0.98rem] font-semibold text-white">
                               {raid.raid_name}
                             </div>
                             <div className="mt-1 text-[11px] text-slate-300">
                               {[raid.difficulty, raid.type].filter(Boolean).join(" · ") || "레이드"}
                             </div>
                           </div>
-                          <div className="shrink-0 text-xl font-semibold tracking-tight text-slate-100">
+                          <div className="shrink-0 text-lg font-semibold tracking-tight text-slate-100">
                             {raid.raid_time || "--:--"}
                           </div>
                         </div>
@@ -2144,7 +2144,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                     ) : null}
                   </div>
                 ) : (
-                  <div className="mt-3 flex h-[110px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.03] text-sm text-slate-400">
+                  <div className="mt-3 flex h-[96px] items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.03] text-[13px] text-slate-400">
                     등록된 레이드 일정이 없습니다.
                   </div>
                 )}
@@ -2159,14 +2159,14 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           transition={{ duration: 0.76, delay: 0.08 }}
           className="relative hidden xl:block"
         >
-          <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
-          <div className="relative flex h-full min-h-[250px] flex-col overflow-hidden rounded-[1.7rem] border border-white/10 bg-white/5 p-3.5 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
+          <div className="absolute inset-0 rounded-[1.75rem] bg-blue-400/10 blur-3xl" />
+          <div className="relative flex h-full min-h-[228px] flex-col overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/5 p-3 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
                   Overview
                 </div>
-                <div className="mt-1.5 text-lg font-semibold text-white">
+                <div className="mt-1 text-base font-semibold text-white">
                   {getDisplayGuildName(settings?.guild_name)}
                 </div>
               </div>
@@ -2175,12 +2175,12 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className="rounded-xl border border-white/8 bg-white/5 p-3">
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
+              <div className="rounded-xl border border-white/8 bg-white/5 p-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   공지
                 </div>
-                <div className="mt-1.5 text-sm font-semibold text-white">{noticeCount}</div>
+                <div className="mt-1 text-[13px] font-semibold text-white">{noticeCount}</div>
               </div>
               <div className="rounded-xl border border-white/8 bg-white/5 p-3">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -2196,7 +2196,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               </div>
             </div>
 
-            <div className="mt-3 flex flex-1 flex-col rounded-xl border border-white/8 bg-slate-950/30 p-3">
+            <div className="mt-3 flex flex-1 flex-col rounded-xl border border-white/8 bg-slate-950/30 p-2.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-slate-300">다음 7일 일정</span>
                 <span className="font-semibold text-blue-200">{heroStats.upcomingRaids}건</span>
@@ -2207,7 +2207,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                   style={{ width: `${Math.min(100, Math.max(12, heroStats.upcomingRaids * 16))}%` }}
                 />
               </div>
-              <div className="mt-3 truncate text-sm font-semibold text-white">
+              <div className="mt-2.5 truncate text-[13px] font-semibold text-white">
                 {heroStats.nextRaidLabel}
               </div>
               <div className="mt-1 text-[11px] text-slate-400">
@@ -2217,7 +2217,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               <button
                 type="button"
                 onClick={onOpenRaidCalendar}
-                className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-300/15 bg-blue-400/10 px-3 py-2 text-sm font-semibold text-sky-100 transition-all hover:border-blue-200/30 hover:bg-blue-400/15 hover:text-white"
+                className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-300/15 bg-blue-400/10 px-3 py-2 text-[13px] font-semibold text-sky-100 transition-all hover:border-blue-200/30 hover:bg-blue-400/15 hover:text-white"
               >
                 <CalendarDays size={15} />
                 월별 레이드 일정 보기
