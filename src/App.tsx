@@ -103,6 +103,14 @@ const RAID_TYPE_OPTIONS = ["8인", "4인"];
 const CONTENT_MODE_OPTIONS = ["raid", "anime"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const defaultHomeSections = [
+  { id: "hero", label: "Hero", enabled: true, density: "compact" },
+  { id: "portal", label: "핵심 카드", enabled: true, density: "compact" },
+  { id: "content", label: "콘텐츠 카드", enabled: true, density: "compact" },
+  { id: "notice", label: "공지사항", enabled: true, density: "compact" },
+  { id: "calendar", label: "캘린더", enabled: true, density: "compact" },
+] as const;
+
 const defaultSettings = {
   guild_name: "쁘밍",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
@@ -116,6 +124,9 @@ const defaultSettings = {
       rare: 15,
       epic: 22,
       legendary: 30,
+    },
+    ui_layout: {
+      home_sections: defaultHomeSections,
     },
   },
 };
@@ -791,9 +802,11 @@ const WeaponImage = ({
 const HomeFeaturePortal = ({
   contentView,
   setContentView,
+  density = "default",
 }: {
   contentView: string;
   setContentView: (value: string) => void;
+  density?: HomeSectionDensity;
 }) => {
   const cards = [
     {
@@ -828,8 +841,21 @@ const HomeFeaturePortal = ({
     },
   ];
 
+  const portalSectionClass =
+    density === "compact"
+      ? "mx-auto max-w-7xl px-6 pb-2 md:pb-3"
+      : density === "spacious"
+      ? "mx-auto max-w-7xl px-6 pb-6 md:pb-7"
+      : "mx-auto max-w-7xl px-6 pb-3 md:pb-4";
+  const portalCardClass =
+    density === "compact"
+      ? "group relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/[0.04] p-3 text-left backdrop-blur-xl transition-all"
+      : density === "spacious"
+      ? "group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 text-left backdrop-blur-xl transition-all"
+      : "group relative overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-3.5 text-left backdrop-blur-xl transition-all";
+
   return (
-    <section className="mx-auto max-w-7xl px-6 pb-3 md:pb-4">
+    <section className={portalSectionClass}>
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-300">Feature Gateway</div>
@@ -855,7 +881,7 @@ const HomeFeaturePortal = ({
               whileHover={{ y: -4, scale: 1.01 }}
               onClick={() => setContentView(card.key)}
               className={cn(
-                "group relative overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-3.5 text-left backdrop-blur-xl transition-all",
+                portalCardClass,
                 active ? card.activeClass : "hover:border-white/20 hover:bg-white/[0.06]"
               )}
             >
@@ -901,7 +927,7 @@ const HomeFeaturePortal = ({
   );
 };
 
-const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: ProfileLike }) => {
+const HomeNoticeSection = ({ user, profile, density = "default" }: { user: UserLike; profile: ProfileLike; density?: HomeSectionDensity }) => {
   const [notices, setNotices] = useState<PostLike[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -928,8 +954,14 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
     setLoading(false);
   };
 
+  const noticeSectionClass =
+    density === "compact"
+      ? "max-w-7xl mx-auto px-6 pt-1 md:pt-2 pb-3"
+      : density === "spacious"
+      ? "max-w-7xl mx-auto px-6 pt-4 md:pt-5 pb-6"
+      : "max-w-7xl mx-auto px-6 pt-2 md:pt-3 pb-4";
   return (
-    <section className="max-w-7xl mx-auto px-6 pt-2 md:pt-3 pb-4">
+    <section className={noticeSectionClass}>
       <div className="overflow-hidden rounded-[1.75rem] border border-blue-500/15 bg-gradient-to-br from-blue-500/8 via-white/[0.04] to-transparent">
         <div className="border-b border-white/10 px-5 py-4 md:px-6">
           <div className="flex items-start justify-between gap-4">
@@ -1133,12 +1165,46 @@ const BADGE_PRESET_COLORS = [
   "#ef4444",
 ];
 
+type HomeSectionDensity = "compact" | "default" | "spacious";
+
+type HomeSectionLayout = {
+  id: "hero" | "portal" | "content" | "notice" | "calendar";
+  label: string;
+  enabled: boolean;
+  density: HomeSectionDensity;
+};
+
 type PointRateSettings = {
   enabled: boolean;
   cycle_minutes: number;
   daily_cap: number;
   enhancement_bonus_per_5: number;
   rate_by_rarity: Record<WeaponRarityKey, number>;
+  ui_layout?: {
+    home_sections: HomeSectionLayout[];
+  };
+};
+
+const normalizeHomeSections = (value: any): HomeSectionLayout[] => {
+  const raw = Array.isArray(value) ? value : [];
+  const rawMap = new Map(raw.map((item: any) => [String(item?.id || ""), item]));
+  return defaultHomeSections.map((base) => {
+    const current = rawMap.get(base.id) || {};
+    const density = ["compact", "default", "spacious"].includes(String(current?.density || ""))
+      ? (current.density as HomeSectionDensity)
+      : base.density;
+    return {
+      ...base,
+      enabled: current?.enabled !== undefined ? current.enabled !== false : base.enabled,
+      density,
+    };
+  }).sort((a, b) => {
+    const aIndex = raw.findIndex((item: any) => String(item?.id || "") === a.id);
+    const bIndex = raw.findIndex((item: any) => String(item?.id || "") === b.id);
+    const safeA = aIndex === -1 ? 999 : aIndex;
+    const safeB = bIndex === -1 ? 999 : bIndex;
+    return safeA - safeB;
+  });
 };
 
 const normalizePointRateSettings = (value: any): PointRateSettings => {
@@ -1154,6 +1220,9 @@ const normalizePointRateSettings = (value: any): PointRateSettings => {
       epic: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.epic) || 22)),
       legendary: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.legendary) || 30)),
     },
+    ui_layout: {
+      home_sections: normalizeHomeSections(raw?.ui_layout?.home_sections),
+    },
   };
 };
 
@@ -1164,6 +1233,14 @@ const normalizeAppSettings = (value: any) => {
     ...raw,
     point_rate_settings: normalizePointRateSettings(raw?.point_rate_settings),
   };
+};
+
+const getHomeSectionLayouts = (settingsLike: any): HomeSectionLayout[] =>
+  normalizePointRateSettings(settingsLike?.point_rate_settings).ui_layout?.home_sections || normalizeHomeSections(null);
+
+const getSectionDensity = (settingsLike: any, sectionId: HomeSectionLayout["id"]): HomeSectionDensity => {
+  const target = getHomeSectionLayouts(settingsLike).find((section) => section.id === sectionId);
+  return target?.density || "default";
 };
 
 const fetchSingletonSettingsRow = async () => {
@@ -1556,7 +1633,7 @@ const fetchInitialData = async () => {
     return (
       <PageShell>
         <div className="min-h-screen flex items-center justify-center text-sky-300 font-semibold">
-          INXX SYSTEM LOADING...
+          PMING SYSTEM LOADING...
         </div>
       </PageShell>
     );
@@ -1619,11 +1696,33 @@ const fetchInitialData = async () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <Hero settings={settings} posts={posts} />
-                <HomeFeaturePortal contentView={contentView} setContentView={setContentView} />
-                <MainContentViewer type={contentView} />
-                <HomeNoticeSection user={user} profile={profile} />
-                <RaidCalendar user={user} profile={profile} />
+                {getHomeSectionLayouts(settings)
+                  .filter((section) => section.enabled)
+                  .map((section) => {
+                    if (section.id === "hero") {
+                      return <Hero key={section.id} settings={settings} posts={posts} density={section.density} />;
+                    }
+                    if (section.id === "portal") {
+                      return (
+                        <HomeFeaturePortal
+                          key={section.id}
+                          contentView={contentView}
+                          setContentView={setContentView}
+                          density={section.density}
+                        />
+                      );
+                    }
+                    if (section.id === "content") {
+                      return <MainContentViewer key={section.id} type={contentView} density={section.density} />;
+                    }
+                    if (section.id === "notice") {
+                      return <HomeNoticeSection key={section.id} user={user} profile={profile} density={section.density} />;
+                    }
+                    if (section.id === "calendar") {
+                      return <RaidCalendar key={section.id} user={user} profile={profile} density={section.density} />;
+                    }
+                    return null;
+                  })}
               </motion.div>
             )}
 
@@ -1830,7 +1929,7 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-const Hero = ({ settings, posts }: any) => {
+const Hero = ({ settings, posts, density = "default" }: any) => {
   const [heroStats, setHeroStats] = useState({
     memberCount: 0,
     upcomingRaids: 0,
@@ -1902,8 +2001,15 @@ const Hero = ({ settings, posts }: any) => {
     };
   }, [posts]);
 
+  const heroSectionClass =
+    density === "compact"
+      ? "relative flex min-h-[180px] items-center overflow-hidden md:min-h-[215px]"
+      : density === "spacious"
+      ? "relative flex min-h-[240px] items-center overflow-hidden md:min-h-[290px]"
+      : "relative flex min-h-[200px] items-center overflow-hidden md:min-h-[235px]";
+
   return (
-    <section className="relative flex min-h-[200px] items-center overflow-hidden md:min-h-[235px]">
+    <section className={heroSectionClass}>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.10),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.06),rgba(8,15,32,0.46))]" />
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 md:grid-cols-[minmax(0,1fr)_260px] md:py-7">
@@ -2333,7 +2439,7 @@ const SectionPanel = ({
   </div>
 );
 
-const MainContentViewer = ({ type }: { type: string }) => {
+const MainContentViewer = ({ type, density = "default" }: { type: string; density?: HomeSectionDensity }) => {
   const [items, setItems] = useState<any[]>([]);
   const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "weapon" | "enhance_stone">("guild");
   const [nicknameEffectKey, setNicknameEffectKey] = useState<NicknameEffectKey>("violet");
@@ -2380,8 +2486,14 @@ const MainContentViewer = ({ type }: { type: string }) => {
     fetchData();
   }, [type]);
 
+  const viewerSectionClass =
+    density === "compact"
+      ? "max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-0 pb-6"
+      : density === "spacious"
+      ? "max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5 pt-3 pb-10"
+      : "max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 pb-8";
   return (
-    <section className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 pb-8">
+    <section className={viewerSectionClass}>
       {items.length === 0 && (
         <div className="col-span-full text-center text-slate-600 font-semibold py-10 uppercase">
           No Contents Registered.
@@ -3062,7 +3174,7 @@ const DetailInfoCard = ({
   </div>
 );
 
-const RaidCalendar = ({ user, profile }: any) => {
+const RaidCalendar = ({ user, profile, density = "default" }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [raids, setRaids] = useState<ScheduleLike[]>([]);
   const [participants, setParticipants] = useState<ParticipantLike[]>([]);
@@ -3273,8 +3385,14 @@ const RaidCalendar = ({ user, profile }: any) => {
     });
   }, [visibleParticipants, visibleRaids]);
 
+  const calendarSectionClass =
+    density === "compact"
+      ? "max-w-7xl mx-auto px-6 py-10 md:py-12 border-t border-white/5"
+      : density === "spacious"
+      ? "max-w-7xl mx-auto px-6 py-16 md:py-20 border-t border-white/5"
+      : "max-w-7xl mx-auto px-6 py-14 md:py-18 border-t border-white/5";
   return (
-    <section className="max-w-7xl mx-auto px-6 py-14 md:py-18 border-t border-white/5">
+    <section className={calendarSectionClass}>
       <div className="grid lg:grid-cols-[1.2fr,0.8fr] gap-5 mb-6">
         <SectionPanel
           title="Raid Calendar"
@@ -4753,6 +4871,36 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
     }
   };
 
+  const homeSections = getHomeSectionLayouts(settings);
+
+  const updateHomeSections = (nextSections: HomeSectionLayout[]) => {
+    setSettings({
+      ...settings,
+      point_rate_settings: {
+        ...normalizePointRateSettings(settings?.point_rate_settings),
+        ui_layout: {
+          home_sections: nextSections,
+        },
+      },
+    });
+  };
+
+  const moveSection = (id: HomeSectionLayout["id"], direction: "up" | "down") => {
+    const list = [...homeSections];
+    const index = list.findIndex((item) => item.id === id);
+    if (index === -1) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+    [list[index], list[targetIndex]] = [list[targetIndex], list[index]];
+    updateHomeSections(list);
+  };
+
+  const updateSection = (id: HomeSectionLayout["id"], patch: Partial<HomeSectionLayout>) => {
+    updateHomeSections(
+      homeSections.map((section) => (section.id === id ? { ...section, ...patch } : section))
+    );
+  };
+
   return (
     <div className="space-y-8">
       <AdminInput
@@ -4765,6 +4913,70 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
         value={settings.guild_description}
         onChange={(v: any) => setSettings({ ...settings, guild_description: v })}
       />
+
+      <AdminSectionCard
+        title="메인 레이아웃 설정"
+        description="홈 화면 섹션의 노출 여부, 순서, 밀도를 관리할 수 있어."
+      >
+        <div className="space-y-3">
+          {homeSections.map((section, index) => (
+            <div
+              key={section.id}
+              className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4"
+            >
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-white">{section.label}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    order #{index + 1} · id: {section.id}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateSection(section.id, { enabled: !section.enabled })}
+                    className={cn(
+                      "rounded-xl border px-3 py-2 text-xs font-semibold transition-all",
+                      section.enabled
+                        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
+                        : "border-white/10 bg-white/[0.04] text-slate-400"
+                    )}
+                  >
+                    {section.enabled ? "표시 중" : "숨김"}
+                  </button>
+
+                  <select
+                    value={section.density}
+                    onChange={(e) => updateSection(section.id, { density: e.target.value as HomeSectionDensity })}
+                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white outline-none"
+                  >
+                    <option value="compact">compact</option>
+                    <option value="default">default</option>
+                    <option value="spacious">spacious</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => moveSection(section.id, "up")}
+                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 transition-all hover:bg-white/[0.08]"
+                  >
+                    위로
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveSection(section.id, "down")}
+                    className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 transition-all hover:bg-white/[0.08]"
+                  >
+                    아래로
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </AdminSectionCard>
+
       <button
         onClick={handleSave}
         className="w-full bg-blue-600 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-blue-500 transition-all"
