@@ -1701,7 +1701,7 @@ const fetchInitialData = async () => {
                       );
                     } else if (section.id === "content") {
                       content = <MainContentViewer type={contentView} density={section.density} />;
-
+                    }
 
                     if (!content) return null;
 
