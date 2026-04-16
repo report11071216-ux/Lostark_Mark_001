@@ -4534,6 +4534,9 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     element: "",
     attribute: "",
     gold: 0,
+    guide: "",
+    mechanics: "",
+    tip: "",
   });
 
   const elementOptions = ["악마형", "야수형", "인간형", "정령형", "기계형", "고대", "불사", "신"];
@@ -4542,6 +4545,14 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   useEffect(() => {
     fetchList();
   }, [isRaid]);
+
+  useEffect(() => {
+    if (!editingId) return;
+    const currentItem = list.find((item: any) => item.id === editingId);
+    if (currentItem) {
+      void loadItem(currentItem, false);
+    }
+  }, [editingId, difficulty, selectedGate, list]);
 
   const fetchList = async () => {
     const { data, error } = await supabase
@@ -4559,17 +4570,22 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     setList(data || []);
   };
 
-  const loadItem = async (item: any) => {
-    setEditingId(item.id);
+  const createBaseForm = (item?: any) => ({
+    name: item?.name || "",
+    image_url: item?.image_url || "",
+    hp: "",
+    element: "",
+    attribute: "",
+    gold: 0,
+    guide: "",
+    mechanics: "",
+    tip: "",
+  });
 
-    const baseForm = {
-      name: item.name,
-      image_url: item.image_url || "",
-      hp: "",
-      element: "",
-      attribute: "",
-      gold: 0,
-    };
+  const loadItem = async (item: any, activateEdit = true) => {
+    if (activateEdit) setEditingId(item.id);
+
+    const baseForm = createBaseForm(item);
 
     let query = supabase.from("content_details").select("*").eq("content_id", item.id);
 
@@ -4587,19 +4603,17 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       element: data?.element_type || "",
       attribute: data?.attribute || "",
       gold: data?.clear_gold || 0,
+      guide: data?.guide || data?.description || data?.desc || data?.memo || data?.note || "",
+      mechanics: data?.mechanics || data?.pattern || data?.patterns || data?.mechanic || "",
+      tip: data?.tip || data?.tips || data?.recommendation || data?.recommend || data?.comment || "",
     });
   };
 
   const resetForm = () => {
     setEditingId(null);
-    setForm({
-      name: "",
-      image_url: "",
-      hp: "",
-      element: "",
-      attribute: "",
-      gold: 0,
-    });
+    setSelectedGate(1);
+    setDifficulty("노말");
+    setForm(createBaseForm());
   };
 
   const handleSave = async () => {
@@ -4621,25 +4635,54 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
     if (cErr) return showToast(cErr.message, "error");
 
-    const { error: dErr } = await supabase.from("content_details").upsert(
-      {
-        content_id: data.id,
-        difficulty: isRaid ? difficulty : null,
-        gate_num: isRaid ? Number(selectedGate) : 0,
-        hp: form.hp,
-        element_type: form.element,
-        attribute: form.attribute,
-        clear_gold: Number(form.gold) || 0,
-      },
-      { onConflict: "content_id,difficulty,gate_num" },
-    );
+    const detailPayload = {
+      content_id: data.id,
+      difficulty: isRaid ? difficulty : null,
+      gate_num: isRaid ? Number(selectedGate) : 0,
+      hp: form.hp,
+      element_type: form.element,
+      attribute: form.attribute,
+      clear_gold: Number(form.gold) || 0,
+      guide: form.guide || null,
+      mechanics: form.mechanics || null,
+      tip: form.tip || null,
+    };
+
+    let dErr: any = null;
+
+    const firstTry = await supabase
+      .from("content_details")
+      .upsert(detailPayload, { onConflict: "content_id,difficulty,gate_num" });
+
+    dErr = firstTry.error;
+
+    if (dErr && String(dErr.message || "").includes("column")) {
+      const fallback = await supabase.from("content_details").upsert(
+        {
+          content_id: data.id,
+          difficulty: isRaid ? difficulty : null,
+          gate_num: isRaid ? Number(selectedGate) : 0,
+          hp: form.hp,
+          element_type: form.element,
+          attribute: form.attribute,
+          clear_gold: Number(form.gold) || 0,
+        },
+        { onConflict: "content_id,difficulty,gate_num" },
+      );
+
+      dErr = fallback.error;
+
+      if (!dErr) {
+        showToast("기본 데이터는 저장됐지만, 메모/기믹/추천 포인트 컬럼이 아직 DB에 없어. SQL 마이그레이션이 필요해.", "info");
+      }
+    }
 
     if (dErr) {
       showToast(dErr.message, "error");
       return;
     }
 
-    showToast(editingId ? "수정 완료!" : "등록 완료!");
+    showToast(editingId ? "수정 완료!" : "등록 완료!", "success");
     await fetchList();
     resetForm();
   };
@@ -4656,18 +4699,18 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   };
 
   return (
-    <div className="grid md:grid-cols-2 gap-12">
+    <div className="grid gap-10 md:grid-cols-2">
       <div className="space-y-6">
-        <h4 className="text-xs font-semibold uppercase text-blue-500 tracking-widest">
+        <h4 className="text-xs font-semibold uppercase tracking-widest text-blue-500">
           Current List
         </h4>
 
-        <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+        <div className="max-h-[560px] space-y-2 overflow-y-auto pr-2">
           {list.map((item) => (
             <div
               key={item.id}
               onClick={() => loadItem(item)}
-              className={`flex items-center justify-between bg-black/40 p-4 rounded-xl border cursor-pointer transition-all ${
+              className={`flex cursor-pointer items-center justify-between rounded-xl border bg-black/40 p-4 transition-all ${
                 editingId === item.id
                   ? "border-blue-500"
                   : "border-white/5 hover:border-white/20"
@@ -4690,7 +4733,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
       <div className="space-y-6">
         {editingId && (
-          <div className="text-xs font-semibold text-yellow-400 uppercase tracking-widest">
+          <div className="text-xs font-semibold uppercase tracking-widest text-yellow-400">
             🔧 수정 모드
           </div>
         )}
@@ -4707,36 +4750,55 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
         />
 
         {isRaid && (
-          <>
-            <div className="flex gap-2 flex-wrap">
-              {[1, 2, 3, 4].map((gate) => (
-                <button
-                  key={gate}
-                  type="button"
-                  onClick={() => setSelectedGate(gate)}
-                  className={`px-4 py-3 rounded-xl text-xs font-bold transition-all ${
-                    selectedGate === gate
-                      ? "bg-blue-600 text-white"
-                      : "bg-black border border-white/10 text-slate-400"
-                  }`}
-                >
-                  {gate}관문
-                </button>
-              ))}
+          <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              레이드 상세 편집 위치
             </div>
 
-            <select
-              className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold w-full"
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-            >
-              {difficultyOptions.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </>
+            <div className="mt-4">
+              <div className="mb-2 text-xs font-semibold text-slate-400">관문 선택</div>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4].map((gate) => (
+                  <button
+                    key={gate}
+                    type="button"
+                    onClick={() => setSelectedGate(gate)}
+                    className={`rounded-xl px-4 py-3 text-xs font-bold transition-all ${
+                      selectedGate === gate
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                        : "border border-white/10 bg-black text-slate-400"
+                    }`}
+                  >
+                    {gate}관문
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <div className="mb-2 text-xs font-semibold text-slate-400">난이도 선택</div>
+              <div className="flex flex-wrap gap-2">
+                {difficultyOptions.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDifficulty(d)}
+                    className={`rounded-xl px-4 py-3 text-xs font-bold transition-all ${
+                      difficulty === d
+                        ? "bg-white text-black"
+                        : "border border-white/10 bg-black text-slate-400"
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-slate-400">
+              현재 편집 위치: <span className="font-semibold text-sky-300">{difficulty}</span> · <span className="font-semibold text-sky-300">{selectedGate}관문</span>
+            </div>
+          </div>
         )}
 
         <div className="grid grid-cols-2 gap-4">
@@ -4751,7 +4813,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
         <div className="grid grid-cols-2 gap-4">
           <select
-            className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
+            className="rounded-xl border border-white/10 bg-black p-4 text-xs font-bold"
             value={form.element}
             onChange={(e) => setForm({ ...form, element: e.target.value })}
           >
@@ -4764,7 +4826,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
           </select>
 
           <select
-            className="bg-black border border-white/10 p-4 rounded-xl text-xs font-bold"
+            className="rounded-xl border border-white/10 bg-black p-4 text-xs font-bold"
             value={form.attribute}
             onChange={(e) => setForm({ ...form, attribute: e.target.value })}
           >
@@ -4777,16 +4839,54 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
           </select>
         </div>
 
+        <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5 space-y-4">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              공략 메모
+            </div>
+            <textarea
+              value={form.guide}
+              onChange={(e) => setForm({ ...form, guide: e.target.value })}
+              placeholder="관문 전체 요약, 핵심 진행 순서, 주의사항 등을 입력"
+              className="mt-3 min-h-[110px] w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition-all focus:border-blue-300/20"
+            />
+          </div>
+
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              주요 기믹
+            </div>
+            <textarea
+              value={form.mechanics}
+              onChange={(e) => setForm({ ...form, mechanics: e.target.value })}
+              placeholder="패턴, 기믹, 카운터 타이밍, 협동 포인트 등을 입력"
+              className="mt-3 min-h-[110px] w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition-all focus:border-blue-300/20"
+            />
+          </div>
+
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+              추천 포인트
+            </div>
+            <textarea
+              value={form.tip}
+              onChange={(e) => setForm({ ...form, tip: e.target.value })}
+              placeholder="파티 구성 팁, 추천 전투 아이템, 실전 팁 등을 입력"
+              className="mt-3 min-h-[110px] w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition-all focus:border-blue-300/20"
+            />
+          </div>
+        </div>
+
         <div className="flex gap-4">
           <button
             onClick={handleSave}
-            className="flex-1 bg-blue-600 p-4 rounded-xl font-semibold uppercase hover:bg-blue-500 transition-all"
+            className="flex-1 rounded-xl bg-blue-600 p-4 font-semibold uppercase transition-all hover:bg-blue-500"
           >
             {editingId ? "Update Content" : "Register Content"}
           </button>
 
           {editingId && (
-            <button onClick={resetForm} className="bg-slate-700 px-4 rounded-xl font-semibold uppercase">
+            <button onClick={resetForm} className="rounded-xl bg-slate-700 px-4 font-semibold uppercase">
               Cancel
             </button>
           )}
