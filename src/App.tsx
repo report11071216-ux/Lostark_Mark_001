@@ -1840,6 +1840,197 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
+
+const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+
+const WeeklyRaidOverview = ({ onOpenRaidCalendar }: any) => {
+  const [weekRaids, setWeekRaids] = useState<any[]>([]);
+  const [selectedDateKey, setSelectedDateKey] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const weekDates = useMemo(() => {
+    const now = new Date();
+    const mondayOffset = getWeekdayIndexMondayStart(now);
+    const monday = new Date(now);
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(now.getDate() - mondayOffset);
+
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + index);
+      return {
+        key: formatDate(date.getFullYear(), date.getMonth(), date.getDate()),
+        dayLabel: WEEKDAY_LABELS[index],
+        dayNumber: date.getDate(),
+        isToday: isSameDay(date, now),
+      };
+    });
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchWeekRaids = async () => {
+      if (!supabase || weekDates.length === 0) return;
+
+      setLoading(true);
+      try {
+        const startKey = weekDates[0]?.key;
+        const endKey = weekDates[weekDates.length - 1]?.key;
+
+        const { data, error } = await supabase
+          .from("raid_schedules")
+          .select("id, raid_name, raid_date, raid_time, difficulty, raid_type, type")
+          .gte("raid_date", startKey)
+          .lte("raid_date", endKey)
+          .order("raid_date", { ascending: true })
+          .order("raid_time", { ascending: true });
+
+        if (error) {
+          console.error("weekly raid fetch error:", error);
+          if (mounted) setWeekRaids([]);
+          return;
+        }
+
+        if (!mounted) return;
+
+        const raids = data || [];
+        setWeekRaids(raids);
+
+        const todayKey = getTodayKey();
+        const defaultKey =
+          (raids.find((raid: any) => raid.raid_date === todayKey)?.raid_date) ||
+          (raids[0]?.raid_date) ||
+          (weekDates.find((date) => date.key === todayKey)?.key) ||
+          weekDates[0]?.key ||
+          "";
+
+        setSelectedDateKey((current) => current || defaultKey);
+      } catch (error) {
+        console.error("weekly raid fetch error:", error);
+        if (mounted) setWeekRaids([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    void fetchWeekRaids();
+
+    return () => {
+      mounted = false;
+    };
+  }, [weekDates]);
+
+  const raidsByDate = useMemo(() => {
+    return weekRaids.reduce((acc: Record<string, any[]>, raid: any) => {
+      const key = raid?.raid_date;
+      if (!key) return acc;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(raid);
+      return acc;
+    }, {});
+  }, [weekRaids]);
+
+  const selectedRaids = raidsByDate[selectedDateKey] || [];
+  const selectedRaid = selectedRaids[0] || null;
+  const selectedWeekDate = weekDates.find((date) => date.key === selectedDateKey) || weekDates[0];
+  const selectedLabel = selectedWeekDate ? `${selectedWeekDate.dayLabel}요일 일정` : "일정";
+  const selectedDateText = selectedDateKey ? formatShortDate(selectedDateKey) : "";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.74, delay: 0.04 }}
+      className="relative hidden lg:block"
+    >
+      <div className="absolute inset-0 rounded-[1.9rem] bg-cyan-400/10 blur-3xl" />
+      <div className="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-white/5 p-3.5 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
+              Weekly Raid Schedule
+            </div>
+            <div className="mt-1 text-lg font-semibold leading-tight text-white">이번주 레이드</div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenRaidCalendar}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-blue-300/15 bg-blue-400/10 text-sky-100 transition-all hover:border-blue-200/30 hover:bg-blue-400/15 hover:text-white"
+            aria-label="월별 레이드 일정 열기"
+          >
+            <CalendarDays size={15} />
+          </button>
+        </div>
+
+        <div className="mt-3 grid grid-cols-7 gap-2">
+          {weekDates.map((date) => {
+            const hasRaid = (raidsByDate[date.key] || []).length > 0;
+            const isActive = selectedDateKey === date.key;
+
+            return (
+              <button
+                key={date.key}
+                type="button"
+                onClick={() => setSelectedDateKey(date.key)}
+                className={[
+                  "relative flex min-h-[56px] flex-col items-center justify-center rounded-xl border text-center transition-all",
+                  isActive
+                    ? "border-cyan-300/55 bg-cyan-400/14 text-white shadow-[0_0_0_1px_rgba(34,211,238,0.18)_inset]"
+                    : hasRaid
+                    ? "border-blue-300/20 bg-blue-400/8 text-slate-100 hover:border-blue-200/30 hover:bg-blue-400/12"
+                    : "border-white/8 bg-white/[0.04] text-slate-300 hover:border-white/15 hover:bg-white/[0.06]",
+                ].join(" ")}
+              >
+                <span className="text-[10px] font-semibold tracking-[0.16em] text-slate-400">{date.dayLabel}</span>
+                <span className="mt-1 text-base font-semibold leading-none">{date.dayNumber}</span>
+                {hasRaid && (
+                  <span
+                    className={[
+                      "absolute right-2 top-2 h-1.5 w-1.5 rounded-full",
+                      isActive ? "bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.75)]" : "bg-sky-300/90",
+                    ].join(" ")}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 rounded-xl border border-white/8 bg-slate-950/32 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-semibold text-white">{selectedLabel}</div>
+            <div className="text-[11px] text-slate-400">{selectedDateText}</div>
+          </div>
+
+          {loading ? (
+            <div className="mt-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-4 text-sm text-slate-400">
+              일정 불러오는 중...
+            </div>
+          ) : selectedRaid ? (
+            <div className="mt-3 rounded-xl border border-cyan-400/25 bg-[linear-gradient(180deg,rgba(14,165,233,0.10),rgba(8,47,73,0.18))] px-3 py-3.5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-base font-semibold text-white">{selectedRaid.raid_name}</div>
+                  <div className="mt-1 text-[11px] text-slate-300">
+                    {[selectedRaid.difficulty, selectedRaid.raid_type || selectedRaid.type].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+                <div className="shrink-0 text-lg font-semibold text-slate-100">{selectedRaid.raid_time || "-"}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-3 py-4 text-sm text-slate-400">
+              등록된 일정이 없습니다.
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
   const [heroStats, setHeroStats] = useState({
     memberCount: 0,
@@ -1913,35 +2104,35 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
   }, [posts]);
 
   return (
-    <section className="relative flex min-h-[180px] items-center overflow-hidden md:min-h-[210px]">
+    <section className="relative flex min-h-[200px] items-center overflow-hidden md:min-h-[235px]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.10),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.06),rgba(8,15,32,0.46))]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-3 px-5 py-4 md:grid-cols-[minmax(0,1fr)_240px] md:py-5">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_340px_260px] md:py-7">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.72 }}
-          className="text-center md:text-left"
+          className="text-center md:text-left lg:max-w-[360px]"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.26em] text-blue-200">
+          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-blue-200">
             <Sparkles size={11} />
             Guild System
           </span>
 
-          <h1 className="mt-2.5 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-[28px] font-semibold leading-none tracking-tight text-transparent md:text-[34px]">
+          <h1 className="mt-3 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-semibold leading-none tracking-tight text-transparent md:text-4xl">
             {getDisplayGuildName(settings?.guild_name)}
           </h1>
 
-          <p className="mt-2 max-w-lg text-[13px] font-medium leading-5 text-slate-300">
+          <p className="mt-2 max-w-xl text-sm font-medium leading-5 text-slate-300">
             {settings?.guild_description}
           </p>
 
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 md:justify-start">
-            <div className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-1.5 backdrop-blur-md">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 공지
               </div>
-              <div className="mt-0.5 text-sm font-semibold text-white">{noticeCount}</div>
+              <div className="mt-1 text-base font-semibold text-white">{noticeCount}</div>
             </div>
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
@@ -1957,46 +2148,48 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
             </div>
           </div>
 
-          <div className="mt-3 flex justify-center md:justify-start">
+          <div className="mt-4 flex justify-center md:justify-start">
             <button
               type="button"
               onClick={onOpenRaidCalendar}
-              className="group inline-flex items-center gap-2 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-3.5 py-2 text-[13px] font-semibold text-sky-100 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-blue-200/35 hover:bg-blue-400/15 hover:text-white hover:shadow-[0_14px_34px_rgba(59,130,246,0.18)]"
+              className="group inline-flex items-center gap-2 rounded-2xl border border-blue-300/20 bg-blue-400/10 px-4 py-2.5 text-sm font-semibold text-sky-100 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-blue-200/35 hover:bg-blue-400/15 hover:text-white hover:shadow-[0_14px_34px_rgba(59,130,246,0.18)]"
             >
-              <CalendarDays size={14} className="transition-transform group-hover:scale-105" />
+              <CalendarDays size={16} className="transition-transform group-hover:scale-105" />
               월별 레이드 일정
             </button>
           </div>
         </motion.div>
 
+        <WeeklyRaidOverview onOpenRaidCalendar={onOpenRaidCalendar} />
+
         <motion.div
           initial={{ opacity: 0, x: 18 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.76, delay: 0.05 }}
-          className="relative hidden lg:block self-center"
+          className="relative hidden lg:block"
         >
-          <div className="absolute inset-0 rounded-[1.6rem] bg-blue-400/10 blur-3xl" />
-          <div className="relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/5 p-3 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
+          <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
+          <div className="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-white/5 p-3.5 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
                   Overview
                 </div>
-                <div className="mt-1 text-base font-semibold text-white">
+                <div className="mt-1.5 text-lg font-semibold text-white">
                   {getDisplayGuildName(settings?.guild_name)}
                 </div>
               </div>
-              <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2 py-1 text-[10px] font-semibold text-blue-100">
+              <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-100">
                 Live
               </div>
             </div>
 
-            <div className="mt-2.5 grid grid-cols-3 gap-1.5">
-              <div className="rounded-xl border border-white/8 bg-white/5 p-2.5">
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-white/8 bg-white/5 p-3">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   공지
                 </div>
-                <div className="mt-1 text-[13px] font-semibold text-white">{noticeCount}</div>
+                <div className="mt-1.5 text-sm font-semibold text-white">{noticeCount}</div>
               </div>
               <div className="rounded-xl border border-white/8 bg-white/5 p-3">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -2012,28 +2205,28 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               </div>
             </div>
 
-            <div className="mt-2.5 rounded-xl border border-white/8 bg-slate-950/30 p-2.5">
+            <div className="mt-3 rounded-xl border border-white/8 bg-slate-950/30 p-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-slate-300">다음 7일 일정</span>
                 <span className="font-semibold text-blue-200">{heroStats.upcomingRaids}건</span>
               </div>
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/8">
+              <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-white/8">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-blue-400 to-sky-300 transition-all"
                   style={{ width: `${Math.min(100, Math.max(12, heroStats.upcomingRaids * 16))}%` }}
                 />
               </div>
-              <div className="mt-2.5 text-[13px] font-semibold text-white truncate">
+              <div className="mt-3 text-sm font-semibold text-white truncate">
                 {heroStats.nextRaidLabel}
               </div>
-              <div className="mt-1 text-[10px] text-slate-400">
+              <div className="mt-1 text-[11px] text-slate-400">
                 {heroStats.nextRaidDate || "등록된 일정이 아직 없습니다."}
               </div>
             
               <button
                 type="button"
                 onClick={onOpenRaidCalendar}
-                className="mt-2.5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-300/15 bg-blue-400/10 px-3 py-1.5 text-[13px] font-semibold text-sky-100 transition-all hover:border-blue-200/30 hover:bg-blue-400/15 hover:text-white"
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-300/15 bg-blue-400/10 px-3 py-2 text-sm font-semibold text-sky-100 transition-all hover:border-blue-200/30 hover:bg-blue-400/15 hover:text-white"
               >
                 <CalendarDays size={15} />
                 월별 레이드 일정 보기
@@ -2043,7 +2236,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
         </motion.div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[#091120] to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#091120] to-transparent" />
     </section>
   );
 };
