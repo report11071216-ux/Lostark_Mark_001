@@ -8,6 +8,7 @@ export default async function handler(req, res) {
     },
     body: JSON.stringify({
       content: req.body.message,
+      embeds: req.body.embeds,
     }),
   });
 
