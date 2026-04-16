@@ -2873,7 +2873,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                     {type === "레이드" ? `${diff} · ${gate}관문` : item.name || type}
                   </div>
                   <div className="mt-2 text-sm leading-6 text-slate-400">
-                    선택한 관문 기준의 핵심 보상과 공략 메모를 오른쪽에서 바로 읽을 수 있게 정리했어.
+                    .
                   </div>
                 </div>
               </div>
@@ -2901,7 +2901,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                     난이도 가시성 개선
                   </div>
                   <div className="mt-3 text-sm leading-7 text-slate-300">
-                    난이도는 이미지 좌상단 오버레이와 본문 탭을 같이 두는 방식이 가장 잘 보여. 처음 들어왔을 때도 한눈에 보이고, 스크롤 중에도 본문 탭으로 다시 바꾸기 쉽기 때문이야.
+                    .
                   </div>
                 </div>
               </div>
