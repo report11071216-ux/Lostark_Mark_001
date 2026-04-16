@@ -104,7 +104,7 @@ const CONTENT_MODE_OPTIONS = ["raid", "anime"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const defaultSettings = {
-  guild_name: "INXX",
+  guild_name: "쁘밍",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
   point_rate_settings: {
     enabled: true,
@@ -821,11 +821,11 @@ const HomeFeaturePortal = ({
   ];
 
   return (
-    <section className="mx-auto max-w-7xl px-6 pb-4 md:pb-5">
+    <section className="mx-auto max-w-7xl px-6 pb-3 md:pb-4">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-300">Feature Gateway</div>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-white md:text-2xl">
+          <h2 className="mt-2 text-lg font-semibold tracking-tight text-white md:text-xl">
             핵심 콘텐츠 바로가기
           </h2>
           <p className="mt-2 text-sm text-slate-400">
@@ -838,7 +838,7 @@ const HomeFeaturePortal = ({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         {cards.map((card) => {
           const active = contentView === card.key;
           return (
@@ -847,7 +847,7 @@ const HomeFeaturePortal = ({
               whileHover={{ y: -4, scale: 1.01 }}
               onClick={() => setContentView(card.key)}
               className={cn(
-                "group relative overflow-hidden rounded-[1.65rem] border border-white/10 bg-white/[0.04] p-4 text-left backdrop-blur-xl transition-all",
+                "group relative overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-3.5 text-left backdrop-blur-xl transition-all",
                 active ? card.activeClass : "hover:border-white/20 hover:bg-white/[0.06]"
               )}
             >
@@ -856,7 +856,7 @@ const HomeFeaturePortal = ({
 
               <div className="relative z-10">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.07] text-sky-100 shadow-[0_8px_20px_rgba(15,23,42,0.18)]">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.07] text-sky-100 shadow-[0_8px_20px_rgba(15,23,42,0.18)]">
                     {card.icon}
                   </div>
                   <div className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300">
@@ -864,14 +864,14 @@ const HomeFeaturePortal = ({
                   </div>
                 </div>
 
-                <div className="mt-4">
-                  <div className="text-xl font-semibold text-white">{card.title}</div>
-                  <div className="mt-1.5 text-xs leading-5 text-slate-300">
+                <div className="mt-3">
+                  <div className="text-lg font-semibold text-white">{card.title}</div>
+                  <div className="mt-1 text-xs leading-5 text-slate-300">
                     {card.subtitle}
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-3">
+                <div className="mt-3 flex items-center justify-between gap-3">
                   <div className="text-xs font-medium text-slate-400">{card.stats}</div>
                   <div
                     className={cn(
@@ -1860,10 +1860,10 @@ const Hero = ({ settings, posts }: any) => {
   }, [posts]);
 
   return (
-    <section className="relative flex min-h-[240px] items-center overflow-hidden md:min-h-[290px]">
+    <section className="relative flex min-h-[200px] items-center overflow-hidden md:min-h-[235px]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.22),transparent_26%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.14),transparent_22%),linear-gradient(180deg,rgba(8,15,32,0.12),rgba(8,15,32,0.78))]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-5 px-6 py-8 md:grid-cols-[minmax(0,1fr)_280px] md:py-10">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 md:grid-cols-[minmax(0,1fr)_260px] md:py-7">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1875,28 +1875,28 @@ const Hero = ({ settings, posts }: any) => {
             Guild System
           </span>
 
-          <h1 className="mt-4 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-semibold leading-none tracking-tight text-transparent md:text-5xl">
-            {settings?.guild_name}
+          <h1 className="mt-3 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-semibold leading-none tracking-tight text-transparent md:text-4xl">
+            {settings?.guild_name || "쁘밍"}
           </h1>
 
-          <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-slate-300">
+          <p className="mt-2 max-w-xl text-sm font-medium leading-5 text-slate-300">
             {settings?.guild_description}
           </p>
 
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 backdrop-blur-md">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 공지
               </div>
               <div className="mt-1 text-base font-semibold text-white">{noticeCount}</div>
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 backdrop-blur-md">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 7일 일정
               </div>
               <div className="mt-1 text-base font-semibold text-white">{heroStats.upcomingRaids}</div>
             </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3.5 py-2.5 backdrop-blur-md">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 길드원
               </div>
@@ -1912,14 +1912,14 @@ const Hero = ({ settings, posts }: any) => {
           className="relative hidden lg:block"
         >
           <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
-          <div className="relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/5 p-4 backdrop-blur-2xl shadow-[0_20px_60px_rgba(37,99,235,0.14)]">
+          <div className="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-white/5 p-3.5 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
                   Overview
                 </div>
                 <div className="mt-1.5 text-lg font-semibold text-white">
-                  {settings?.guild_name}
+                  {settings?.guild_name || "쁘밍"}
                 </div>
               </div>
               <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-100">
@@ -1927,7 +1927,7 @@ const Hero = ({ settings, posts }: any) => {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2.5">
+            <div className="mt-3 grid grid-cols-3 gap-2">
               <div className="rounded-xl border border-white/8 bg-white/5 p-3">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   공지
@@ -1948,7 +1948,7 @@ const Hero = ({ settings, posts }: any) => {
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-white/8 bg-slate-950/30 p-3.5">
+            <div className="mt-3 rounded-xl border border-white/8 bg-slate-950/30 p-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium text-slate-300">다음 7일 일정</span>
                 <span className="font-semibold text-blue-200">{heroStats.upcomingRaids}건</span>
@@ -1970,7 +1970,7 @@ const Hero = ({ settings, posts }: any) => {
         </motion.div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#091120] to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#091120] to-transparent" />
     </section>
   );
 };
