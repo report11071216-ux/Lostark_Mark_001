@@ -1930,6 +1930,15 @@ const Hero = ({ settings, posts, density = "default" }: any) => {
     nextRaidLabel: "예정된 일정 없음",
     nextRaidDate: "",
   });
+  const [livePanel, setLivePanel] = useState<{
+    monthRaidCount: number;
+    upcoming: Array<{ id: string; raid_name: string; raid_date: string; raid_time: string; difficulty?: string | null }>;
+    ranking: Array<{ nickname: string; raidCount: number }>;
+  }>({
+    monthRaidCount: 0,
+    upcoming: [],
+    ranking: [],
+  });
 
   const noticeCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_notice).length : 0;
   const pinnedCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_pinned).length : 0;
@@ -1942,11 +1951,14 @@ const Hero = ({ settings, posts, density = "default" }: any) => {
 
       try {
         const today = getTodayKey();
+        const now = new Date();
+        const monthStart = formatDate(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = formatDate(now.getFullYear(), now.getMonth(), new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate());
         const nextWeek = new Date();
         nextWeek.setDate(nextWeek.getDate() + 7);
         const nextWeekKey = formatDate(nextWeek.getFullYear(), nextWeek.getMonth(), nextWeek.getDate());
 
-        const [membersRes, upcomingRes, nextRaidRes] = await Promise.allSettled([
+        const [membersRes, upcomingRes, nextRaidRes, monthRaidsRes] = await Promise.allSettled([
           supabase.from("profiles").select("id", { count: "exact", head: true }),
           supabase
             .from("raid_schedules")
@@ -1961,6 +1973,13 @@ const Hero = ({ settings, posts, density = "default" }: any) => {
             .order("raid_time", { ascending: true })
             .limit(1)
             .maybeSingle(),
+          supabase
+            .from("raid_schedules")
+            .select("id, raid_name, raid_date, raid_time, difficulty")
+            .gte("raid_date", monthStart)
+            .lte("raid_date", monthEnd)
+            .order("raid_date", { ascending: true })
+            .order("raid_time", { ascending: true }),
         ]);
 
         if (!mounted) return;
@@ -1982,7 +2001,54 @@ const Hero = ({ settings, posts, density = "default" }: any) => {
             .join(" · ");
         }
 
+        const monthRaids =
+          monthRaidsRes.status === "fulfilled" && Array.isArray(monthRaidsRes.value.data)
+            ? monthRaidsRes.value.data
+            : [];
+
+        let ranking: Array<{ nickname: string; raidCount: number }> = [];
+        if (monthRaids.length > 0) {
+          const scheduleIds = monthRaids.map((raid: any) => raid.id);
+          const { data: participantRows, error: participantError } = await supabase
+            .from("raid_participants")
+            .select("schedule_id, character_name")
+            .in("schedule_id", scheduleIds);
+
+          if (!participantError && Array.isArray(participantRows)) {
+            const perCharacter = new Map<string, Set<string>>();
+            participantRows.forEach((row: any) => {
+              const nickname = String(row?.character_name || "").trim();
+              const scheduleId = String(row?.schedule_id || "").trim();
+              if (!nickname || !scheduleId) return;
+              if (!perCharacter.has(nickname)) perCharacter.set(nickname, new Set());
+              perCharacter.get(nickname)?.add(scheduleId);
+            });
+
+            ranking = Array.from(perCharacter.entries())
+              .map(([nickname, scheduleSet]) => ({
+                nickname,
+                raidCount: scheduleSet.size,
+              }))
+              .sort((a, b) => {
+                if (b.raidCount !== a.raidCount) return b.raidCount - a.raidCount;
+                return a.nickname.localeCompare(b.nickname, "ko");
+              })
+              .slice(0, 3);
+          }
+        }
+
         setHeroStats(nextStats);
+        setLivePanel({
+          monthRaidCount: monthRaids.length,
+          upcoming: monthRaids.slice(0, 2).map((raid: any) => ({
+            id: String(raid.id),
+            raid_name: raid.raid_name,
+            raid_date: raid.raid_date,
+            raid_time: raid.raid_time,
+            difficulty: raid.difficulty,
+          })),
+          ranking,
+        });
       } catch (error) {
         console.error("Hero stats fetch error:", error);
       }
@@ -1997,23 +2063,30 @@ const Hero = ({ settings, posts, density = "default" }: any) => {
 
   const heroSectionClass =
     density === "compact"
-      ? "relative flex min-h-[180px] items-center overflow-hidden md:min-h-[215px]"
+      ? "relative flex min-h-[210px] items-center overflow-hidden md:min-h-[245px]"
       : density === "spacious"
-      ? "relative flex min-h-[240px] items-center overflow-hidden md:min-h-[290px]"
-      : "relative flex min-h-[200px] items-center overflow-hidden md:min-h-[235px]";
+      ? "relative flex min-h-[260px] items-center overflow-hidden md:min-h-[320px]"
+      : "relative flex min-h-[230px] items-center overflow-hidden md:min-h-[275px]";
+
+  const heroGridClass =
+    density === "compact"
+      ? "relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 lg:grid-cols-[minmax(0,0.95fr)_360px_260px] md:py-7"
+      : density === "spacious"
+      ? "relative z-10 mx-auto grid w-full max-w-7xl items-center gap-6 px-6 py-8 lg:grid-cols-[minmax(0,1fr)_400px_290px] md:py-9"
+      : "relative z-10 mx-auto grid w-full max-w-7xl items-center gap-5 px-6 py-7 lg:grid-cols-[minmax(0,1fr)_380px_280px] md:py-8";
 
   return (
     <section className={heroSectionClass}>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.10),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.06),rgba(8,15,32,0.46))]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 md:grid-cols-[minmax(0,1fr)_260px] md:py-7">
+      <div className={heroGridClass}>
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.72 }}
           className="text-center md:text-left"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-blue-200">
+          <span className="inline-flex items-center gap-2 rounded-full border border-blue-300/15 bg-blue-400/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.26em] text-blue-200">
             <Sparkles size={11} />
             Guild System
           </span>
@@ -2049,12 +2122,89 @@ const Hero = ({ settings, posts, density = "default" }: any) => {
         </motion.div>
 
         <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.78, delay: 0.04 }}
+          className="relative hidden lg:block"
+        >
+          <div className="absolute inset-0 rounded-[1.8rem] bg-sky-400/10 blur-3xl" />
+          <div className="relative overflow-hidden rounded-[1.8rem] border border-white/10 bg-white/5 p-4 backdrop-blur-2xl shadow-[0_20px_60px_rgba(37,99,235,0.12)]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-sky-200/80">
+                  Hero Live Panel
+                </div>
+                <div className="mt-1.5 text-lg font-semibold text-white">
+                  이번 달 요약
+                </div>
+              </div>
+              <div className="rounded-xl border border-blue-300/15 bg-blue-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-blue-100">
+                {livePanel.monthRaidCount}
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-slate-950/30 p-3.5">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Monthly Raid
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-white">{livePanel.monthRaidCount}</div>
+              <div className="mt-1 text-xs text-slate-500">이번 달 예정 레이드 수</div>
+            </div>
+
+            <div className="mt-3 rounded-[1.2rem] border border-white/10 bg-slate-950/30 p-3.5">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Upcoming
+              </div>
+              <div className="mt-3 space-y-2.5">
+                {livePanel.upcoming.length > 0 ? (
+                  livePanel.upcoming.map((raid) => (
+                    <div key={raid.id} className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
+                      <div className="truncate text-sm font-semibold text-white">{raid.raid_name}</div>
+                      <div className="mt-1 text-[11px] text-slate-400">
+                        {formatShortDate(raid.raid_date)} · {raid.raid_time}
+                        {raid.difficulty ? ` · ${raid.difficulty}` : ""}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-3 py-6 text-center text-xs text-slate-500">
+                    예정된 일정이 없습니다.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-3 rounded-[1.2rem] border border-white/10 bg-slate-950/30 p-3.5">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Monthly Top 3
+              </div>
+              <div className="mt-3 space-y-2">
+                {livePanel.ranking.length > 0 ? (
+                  livePanel.ranking.map((item, index) => (
+                    <div key={item.nickname} className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                      <div className="min-w-0 truncate text-sm font-semibold text-white">
+                        #{index + 1} {item.nickname}
+                      </div>
+                      <div className="shrink-0 text-xs font-semibold text-sky-200">{item.raidCount}회</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-3 py-6 text-center text-xs text-slate-500">
+                    참여 랭킹 데이터가 없습니다.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
           initial={{ opacity: 0, x: 18 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.76, delay: 0.05 }}
           className="relative hidden lg:block"
         >
-          <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
+          <div className="absolute inset-0 rounded-[1.7rem] bg-blue-400/10 blur-3xl" />
           <div className="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-white/5 p-3.5 backdrop-blur-2xl shadow-[0_18px_48px_rgba(37,99,235,0.14)]">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -2102,7 +2252,7 @@ const Hero = ({ settings, posts, density = "default" }: any) => {
                   style={{ width: `${Math.min(100, Math.max(12, heroStats.upcomingRaids * 16))}%` }}
                 />
               </div>
-              <div className="mt-3 text-sm font-semibold text-white truncate">
+              <div className="mt-3 truncate text-sm font-semibold text-white">
                 {heroStats.nextRaidLabel}
               </div>
               <div className="mt-1 text-[11px] text-slate-400">
