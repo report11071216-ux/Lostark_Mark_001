@@ -2,7 +2,29 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {Shield, Plus, X, Clock, ChevronLeft, ChevronRight, Trash2, Settings, Image as ImageIcon, Send, Edit3, CalendarDays, Users, Sparkles, Swords, Trophy, BarChart3, Bell, Crown, Pin, ShoppingBag, GripVertical} from "lucide-react";
+import {
+  Shield,
+  Plus,
+  X,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+  Trash2,
+  Settings,
+  Image as ImageIcon,
+  Send,
+  Edit3,
+  CalendarDays,
+  Users,
+  Sparkles,
+  Swords,
+  Trophy,
+  BarChart3,
+  Bell,
+  Crown,
+  Pin,
+  ShoppingBag,
+} from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
@@ -81,14 +103,6 @@ const RAID_TYPE_OPTIONS = ["8인", "4인"];
 const CONTENT_MODE_OPTIONS = ["raid", "anime"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const defaultHomeSections = [
-  { id: "hero", label: "Hero", enabled: true, density: "compact" },
-  { id: "portal", label: "핵심 카드", enabled: true, density: "compact" },
-  { id: "content", label: "콘텐츠 카드", enabled: true, density: "compact" },
-  { id: "notice", label: "공지사항", enabled: true, density: "compact" },
-  { id: "calendar", label: "캘린더", enabled: true, density: "compact" },
-] as const;
-
 const defaultSettings = {
   guild_name: "쁘밍",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
@@ -102,9 +116,6 @@ const defaultSettings = {
       rare: 15,
       epic: 22,
       legendary: 30,
-    },
-    ui_layout: {
-      home_sections: defaultHomeSections,
     },
   },
 };
@@ -780,11 +791,9 @@ const WeaponImage = ({
 const HomeFeaturePortal = ({
   contentView,
   setContentView,
-  density = "default",
 }: {
   contentView: string;
   setContentView: (value: string) => void;
-  density?: HomeSectionDensity;
 }) => {
   const cards = [
     {
@@ -819,21 +828,8 @@ const HomeFeaturePortal = ({
     },
   ];
 
-  const portalSectionClass =
-    density === "compact"
-      ? "mx-auto max-w-7xl px-6 pb-2 md:pb-3"
-      : density === "spacious"
-      ? "mx-auto max-w-7xl px-6 pb-6 md:pb-7"
-      : "mx-auto max-w-7xl px-6 pb-3 md:pb-4";
-  const portalCardClass =
-    density === "compact"
-      ? "group relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-white/[0.04] p-3 text-left backdrop-blur-xl transition-all"
-      : density === "spacious"
-      ? "group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 text-left backdrop-blur-xl transition-all"
-      : "group relative overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-3.5 text-left backdrop-blur-xl transition-all";
-
   return (
-    <section className={portalSectionClass}>
+    <section className="mx-auto max-w-7xl px-6 pb-3 md:pb-4">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-300">Feature Gateway</div>
@@ -859,7 +855,7 @@ const HomeFeaturePortal = ({
               whileHover={{ y: -4, scale: 1.01 }}
               onClick={() => setContentView(card.key)}
               className={cn(
-                portalCardClass,
+                "group relative overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[0.04] p-3.5 text-left backdrop-blur-xl transition-all",
                 active ? card.activeClass : "hover:border-white/20 hover:bg-white/[0.06]"
               )}
             >
@@ -905,7 +901,7 @@ const HomeFeaturePortal = ({
   );
 };
 
-const HomeNoticeSection = ({ user, profile, density = "default" }: { user: UserLike; profile: ProfileLike; density?: HomeSectionDensity }) => {
+const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: ProfileLike }) => {
   const [notices, setNotices] = useState<PostLike[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -932,14 +928,8 @@ const HomeNoticeSection = ({ user, profile, density = "default" }: { user: UserL
     setLoading(false);
   };
 
-  const noticeSectionClass =
-    density === "compact"
-      ? "max-w-7xl mx-auto px-6 pt-1 md:pt-2 pb-3"
-      : density === "spacious"
-      ? "max-w-7xl mx-auto px-6 pt-4 md:pt-5 pb-6"
-      : "max-w-7xl mx-auto px-6 pt-2 md:pt-3 pb-4";
   return (
-    <section className={noticeSectionClass}>
+    <section className="max-w-7xl mx-auto px-6 pt-2 md:pt-3 pb-4">
       <div className="overflow-hidden rounded-[1.75rem] border border-blue-500/15 bg-gradient-to-br from-blue-500/8 via-white/[0.04] to-transparent">
         <div className="border-b border-white/10 px-5 py-4 md:px-6">
           <div className="flex items-start justify-between gap-4">
@@ -1143,46 +1133,12 @@ const BADGE_PRESET_COLORS = [
   "#ef4444",
 ];
 
-type HomeSectionDensity = "compact" | "default" | "spacious";
-
-type HomeSectionLayout = {
-  id: "hero" | "portal" | "content" | "notice" | "calendar";
-  label: string;
-  enabled: boolean;
-  density: HomeSectionDensity;
-};
-
 type PointRateSettings = {
   enabled: boolean;
   cycle_minutes: number;
   daily_cap: number;
   enhancement_bonus_per_5: number;
   rate_by_rarity: Record<WeaponRarityKey, number>;
-  ui_layout?: {
-    home_sections: HomeSectionLayout[];
-  };
-};
-
-const normalizeHomeSections = (value: any): HomeSectionLayout[] => {
-  const raw = Array.isArray(value) ? value : [];
-  const rawMap = new Map(raw.map((item: any) => [String(item?.id || ""), item]));
-  return defaultHomeSections.map((base) => {
-    const current = rawMap.get(base.id) || {};
-    const density = ["compact", "default", "spacious"].includes(String(current?.density || ""))
-      ? (current.density as HomeSectionDensity)
-      : base.density;
-    return {
-      ...base,
-      enabled: current?.enabled !== undefined ? current.enabled !== false : base.enabled,
-      density,
-    };
-  }).sort((a, b) => {
-    const aIndex = raw.findIndex((item: any) => String(item?.id || "") === a.id);
-    const bIndex = raw.findIndex((item: any) => String(item?.id || "") === b.id);
-    const safeA = aIndex === -1 ? 999 : aIndex;
-    const safeB = bIndex === -1 ? 999 : bIndex;
-    return safeA - safeB;
-  });
 };
 
 const normalizePointRateSettings = (value: any): PointRateSettings => {
@@ -1198,9 +1154,6 @@ const normalizePointRateSettings = (value: any): PointRateSettings => {
       epic: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.epic) || 22)),
       legendary: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.legendary) || 30)),
     },
-    ui_layout: {
-      home_sections: normalizeHomeSections(raw?.ui_layout?.home_sections),
-    },
   };
 };
 
@@ -1211,14 +1164,6 @@ const normalizeAppSettings = (value: any) => {
     ...raw,
     point_rate_settings: normalizePointRateSettings(raw?.point_rate_settings),
   };
-};
-
-const getHomeSectionLayouts = (settingsLike: any): HomeSectionLayout[] =>
-  normalizePointRateSettings(settingsLike?.point_rate_settings).ui_layout?.home_sections || normalizeHomeSections(null);
-
-const getSectionDensity = (settingsLike: any, sectionId: HomeSectionLayout["id"]): HomeSectionDensity => {
-  const target = getHomeSectionLayouts(settingsLike).find((section) => section.id === sectionId);
-  return target?.density || "default";
 };
 
 const fetchSingletonSettingsRow = async () => {
@@ -1611,7 +1556,7 @@ const fetchInitialData = async () => {
     return (
       <PageShell>
         <div className="min-h-screen flex items-center justify-center text-sky-300 font-semibold">
-          PMING SYSTEM LOADING...
+          INXX SYSTEM LOADING...
         </div>
       </PageShell>
     );
@@ -1674,33 +1619,11 @@ const fetchInitialData = async () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                {getHomeSectionLayouts(settings)
-                  .filter((section) => section.enabled)
-                  .map((section) => {
-                    if (section.id === "hero") {
-                      return <Hero key={section.id} settings={settings} posts={posts} density={section.density} />;
-                    }
-                    if (section.id === "portal") {
-                      return (
-                        <HomeFeaturePortal
-                          key={section.id}
-                          contentView={contentView}
-                          setContentView={setContentView}
-                          density={section.density}
-                        />
-                      );
-                    }
-                    if (section.id === "content") {
-                      return <MainContentViewer key={section.id} type={contentView} density={section.density} />;
-                    }
-                    if (section.id === "notice") {
-                      return <HomeNoticeSection key={section.id} user={user} profile={profile} density={section.density} />;
-                    }
-                    if (section.id === "calendar") {
-                      return <RaidCalendar key={section.id} user={user} profile={profile} density={section.density} />;
-                    }
-                    return null;
-                  })}
+                <Hero settings={settings} posts={posts} />
+                <HomeFeaturePortal contentView={contentView} setContentView={setContentView} />
+                <MainContentViewer type={contentView} />
+                <HomeNoticeSection user={user} profile={profile} />
+                <RaidCalendar user={user} profile={profile} />
               </motion.div>
             )}
 
@@ -1907,7 +1830,7 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-const Hero = ({ settings, posts, density = "default" }: any) => {
+const Hero = ({ settings, posts }: any) => {
   const [heroStats, setHeroStats] = useState({
     memberCount: 0,
     upcomingRaids: 0,
@@ -1979,15 +1902,8 @@ const Hero = ({ settings, posts, density = "default" }: any) => {
     };
   }, [posts]);
 
-  const heroSectionClass =
-    density === "compact"
-      ? "relative flex min-h-[180px] items-center overflow-hidden md:min-h-[215px]"
-      : density === "spacious"
-      ? "relative flex min-h-[240px] items-center overflow-hidden md:min-h-[290px]"
-      : "relative flex min-h-[200px] items-center overflow-hidden md:min-h-[235px]";
-
   return (
-    <section className={heroSectionClass}>
+    <section className="relative flex min-h-[200px] items-center overflow-hidden md:min-h-[235px]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.10),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.06),rgba(8,15,32,0.46))]" />
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 md:grid-cols-[minmax(0,1fr)_260px] md:py-7">
@@ -2417,7 +2333,7 @@ const SectionPanel = ({
   </div>
 );
 
-const MainContentViewer = ({ type, density = "default" }: { type: string; density?: HomeSectionDensity }) => {
+const MainContentViewer = ({ type }: { type: string }) => {
   const [items, setItems] = useState<any[]>([]);
   const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "weapon" | "enhance_stone">("guild");
   const [nicknameEffectKey, setNicknameEffectKey] = useState<NicknameEffectKey>("violet");
@@ -2464,14 +2380,8 @@ const MainContentViewer = ({ type, density = "default" }: { type: string; densit
     fetchData();
   }, [type]);
 
-  const viewerSectionClass =
-    density === "compact"
-      ? "max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-0 pb-6"
-      : density === "spacious"
-      ? "max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5 pt-3 pb-10"
-      : "max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 pb-8";
   return (
-    <section className={viewerSectionClass}>
+    <section className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 pb-8">
       {items.length === 0 && (
         <div className="col-span-full text-center text-slate-600 font-semibold py-10 uppercase">
           No Contents Registered.
@@ -3152,7 +3062,7 @@ const DetailInfoCard = ({
   </div>
 );
 
-const RaidCalendar = ({ user, profile, density = "default" }: any) => {
+const RaidCalendar = ({ user, profile }: any) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [raids, setRaids] = useState<ScheduleLike[]>([]);
   const [participants, setParticipants] = useState<ParticipantLike[]>([]);
@@ -3162,7 +3072,6 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
   const [calendarLoading, setCalendarLoading] = useState(true);
   const [scheduleView, setScheduleView] = useState<"all" | "mine">("all");
   const [myCharacterNames, setMyCharacterNames] = useState<string[]>([]);
-  const [statsOpen, setStatsOpen] = useState(false);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -3363,15 +3272,9 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
     });
   }, [visibleParticipants, visibleRaids]);
 
-  const calendarSectionClass =
-    density === "compact"
-      ? "max-w-7xl mx-auto px-6 py-10 md:py-12 border-t border-white/5"
-      : density === "spacious"
-      ? "max-w-7xl mx-auto px-6 py-16 md:py-20 border-t border-white/5"
-      : "max-w-7xl mx-auto px-6 py-14 md:py-18 border-t border-white/5";
   return (
-    <section className={calendarSectionClass}>
-      <div className="grid lg:grid-cols-[1.2fr,0.8fr] gap-5 mb-6">
+    <section className="max-w-7xl mx-auto px-6 py-16 md:py-24 border-t border-white/5">
+      <div className="grid lg:grid-cols-[1.2fr,0.8fr] gap-6 mb-8">
         <SectionPanel
           title="Raid Calendar"
           description={scheduleView === "mine" ? "내 캐릭터가 참여한 일정만 확인." : "월별 레이드 일정."}
@@ -3406,13 +3309,13 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
 
               <button
                 onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
-                className="group flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/30 hover:bg-blue-400/10 hover:text-white hover:shadow-[0_12px_30px_rgba(59,130,246,0.14)]"
+                className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/30 hover:bg-blue-400/10 hover:text-white hover:shadow-[0_12px_30px_rgba(59,130,246,0.14)]"
               >
                 <ChevronLeft size={18} className="transition-transform group-hover:-translate-x-0.5" />
               </button>
               <button
                 onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
-                className="group flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/30 hover:bg-blue-400/10 hover:text-white hover:shadow-[0_12px_30px_rgba(59,130,246,0.14)]"
+                className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/30 hover:bg-blue-400/10 hover:text-white hover:shadow-[0_12px_30px_rgba(59,130,246,0.14)]"
               >
                 <ChevronRight size={18} className="transition-transform group-hover:translate-x-0.5" />
               </button>
@@ -3424,7 +3327,7 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
               <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-300">
                 {scheduleView === "mine" ? "My Schedule View" : "Monthly View"}
               </div>
-              <h2 className="text-3xl font-semibold tracking-tight">{formatMonthLabel(year, month)}</h2>
+              <h2 className="text-4xl font-semibold tracking-tight">{formatMonthLabel(year, month)}</h2>
               {!user && (
                 <div className="mt-2 text-sm text-slate-500">
                   로그인하면 내 캐릭터가 참가한 일정만 따로 볼 수 있어.
@@ -3446,26 +3349,26 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
         >
           {scheduleView === "mine" ? (
             <div className="space-y-3">
-              <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] px-4 py-3.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">내 일정 수</div>
-                <div className="mt-2 text-xl font-semibold text-white">{mineStats.upcomingMineCount}</div>
-                <div className="mt-1 text-[11px] text-slate-500">이번 달 내가 참가한 일정 개수</div>
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">내 일정 수</div>
+                <div className="mt-2 text-2xl font-semibold text-white">{mineStats.upcomingMineCount}</div>
+                <div className="mt-1 text-xs text-slate-500">이번 달 내가 참가한 일정 개수</div>
               </div>
-              <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] px-4 py-3.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">참가 캐릭터</div>
-                <div className="mt-2 text-xl font-semibold text-white">{mineStats.joinedCharacters}</div>
-                <div className="mt-1 text-[11px] text-slate-500">참가 기록이 있는 내 캐릭터 수</div>
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">참가 캐릭터</div>
+                <div className="mt-2 text-2xl font-semibold text-white">{mineStats.joinedCharacters}</div>
+                <div className="mt-1 text-xs text-slate-500">참가 기록이 있는 내 캐릭터 수</div>
               </div>
-              <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.03] px-4 py-3.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">보기 상태</div>
-                <div className="mt-2 text-sm font-semibold text-sky-200">{user ? "로그인 사용자 기준 필터 적용" : "로그인 필요"}</div>
-                <div className="mt-1 text-[11px] text-slate-500">참가자 이름과 내 캐릭터 이름을 기준으로 필터링</div>
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">보기 상태</div>
+                <div className="mt-2 text-base font-semibold text-sky-200">{user ? "로그인 사용자 기준 필터 적용" : "로그인 필요"}</div>
+                <div className="mt-1 text-xs text-slate-500">참가자 이름과 내 캐릭터 이름을 기준으로 필터링</div>
               </div>
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {monthlyCharacterStats.length === 0 && (
-                <div className="rounded-[1.55rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-7 text-center text-sm text-slate-500">
+                <div className="rounded-[1.75rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-7 text-center text-sm text-slate-500">
                   아직 이번 달 참여 데이터가 없습니다.
                 </div>
               )}
@@ -3473,21 +3376,21 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
               {monthlyCharacterStats.slice(0, 6).map((item, index) => (
                 <div
                   key={item.nickname}
-                  className="flex items-center justify-between gap-4 rounded-[1.3rem] border border-white/10 bg-white/[0.03] px-3.5 py-3 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
+                  className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-blue-300/15 bg-blue-400/10 text-[11px] font-semibold text-sky-200">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-sm font-semibold text-sky-200">
                       #{index + 1}
                     </div>
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold">{item.nickname}</div>
-                      <div className="text-[11px] text-slate-500">월간 레이드 참여 요약</div>
+                      <div className="truncate font-semibold">{item.nickname}</div>
+                      <div className="text-xs text-slate-500">월간 레이드 참여 요약</div>
                     </div>
                   </div>
 
                   <div className="shrink-0 text-right">
-                    <div className="text-base font-semibold text-white">{item.raidCount}회</div>
-                    <div className="text-[10px] text-slate-500">등록 {item.count}건</div>
+                    <div className="text-lg font-semibold text-white">{item.raidCount}회</div>
+                    <div className="text-xs text-slate-500">등록 {item.count}건</div>
                   </div>
                 </div>
               ))}
@@ -3496,11 +3399,11 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
         </SectionPanel>
       </div>
 
-      <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-5">
-        <div className="overflow-hidden rounded-[2rem] md:rounded-[2.3rem] border border-white/10 bg-slate-950/50 backdrop-blur-xl shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
+      <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-6">
+        <div className="overflow-hidden rounded-[2rem] md:rounded-[2.5rem] border border-white/10 bg-slate-950/50 backdrop-blur-xl shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
           <div className="grid grid-cols-7 border-b border-white/5 bg-white/[0.03] text-center text-[10px] md:text-xs uppercase tracking-[0.22em] text-slate-400">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
-              <div key={dayLabel} className="px-2 py-3.5">
+              <div key={dayLabel} className="px-2 py-4">
                 {dayLabel}
               </div>
             ))}
@@ -3510,7 +3413,7 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
             {Array.from({ length: firstDayOffset }).map((_, i) => (
               <div
                 key={`empty-${i}`}
-                className="min-h-[132px] md:min-h-[158px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]"
+                className="min-h-[156px] md:min-h-[190px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]"
               />
             ))}
 
@@ -3527,18 +3430,18 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
                 <div
                   key={day}
                   className={cn(
-                    "group relative min-h-[132px] md:min-h-[158px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-2.5 transition-all duration-200 hover:z-[1] hover:bg-blue-400/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(147,197,253,0.16)]",
+                    "group relative min-h-[156px] md:min-h-[190px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-3 transition-all duration-200 hover:z-[1] hover:bg-blue-400/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(147,197,253,0.16)]",
                     isToday && "bg-blue-500/[0.08] shadow-[inset_0_0_0_1px_rgba(96,165,250,0.28),0_0_0_1px_rgba(96,165,250,0.1)]"
                   )}
                 >
                   <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                   {isToday && <div className="pointer-events-none absolute right-3 top-3 h-10 w-10 rounded-full bg-blue-400/10 blur-xl" />}
 
-                  <div className="mb-2.5 flex items-start justify-between gap-2">
+                  <div className="mb-3 flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div
                         className={cn(
-                          "inline-flex h-8 min-w-[32px] items-center justify-center rounded-lg px-2 text-xs font-semibold transition-all",
+                          "inline-flex h-9 min-w-[36px] items-center justify-center rounded-xl px-2 text-sm font-semibold transition-all",
                           isToday
                             ? "border border-blue-300/25 bg-blue-400/10 text-sky-200 shadow-[0_8px_24px_rgba(59,130,246,0.18)]"
                             : "border border-transparent bg-white/[0.03] text-slate-300 group-hover:border-white/10"
@@ -3546,14 +3449,14 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
                       >
                         {day}
                       </div>
-                      <div className="mt-1.5 text-[9px] uppercase tracking-[0.2em] text-slate-500">
+                      <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
                         {DAY_LABELS[new Date(year, month, day).getDay()]}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2">
                       {dayRaids.length > 0 && (
-                        <div className="inline-flex items-center gap-1 rounded-full border border-blue-300/15 bg-blue-400/10 px-2 py-0.5 text-[9px] font-semibold text-blue-100">
+                        <div className="inline-flex items-center gap-1 rounded-full border border-blue-300/15 bg-blue-400/10 px-2 py-1 text-[10px] font-semibold text-blue-100">
                           <span className="h-1.5 w-1.5 rounded-full bg-sky-300" />
                           {dayRaids.length}
                         </div>
@@ -3565,28 +3468,28 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
                             setSelectedDate(dateStr);
                             setIsCreateOpen(true);
                           }}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03] text-sky-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/25 hover:bg-blue-400/10 hover:text-white"
+                          className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-sky-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/25 hover:bg-blue-400/10 hover:text-white"
                           title="레이드 생성"
                         >
-                          <Plus size={13} />
+                          <Plus size={15} />
                         </button>
                       )}
                     </div>
                   </div>
 
-                  <div className="mb-2 text-[10px] text-slate-500">
+                  <div className="mb-3 flex items-center gap-2 text-[11px] text-slate-500">
                     <span>{dayRaids.length}개 일정</span>
                     {dayParticipantCount > 0 && (
                       <>
-                        <span className="mx-1 text-slate-600">•</span>
+                        <span className="text-slate-600">•</span>
                         <span>{dayParticipantCount}명 참여</span>
                       </>
                     )}
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {dayRaids.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-white/8 bg-white/[0.02] px-2.5 py-3 text-center text-[10px] font-medium text-slate-500">
+                      <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-3 py-4 text-center text-[11px] font-medium text-slate-500">
                         {scheduleView === "mine" ? "내 일정 없음" : "일정 없음"}
                       </div>
                     )}
@@ -3597,7 +3500,6 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
                         raid={raid}
                         parts={visibleParticipants.filter((p) => p.schedule_id === raid.id)}
                         onOpen={() => setSelectedRaid(raid)}
-                        compact
                       />
                     ))}
                   </div>
@@ -3607,123 +3509,90 @@ const RaidCalendar = ({ user, profile, density = "default" }: any) => {
           </div>
         </div>
 
-        <div className="space-y-3">
-          <button
-            onClick={() => setStatsOpen((prev) => !prev)}
-            className="w-full rounded-[1.45rem] border border-white/10 bg-white/[0.04] px-4 py-3.5 text-left transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                  {scheduleView === "mine" ? "내 일정 목록" : "월별 통계보드"}
-                </div>
-                <div className="mt-1 text-sm font-semibold text-white">
-                  {scheduleView === "mine" ? "참가한 일정만 모아보기" : "참여 랭킹/통계 펼치기"}
-                </div>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300">
-                {statsOpen ? "접기" : "펼치기"}
-              </div>
+        <SectionPanel
+          title={scheduleView === "mine" ? "내 일정 목록" : "월별 통계 보드"}
+          description={scheduleView === "mine" ? "내가 실제로 참가한 일정만 모아서 보여줘." : "이번 달 참여 많이 한 캐릭터를 전체로 확인할 수 있어."}
+        >
+          {calendarLoading ? (
+            <div className="py-12 text-center font-medium text-slate-500">불러오는 중...</div>
+          ) : monthlyCharacterStats.length === 0 ? (
+            <div className="rounded-[1.75rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-slate-500">
+              {scheduleView === "mine" ? "표시할 내 일정이 없어." : "집계할 참여 데이터가 없어."}
             </div>
-          </button>
-
-          <AnimatePresence initial={false}>
-            {statsOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -8, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: "auto" }}
-                exit={{ opacity: 0, y: -8, height: 0 }}
-                transition={{ duration: 0.18 }}
-                className="overflow-hidden"
-              >
-                <SectionPanel
-                  title={scheduleView === "mine" ? "내 일정 목록" : "월별 통계 보드"}
-                  description={scheduleView === "mine" ? "내가 실제로 참가한 일정만 모아서 보여줘." : "이번 달 참여 많이 한 캐릭터를 전체로 확인할 수 있어."}
-                >
-                  {calendarLoading ? (
-                    <div className="py-10 text-center font-medium text-slate-500">불러오는 중...</div>
-                  ) : monthlyCharacterStats.length === 0 ? (
-                    <div className="rounded-[1.55rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-7 text-center text-sm text-slate-500">
-                      {scheduleView === "mine" ? "표시할 내 일정이 없어." : "집계할 참여 데이터가 없어."}
-                    </div>
-                  ) : scheduleView === "mine" ? (
-                    <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
-                      {visibleRaids.map((raid: any) => {
-                        const raidParts = visibleParticipants.filter((p: any) => p.schedule_id === raid.id);
-                        return (
-                          <button
-                            key={raid.id}
-                            onClick={() => setSelectedRaid(raid)}
-                            className="w-full rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-3.5 text-left transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold text-white">{raid.raid_name}</div>
-                                <div className="mt-1 text-[11px] text-slate-400">
-                                  {formatShortDate(raid.raid_date)} · {raid.raid_time}
-                                </div>
-                              </div>
-                              <div className="rounded-full border border-blue-300/15 bg-blue-400/10 px-3 py-1 text-[11px] font-semibold text-sky-200">
-                                {raidParts.length}/{getCapacity(raid).maxParticipants}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
-                      {monthlyCharacterStats.map((item, index) => (
-                        <div
-                          key={item.nickname}
-                          className="rounded-[1.3rem] border border-white/10 bg-white/[0.03] p-3.5 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
-                        >
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04]">
-                                <BarChart3 size={14} className="text-sky-300" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="truncate text-sm font-semibold">
-                                  #{index + 1} {item.nickname}
-                                </div>
-                                <div className="text-[11px] text-slate-500">
-                                  월간 레이드 참여 횟수 {item.raidCount}회
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="shrink-0 text-right">
-                              <div className="text-lg font-semibold text-sky-300">{item.raidCount}</div>
-                              <div className="text-[10px] text-slate-500">raid count</div>
-                            </div>
-                          </div>
-
-                          <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-300"
-                              style={{
-                                width: `${
-                                  monthlyCharacterStats[0]?.raidCount
-                                    ? (item.raidCount / monthlyCharacterStats[0].raidCount) * 100
-                                    : 0
-                                }%`,
-                              }}
-                            />
-                          </div>
-
-                          <div className="mt-2 text-[11px] text-slate-400">
-                            참가 등록 총 {item.count}건
-                          </div>
+          ) : scheduleView === "mine" ? (
+            <div className="space-y-3 max-h-[620px] overflow-y-auto pr-1">
+              {visibleRaids.map((raid: any) => {
+                const raidParts = visibleParticipants.filter((p: any) => p.schedule_id === raid.id);
+                return (
+                  <button
+                    key={raid.id}
+                    onClick={() => setSelectedRaid(raid)}
+                    className="w-full rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 text-left transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="truncate text-base font-semibold text-white">{raid.raid_name}</div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          {formatShortDate(raid.raid_date)} · {raid.raid_time}
                         </div>
-                      ))}
+                      </div>
+                      <div className="rounded-full border border-blue-300/15 bg-blue-400/10 px-3 py-1 text-xs font-semibold text-sky-200">
+                        {raidParts.length}/{getCapacity(raid).maxParticipants}
+                      </div>
                     </div>
-                  )}
-                </SectionPanel>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[620px] overflow-y-auto pr-1">
+              {monthlyCharacterStats.map((item, index) => (
+                <div
+                  key={item.nickname}
+                  className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+                        <BarChart3 size={16} className="text-sky-300" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold">
+                          #{index + 1} {item.nickname}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          월간 레이드 참여 횟수 {item.raidCount}회
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <div className="text-xl font-semibold text-sky-300">{item.raidCount}</div>
+                      <div className="text-[11px] text-slate-500">raid count</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.05]">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-300"
+                      style={{
+                        width: `${
+                          monthlyCharacterStats[0]?.raidCount
+                            ? (item.raidCount / monthlyCharacterStats[0].raidCount) * 100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-3 text-xs text-slate-400">
+                    참가 등록 총 {item.count}건
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionPanel>
       </div>
 
       <AnimatePresence>
@@ -3786,71 +3655,53 @@ const RaidCard = ({
   raid,
   parts,
   onOpen,
-  compact = false,
 }: {
   raid: any;
   parts: any[];
   onOpen: () => void;
-  compact?: boolean;
 }) => {
-  const capacity = getCapacity(raid);
-  const isFull = parts.length >= capacity.maxParticipants;
   const colors = classNameByMode(raid.type);
+  const capacity = getCapacity(raid);
+  const percent = Math.min(100, (parts.length / capacity.maxParticipants) * 100);
+  const isFull = parts.length >= capacity.maxParticipants;
 
   return (
-    <button
+    <motion.button
+      whileHover={{ y: -2, scale: 1.01 }}
       onClick={onOpen}
-      className={cn(
-        "w-full rounded-xl border text-left transition-all",
-        compact ? "px-2.5 py-2" : "px-3 py-2.5",
-        colors.card
-      )}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className={cn("truncate font-semibold", compact ? "text-[11px]" : "text-xs")}>{raid.raid_name}</div>
-          <div className={cn("mt-1 text-slate-400", compact ? "text-[10px]" : "text-[11px]")}>
-            {raid.raid_time}
-            {raid.type === "raid" && (
-              <>
-                <span className="mx-1 text-slate-500">•</span>
-                <span>{raid.difficulty}</span>
-              </>
-            )}
-          </div>
-        </div>
-        <div
-          className={cn(
-            "rounded-full border border-white/10 bg-white/[0.05] font-semibold text-slate-200",
-            compact ? "px-2 py-0.5 text-[9px]" : "px-2.5 py-1 text-[10px]"
-          )}
-        >
+      className={`w-full relative overflow-hidden rounded-[1.35rem] border p-3 text-left shadow-[0_16px_34px_rgba(2,6,23,0.24)] transition-all ${
+        isFull
+          ? "border-rose-400/30 bg-[linear-gradient(135deg,rgba(59,130,246,0.14),rgba(15,23,42,0.9))]"
+          : "border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] hover:border-blue-300/20 hover:bg-[linear-gradient(135deg,rgba(59,130,246,0.14),rgba(255,255,255,0.03))]"
+      }`}>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${colors.badge}`}>
+          {raid.type === "anime" ? "📺 시청" : `${raid.raid_type} · ${raid.difficulty}`}
+        </span>
+        <span className={`text-[10px] font-semibold ${isFull ? "text-red-300" : "text-slate-400"}`}>
           {parts.length}/{capacity.maxParticipants}
-        </div>
+          {isFull ? " FULL" : ""}
+        </span>
       </div>
 
-      {!compact && (
-        <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/[0.05]">
-          <div
-            className={cn("h-full rounded-full bg-gradient-to-r", colors.progress)}
-            style={{ width: `${Math.min(100, (parts.length / capacity.maxParticipants) * 100)}%` }}
-          />
-        </div>
-      )}
-
-      {compact && (
-        <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/[0.05]">
-          <div
-            className={cn("h-full rounded-full bg-gradient-to-r", colors.progress)}
-            style={{ width: `${Math.min(100, (parts.length / capacity.maxParticipants) * 100)}%` }}
-          />
-        </div>
-      )}
-
-      <div className={cn("mt-1.5 text-slate-500", compact ? "text-[9px]" : "text-[10px]")}>
-        {isFull ? "모집 완료" : "참여 가능"}
+      <div className="text-sm font-semibold leading-tight text-white truncate">
+        {raid.raid_name}
       </div>
-    </button>
+
+      <div className="flex flex-wrap gap-2 mt-2 mb-3">
+        {raid.experience && raid.type !== "anime" && (
+          <span className={colors.chip}>{raid.experience}</span>
+        )}
+        <span className="bg-white/5 text-slate-300 border border-white/10 text-[10px] px-2 py-1 rounded-full">
+          <Clock size={10} className="inline mr-1" />
+          {raid.raid_time}
+        </span>
+      </div>
+
+      <div className="mt-2 h-[5px] bg-black/40 rounded-full overflow-hidden">
+        <div style={{ width: `${percent}%` }} className={`h-full ${isFull ? "bg-red-500" : colors.bar}`} />
+      </div>
+    </motion.button>
   );
 };
 
@@ -4838,9 +4689,6 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
 };
 
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
-  const [draggingId, setDraggingId] = useState<HomeSectionLayout["id"] | null>(null);
-  const [dragOverId, setDragOverId] = useState<HomeSectionLayout["id"] | null>(null);
-
   const handleSave = async () => {
     const { error, payload } = await saveSingletonSettings(settings);
     if (error) showToast(error.message, "error");
@@ -4850,48 +4698,6 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
       writeCache(CACHE_KEYS.settings, nextSettings);
       showToast("길드 설정 업데이트 완료!", "success");
     }
-  };
-
-  const homeSections = getHomeSectionLayouts(settings);
-
-  const updateHomeSections = (nextSections: HomeSectionLayout[]) => {
-    setSettings({
-      ...settings,
-      point_rate_settings: {
-        ...normalizePointRateSettings(settings?.point_rate_settings),
-        ui_layout: {
-          home_sections: nextSections,
-        },
-      },
-    });
-  };
-
-  const moveSection = (id: HomeSectionLayout["id"], direction: "up" | "down") => {
-    const list = [...homeSections];
-    const index = list.findIndex((item) => item.id === id);
-    if (index === -1) return;
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= list.length) return;
-    [list[index], list[targetIndex]] = [list[targetIndex], list[index]];
-    updateHomeSections(list);
-  };
-
-  const updateSection = (id: HomeSectionLayout["id"], patch: Partial<HomeSectionLayout>) => {
-    updateHomeSections(
-      homeSections.map((section) => (section.id === id ? { ...section, ...patch } : section))
-    );
-  };
-
-  const reorderSections = (fromId: HomeSectionLayout["id"], toId: HomeSectionLayout["id"]) => {
-    if (fromId === toId) return;
-    const next = [...homeSections];
-    const fromIndex = next.findIndex((item) => item.id === fromId);
-    const toIndex = next.findIndex((item) => item.id === toId);
-    if (fromIndex === -1 || toIndex === -1) return;
-
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
-    updateHomeSections(next);
   };
 
   return (
@@ -4906,114 +4712,9 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
         value={settings.guild_description}
         onChange={(v: any) => setSettings({ ...settings, guild_description: v })}
       />
-
-      <AdminSectionCard
-        title="메인 레이아웃 설정"
-        description="드래그해서 순서를 바꾸고, 섹션별 표시 여부와 밀도를 함께 관리할 수 있어."
-      >
-        <div className="mb-4 rounded-[1.25rem] border border-blue-300/15 bg-blue-400/[0.06] px-4 py-3 text-sm text-slate-300">
-          <span className="font-semibold text-sky-200">사용 방법:</span> 왼쪽 핸들을 잡고 위아래로 옮기면 홈 화면 순서가 바뀐다.
-        </div>
-
-        <div className="space-y-3">
-          {homeSections.map((section, index) => {
-            const isDragging = draggingId === section.id;
-            const isDragOver = dragOverId === section.id && draggingId !== section.id;
-
-            return (
-              <div
-                key={section.id}
-                draggable
-                onDragStart={() => {
-                  setDraggingId(section.id);
-                  setDragOverId(section.id);
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (dragOverId !== section.id) setDragOverId(section.id);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (draggingId) reorderSections(draggingId, section.id);
-                  setDraggingId(null);
-                  setDragOverId(null);
-                }}
-                onDragEnd={() => {
-                  setDraggingId(null);
-                  setDragOverId(null);
-                }}
-                className={cn(
-                  "rounded-[1.35rem] border bg-black/20 p-4 transition-all",
-                  isDragging
-                    ? "border-sky-300/30 bg-sky-400/[0.08] opacity-70"
-                    : isDragOver
-                    ? "border-blue-300/28 bg-blue-400/[0.06] shadow-[0_16px_36px_rgba(37,99,235,0.12)]"
-                    : "border-white/10"
-                )}
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 cursor-grab items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 active:cursor-grabbing">
-                      <GripVertical size={16} />
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-white">{section.label}</div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        order #{index + 1} · id: {section.id}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => updateSection(section.id, { enabled: !section.enabled })}
-                      className={cn(
-                        "rounded-xl border px-3 py-2 text-xs font-semibold transition-all",
-                        section.enabled
-                          ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100"
-                          : "border-white/10 bg-white/[0.04] text-slate-400"
-                      )}
-                    >
-                      {section.enabled ? "표시 중" : "숨김"}
-                    </button>
-
-                    <select
-                      value={section.density}
-                      onChange={(e) => updateSection(section.id, { density: e.target.value as HomeSectionDensity })}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white outline-none"
-                    >
-                      <option value="compact">compact</option>
-                      <option value="default">default</option>
-                      <option value="spacious">spacious</option>
-                    </select>
-
-                    <button
-                      type="button"
-                      onClick={() => moveSection(section.id, "up")}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 transition-all hover:bg-white/[0.08]"
-                    >
-                      위로
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => moveSection(section.id, "down")}
-                      className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 transition-all hover:bg-white/[0.08]"
-                    >
-                      아래로
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </AdminSectionCard>
-
       <button
         onClick={handleSave}
-        className="w-full rounded-2xl bg-blue-600 p-6 font-semibold uppercase tracking-widest transition-all hover:bg-blue-500"
+        className="w-full bg-blue-600 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-blue-500 transition-all"
       >
         Update Hero Section
       </button>
