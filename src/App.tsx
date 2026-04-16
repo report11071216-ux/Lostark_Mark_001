@@ -3955,12 +3955,14 @@ const RaidCard = ({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             {raid.experience && raid.type !== "anime" && (
-              <span className={cn(colors.chip, "px-2 py-0.5 text-[9px]")}>{raid.experience}</span>
+              <span className={cn(colors.chip, "shrink-0 whitespace-nowrap px-2 py-0.5 text-[9px] leading-none")}>
+                {raid.experience}
+              </span>
             )}
             <span className="truncate text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
-              {raid.type === "anime" ? "시청" : `${raid.raid_type} · ${raid.difficulty}`}
+              {raid.type === "anime" ? "시청" : compact ? raid.difficulty : `${raid.raid_type} · ${raid.difficulty}`}
             </span>
           </div>
 
