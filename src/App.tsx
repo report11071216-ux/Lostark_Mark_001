@@ -134,18 +134,18 @@ const difficultyOptions = ["노말", "하드", "나이트메어"];
 const classNameByMode = (mode: string) => {
   if (mode === "anime") {
     return {
-      card: "from-blue-950/30 to-blue-950/20 border-blue-500/30 hover:border-sky-400",
-      badge: "text-sky-300",
-      bar: "bg-blue-500",
-      chip: "bg-blue-500/15 text-sky-300 border border-blue-500/20",
+      card: "from-[#2a2116]/80 to-[#17110b]/90 border-amber-400/30 hover:border-amber-200",
+      badge: "text-amber-200",
+      bar: "bg-amber-400",
+      chip: "bg-amber-400/15 text-amber-200 border border-amber-400/20",
     };
   }
 
   return {
-    card: "from-blue-950/30 to-blue-950/20 border-blue-500/30 hover:border-sky-400",
-    badge: "text-sky-300",
-    bar: "bg-blue-500",
-    chip: "bg-blue-500/15 text-sky-300 border border-blue-500/20",
+    card: "from-[#2a2116]/80 to-[#17110b]/90 border-amber-400/30 hover:border-amber-200",
+    badge: "text-amber-200",
+    bar: "bg-amber-400",
+    chip: "bg-amber-400/15 text-amber-200 border border-amber-400/20",
   };
 };
 
@@ -538,9 +538,9 @@ const WEAPON_RARITY_THEMES: Record<
   rare: {
     label: "Rare",
     border: "rgba(59, 130, 246, 0.42)",
-    background: "linear-gradient(135deg, rgba(59,130,246,0.18), rgba(15,23,42,0.58))",
+    background: "linear-gradient(135deg, rgba(214,164,78,0.18), rgba(15,23,42,0.58))",
     text: "#bfdbfe",
-    glow: "rgba(59,130,246,0.22)",
+    glow: "rgba(214,164,78,0.22)",
   },
   epic: {
     label: "Epic",
@@ -1556,7 +1556,7 @@ const fetchInitialData = async () => {
   if (loading) {
     return (
       <PageShell>
-        <div className="min-h-screen flex items-center justify-center text-sky-300 font-semibold">
+        <div className="min-h-screen flex items-center justify-center text-amber-200 font-semibold">
           INXX SYSTEM LOADING...
         </div>
       </PageShell>
@@ -1589,7 +1589,7 @@ const fetchInitialData = async () => {
       <ToastViewport />
       <div className="relative z-10">
         {profile?.role === "admin" && (
-          <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-blue-950 via-slate-900 to-blue-900 text-[10px] font-semibold py-1 text-center tracking-[0.24em] uppercase">
+          <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-[#2a2116] via-[#1a140f] to-[#23190f] text-[10px] font-semibold py-1 text-center tracking-[0.24em] uppercase">
             👑 Administrator Session Active
           </div>
         )}
@@ -1744,7 +1744,7 @@ const ToastViewport = () => {
   const toneClass = (type: ToastType) => {
     if (type === "success") return "border-emerald-400/20 bg-emerald-400/10 text-emerald-100";
     if (type === "error") return "border-rose-400/20 bg-rose-400/10 text-rose-100";
-    return "border-sky-400/20 bg-sky-400/10 text-sky-100";
+    return "border-amber-300/20 bg-amber-300/10 text-amber-50";
   };
 
   const labelText = (type: ToastType) => {
@@ -2048,7 +2048,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           className="relative hidden h-full lg:block"
         >
           <div className="absolute inset-0 rounded-[1.9rem] bg-amber-300/8 blur-3xl" />
-          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.8rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] p-3.5 backdrop-blur-2xl shadow-[0_20px_48px_rgba(0,0,0,0.22)]">
+          <div className="relative flex h-full min-h-[148px] flex-col overflow-hidden rounded-[1.8rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] p-3 backdrop-blur-2xl shadow-[0_20px_48px_rgba(0,0,0,0.22)]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(246,205,127,0.14),transparent_46%)]" />
             <div className="relative flex items-start justify-between gap-3">
               <div>
@@ -2067,7 +2067,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               </button>
             </div>
 
-            <div className="relative mt-4 grid grid-cols-7 gap-2">
+            <div className="relative mt-3 grid grid-cols-7 gap-1.5">
               {currentWeekDays.map((day) => {
                 const hasSchedule = (weeklySchedules[day.key]?.length || 0) > 0;
                 const isSelected = selectedDay?.key === day.key;
@@ -2077,7 +2077,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                     type="button"
                     onClick={() => setSelectedWeekDate(day.key)}
                     className={[
-                      "relative flex h-14 flex-col items-center justify-center rounded-xl border text-center transition-all",
+                      "relative flex h-11 flex-col items-center justify-center rounded-xl border text-center transition-all",
                       isSelected
                         ? "border-amber-200/35 bg-amber-300/[0.14] text-white shadow-[0_0_0_1px_rgba(245,197,92,0.12)_inset]"
                         : hasSchedule
@@ -2088,14 +2088,14 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                     {hasSchedule && (
                       <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-amber-200 shadow-[0_0_8px_rgba(251,191,36,0.55)]" />
                     )}
-                    <span className="text-[10px] font-semibold">{day.label}</span>
-                    <span className="mt-1 text-lg font-medium leading-none">{day.day}</span>
+                    <span className="text-[9px] font-semibold">{day.label}</span>
+                    <span className="mt-0.5 text-sm font-medium leading-none">{day.day}</span>
                   </button>
                 );
               })}
             </div>
 
-            <div className="relative mt-4 flex flex-1 flex-col rounded-xl border border-white/7 bg-black/18 p-3">
+            <div className="relative mt-3 flex flex-1 flex-col rounded-xl border border-white/7 bg-black/18 p-2.5">
               <div className="flex items-center justify-between gap-3 text-xs">
                 <span className="font-semibold text-white">
                   {selectedDay ? `${selectedDay.label}요일 일정` : "이번주 일정"}
@@ -2106,10 +2106,10 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               </div>
 
               {primarySchedule ? (
-                <div className="mt-3 flex flex-1 flex-col justify-between rounded-xl border border-amber-200/14 bg-[linear-gradient(135deg,rgba(54,39,18,0.84),rgba(31,25,17,0.94))] px-4 py-3">
+                <div className="mt-2 flex flex-1 flex-col justify-between rounded-xl border border-amber-200/14 bg-[linear-gradient(135deg,rgba(54,39,18,0.84),rgba(31,25,17,0.94))] px-3 py-2.5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="truncate text-xl font-medium text-white">
+                      <div className="truncate text-base font-medium text-white">
                         {primarySchedule.raid_name}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-300">
@@ -2124,11 +2124,11 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                         )}
                       </div>
                     </div>
-                    <div className="shrink-0 text-xl font-medium text-amber-50">
+                    <div className="shrink-0 text-base font-medium text-amber-50">
                       {primarySchedule.raid_time || "--:--"}
                     </div>
                   </div>
-                  <div className="mt-3 text-[11px] text-stone-400">
+                  <div className="mt-2 text-[10px] text-stone-400">
                     {selectedSchedules.length > 1
                       ? `이 날 등록된 레이드가 ${selectedSchedules.length}건 있습니다.`
                       : "등록된 레이드 정보를 확인하세요."}
@@ -2150,7 +2150,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           className="relative hidden h-full xl:block"
         >
           <div className="absolute inset-0 rounded-[1.9rem] bg-amber-300/8 blur-3xl" />
-          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.8rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] p-3.5 backdrop-blur-2xl shadow-[0_20px_48px_rgba(0,0,0,0.22)]">
+          <div className="relative flex h-full min-h-[148px] flex-col overflow-hidden rounded-[1.8rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] p-3 backdrop-blur-2xl shadow-[0_20px_48px_rgba(0,0,0,0.22)]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(246,205,127,0.12),transparent_46%)]" />
             <div className="relative flex items-center justify-between gap-3">
               <div>
@@ -2166,20 +2166,20 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               </div>
             </div>
 
-            <div className="relative mt-3 grid grid-cols-3 gap-2">
-              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-3">
+            <div className="relative mt-3 grid grid-cols-3 gap-1.5">
+              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   공지
                 </div>
                 <div className="mt-1.5 text-sm font-medium text-amber-50">{noticeCount}</div>
               </div>
-              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-3">
+              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   고정
                 </div>
                 <div className="mt-1.5 text-sm font-medium text-amber-50">{pinnedCount}</div>
               </div>
-              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-3">
+              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   다음 일정
                 </div>
@@ -2187,28 +2187,28 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               </div>
             </div>
 
-            <div className="relative mt-3 rounded-2xl border border-white/8 bg-black/18 p-4">
+            <div className="relative mt-2.5 rounded-2xl border border-white/8 bg-black/18 p-3">
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
                 Next Raid
               </div>
-              <div className="mt-2 text-base font-semibold text-white">{heroStats.nextRaidLabel}</div>
-              <div className="mt-1 text-sm text-stone-400">
+              <div className="mt-1.5 text-sm font-semibold text-white">{heroStats.nextRaidLabel}</div>
+              <div className="mt-1 text-xs text-stone-400">
                 {heroStats.nextRaidDate || "예정된 일정이 없습니다."}
               </div>
             </div>
 
-            <div className="relative mt-3 flex-1 rounded-2xl border border-white/8 bg-black/18 p-4">
+            <div className="relative mt-2.5 flex-1 rounded-2xl border border-white/8 bg-black/18 p-3">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
                     다음 7일 일정
                   </div>
-                  <div className="mt-2 text-lg font-semibold text-white">{heroStats.upcomingRaids}건</div>
+                  <div className="mt-1.5 text-sm font-semibold text-white">{heroStats.upcomingRaids}건</div>
                 </div>
                 <button
                   type="button"
                   onClick={onOpenRaidCalendar}
-                  className="inline-flex items-center gap-2 rounded-xl border border-amber-200/12 bg-amber-300/[0.08] px-3 py-2 text-xs font-medium text-amber-50 transition hover:border-amber-100/22 hover:bg-amber-300/[0.12]"
+                  className="inline-flex items-center gap-2 rounded-xl border border-amber-200/12 bg-amber-300/[0.08] px-2.5 py-1.5 text-[11px] font-medium text-amber-50 transition hover:border-amber-100/22 hover:bg-amber-300/[0.12]"
                 >
                   <CalendarDays size={14} />
                   월별 레이드 일정 보기
@@ -2249,12 +2249,12 @@ const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.22 }}
-            className="relative flex max-h-[88vh] w-full max-w-[1380px] flex-col overflow-hidden rounded-[2rem] border border-white/8 bg-[#091120]/95 shadow-[0_22px_72px_rgba(2,6,23,0.52)]"
+            className="relative flex max-h-[88vh] w-full max-w-[1380px] flex-col overflow-hidden rounded-[2rem] border border-white/8 bg-[#120d08]/95 shadow-[0_22px_72px_rgba(2,6,23,0.52)]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/8 bg-[#091120]/92 px-5 py-4 md:px-6 backdrop-blur-xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/8 bg-[#120d08]/92 px-5 py-4 md:px-6 backdrop-blur-xl">
               <div>
-                <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-sky-300">
+                <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-amber-200">
                   Monthly Raid Calendar
                 </div>
                 <h3 className="mt-1 text-lg font-medium text-white md:text-xl">월별 레이드 일정</h3>
@@ -2327,13 +2327,13 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => handleMove("home")}
-            className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.07]"
+            className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.07]"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-300/15 bg-blue-400/10 text-sky-200 shadow-[0_8px_24px_rgba(59,130,246,0.12)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200/15 bg-amber-300/10 text-amber-100 shadow-[0_8px_24px_rgba(214,164,78,0.12)]">
               <Shield size={16} />
             </div>
             <div className="hidden text-left sm:block">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sky-300/80">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/80">
                 Guild Service
               </div>
               <div className="text-sm font-semibold text-white">
@@ -2352,13 +2352,13 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                 onClick={() => handleMove(item.id)}
                 className={`relative rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
                   active
-                    ? "bg-blue-500/12 text-sky-200 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.12)]"
+                    ? "bg-amber-400/12 text-amber-100 shadow-[inset_0_0_0_1px_rgba(246,205,127,0.12)]"
                     : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
                 }`}
               >
                 <span className="relative z-10">{item.label}</span>
                 {active && (
-                  <span className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full bg-gradient-to-r from-blue-400 to-sky-300" />
+                  <span className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full bg-gradient-to-r from-amber-400 to-amber-200" />
                 )}
               </button>
             );
@@ -2369,7 +2369,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
           {user ? (
             <>
               <button
-                className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/20 hover:bg-blue-400/[0.07] hover:text-white md:flex"
+                className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-amber-200/20 hover:bg-amber-300/[0.07] hover:text-white md:flex"
                 title="알림"
               >
                 <Bell size={16} />
@@ -2378,9 +2378,9 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setIsProfileMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.07]"
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.07]"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-sm font-semibold text-sky-100 shadow-[0_8px_24px_rgba(59,130,246,0.12)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200/15 bg-amber-300/10 text-sm font-semibold text-amber-50 shadow-[0_8px_24px_rgba(214,164,78,0.12)]">
                     {avatarText}
                   </div>
                   <div className="hidden text-left sm:block">
@@ -2394,7 +2394,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                   <ChevronRight
                     size={16}
                     className={`text-slate-500 transition-transform ${
-                      isProfileMenuOpen ? "rotate-90 text-sky-300" : ""
+                      isProfileMenuOpen ? "rotate-90 text-amber-200" : ""
                     }`}
                   />
                 </button>
@@ -2409,7 +2409,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                       className="absolute right-0 top-[calc(100%+12px)] z-[80] w-64 overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.5)] backdrop-blur-2xl"
                     >
                       <div className="rounded-[1.2rem] border border-white/8 bg-white/[0.04] p-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-300">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
                           Signed In
                         </div>
                         <div className="mt-2 text-base font-semibold text-white">{displayName}</div>
@@ -2462,13 +2462,13 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleMove("login")}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-slate-300 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.07] hover:text-white"
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-slate-300 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.07] hover:text-white"
               >
                 로그인
               </button>
               <button
                 onClick={() => handleMove("signup")}
-                className="rounded-2xl border border-blue-300/15 bg-blue-500/12 px-4 py-2.5 text-sm font-semibold text-sky-200 transition-all hover:bg-blue-500/20"
+                className="rounded-2xl border border-amber-200/15 bg-amber-400/12 px-4 py-2.5 text-sm font-semibold text-amber-100 transition-all hover:bg-amber-400/20"
               >
                 회원가입
               </button>
@@ -2535,7 +2535,7 @@ const ImageUploader = ({
         />
         <label
           htmlFor={`file-${label.replace(/\s+/g, "-")}`}
-          className="flex items-center justify-center gap-3 w-full bg-black border border-white/10 p-4 rounded-2xl cursor-pointer hover:border-blue-500 transition-all text-xs font-semibold text-slate-500 group-hover:text-white"
+          className="flex items-center justify-center gap-3 w-full bg-black border border-white/10 p-4 rounded-2xl cursor-pointer hover:border-amber-400 transition-all text-xs font-semibold text-slate-500 group-hover:text-white"
         >
           {uploading ? (
             "UPLOADING..."
@@ -2565,7 +2565,7 @@ const AdminInput = ({
     <input
       type={type}
       placeholder={placeholder}
-      className="w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-blue-500 font-bold text-sm text-white transition-all"
+      className="w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-amber-400 font-bold text-sm text-white transition-all"
       value={value}
       onChange={(e) => onChange && onChange(e.target.value)}
     />
@@ -2666,7 +2666,7 @@ const MainContentViewer = ({ type }: { type: string }) => {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#07111f] via-[#07111f]/35 to-transparent" />
           <div className="absolute bottom-4 left-4 right-4 text-left">
-            <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-300">
+            <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200">
               {type}
             </span>
             <h3 className="text-base font-semibold tracking-tight leading-tight truncate text-white">
@@ -2709,11 +2709,11 @@ const getDifficultyTone = (difficulty: string) => {
     };
   }
   return {
-    chip: "border-sky-300/20 bg-sky-400/10 text-sky-100",
-    chipSoft: "border-sky-300/18 bg-sky-400/12 text-sky-100",
-    active: "border-sky-300/28 bg-sky-400/14 text-white shadow-[0_14px_34px_rgba(59,130,246,0.18)]",
-    ring: "from-blue-400 to-sky-300",
-    accentText: "text-sky-200",
+    chip: "border-amber-200/20 bg-amber-300/10 text-amber-50",
+    chipSoft: "border-amber-200/18 bg-amber-300/12 text-amber-50",
+    active: "border-amber-200/28 bg-amber-300/14 text-white shadow-[0_14px_34px_rgba(214,164,78,0.18)]",
+    ring: "from-amber-400 to-amber-200",
+    accentText: "text-amber-100",
     badge: "NORMAL",
   };
 };
@@ -2993,10 +2993,10 @@ const DetailPopup = ({ item, type, onClose }: any) => {
         transition={{ duration: 0.18 }}
         className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[2.3rem] border border-white/10 bg-slate-950/96 shadow-[0_30px_100px_rgba(2,6,23,0.6)]"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.14),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_46%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.14),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_46%)]" />
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 z-20 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
+          className="absolute right-5 top-5 z-20 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
         >
           <X size={20} />
         </button>
@@ -3205,7 +3205,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                             key={`${reward.name}-${index}`}
                             className="flex items-center gap-3 rounded-[1.35rem] border border-white/10 bg-slate-950/35 p-4"
                           >
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-sky-200">
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-200/15 bg-amber-300/10 text-amber-100">
                               <Gift size={18} />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -3548,7 +3548,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                   onClick={() => setScheduleView("all")}
                   className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
                     scheduleView === "all"
-                      ? "bg-blue-500/12 text-sky-200 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.12)]"
+                      ? "bg-amber-400/12 text-amber-100 shadow-[inset_0_0_0_1px_rgba(246,205,127,0.12)]"
                       : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
                   }`}
                 >
@@ -3562,7 +3562,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                   disabled={!user}
                   className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
                     scheduleView === "mine"
-                      ? "bg-blue-500/12 text-sky-200 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.12)]"
+                      ? "bg-amber-400/12 text-amber-100 shadow-[inset_0_0_0_1px_rgba(246,205,127,0.12)]"
                       : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
                   } disabled:cursor-not-allowed disabled:opacity-45`}
                 >
@@ -3572,13 +3572,13 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
 
               <button
                 onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
-                className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/30 hover:bg-blue-400/10 hover:text-white hover:shadow-[0_12px_30px_rgba(59,130,246,0.14)]"
+                className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-white hover:shadow-[0_12px_30px_rgba(214,164,78,0.14)]"
               >
                 <ChevronLeft size={18} className="transition-transform group-hover:-translate-x-0.5" />
               </button>
               <button
                 onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
-                className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/30 hover:bg-blue-400/10 hover:text-white hover:shadow-[0_12px_30px_rgba(59,130,246,0.14)]"
+                className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-white hover:shadow-[0_12px_30px_rgba(214,164,78,0.14)]"
               >
                 <ChevronRight size={18} className="transition-transform group-hover:translate-x-0.5" />
               </button>
@@ -3587,7 +3587,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
         >
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-sky-300">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200">
                 {scheduleView === "mine" ? "My Schedule View" : "Monthly View"}
               </div>
               <h2 className="text-4xl font-semibold tracking-tight">{formatMonthLabel(year, month)}</h2>
@@ -3625,7 +3625,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
               </div>
               <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">보기 상태</div>
-                <div className="mt-2 text-base font-semibold text-sky-200">{user ? "로그인 사용자 기준 필터 적용" : "로그인 필요"}</div>
+                <div className="mt-2 text-base font-semibold text-amber-100">{user ? "로그인 사용자 기준 필터 적용" : "로그인 필요"}</div>
                 <div className="mt-1 text-xs text-slate-500">참가자 이름과 내 캐릭터 이름을 기준으로 필터링</div>
               </div>
             </div>
@@ -3640,10 +3640,10 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
               {monthlyCharacterStats.slice(0, 6).map((item, index) => (
                 <div
                   key={item.nickname}
-                  className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
+                  className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.04]"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-sm font-semibold text-sky-200">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-200/15 bg-amber-300/10 text-sm font-semibold text-amber-100">
                       #{index + 1}
                     </div>
                     <div className="min-w-0">
@@ -3695,12 +3695,12 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                 <div
                   key={day}
                   className={cn(
-                    "group relative min-h-[132px] md:min-h-[156px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-3 transition-all duration-200 hover:z-[1] hover:bg-blue-400/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(147,197,253,0.16)]",
-                    isToday && "bg-blue-500/[0.08] shadow-[inset_0_0_0_1px_rgba(96,165,250,0.28),0_0_0_1px_rgba(96,165,250,0.1)]"
+                    "group relative min-h-[132px] md:min-h-[156px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-3 transition-all duration-200 hover:z-[1] hover:bg-amber-300/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(233,196,106,0.16)]",
+                    isToday && "bg-amber-400/[0.08] shadow-[inset_0_0_0_1px_rgba(245,197,92,0.28),0_0_0_1px_rgba(245,197,92,0.1)]"
                   )}
                 >
                   <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                  {isToday && <div className="pointer-events-none absolute right-3 top-3 h-10 w-10 rounded-full bg-blue-400/10 blur-xl" />}
+                  {isToday && <div className="pointer-events-none absolute right-3 top-3 h-10 w-10 rounded-full bg-amber-300/10 blur-xl" />}
 
                   <div className="mb-3 flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -3708,7 +3708,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                         className={cn(
                           "inline-flex h-9 min-w-[36px] items-center justify-center rounded-xl px-2 text-sm font-semibold transition-all",
                           isToday
-                            ? "border border-blue-300/25 bg-blue-400/10 text-sky-200 shadow-[0_8px_24px_rgba(59,130,246,0.18)]"
+                            ? "border border-amber-200/25 bg-amber-300/10 text-amber-100 shadow-[0_8px_24px_rgba(214,164,78,0.18)]"
                             : "border border-transparent bg-white/[0.03] text-slate-300 group-hover:border-white/10"
                         )}
                       >
@@ -3721,8 +3721,8 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
 
                     <div className="flex items-center gap-2">
                       {dayRaids.length > 0 && (
-                        <div className="inline-flex items-center gap-1 rounded-full border border-blue-300/15 bg-blue-400/10 px-2 py-1 text-[10px] font-semibold text-blue-100">
-                          <span className="h-1.5 w-1.5 rounded-full bg-sky-300" />
+                        <div className="inline-flex items-center gap-1 rounded-full border border-amber-200/15 bg-amber-300/10 px-2 py-1 text-[10px] font-semibold text-amber-50">
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-200" />
                           {dayRaids.length}
                         </div>
                       )}
@@ -3733,7 +3733,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                             setSelectedDate(dateStr);
                             setIsCreateOpen(true);
                           }}
-                          className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-sky-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/25 hover:bg-blue-400/10 hover:text-white"
+                          className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-amber-200 transition-all hover:-translate-y-0.5 hover:border-amber-200/25 hover:bg-amber-300/10 hover:text-white"
                           title="레이드 생성"
                         >
                           <Plus size={15} />
@@ -3773,7 +3773,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                       <button
                         type="button"
                         onClick={() => setSelectedRaid(dayRaids[0])}
-                        className="w-full rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-left text-[11px] font-medium text-slate-400 transition-colors hover:border-blue-300/20 hover:bg-blue-400/[0.04] hover:text-slate-200"
+                        className="w-full rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-left text-[11px] font-medium text-slate-400 transition-colors hover:border-amber-200/20 hover:bg-amber-300/[0.04] hover:text-slate-200"
                       >
                         +{dayRaids.length - 2}개 일정 더 보기
                       </button>
@@ -3803,7 +3803,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                   <button
                     key={raid.id}
                     onClick={() => setSelectedRaid(raid)}
-                    className="w-full rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 text-left transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
+                    className="w-full rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 text-left transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.04]"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
@@ -3812,7 +3812,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                           {formatShortDate(raid.raid_date)} · {raid.raid_time}
                         </div>
                       </div>
-                      <div className="rounded-full border border-blue-300/15 bg-blue-400/10 px-3 py-1 text-xs font-semibold text-sky-200">
+                      <div className="rounded-full border border-amber-200/15 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-100">
                         {raidParts.length}/{getCapacity(raid).maxParticipants}
                       </div>
                     </div>
@@ -3825,12 +3825,12 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
               {monthlyCharacterStats.map((item, index) => (
                 <div
                   key={item.nickname}
-                  className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.04]"
+                  className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.04]"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                        <BarChart3 size={16} className="text-sky-300" />
+                        <BarChart3 size={16} className="text-amber-200" />
                       </div>
                       <div className="min-w-0">
                         <div className="truncate font-semibold">
@@ -3843,14 +3843,14 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                     </div>
 
                     <div className="shrink-0 text-right">
-                      <div className="text-xl font-semibold text-sky-300">{item.raidCount}</div>
+                      <div className="text-xl font-semibold text-amber-200">{item.raidCount}</div>
                       <div className="text-[11px] text-slate-500">raid count</div>
                     </div>
                   </div>
 
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.05]">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-300"
+                      className="h-full rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200"
                       style={{
                         width: `${
                           monthlyCharacterStats[0]?.raidCount
@@ -3909,8 +3909,8 @@ const SummaryChip = ({
   label: string;
   value: string | number;
 }) => (
-  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.05]">
-    <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-300">
+  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.05]">
+    <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
       {icon}
       {label}
     </div>
@@ -3951,8 +3951,8 @@ const RaidCard = ({
         "relative w-full overflow-hidden rounded-[1.1rem] border text-left transition-all",
         compact ? "p-2.5" : "p-3",
         isFull
-          ? "border-rose-400/25 bg-[linear-gradient(135deg,rgba(59,130,246,0.12),rgba(15,23,42,0.88))]"
-          : "border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] hover:border-blue-300/18 hover:bg-[linear-gradient(135deg,rgba(59,130,246,0.12),rgba(255,255,255,0.03))]"
+          ? "border-rose-400/25 bg-[linear-gradient(135deg,rgba(214,164,78,0.12),rgba(15,23,42,0.88))]"
+          : "border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] hover:border-amber-200/18 hover:bg-[linear-gradient(135deg,rgba(214,164,78,0.12),rgba(255,255,255,0.03))]"
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -3984,7 +3984,7 @@ const RaidCard = ({
           <div className={cn("text-[11px] font-semibold", isFull ? "text-rose-300" : "text-slate-300")}>
             {parts.length}/{capacity.maxParticipants}
           </div>
-          {parts.length > 0 && <div className="mt-1 h-2 w-2 rounded-full bg-sky-300" />}
+          {parts.length > 0 && <div className="mt-1 h-2 w-2 rounded-full bg-amber-200" />}
         </div>
       </div>
 
@@ -4110,11 +4110,11 @@ const CreateRaidModal = ({
   return (
     <ModalFrame onClose={onClose}>
       <div className="relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/92 shadow-[0_28px_90px_rgba(2,6,23,0.56)] backdrop-blur-2xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.18),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_46%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.18),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_46%)]" />
         <div className="relative border-b border-white/10 px-6 py-5 md:px-7">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200">
                 Create Schedule
               </div>
               <h3 className="text-2xl font-semibold text-white">{date}</h3>
@@ -4124,7 +4124,7 @@ const CreateRaidModal = ({
             </div>
             <button
               onClick={onClose}
-              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
             >
               <X size={18} />
             </button>
@@ -4143,7 +4143,7 @@ const CreateRaidModal = ({
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
                 일정 상태
               </div>
-              <div className="mt-2 text-sm font-semibold text-sky-200">Draft Ready</div>
+              <div className="mt-2 text-sm font-semibold text-amber-100">Draft Ready</div>
             </div>
           </div>
 
@@ -4154,7 +4154,7 @@ const CreateRaidModal = ({
             <select
               value={form.raid_name}
               onChange={(e) => setForm({ ...form, raid_name: e.target.value })}
-              className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+              className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
             >
               <option value="">레이드 선택</option>
               {raidList.map((raid) => (
@@ -4173,7 +4173,7 @@ const CreateRaidModal = ({
               <select
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
               >
                 {CONTENT_MODE_OPTIONS.map((mode) => (
                   <option key={mode} value={mode}>
@@ -4191,7 +4191,7 @@ const CreateRaidModal = ({
                 type="time"
                 value={form.raid_time}
                 onChange={(e) => setForm({ ...form, raid_time: e.target.value })}
-                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
               />
             </div>
           </div>
@@ -4206,7 +4206,7 @@ const CreateRaidModal = ({
                   <select
                     value={form.raid_type}
                     onChange={(e) => setForm({ ...form, raid_type: e.target.value })}
-                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
                   >
                     {RAID_TYPE_OPTIONS.map((raidType) => (
                       <option key={raidType} value={raidType}>
@@ -4223,7 +4223,7 @@ const CreateRaidModal = ({
                   <select
                     value={form.difficulty}
                     onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
-                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
                   >
                     {difficultyOptions.map((difficulty) => (
                       <option key={difficulty} value={difficulty}>
@@ -4241,7 +4241,7 @@ const CreateRaidModal = ({
                 <select
                   value={form.experience}
                   onChange={(e) => setForm({ ...form, experience: e.target.value })}
-                  className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                  className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
                 >
                   {RAID_EXPERIENCE_OPTIONS.map((option) => (
                     <option key={option} value={option}>
@@ -4272,7 +4272,7 @@ const CreateRaidModal = ({
             <button
               onClick={save}
               disabled={loading}
-              className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110 disabled:opacity-60"
+              className="rounded-[1.35rem] bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110 disabled:opacity-60"
             >
               {loading ? "생성 중..." : "일정 생성"}
             </button>
@@ -4328,7 +4328,7 @@ const RaidDetailModal = ({
   return (
     <ModalFrame onClose={onClose}>
       <div className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.16),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_48%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.16),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_48%)]" />
 
         <div className="relative border-b border-white/10 px-6 py-6 md:px-8 md:py-7">
           <div className="flex items-start justify-between gap-4">
@@ -4354,7 +4354,7 @@ const RaidDetailModal = ({
                       {raid.difficulty}
                     </span>
                     {raid.experience && (
-                      <span className="rounded-full border border-blue-300/15 bg-blue-400/10 px-3 py-1.5 text-xs text-sky-200">
+                      <span className="rounded-full border border-amber-200/15 bg-amber-300/10 px-3 py-1.5 text-xs text-amber-100">
                         {raid.experience}
                       </span>
                     )}
@@ -4365,7 +4365,7 @@ const RaidDetailModal = ({
 
             <button
               onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
             >
               <X size={18} />
             </button>
@@ -4378,7 +4378,7 @@ const RaidDetailModal = ({
             <SummaryChip icon={<Swords size={14} />} label="딜러" value={isAnime ? "-" : `${dealers}/${capacity.dealerLimit}`} />
             <SummaryChip icon={<Shield size={14} />} label="서포터" value={isAnime ? "-" : `${supports}/${capacity.supportLimit}`} />
             <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md transition-all">
-              <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-300">
+              <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
                 <Clock size={14} />
                 상태
               </div>
@@ -4401,7 +4401,7 @@ const RaidDetailModal = ({
 
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-sky-300"
+                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-200"
                 style={{ width: `${Math.min(100, (parts.length / capacity.maxParticipants) * 100)}%` }}
               />
             </div>
@@ -4440,7 +4440,7 @@ const RaidDetailModal = ({
             {user && !isFull && (
               <button
                 onClick={() => setShowJoin(true)}
-                className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
+                className="rounded-[1.35rem] bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
               >
                 참여하기
               </button>
@@ -4520,8 +4520,8 @@ const ParticipantItem = ({
       <div className="flex items-center gap-3">
         <span className={`text-xs px-3 py-1 rounded-full ${
           participant.position === "서포터"
-            ? "bg-blue-500/15 text-sky-300 border border-blue-500/20"
-            : "bg-blue-500/15 text-sky-300 border border-blue-500/20"
+            ? "bg-amber-400/15 text-amber-200 border border-amber-400/20"
+            : "bg-amber-400/15 text-amber-200 border border-amber-400/20"
         }`}>
           {participant.position || "참가"}
         </span>
@@ -4716,12 +4716,12 @@ const JoinForm = ({
   return (
     <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
       <div className="relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
 
         <div className="relative border-b border-white/10 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200">
                 Join Schedule
               </div>
               <div className="mt-2 text-2xl font-semibold text-white">레이드 참여</div>
@@ -4731,7 +4731,7 @@ const JoinForm = ({
             </div>
             <button
               onClick={onClose}
-              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
             >
               <X size={18} />
             </button>
@@ -4757,7 +4757,7 @@ const JoinForm = ({
               value={selectedCharacterId}
               onChange={(e) => handleCharacterChange(e.target.value)}
               disabled={characterLoading || myCharacters.length === 0}
-              className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04] disabled:opacity-60"
+              className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04] disabled:opacity-60"
             >
               {characterLoading && <option value="">마이룸 캐릭터 불러오는 중...</option>}
               {!characterLoading && myCharacters.length === 0 && (
@@ -4773,11 +4773,11 @@ const JoinForm = ({
           </div>
 
           {myCharacters.length > 0 && selectedCharacterId && (
-            <div className="rounded-[1.5rem] border border-blue-300/15 bg-blue-400/10 px-4 py-4 text-sm">
-              <div className="font-semibold text-sky-100">
+            <div className="rounded-[1.5rem] border border-amber-200/15 bg-amber-300/10 px-4 py-4 text-sm">
+              <div className="font-semibold text-amber-50">
                 {nickname} · {playerClass}
               </div>
-              <div className="mt-1 text-xs text-sky-100/80">
+              <div className="mt-1 text-xs text-amber-100/80">
                 아이템 레벨 {level || "-"} · 역할 {raid.type === "anime" ? "참가" : role}
               </div>
             </div>
@@ -4798,7 +4798,7 @@ const JoinForm = ({
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
               >
                 <option value="딜러">딜러</option>
                 <option value="서포터">서포터</option>
@@ -4822,7 +4822,7 @@ const JoinForm = ({
             <button
               onClick={handleJoin}
               disabled={saving || characterLoading || myCharacters.length === 0}
-              className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110 disabled:opacity-60"
+              className="rounded-[1.35rem] bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110 disabled:opacity-60"
             >
               {saving ? "참가 중..." : "참가"}
             </button>
@@ -4847,7 +4847,7 @@ const ModalFrame = ({
     className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-[rgba(2,6,23,0.76)] p-4 backdrop-blur-xl"
     onClick={onClose}
   >
-    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(96,165,250,0.12),transparent_28%),radial-gradient(circle_at_bottom,rgba(59,130,246,0.08),transparent_24%)]" />
+    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,197,92,0.12),transparent_28%),radial-gradient(circle_at_bottom,rgba(214,164,78,0.08),transparent_24%)]" />
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -4909,7 +4909,7 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
                 <label className="text-xs text-slate-400 mb-2 block">시스템 사용 여부</label>
                 <button
                   onClick={() => setValue({ enabled: !pointSettings.enabled })}
-                  className={cn("w-full h-[58px] rounded-2xl border font-semibold", pointSettings.enabled ? "bg-blue-600 border-blue-500 text-white" : "bg-black border-white/10 text-slate-400")}
+                  className={cn("w-full h-[58px] rounded-2xl border font-semibold", pointSettings.enabled ? "bg-amber-500 border-amber-400 text-white" : "bg-black border-white/10 text-slate-400")}
                 >
                   {pointSettings.enabled ? "활성화" : "비활성화"}
                 </button>
@@ -4929,12 +4929,12 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
               ))}
             </div>
             <div className="flex justify-end">
-              <button onClick={handleSave} className="px-6 py-3 rounded-2xl bg-blue-600 font-semibold">포인트 경제 저장</button>
+              <button onClick={handleSave} className="px-6 py-3 rounded-2xl bg-amber-500 font-semibold">포인트 경제 저장</button>
             </div>
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-black/20 p-6">
-            <div className="text-[10px] uppercase tracking-[0.24em] text-sky-300 font-semibold">Preview</div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-amber-200 font-semibold">Preview</div>
             <div className="mt-2 text-2xl font-semibold">강화 단계별 예시</div>
             <div className="mt-4 space-y-3">
               {[0, 5, 10, 15, 20, 25].map((level) => (
@@ -4944,7 +4944,7 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
                     {(["common","rare","epic","legendary"] as WeaponRarityKey[]).map((rarity) => (
                       <div key={`${rarity}-${level}`} className="rounded-xl border border-white/10 bg-black/20 px-3 py-3 flex items-center justify-between">
                         <span>{WEAPON_RARITY_THEMES[rarity].label}</span>
-                        <span className="font-semibold text-sky-300">{Number(pointSettings.rate_by_rarity[rarity] || 0) + Math.floor(level / 5) * Number(pointSettings.enhancement_bonus_per_5 || 0)}P</span>
+                        <span className="font-semibold text-amber-200">{Number(pointSettings.rate_by_rarity[rarity] || 0) + Math.floor(level / 5) * Number(pointSettings.enhancement_bonus_per_5 || 0)}P</span>
                       </div>
                     ))}
                   </div>
@@ -4978,7 +4978,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-6xl mx-auto p-8 text-left">
       <div className="flex items-center gap-4 mb-10">
-        <Settings className="text-blue-500" size={32} />
+        <Settings className="text-amber-400" size={32} />
         <h2 className="text-4xl font-semibold uppercase tracking-tight">
           Admin Console
         </h2>
@@ -4990,7 +4990,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
             key={tab}
             onClick={() => setAdminTab(tab)}
             className={`whitespace-nowrap px-6 py-2 rounded-full text-xs font-semibold tracking-widest uppercase transition-all ${
-              adminTab === tab ? "bg-blue-600 text-white" : "bg-white/5 text-slate-500 hover:bg-white/10"
+              adminTab === tab ? "bg-amber-500 text-white" : "bg-white/5 text-slate-500 hover:bg-white/10"
             }`}
           >
             {tab}
@@ -5040,7 +5040,7 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
       />
       <button
         onClick={handleSave}
-        className="w-full bg-blue-600 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-blue-500 transition-all"
+        className="w-full bg-amber-500 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-amber-400 transition-all"
       >
         Update Hero Section
       </button>
@@ -5059,7 +5059,7 @@ const AdminSectionCard = ({
 }) => (
   <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5 md:p-6">
     <div className="mb-4">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-300">{title}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-200">{title}</div>
       {description && <div className="mt-2 text-sm leading-6 text-slate-400">{description}</div>}
     </div>
     {children}
@@ -5084,7 +5084,7 @@ const AdminSelect = ({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-[1.25rem] border border-white/10 bg-black/30 px-4 py-4 text-sm font-medium text-white outline-none transition-all focus:border-blue-300/20 focus:bg-blue-400/[0.04]"
+      className="w-full rounded-[1.25rem] border border-white/10 bg-black/30 px-4 py-4 text-sm font-medium text-white outline-none transition-all focus:border-amber-200/20 focus:bg-amber-300/[0.04]"
     >
       {placeholder && <option value="">{placeholder}</option>}
       {options.map((option) => (
@@ -5116,7 +5116,7 @@ const AdminTextarea = ({
       rows={rows}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-[1.35rem] border border-white/10 bg-black/30 px-4 py-4 text-sm leading-7 text-white outline-none transition-all focus:border-blue-300/20 focus:bg-blue-400/[0.04]"
+      className="w-full rounded-[1.35rem] border border-white/10 bg-black/30 px-4 py-4 text-sm leading-7 text-white outline-none transition-all focus:border-amber-200/20 focus:bg-amber-300/[0.04]"
     />
   </div>
 );
@@ -5341,7 +5341,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
                 className={cn(
                   "flex w-full items-center justify-between rounded-[1.35rem] border px-4 py-4 text-left transition-all",
                   editingId === item.id
-                    ? "border-blue-300/22 bg-blue-400/[0.08] shadow-[0_16px_36px_rgba(37,99,235,0.12)]"
+                    ? "border-amber-200/22 bg-amber-300/[0.08] shadow-[0_16px_36px_rgba(180,138,61,0.12)]"
                     : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
                 )}
               >
@@ -5415,7 +5415,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
                       className={cn(
                         "rounded-[1.15rem] border px-4 py-3 text-sm font-semibold transition-all",
                         selectedGate === gate
-                          ? "border-blue-300/22 bg-blue-400/[0.10] text-white shadow-[0_12px_28px_rgba(37,99,235,0.14)]"
+                          ? "border-amber-200/22 bg-amber-300/[0.10] text-white shadow-[0_12px_28px_rgba(180,138,61,0.14)]"
                           : "border-white/10 bg-black/20 text-slate-400 hover:border-white/20 hover:text-white"
                       )}
                     >
@@ -5449,7 +5449,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
               <div className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Current Slot</div>
                 <div className="mt-3 text-lg font-semibold text-white">{difficulty}</div>
-                <div className="mt-1 text-sm text-sky-300">{selectedGate}관문</div>
+                <div className="mt-1 text-sm text-amber-200">{selectedGate}관문</div>
                 <div className="mt-2 text-xs leading-5 text-slate-500">이 위치에 저장되는 메모/보상/수치가 모달에 그대로 연결돼.</div>
               </div>
             </div>
@@ -5555,7 +5555,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={handleSave}
-            className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-6 py-4 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
+            className="rounded-[1.35rem] bg-gradient-to-r from-amber-400 to-amber-300 px-6 py-4 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
           >
             {editingId ? "Update Content" : "Register Content"}
           </button>
@@ -5632,7 +5632,7 @@ const ClassContentEditor = () => {
   return (
     <div className="grid md:grid-cols-2 gap-12">
       <div className="space-y-6">
-        <h4 className="text-xs font-semibold uppercase text-blue-500 tracking-widest">
+        <h4 className="text-xs font-semibold uppercase text-amber-400 tracking-widest">
           Class List
         </h4>
         <div className="grid grid-cols-2 gap-2 max-h-[500px] overflow-y-auto pr-2">
@@ -5674,7 +5674,7 @@ const ClassContentEditor = () => {
         />
         <button
           onClick={handleSave}
-          className="w-full bg-blue-600 p-4 rounded-xl font-semibold uppercase hover:bg-blue-500 transition-all"
+          className="w-full bg-amber-500 p-4 rounded-xl font-semibold uppercase hover:bg-amber-400 transition-all"
         >
           Update Class
         </button>
@@ -5873,7 +5873,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
               onClick={() => setTab(key)}
               className={cn(
                 "whitespace-nowrap px-5 py-3 rounded-full text-[11px] font-semibold uppercase transition-all",
-                tab === key ? "bg-blue-600 text-white" : "bg-white/5 text-slate-500 hover:bg-white/10"
+                tab === key ? "bg-amber-500 text-white" : "bg-white/5 text-slate-500 hover:bg-white/10"
               )}
             >
               {label}
@@ -5882,7 +5882,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
 
           <button
             onClick={() => setShowWriteModal(true)}
-            className="ml-1 h-12 w-12 rounded-2xl bg-blue-600 hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center"
+            className="ml-1 h-12 w-12 rounded-2xl bg-amber-500 hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center"
             title="글 작성"
           >
             <Plus size={20} />
@@ -5891,7 +5891,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
       </div>
 
       {!commentsEnabled && (
-        <div className="mb-6 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-sky-200">
+        <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
           댓글 테이블이 아직 없어서 댓글 기능이 비활성화돼 있어. 함께 전달한 SQL 파일을 먼저 적용해줘.
         </div>
       )}
@@ -5912,7 +5912,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
               key={post.id}
               className={cn(
                 "group p-6 md:p-8 rounded-[2rem] border transition-all relative overflow-hidden",
-                post.is_pinned ? "border-blue-500/30 bg-blue-500/10" : post.is_notice ? "border-blue-500/30 bg-blue-500/10" : "border-white/10 bg-white/5"
+                post.is_pinned ? "border-amber-400/30 bg-amber-400/10" : post.is_notice ? "border-amber-400/30 bg-amber-400/10" : "border-white/10 bg-white/5"
               )}
             >
               <div className="flex justify-between items-start mb-4 gap-4">
@@ -5923,7 +5923,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
                     </span>
                   )}
                   {post.is_notice ? (
-                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-500/15 text-sky-300 border border-blue-500/20">
+                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-amber-400/15 text-amber-200 border border-amber-400/20">
                       공지
                     </span>
                   ) : (
@@ -5938,7 +5938,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
 
                 <div className="flex items-center gap-3 shrink-0">
                   {profile?.role === "admin" && post.is_notice && (
-                    <button onClick={() => togglePin(post)} className="text-[11px] text-sky-300 font-semibold">
+                    <button onClick={() => togglePin(post)} className="text-[11px] text-amber-200 font-semibold">
                       {post.is_pinned ? "고정 해제" : "고정"}
                     </button>
                   )}
@@ -5961,7 +5961,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
                 <span>{post.author_name || post.author || "-"}</span>
                 <button
                   onClick={() => setOpenCommentPosts((prev) => ({ ...prev, [post.id]: !Boolean(prev[post.id]) }))}
-                  className="px-3 py-2 rounded-full border border-white/10 bg-black/20 text-slate-300 hover:border-blue-500/40"
+                  className="px-3 py-2 rounded-full border border-white/10 bg-black/20 text-slate-300 hover:border-amber-400/40"
                 >
                   댓글 {postComments.length}개 {commentsOpen ? "닫기" : "열기"}
                 </button>
@@ -6005,7 +6005,7 @@ const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
                     />
                     <button
                       onClick={() => submitComment(post.id)}
-                      className="md:w-36 bg-blue-600 px-5 py-4 rounded-2xl font-semibold text-sm hover:bg-blue-500 transition-all flex items-center justify-center gap-2"
+                      className="md:w-36 bg-amber-500 px-5 py-4 rounded-2xl font-semibold text-sm hover:bg-amber-400 transition-all flex items-center justify-center gap-2"
                     >
                       <Send size={16} />
                       댓글 작성
@@ -6113,7 +6113,7 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
         <button onClick={onClose} className="absolute top-8 right-8 text-white/50 hover:text-white">
           <X />
         </button>
-        <h3 className="text-3xl font-semibold uppercase text-blue-500 mb-3">
+        <h3 className="text-3xl font-semibold uppercase text-amber-400 mb-3">
           Create New Post
         </h3>
         <p className="text-sm text-slate-500 mb-8">일반 글은 작성 시 +5포인트, 댓글도 +5포인트가 지급됩니다.</p>
@@ -6182,7 +6182,7 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
           <button
             onClick={handlePost}
             disabled={submitting}
-            className="w-full bg-blue-600 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-blue-500 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full bg-amber-500 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
           >
             <Send size={18} />
             {submitting ? "등록 중..." : "Publish"}
@@ -6235,7 +6235,7 @@ const Auth = ({ mode, setMode }: any) => {
   return (
     <div className="max-w-md mx-auto py-32 px-4">
       <div className="p-12 rounded-[4rem] border border-white/10 bg-[#0f0f0f] shadow-2xl relative overflow-hidden text-center">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-600 to-transparent" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
         <h2 className="text-5xl font-semibold mb-2 tracking-tight uppercase">
           {mode === "login" ? "Sign In" : "Join Us"}
         </h2>
@@ -6247,7 +6247,7 @@ const Auth = ({ mode, setMode }: any) => {
           <input
             type="email"
             placeholder="E-MAIL"
-            className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-blue-500 text-sm tracking-widest font-semibold text-white"
+            className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-amber-400 text-sm tracking-widest font-semibold text-white"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -6256,7 +6256,7 @@ const Auth = ({ mode, setMode }: any) => {
           <input
             type="password"
             placeholder="PASSWORD"
-            className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-blue-500 text-sm tracking-widest font-semibold text-white"
+            className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-amber-400 text-sm tracking-widest font-semibold text-white"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -6266,7 +6266,7 @@ const Auth = ({ mode, setMode }: any) => {
             <input
               type="text"
               placeholder="NICKNAME"
-              className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-blue-500 text-sm tracking-widest font-semibold text-white"
+              className="w-full bg-black border border-white/10 p-5 rounded-3xl focus:outline-none focus:border-amber-400 text-sm tracking-widest font-semibold text-white"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               required
@@ -6275,7 +6275,7 @@ const Auth = ({ mode, setMode }: any) => {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 p-6 rounded-3xl font-semibold uppercase tracking-[0.3em] mt-6 hover:bg-blue-500 transition-colors shadow-lg shadow-blue-600/20 active:scale-95 text-white"
+            className="w-full bg-amber-500 p-6 rounded-3xl font-semibold uppercase tracking-[0.3em] mt-6 hover:bg-amber-400 transition-colors shadow-lg shadow-amber-500/20 active:scale-95 text-white"
           >
             Proceed
           </button>
@@ -7460,7 +7460,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
               onClick={() => setMyRoomTab(key as "growth" | "characters")}
               className={cn(
                 "px-4 py-2 rounded-full border text-sm font-semibold transition",
-                myRoomTab === key ? "bg-blue-600 border-blue-500 text-white" : "bg-white/5 border-white/10 text-slate-400"
+                myRoomTab === key ? "bg-amber-500 border-amber-400 text-white" : "bg-white/5 border-white/10 text-slate-400"
               )}
             >
               {label}
@@ -7470,8 +7470,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
         {myRoomTab === "growth" && (
           <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-4">
-            <div className="rounded-[2rem] border border-sky-500/20 bg-gradient-to-br from-sky-500/10 via-black/30 to-transparent p-5">
-              <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-sky-300">Nakwon Level</div>
+            <div className="rounded-[2rem] border border-amber-300/20 bg-gradient-to-br from-amber-400/10 via-black/30 to-transparent p-5">
+              <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-amber-200">Nakwon Level</div>
               <div className="mt-2 text-2xl font-semibold">낙원력 제단</div>
               <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -7480,11 +7480,11 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-right">
                   <div className="text-xs text-slate-500">다음 레벨까지</div>
-                  <div className="text-lg font-semibold text-sky-300">{nakwonExp} / {nakwonRequiredExp} EXP</div>
+                  <div className="text-lg font-semibold text-amber-200">{nakwonExp} / {nakwonRequiredExp} EXP</div>
                 </div>
               </div>
               <div className="mt-4 h-3 rounded-full bg-white/10 overflow-hidden">
-                <div className="h-full rounded-full bg-sky-400" style={{ width: `${nakwonProgressPercent}%` }} />
+                <div className="h-full rounded-full bg-amber-300" style={{ width: `${nakwonProgressPercent}%` }} />
               </div>
               <div className="mt-4 grid md:grid-cols-3 gap-3">
                 <MiniStat label="일일 강화 시도권" value={`${dailyEnhanceLimit}회`} />
@@ -7501,7 +7501,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                       type="button"
                       onClick={() => void handleNakwonInfuse(amount)}
                       disabled={nakwonSubmitting}
-                      className="px-4 py-2 rounded-xl border border-sky-400/30 bg-sky-500/10 text-sky-200 text-sm font-semibold"
+                      className="px-4 py-2 rounded-xl border border-amber-200/30 bg-amber-400/10 text-amber-100 text-sm font-semibold"
                     >
                       {amount}P 주입
                     </button>
@@ -7518,7 +7518,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                     type="button"
                     onClick={() => void handleNakwonInfuse()}
                     disabled={nakwonSubmitting}
-                    className="px-5 py-3 rounded-xl bg-sky-500 text-white font-semibold"
+                    className="px-5 py-3 rounded-xl bg-amber-400 text-white font-semibold"
                   >
                     {nakwonSubmitting ? "주입 중..." : "직접 주입"}
                   </button>
@@ -7526,8 +7526,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
               </div>
             </div>
 
-          <div className="rounded-[2rem] border border-blue-500/20 bg-gradient-to-br from-blue-500/10 via-black/30 to-transparent p-5">
-            <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-sky-300">Hourly Point Engine</div>
+          <div className="rounded-[2rem] border border-amber-400/20 bg-gradient-to-br from-amber-400/10 via-black/30 to-transparent p-5">
+            <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-amber-200">Hourly Point Engine</div>
             <div className="mt-2 text-2xl font-semibold">자동 포인트 현황</div>
             {bestPointCharacter ? (
               <>
@@ -7552,7 +7552,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           </div>
 
           <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
-            <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-sky-300">Nickname FX</div>
+            <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-amber-200">Nickname FX</div>
             <div className="mt-2 text-2xl font-semibold">닉네임 꾸미기</div>
             <div className="mt-3 text-3xl font-semibold" style={getNicknameEffectStyle(profile)}>
               {profile.nickname || "Guild Member"}
@@ -7582,7 +7582,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
         <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-sky-300">Point Earn Logs</div>
+              <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-amber-200">Point Earn Logs</div>
               <div className="mt-2 text-2xl font-semibold">포인트 획득 로그</div>
             </div>
             <button onClick={() => void fetchPointEarnLogs()} className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold">
@@ -7604,7 +7604,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                       <div className="mt-1 text-sm text-slate-400">{log.description || "포인트가 지급됐어."}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-semibold text-sky-300">+{Number(log.points || 0)}P</div>
+                      <div className="text-lg font-semibold text-amber-200">+{Number(log.points || 0)}P</div>
                       <div className="text-xs text-slate-500">{new Date(log.created_at).toLocaleString("ko-KR")}</div>
                     </div>
                   </div>
@@ -7624,7 +7624,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           </button>
           <button
             onClick={() => setShowRegister(true)}
-            className="bg-blue-600 px-5 py-3 rounded-xl font-semibold"
+            className="bg-amber-500 px-5 py-3 rounded-xl font-semibold"
           >
             캐릭터 등록
           </button>
@@ -7820,7 +7820,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 min-w-0">
                                   <div className="font-semibold truncate">{character.equipped_weapon_name}</div>
-                                  <span className="inline-flex px-2 py-1 rounded-full border border-sky-400/30 bg-blue-500/10 text-[10px] font-semibold text-sky-200 shrink-0">
+                                  <span className="inline-flex px-2 py-1 rounded-full border border-amber-200/30 bg-amber-400/10 text-[10px] font-semibold text-amber-100 shrink-0">
                                     {getEnhancementDisplay(character.equipped_weapon_level)}
                                   </span>
                                 </div>
@@ -7875,21 +7875,21 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                           className="overflow-hidden"
                         >
                           {character.equipped_weapon_name && (
-                            <div className="mt-4 rounded-2xl border border-sky-400/20 bg-blue-500/10 p-4">
+                            <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">
                               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                                 <div className="min-w-0">
-                                  <div className="text-[10px] uppercase tracking-[0.24em] text-sky-200/80 font-semibold">Weapon Enhance</div>
+                                  <div className="text-[10px] uppercase tracking-[0.24em] text-amber-100/80 font-semibold">Weapon Enhance</div>
                                   <div className="mt-2 flex flex-wrap items-center gap-2">
                                     <span className="text-lg font-semibold">{character.equipped_weapon_name}</span>
-                                    <span className="inline-flex px-2.5 py-1 rounded-full border border-sky-300/30 bg-black/20 text-xs font-semibold text-sky-100">
+                                    <span className="inline-flex px-2.5 py-1 rounded-full border border-amber-200/30 bg-black/20 text-xs font-semibold text-amber-50">
                                       {getEnhancementDisplay(character.equipped_weapon_level)}
                                     </span>
                                   </div>
-                                  <div className="mt-2 text-sm text-sky-100/80">
+                                  <div className="mt-2 text-sm text-amber-100/80">
                                     성공 확률 {getEnhancementSuccessRate(character.equipped_weapon_level, (ownedEnhanceItems.filter((item: any) => Number(item.quantity || 0) > 0).sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0]?.bonus_rate) || 0)}%
                                     {ownedEnhanceItems.some((item: any) => Number(item.quantity || 0) > 0) && ` · 최고 강화석 자동 사용 (${getEnhancementItemEffectText(ownedEnhanceItems.filter((item: any) => Number(item.quantity || 0) > 0).sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0])})`}
                                   </div>
-                                  <div className="mt-1 text-xs text-sky-100/60">
+                                  <div className="mt-1 text-xs text-amber-50/60">
                                     계정 전체 일일 강화 시도권 {remainingEnhanceAttempts}/{dailyEnhanceLimit} · 1회 시도당 1P 소모 · 최대 {ENHANCEMENT_MAX_LEVEL}강
                                   </div>
                                   {getEnhancementDestroyRate(character.equipped_weapon_level) > 0 && (
@@ -7912,7 +7912,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                       normalizeEnhancementLevel(character.equipped_weapon_level) >= ENHANCEMENT_MAX_LEVEL ||
                                       remainingEnhanceAttempts <= 0
                                       ? "bg-slate-700 text-slate-300"
-                                      : "bg-blue-500 text-white hover:bg-sky-400"
+                                      : "bg-amber-400 text-white hover:bg-amber-300"
                                   )}
                                 >
                                   {enhancingCharacterId === String(character.id) ? "강화 중..." : "강화 시도"}
@@ -7927,7 +7927,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                     .map((item: any) => (
                                       <div key={item.id} className="px-3 py-2 rounded-xl border border-white/10 bg-black/20 text-xs">
                                         <span className="font-semibold text-white">{item.item_name || item.title || (item.item_type === "enhance_protect_ticket" ? "파괴방지권" : "강화석")}</span>
-                                        <span className="text-sky-200 ml-2">
+                                        <span className="text-amber-100 ml-2">
                                           {item.item_type === "enhance_protect_ticket" ? "파손 자동 방지" : getEnhancementItemEffectText(item)}
                                         </span>
                                         <span className="text-slate-400 ml-2">x{item.quantity}</span>
@@ -7958,7 +7958,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                       <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-2 min-w-0">
                                           <div className="font-semibold truncate">{weapon.name}</div>
-                                          <span className="inline-flex px-2 py-1 rounded-full border border-sky-400/30 bg-blue-500/10 text-[10px] font-semibold text-sky-200 shrink-0">
+                                          <span className="inline-flex px-2 py-1 rounded-full border border-amber-200/30 bg-amber-400/10 text-[10px] font-semibold text-amber-100 shrink-0">
                                             {getEnhancementDisplay(weapon.enhancement_level)}
                                           </span>
                                         </div>
@@ -7972,7 +7972,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                                           onClick={() => equipWeaponToCharacter(character, weapon)}
                                           className={cn(
                                             "mt-3 w-full px-3 py-2 rounded-xl text-xs font-semibold transition",
-                                            isEquipped ? "bg-blue-600 text-white" : "bg-blue-600 hover:bg-blue-500 text-white"
+                                            isEquipped ? "bg-amber-500 text-white" : "bg-amber-500 hover:bg-amber-400 text-white"
                                           )}
                                         >
                                           {isEquipped ? "장착 중" : "이 무기 장착"}
@@ -7992,7 +7992,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       onClick={() => openCharacterEditModal(character.id)}
-                      className="bg-blue-600 px-4 py-2 rounded-xl text-sm font-semibold"
+                      className="bg-amber-500 px-4 py-2 rounded-xl text-sm font-semibold"
                     >
                       수정
                     </button>
@@ -8151,7 +8151,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => saveCharacterEdit(character)}
-                      className="bg-blue-500 px-4 py-3 rounded-xl font-semibold"
+                      className="bg-amber-400 px-4 py-3 rounded-xl font-semibold"
                     >
                       저장
                     </button>
@@ -8181,11 +8181,11 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
             }}
           >
             <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
               <div className="relative border-b border-white/10 px-6 py-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">Character Create</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200">Character Create</div>
                     <div className="mt-2 text-2xl font-semibold text-white">캐릭터 등록</div>
                     <div className="mt-2 text-sm text-slate-400">새 캐릭터 정보를 입력하고 마이룸에 추가해.</div>
                   </div>
@@ -8194,7 +8194,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                       setShowRegister(false);
                       setImageFile(null);
                     }}
-                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
                   >
                     <X size={18} />
                   </button>
@@ -8220,7 +8220,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   <select
                     value={roleHint}
                     onChange={(e) => setRoleHint(e.target.value)}
-                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
                   >
                     <option value="딜러">딜러</option>
                     <option value="서포터">서포터</option>
@@ -8253,7 +8253,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   </button>
                   <button
                     onClick={saveCharacter}
-                    className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
+                    className="rounded-[1.35rem] bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
                   >
                     저장
                   </button>
@@ -8273,11 +8273,11 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
             }}
           >
             <div className="relative w-full max-w-4xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
               <div className="relative border-b border-white/10 px-6 py-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-sky-300">Character Edit</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200">Character Edit</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{editingCharacter.character_name}</div>
                     <div className="mt-2 text-sm text-slate-400">캐릭터 정보, 이미지, 뱃지 장착을 이 창에서 수정할 수 있어.</div>
                   </div>
@@ -8286,7 +8286,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                       setEditingCharacterId(null);
                       fetchCharacters();
                     }}
-                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.08] hover:text-white"
+                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
                   >
                     <X size={18} />
                   </button>
@@ -8311,7 +8311,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                     <select
                       value={editingCharacter.draft.role_hint}
                       onChange={(e) => updateDraft(editingCharacter.id, "role_hint", e.target.value)}
-                      className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-blue-300/25 focus:bg-blue-400/[0.04]"
+                      className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
                     >
                       <option value="딜러">딜러</option>
                       <option value="서포터">서포터</option>
@@ -8402,7 +8402,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                       await saveCharacterEdit(editingCharacter);
                       setEditingCharacterId(null);
                     }}
-                    className="rounded-[1.35rem] bg-gradient-to-r from-blue-500 to-sky-400 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
+                    className="rounded-[1.35rem] bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
                   >
                     수정 저장
                   </button>
@@ -8513,7 +8513,7 @@ const RankingPage = ({ user, profile }: any) => {
               onClick={() => setTab(key)}
               className={cn(
                 "px-4 py-2 rounded-full text-sm font-semibold border",
-                tab === key ? "bg-blue-600 border-blue-500" : "bg-white/5 border-white/10 text-slate-400"
+                tab === key ? "bg-amber-500 border-amber-400" : "bg-white/5 border-white/10 text-slate-400"
               )}
             >
               {label}
@@ -8528,7 +8528,7 @@ const RankingPage = ({ user, profile }: any) => {
             key={member.id || member.profile_id || `${member.nickname}-${index}`}
             className={`flex justify-between items-center p-6 rounded-2xl border transition-all ${
               user?.id === (member.id || member.profile_id)
-                ? "bg-blue-600/10 border-blue-500"
+                ? "bg-amber-500/10 border-amber-400"
                 : "bg-white/5 border-white/10"
             }`}
           >
@@ -8550,7 +8550,7 @@ const RankingPage = ({ user, profile }: any) => {
               </div>
             </div>
 
-            <div className="text-xl font-semibold text-sky-400">{renderValue(member)}</div>
+            <div className="text-xl font-semibold text-amber-300">{renderValue(member)}</div>
           </div>
         ))}
       </div>
@@ -8692,7 +8692,7 @@ const GuildMembersPage = () => {
               onClick={() => setFilter(key)}
               className={cn(
                 "px-4 py-2 rounded-full text-sm font-semibold border transition",
-                filter === key ? "bg-blue-600 border-blue-500 text-white" : "bg-white/5 border-white/10 text-slate-400"
+                filter === key ? "bg-amber-500 border-amber-400 text-white" : "bg-white/5 border-white/10 text-slate-400"
               )}
             >
               {label}
@@ -8739,7 +8739,7 @@ const GuildMembersPage = () => {
                             </span>
                           )}
                           {member.role_hint === "서포터" && (
-                            <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-500/15 text-sky-300 border border-blue-500/20">
+                            <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-amber-400/15 text-amber-200 border border-amber-400/20">
                               서폿
                             </span>
                           )}
@@ -8763,7 +8763,7 @@ const GuildMembersPage = () => {
                         </div>
                         <div className="text-xl font-semibold truncate">{member.character_name}</div>
                         <div className="text-sm text-slate-300/80 truncate">{member.class_name}</div>
-                        <div className="mt-1 text-sky-200 font-semibold">아이템 Lv. {member.item_level}</div>
+                        <div className="mt-1 text-amber-100 font-semibold">아이템 Lv. {member.item_level}</div>
                       </div>
                     </div>
 
@@ -9278,7 +9278,7 @@ const PointShopPage = ({ user, profile }: any) => {
                     </div>
                   </div>
                   {item.reward_type === "enhance_stone" && (
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold border border-sky-400/30 bg-blue-500/10 text-sky-200">
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold border border-amber-200/30 bg-amber-400/10 text-amber-100">
                       {getEnhancementItemEffectText(item)}
                     </span>
                   )}
@@ -9311,7 +9311,7 @@ const PointShopPage = ({ user, profile }: any) => {
                     disabled={!available || !user}
                     className={cn(
                       "px-4 py-3 rounded-xl font-semibold text-sm transition",
-                      available && user ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
+                      available && user ? "bg-amber-500 hover:bg-amber-400 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
                     )}
                   >
                     {available ? (user ? "구매하기" : "로그인 필요") : "구매 불가"}
@@ -9333,8 +9333,8 @@ const PointShopPage = ({ user, profile }: any) => {
           <p className="text-slate-500 font-bold mt-2">뱃지, 닉네임 효과, 강화석, 무기 가챠 상품.</p>
         </div>
 
-        <div className="rounded-[2rem] border border-blue-500/20 bg-blue-500/10 px-5 py-4">
-          <div className="text-[10px] uppercase tracking-widest text-sky-300 font-semibold">My Point</div>
+        <div className="rounded-[2rem] border border-amber-400/20 bg-amber-400/10 px-5 py-4">
+          <div className="text-[10px] uppercase tracking-widest text-amber-200 font-semibold">My Point</div>
           <div className="text-2xl font-semibold">{myPoint} P</div>
         </div>
       </div>
@@ -9351,7 +9351,7 @@ const PointShopPage = ({ user, profile }: any) => {
             onClick={() => setShopTab(key as "guild" | "nickname" | "enhance" | "gacha")}
             className={cn(
               "px-4 py-2 rounded-full text-sm font-semibold border transition",
-              shopTab === key ? "bg-blue-600 border-blue-500 text-white" : "bg-white/5 border-white/10 text-slate-400"
+              shopTab === key ? "bg-amber-500 border-amber-400 text-white" : "bg-white/5 border-white/10 text-slate-400"
             )}
           >
             {label}
@@ -9389,7 +9389,7 @@ const PointShopPage = ({ user, profile }: any) => {
                   key={product.id}
                   className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
                 >
-                  <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(76,29,149,0.3) 52%, rgba(2,6,23,0.96))" }} />
+                  <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(214,164,78,0.12), rgba(76,29,149,0.3) 52%, rgba(2,6,23,0.96))" }} />
                   <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: "radial-gradient(circle at top right, rgba(250,204,21,0.18), transparent 42%)" }} />
                   <div className="relative z-10 flex flex-col h-full">
                     <div className="flex items-start justify-between gap-4">
@@ -9398,10 +9398,10 @@ const PointShopPage = ({ user, profile }: any) => {
                           <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-white/10 bg-white/5 text-white/70">
                             Weapon Gacha
                           </span>
-                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-blue-500/30 bg-blue-500/15 text-sky-300">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-amber-400/30 bg-amber-400/15 text-amber-200">
                             {getWeaponGachaStatusText(product)}
                           </span>
-                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-sky-500/30 bg-sky-500/12 text-sky-200">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-amber-300/30 bg-amber-300/12 text-amber-100">
                             10회 내 Rare+ 보장
                           </span>
                         </div>
@@ -9443,7 +9443,7 @@ const PointShopPage = ({ user, profile }: any) => {
                                 <div className="flex flex-wrap items-center gap-2">
                                   <div className="font-semibold truncate">{item.name || "무기 파츠"}</div>
                                   {item.is_featured && (
-                                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold border border-sky-500/30 bg-sky-500/12 text-sky-200">
+                                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold border border-amber-300/30 bg-amber-300/12 text-amber-100">
                                       Featured
                                     </span>
                                   )}
@@ -9471,7 +9471,7 @@ const PointShopPage = ({ user, profile }: any) => {
                           disabled={!available || drawBusy || !user}
                           className={cn(
                             "px-4 py-3 rounded-xl font-semibold text-sm transition",
-                            available && !drawBusy && user ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
+                            available && !drawBusy && user ? "bg-amber-500 hover:bg-amber-400 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
                           )}
                         >
                           {drawBusy ? "처리 중..." : "1회 뽑기"}
@@ -9481,7 +9481,7 @@ const PointShopPage = ({ user, profile }: any) => {
                           disabled={!available || drawBusy || !user}
                           className={cn(
                             "px-4 py-3 rounded-xl font-semibold text-sm transition",
-                            available && !drawBusy && user ? "bg-blue-600 hover:bg-blue-500 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
+                            available && !drawBusy && user ? "bg-amber-500 hover:bg-amber-400 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
                           )}
                         >
                           {drawBusy ? "처리 중..." : "10회 뽑기"}
@@ -9498,7 +9498,7 @@ const PointShopPage = ({ user, profile }: any) => {
             <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-sky-300 font-semibold">Latest Draw Result</div>
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-amber-200 font-semibold">Latest Draw Result</div>
                   <div className="mt-2 text-2xl font-semibold">{drawSession.product_title || "무기 가챠 결과"}</div>
                   <div className="mt-1 text-sm text-slate-400">
                     총 {drawSession.draw_count}회 · 사용 {drawSession.total_cost}P · Rare 이상 {drawSession.rare_or_better_count}개
@@ -9535,7 +9535,7 @@ const PointShopPage = ({ user, profile }: any) => {
                             {item.description || "새로운 무기 파츠를 획득했습니다."}
                           </div>
                           {item.is_duplicate && (
-                            <div className="mt-2 text-xs text-sky-300">
+                            <div className="mt-2 text-xs text-amber-200">
                               중복 보상 · 환급 {drawSession.duplicate_refund_points || 0}P
                             </div>
                           )}
@@ -9946,7 +9946,7 @@ const AdminPointShopManager = () => {
               else if (tab.key === "enhance_stone") setRewardType("enhance_stone");
               else setRewardType("badge");
             }}
-            className={cn("px-4 py-2 rounded-full text-xs font-semibold tracking-[0.18em] uppercase border", managerTab === tab.key ? "bg-blue-600 border-blue-500 text-white" : "bg-black/30 border-white/10 text-slate-400")}
+            className={cn("px-4 py-2 rounded-full text-xs font-semibold tracking-[0.18em] uppercase border", managerTab === tab.key ? "bg-amber-500 border-amber-400 text-white" : "bg-black/30 border-white/10 text-slate-400")}
           >
             {tab.label}
           </button>
@@ -9955,7 +9955,7 @@ const AdminPointShopManager = () => {
       <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
         <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-sky-300">Point Shop Item Builder</div>
+            <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-amber-200">Point Shop Item Builder</div>
             <div className="mt-2 text-2xl font-semibold">포인트샵 상품 생성</div>
             <div className="text-sm text-slate-400 mt-1">길드/닉네임/무기/강화석 탭으로 분리해서 관리할 수 있어.</div>
           </div>
@@ -9999,7 +9999,7 @@ const AdminPointShopManager = () => {
           <div>
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">설명</label>
             <textarea
-              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-blue-500 font-bold text-sm text-white min-h-[120px]"
+              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-amber-400 font-bold text-sm text-white min-h-[120px]"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={rewardType === "badge" ? "상품 설명 / 구매 욕구 자극 문구" : rewardType === "nickname_effect" ? "예: 마이룸 닉네임에 그라데이션과 글로우를 적용" : "예: 무기 강화 시 성공 확률을 높여주는 보조 아이템"}
@@ -10083,7 +10083,7 @@ const AdminPointShopManager = () => {
 
           <button
             onClick={createItem}
-            className="w-full bg-blue-600 p-4 rounded-2xl font-semibold uppercase hover:bg-blue-500 transition-all"
+            className="w-full bg-amber-500 p-4 rounded-2xl font-semibold uppercase hover:bg-amber-400 transition-all"
           >
             {rewardType === "badge" ? "뱃지 상품 생성" : rewardType === "nickname_effect" ? "닉네임 상품 생성" : "강화석 상품 생성"}
           </button>
@@ -10152,7 +10152,7 @@ const AdminPointShopManager = () => {
       <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-6">
         <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-sky-300">Weapon Part Builder</div>
+            <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-amber-200">Weapon Part Builder</div>
             <div className="mt-2 text-2xl font-semibold">장비 파츠 [무기] 등록</div>
             <div className="text-sm text-slate-400 mt-1">뽑기 보상으로 들어갈 실제 무기 파츠를 먼저 만들어.</div>
           </div>
@@ -10173,7 +10173,7 @@ const AdminPointShopManager = () => {
           <div>
             <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">무기 설명</label>
             <textarea
-              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-sky-500 font-bold text-sm text-white min-h-[120px]"
+              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-amber-400 font-bold text-sm text-white min-h-[120px]"
               value={weaponDescription}
               onChange={(e) => setWeaponDescription(e.target.value)}
               placeholder="길드 캐릭터 카드에 표시될 무기 설명"
@@ -10182,7 +10182,7 @@ const AdminPointShopManager = () => {
 
           <AdminInput label="무기 이미지 URL" value={weaponImageUrl} onChange={setWeaponImageUrl} placeholder="https://..." />
 
-          <button onClick={createWeaponPart} className="w-full bg-sky-600 p-4 rounded-2xl font-semibold uppercase hover:bg-sky-500 transition-all">
+          <button onClick={createWeaponPart} className="w-full bg-amber-500 p-4 rounded-2xl font-semibold uppercase hover:bg-amber-400 transition-all">
             무기 파츠 등록
           </button>
 
@@ -10215,7 +10215,7 @@ const AdminPointShopManager = () => {
         <div className="space-y-6">
           <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-sky-300">Weapon Gacha Builder</div>
+              <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-amber-200">Weapon Gacha Builder</div>
               <div className="mt-2 text-2xl font-semibold">무기 가챠 상품 생성</div>
               <div className="text-sm text-slate-400 mt-1">원하는 무기 파츠를 선택하고 확률을 지정해 가챠 상품을 만든다.</div>
             </div>
@@ -10228,7 +10228,7 @@ const AdminPointShopManager = () => {
             <div>
               <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">설명</label>
               <textarea
-                className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-sky-500 font-bold text-sm text-white min-h-[110px]"
+                className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-amber-400 font-bold text-sm text-white min-h-[110px]"
                 value={gachaDescription}
                 onChange={(e) => setGachaDescription(e.target.value)}
                 placeholder="가챠 상세 설명"
@@ -10277,7 +10277,7 @@ const AdminPointShopManager = () => {
                                 onClick={() => setFeaturedWeaponId(String(weapon.id))}
                                 className={cn(
                                   "mt-3 w-full h-[58px] rounded-2xl border font-semibold text-sm",
-                                  featuredWeaponId === String(weapon.id) ? "bg-sky-600 border-sky-500 text-white" : "bg-black border-white/10 text-slate-400"
+                                  featuredWeaponId === String(weapon.id) ? "bg-amber-500 border-amber-400 text-white" : "bg-black border-white/10 text-slate-400"
                                 )}
                               >
                                 {featuredWeaponId === String(weapon.id) ? "대표 무기" : "대표로 설정"}
@@ -10290,12 +10290,12 @@ const AdminPointShopManager = () => {
                   );
                 })}
               </div>
-              <div className={cn("mt-4 text-sm font-semibold", isProbabilityValid ? "text-sky-300" : "text-sky-300")}>
+              <div className={cn("mt-4 text-sm font-semibold", isProbabilityValid ? "text-amber-200" : "text-amber-200")}>
                 확률 총합: {formatProbabilityText(totalProbability)}
               </div>
             </div>
 
-            <button onClick={createGachaProduct} className="w-full bg-sky-600 p-4 rounded-2xl font-semibold uppercase hover:bg-sky-500 transition-all">
+            <button onClick={createGachaProduct} className="w-full bg-amber-500 p-4 rounded-2xl font-semibold uppercase hover:bg-amber-400 transition-all">
               무기 가챠 생성
             </button>
 
@@ -10311,7 +10311,7 @@ const AdminPointShopManager = () => {
                         <div className="text-xs text-slate-400">{formatProbabilityText(weapon.probability)}</div>
                       </div>
                       {featuredWeaponId === String(weapon.id) && (
-                        <span className="px-2 py-1 rounded-full text-[10px] font-semibold border border-sky-500/30 bg-sky-500/12 text-sky-200">
+                        <span className="px-2 py-1 rounded-full text-[10px] font-semibold border border-amber-300/30 bg-amber-300/12 text-amber-100">
                           Featured
                         </span>
                       )}
@@ -10351,7 +10351,7 @@ const AdminPointShopManager = () => {
                         <div className="mt-2 text-sm text-white/70">{getShopMoodLine(item)}</div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="text-2xl font-semibold text-sky-300">{item.price}P</div>
+                        <div className="text-2xl font-semibold text-amber-200">{item.price}P</div>
                         <div className="text-xs text-slate-500">{item.reward_type === "badge" ? "뱃지 상품" : "강화석 상품"}</div>
                       </div>
                     </div>
@@ -10381,7 +10381,7 @@ const AdminPointShopManager = () => {
                           <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-white/10 bg-white/5 text-white/70">
                             Weapon Gacha
                           </span>
-                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-blue-500/30 bg-blue-500/15 text-sky-300">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-amber-400/30 bg-amber-400/15 text-amber-200">
                             {getWeaponGachaStatusText(item)}
                           </span>
                         </div>
@@ -10389,7 +10389,7 @@ const AdminPointShopManager = () => {
                         <div className="mt-2 text-sm text-white/70">{item.promo_text || item.description || "설명 없음"}</div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="text-2xl font-semibold text-sky-300">{item.price}P</div>
+                        <div className="text-2xl font-semibold text-amber-200">{item.price}P</div>
                         <div className="text-xs text-slate-500">보상 {rewards.length}종</div>
                       </div>
                     </div>
@@ -10404,7 +10404,7 @@ const AdminPointShopManager = () => {
                               <div className="text-xs text-slate-400">{formatProbabilityText(reward.probability)}</div>
                             </div>
                             {reward.is_featured && (
-                              <span className="px-2 py-1 rounded-full text-[10px] font-semibold border border-sky-500/30 bg-sky-500/12 text-sky-200">
+                              <span className="px-2 py-1 rounded-full text-[10px] font-semibold border border-amber-300/30 bg-amber-300/12 text-amber-100">
                                 Featured
                               </span>
                             )}
