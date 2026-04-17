@@ -837,7 +837,7 @@ const HomeFeaturePortal = ({
             핵심 콘텐츠 바로가기
           </h2>
           <p className="mt-2 text-sm text-stone-400">
-            자주 보는 콘텐츠를 더 빠르고 선명하게 모아둔 구간이야.
+            .
           </p>
         </div>
         <div className="hidden rounded-[1.35rem] border border-amber-100/10 bg-white/[0.03] px-4 py-3 text-right shadow-[0_12px_30px_rgba(0,0,0,0.18)] md:block">
@@ -942,7 +942,7 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                 공지사항
               </h2>
               <p className="mt-1 text-sm text-stone-400">
-                길드 운영에 필요한 핵심 공지를 정리해서 보여줘.
+                .
               </p>
             </div>
 
