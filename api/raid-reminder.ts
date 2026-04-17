@@ -18,17 +18,16 @@ export default async function handler(req, res) {
   try {
     const now = new Date();
 
-    // 55분 ~ 61분 후 범위
-    const from = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
-    const to = new Date(now.getTime() + 90 * 60 * 1000).toISOString();
+    const from = new Date(now.getTime() + 55 * 60 * 1000).toISOString();
+    const to = new Date(now.getTime() + 61 * 60 * 1000).toISOString();
 
-    // 대상 레이드 조회
     const { data: raids, error } = await supabase
       .from("raid_schedules")
       .select("*")
       .eq("one_hour_reminded", false)
-      .gte("raid_time", from)
-      .lt("raid_time", to);
+      .not("raid_datetime", "is", null)
+      .gte("raid_datetime", from)
+      .lt("raid_datetime", to);
 
     if (error) {
       return res.status(500).json({
@@ -42,11 +41,9 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ok: true,
         count: 0,
-        message: "No raids to remind",
       });
     }
 
-    // /api/discord 호출용 절대 URL
     const baseUrl =
       process.env.NODE_ENV === "development"
         ? "http://localhost:3000"
@@ -65,7 +62,6 @@ export default async function handler(req, res) {
     let sentCount = 0;
 
     for (const raid of raids) {
-      // 기존 discord.ts 재사용
       const discordResponse = await fetch(`${baseUrl}/api/discord`, {
         method: "POST",
         headers: {
@@ -76,7 +72,7 @@ export default async function handler(req, res) {
           embeds: [
             {
               title: raid.title ?? "레이드 알림",
-              description: `시작 시간: ${new Date(raid.raid_time).toLocaleString("ko-KR")}`,
+              description: `시작 시간: ${new Date(raid.raid_datetime).toLocaleString("ko-KR")}`,
               color: 0xffcc00,
             },
           ],
@@ -94,7 +90,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // 알림 완료 처리
       const { error: updateError } = await supabase
         .from("raid_schedules")
         .update({ one_hour_reminded: true })
