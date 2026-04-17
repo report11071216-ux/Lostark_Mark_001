@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const vercelUrl = process.env.VERCEL_URL;
+const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
 if (!supabaseUrl) {
   throw new Error("Missing VITE_SUPABASE_URL");
@@ -10,6 +10,10 @@ if (!supabaseUrl) {
 
 if (!serviceRoleKey) {
   throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+}
+
+if (!discordWebhookUrl) {
+  throw new Error("Missing DISCORD_WEBHOOK_URL");
 }
 
 const supabase = createClient(supabaseUrl, serviceRoleKey);
@@ -64,25 +68,10 @@ export default async function handler(req, res) {
       });
     }
 
-    const baseUrl =
-      process.env.NODE_ENV === "development"
-        ? "http://localhost:3000"
-        : vercelUrl
-        ? `https://${vercelUrl}`
-        : null;
-
-    if (!baseUrl) {
-      return res.status(500).json({
-        ok: false,
-        step: "base_url",
-        error: "Missing VERCEL_URL",
-      });
-    }
-
     let sentCount = 0;
 
     for (const raid of raids) {
-      const discordResponse = await fetch("/api/discord", {
+      const discordResponse = await fetch(discordWebhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -130,6 +119,11 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       count: sentCount,
+      debug: {
+        now: now.toISOString(),
+        from,
+        to,
+      },
     });
   } catch (error) {
     return res.status(500).json({
