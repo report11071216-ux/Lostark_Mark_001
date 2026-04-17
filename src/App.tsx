@@ -799,32 +799,32 @@ const HomeFeaturePortal = ({
     {
       key: "레이드",
       title: "레이드",
-      subtitle: "주간 레이드 공략과 콘텐츠 정보 확인",
+      subtitle: "주간 레이드 공략과 콘텐츠 정보를 한눈에 확인",
       badge: "Core Content",
       icon: <Swords size={22} />,
       stats: "주요 레이드 콘텐츠",
-      glow: "from-amber-300/14 via-amber-200/8 to-transparent",
-      activeClass: "border-amber-200/22 bg-amber-300/[0.07] shadow-[0_18px_34px_rgba(245,188,93,0.12)]",
+      glow: "from-amber-300/16 via-amber-200/8 to-transparent",
+      activeClass: "border-amber-200/24 bg-amber-300/[0.08] shadow-[0_18px_40px_rgba(245,188,93,0.14)]",
     },
     {
       key: "가디언 토벌",
       title: "가디언 토벌",
-      subtitle: "토벌 콘텐츠와 보상 흐름을 빠르게 확인",
+      subtitle: "토벌 루트와 보상 흐름을 빠르게 확인",
       badge: "Field Hunt",
       icon: <Shield size={22} />,
       stats: "토벌 정보 바로가기",
-      glow: "from-yellow-200/12 via-amber-200/8 to-transparent",
-      activeClass: "border-yellow-200/20 bg-yellow-200/[0.06] shadow-[0_18px_34px_rgba(250,218,122,0.10)]",
+      glow: "from-yellow-200/14 via-amber-200/8 to-transparent",
+      activeClass: "border-yellow-200/22 bg-yellow-200/[0.06] shadow-[0_18px_40px_rgba(250,218,122,0.12)]",
     },
     {
       key: "클래스",
       title: "클래스",
-      subtitle: "직업별 특징과 세팅 정보를 한 번에 탐색",
+      subtitle: "직업별 특징과 세팅 정보를 정돈된 구조로 탐색",
       badge: "Class Index",
       icon: <Sparkles size={22} />,
       stats: "캐릭터 빌드 탐색",
-      glow: "from-orange-200/12 via-amber-200/8 to-transparent",
-      activeClass: "border-orange-200/20 bg-orange-200/[0.06] shadow-[0_18px_34px_rgba(251,191,36,0.10)]",
+      glow: "from-orange-200/14 via-amber-200/8 to-transparent",
+      activeClass: "border-orange-200/22 bg-orange-200/[0.06] shadow-[0_18px_40px_rgba(251,191,36,0.12)]",
     },
   ];
 
@@ -833,16 +833,16 @@ const HomeFeaturePortal = ({
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-amber-300/90">Feature Gateway</div>
-          <h2 className="mt-2 text-lg font-medium tracking-tight text-white md:text-xl">
+          <h2 className="mt-2 font-serif text-xl font-semibold tracking-[0.02em] text-white md:text-2xl">
             핵심 콘텐츠 바로가기
           </h2>
           <p className="mt-2 text-sm text-stone-400">
-            레이드, 가디언 토벌, 클래스 정보를 더 눈에 띄게 모아봤어.
+            자주 보는 콘텐츠를 더 빠르고 선명하게 모아둔 구간이야.
           </p>
         </div>
-        <div className="hidden rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-right shadow-[0_12px_30px_rgba(0,0,0,0.18)] md:block">
+        <div className="hidden rounded-[1.35rem] border border-amber-100/10 bg-white/[0.03] px-4 py-3 text-right shadow-[0_12px_30px_rgba(0,0,0,0.18)] md:block">
           <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">현재 선택</div>
-          <div className="mt-1 text-base font-semibold text-amber-100">{contentView}</div>
+          <div className="mt-1 font-serif text-base font-semibold text-amber-100">{contentView}</div>
         </div>
       </div>
 
@@ -852,19 +852,19 @@ const HomeFeaturePortal = ({
           return (
             <motion.button
               key={card.key}
-              whileHover={{ y: -2, scale: 1.005 }}
+              whileHover={{ y: -3, scale: 1.006 }}
               onClick={() => setContentView(card.key)}
               className={cn(
-                "group relative overflow-hidden rounded-[1.45rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.032),rgba(255,255,255,0.02))] p-3 text-left backdrop-blur-xl transition-all shadow-[0_16px_34px_rgba(0,0,0,0.22)]",
-                active ? card.activeClass : "hover:border-amber-200/16 hover:bg-white/[0.045]"
+                "group relative overflow-hidden rounded-[1.55rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.034),rgba(255,255,255,0.02))] p-4 text-left backdrop-blur-xl transition-all shadow-[0_18px_38px_rgba(0,0,0,0.24)]",
+                active ? card.activeClass : "hover:border-amber-200/18 hover:bg-white/[0.045] hover:shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
               )}
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${card.glow} opacity-90`} />
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/15 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/20 to-transparent" />
 
               <div className="relative z-10">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex h-[34px] w-[34px] items-center justify-center rounded-xl border border-white/8 bg-white/[0.05] text-amber-100 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] border border-amber-100/12 bg-white/[0.05] text-amber-100 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
                     {card.icon}
                   </div>
                   <div className="rounded-full border border-white/8 bg-white/[0.035] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-stone-300">
@@ -872,14 +872,14 @@ const HomeFeaturePortal = ({
                   </div>
                 </div>
 
-                <div className="mt-2.5">
-                  <div className="text-base font-medium text-white">{card.title}</div>
-                  <div className="mt-1 text-xs leading-[1.35rem] text-stone-300">
+                <div className="mt-4">
+                  <div className="font-serif text-lg font-semibold text-white">{card.title}</div>
+                  <div className="mt-1.5 text-sm leading-6 text-stone-300">
                     {card.subtitle}
                   </div>
                 </div>
 
-                <div className="mt-2.5 flex items-center justify-between gap-3">
+                <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/8 pt-3">
                   <div className="text-xs font-medium text-stone-400">{card.stats}</div>
                   <div
                     className={cn(
@@ -929,8 +929,8 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
   };
 
   return (
-    <section className="max-w-7xl mx-auto px-6 pt-2 md:pt-3 pb-4">
-      <div className="overflow-hidden rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.018))] shadow-[0_24px_60px_rgba(0,0,0,0.24)]">
+    <section className="mx-auto max-w-7xl px-6 pb-4 pt-2 md:pt-3">
+      <div className="overflow-hidden rounded-[1.85rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.032),rgba(255,255,255,0.018))] shadow-[0_28px_70px_rgba(0,0,0,0.26)]">
         <div className="border-b border-white/8 px-5 py-4 md:px-6">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -938,15 +938,15 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                 <Bell size={13} />
                 Guild Notice
               </div>
-              <h2 className="mt-3 text-xl font-semibold tracking-tight md:text-2xl">
+              <h2 className="mt-3 font-serif text-2xl font-semibold tracking-[0.02em] text-white">
                 공지사항
               </h2>
               <p className="mt-1 text-sm text-stone-400">
-                중요한 공지를 빠르게 확인해.
+                길드 운영에 필요한 핵심 공지를 정리해서 보여줘.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-right">
+            <div className="rounded-[1.35rem] border border-amber-100/10 bg-white/[0.03] px-4 py-3 text-right shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
                 Total
               </div>
@@ -955,15 +955,15 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
           </div>
         </div>
 
-        <div className="space-y-2 p-3 md:p-4">
+        <div className="space-y-2.5 p-3 md:p-4">
           {loading && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-stone-500">
+            <div className="rounded-[1.35rem] border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-stone-500">
               공지 불러오는 중...
             </div>
           )}
 
           {!loading && notices.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-stone-500">
+            <div className="rounded-[1.35rem] border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-stone-500">
               아직 등록된 공지가 없어.
             </div>
           )}
@@ -973,15 +973,15 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
               <button
                 key={notice.id}
                 className={cn(
-                  "w-full rounded-[1.2rem] border px-4 py-3 text-left transition-all hover:border-amber-200/22 hover:bg-white/[0.05]",
+                  "w-full rounded-[1.35rem] border px-4 py-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-amber-200/22 hover:bg-white/[0.05] hover:shadow-[0_14px_28px_rgba(0,0,0,0.16)]",
                   notice.is_pinned
-                    ? "border-amber-200/18 bg-amber-300/[0.07]"
+                    ? "border-amber-200/18 bg-[linear-gradient(180deg,rgba(245,194,105,0.09),rgba(245,194,105,0.04))]"
                     : "border-white/10 bg-white/[0.03]"
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
                       {notice.is_pinned && (
                         <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/18 bg-amber-300/12 px-2 py-1 text-[10px] font-semibold text-amber-100">
                           <Pin size={11} />
@@ -994,10 +994,10 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                       <span className="text-[11px] text-stone-500">{formatDateTime(notice.created_at)}</span>
                     </div>
 
-                    <div className="truncate text-sm font-semibold text-white md:text-base">
+                    <div className="truncate font-serif text-base font-semibold text-white">
                       {notice.title}
                     </div>
-                    <div className="mt-1 line-clamp-1 text-xs text-stone-400 md:text-sm">
+                    <div className="mt-1.5 line-clamp-1 text-sm text-stone-400">
                       {notice.content}
                     </div>
                   </div>
@@ -1778,65 +1778,21 @@ const ToastViewport = () => {
 
 
 const PageShell = ({ children }: { children: React.ReactNode }) => (
-  <div className="relative min-h-screen overflow-hidden bg-[#0d0a07] font-sans text-white selection:bg-amber-300/30">
+  <div className="relative min-h-screen overflow-hidden bg-[#090705] font-sans text-white selection:bg-amber-300/25">
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-8%,rgba(246,201,118,0.22),transparent_34%),radial-gradient(circle_at_50%_15%,rgba(177,126,48,0.16),transparent_26%),radial-gradient(circle_at_16%_24%,rgba(102,62,16,0.18),transparent_28%),radial-gradient(circle_at_84%_16%,rgba(126,84,24,0.16),transparent_24%),linear-gradient(180deg,#18120d_0%,#110d09_38%,#0b0908_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-12%,rgba(247,210,129,0.18),transparent_28%),radial-gradient(circle_at_50%_12%,rgba(176,126,50,0.14),transparent_24%),radial-gradient(circle_at_14%_22%,rgba(99,61,17,0.16),transparent_28%),radial-gradient(circle_at_84%_16%,rgba(120,81,29,0.14),transparent_24%),linear-gradient(180deg,#16110d_0%,#0f0b08_42%,#080706_100%)]" />
       <motion.div
-        className="absolute left-1/2 top-[-180px] h-[460px] w-[920px] -translate-x-1/2 rounded-full bg-amber-200/15 blur-[132px] md:h-[560px] md:w-[1180px]"
-        animate={{ opacity: [0.38, 0.62, 0.38], scale: [0.96, 1.05, 0.96] }}
-        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute left-1/2 top-[10%] h-[160px] w-[1180px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,228,167,0.18)_0%,rgba(176,126,50,0.11)_36%,transparent_74%)] blur-[68px]"
-        animate={{ opacity: [0.2, 0.36, 0.2], y: [0, 14, 0] }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute bottom-[-180px] left-[10%] h-[380px] w-[380px] rounded-full bg-amber-900/24 blur-[120px]"
-        animate={{ x: [0, 22, 0], y: [0, -24, 0], scale: [1, 1.08, 1] }}
+        className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-amber-200/12 blur-[148px] md:h-[620px] md:w-[1220px]"
+        animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-[-210px] right-[8%] h-[420px] w-[420px] rounded-full bg-orange-900/20 blur-[130px]"
-        animate={{ x: [0, -28, 0], y: [0, -18, 0], scale: [1, 1.1, 1] }}
-        transition={{ duration: 19, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute left-1/2 top-[8%] h-[180px] w-[1040px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(252,227,171,0.12)_0%,rgba(176,126,50,0.09)_36%,transparent_72%)] blur-[76px]"
+        animate={{ opacity: [0.14, 0.28, 0.14], y: [0, 12, 0] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
-      <motion.div
-        className="absolute inset-0 opacity-[0.08]"
-        animate={{ opacity: [0.05, 0.09, 0.05] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,248,235,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,248,235,0.025) 1px, transparent 1px)",
-          backgroundSize: "58px 58px",
-        }}
-      />
-      <div
-        className="absolute inset-0 opacity-[0.035]"
-        style={{
-          backgroundImage:
-            "radial-gradient(rgba(255,240,214,0.55) 1px, transparent 1px)",
-          backgroundSize: "3px 3px",
-        }}
-      />
-      {Array.from({ length: 28 }).map((_, i) => (
-        <motion.span
-          key={i}
-          className={i % 6 === 0 ? "absolute h-2.5 w-2.5 rounded-full bg-amber-100/45 blur-[1px]" : i % 3 === 0 ? "absolute h-2 w-2 rounded-full bg-amber-200/26" : "absolute h-1.5 w-1.5 rounded-full bg-white/24"}
-          style={{
-            top: `${(i * 23 + 7) % 100}%`,
-            left: `${(i * 17 + 13) % 100}%`,
-          }}
-          animate={{ y: [0, -32, 0], opacity: [0.08, 0.72, 0.08], scale: [0.94, 1.12, 0.94] }}
-          transition={{
-            duration: 7 + (i % 5),
-            delay: (i % 6) * 0.7,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,9,8,0.02),rgba(11,9,8,0.24)_32%,rgba(11,9,8,0.62))]" />
+      <div className="absolute inset-0 opacity-[0.045]" style={{ backgroundImage: "linear-gradient(rgba(255,249,237,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,249,237,0.02) 1px, transparent 1px)", backgroundSize: "72px 72px" }} />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,5,4,0.02),rgba(7,5,4,0.22)_36%,rgba(7,5,4,0.72))]" />
     </div>
     {children}
   </div>
@@ -1904,70 +1860,51 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
         nextWeek.setDate(nextWeek.getDate() + 7);
         const nextWeekKey = formatDate(nextWeek.getFullYear(), nextWeek.getMonth(), nextWeek.getDate());
 
-        const [membersRes, upcomingRes, nextRaidRes, weeklyRes] = await Promise.allSettled([
+        const [membersRes, schedulesRes] = await Promise.all([
           supabase.from("profiles").select("id", { count: "exact", head: true }),
           supabase
             .from("raid_schedules")
-            .select("id", { count: "exact", head: true })
-            .gte("raid_date", today)
-            .lte("raid_date", nextWeekKey),
-          supabase
-            .from("raid_schedules")
-            .select("raid_name, raid_date, raid_time")
-            .gte("raid_date", today)
-            .order("raid_date", { ascending: true })
-            .order("raid_time", { ascending: true })
-            .limit(1)
-            .maybeSingle(),
-          supabase
-            .from("raid_schedules")
-            .select("id, raid_name, raid_date, raid_time, difficulty, type")
+            .select("*")
             .gte("raid_date", currentWeekRange.start)
             .lte("raid_date", currentWeekRange.end)
             .order("raid_date", { ascending: true })
             .order("raid_time", { ascending: true }),
         ]);
 
+        const upcomingRes = await supabase
+          .from("raid_schedules")
+          .select("*")
+          .gte("raid_date", today)
+          .lte("raid_date", nextWeekKey)
+          .order("raid_date", { ascending: true })
+          .order("raid_time", { ascending: true });
+
         if (!mounted) return;
 
-        const nextStats = {
-          memberCount:
-            membersRes.status === "fulfilled" ? Number((membersRes.value as any).count || 0) : 0,
-          upcomingRaids:
-            upcomingRes.status === "fulfilled" ? Number((upcomingRes.value as any).count || 0) : 0,
-          nextRaidLabel: "예정된 일정 없음",
-          nextRaidDate: "",
-        };
+        const scheduleMap = (schedulesRes.data || []).reduce((acc: Record<string, any[]>, raid: any) => {
+          const key = raid.raid_date || today;
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(raid);
+          return acc;
+        }, {});
 
-        if (nextRaidRes.status === "fulfilled" && (nextRaidRes.value as any).data) {
-          const nextRaid = (nextRaidRes.value as any).data as any;
-          nextStats.nextRaidLabel = nextRaid?.raid_name || "다음 레이드";
-          nextStats.nextRaidDate = [formatShortDate(nextRaid?.raid_date), nextRaid?.raid_time]
-            .filter(Boolean)
-            .join(" · ");
-        }
+        const upcomingSchedules = upcomingRes.data || [];
+        const nextRaid = upcomingSchedules[0];
 
-        const weeklyMap: Record<string, any[]> = {};
-        if (weeklyRes.status === "fulfilled" && Array.isArray((weeklyRes.value as any).data)) {
-          for (const item of (weeklyRes.value as any).data as any[]) {
-            const key = item?.raid_date;
-            if (!key) continue;
-            if (!weeklyMap[key]) weeklyMap[key] = [];
-            weeklyMap[key].push(item);
-          }
-        }
-
-        const todayKey = getTodayKey();
-        const prioritizedKey =
-          currentWeekDays.find((day) => day.key >= todayKey && (weeklyMap[day.key]?.length || 0) > 0)?.key ||
-          currentWeekDays.find((day) => (weeklyMap[day.key]?.length || 0) > 0)?.key ||
-          currentWeekDays.find((day) => day.key === todayKey)?.key ||
-          currentWeekDays[0]?.key ||
-          "";
-
-        setHeroStats(nextStats);
-        setWeeklySchedules(weeklyMap);
-        setSelectedWeekDate((prev) => (prev && currentWeekDays.some((day) => day.key === prev) ? prev : prioritizedKey));
+        setWeeklySchedules(scheduleMap);
+        setSelectedWeekDate((prev) => {
+          if (prev && currentWeekDays.some((day) => day.key === prev)) return prev;
+          const todayMatch = currentWeekDays.find((day) => day.key === today);
+          return todayMatch?.key || currentWeekDays[0]?.key || "";
+        });
+        setHeroStats({
+          memberCount: membersRes.count || 0,
+          upcomingRaids: upcomingSchedules.length,
+          nextRaidLabel: nextRaid?.raid_name || "예정된 일정 없음",
+          nextRaidDate: nextRaid
+            ? `${nextRaid.raid_date || ""} ${nextRaid.raid_time || ""}`.trim()
+            : "",
+        });
       } catch (error) {
         console.error("Hero stats fetch error:", error);
       }
@@ -1986,7 +1923,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
 
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(245,194,105,0.14),transparent_28%),linear-gradient(180deg,rgba(24,18,13,0.02),rgba(24,18,13,0.06)_48%,transparent)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(245,194,105,0.12),transparent_26%),linear-gradient(180deg,rgba(24,18,13,0.02),rgba(24,18,13,0.08)_54%,transparent)]" />
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl items-start gap-4 px-6 pb-4 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,620px)] xl:grid-cols-[minmax(0,1fr)_340px_260px]">
         <motion.div
@@ -2000,40 +1937,40 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
             Guild Residence
           </span>
 
-          <h1 className="mt-3 bg-gradient-to-b from-[#fff7eb] via-[#f2e3c2] to-[#b9985d] bg-clip-text text-3xl font-medium leading-none tracking-tight text-transparent md:text-4xl">
+          <h1 className="mt-4 bg-gradient-to-b from-[#fff9ef] via-[#f3e1b8] to-[#b88d44] bg-clip-text font-serif text-4xl font-semibold leading-none tracking-[0.01em] text-transparent md:text-5xl">
             {getDisplayGuildName(settings?.guild_name)}
           </h1>
 
-          <p className="mt-2 max-w-md text-sm font-normal leading-6 text-stone-300">
+          <p className="mt-3 max-w-xl text-sm font-normal leading-7 text-stone-300">
             {settings?.guild_description}
           </p>
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 backdrop-blur-md shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
+            <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] px-3.5 py-2.5 backdrop-blur-md shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                 공지
               </div>
-              <div className="mt-1 text-base font-semibold text-amber-50">{noticeCount}</div>
+              <div className="mt-1 text-lg font-semibold text-amber-50">{noticeCount}</div>
             </div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 backdrop-blur-md shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+            <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] px-3.5 py-2.5 backdrop-blur-md shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                 7일 일정
               </div>
-              <div className="mt-1 text-base font-semibold text-amber-50">{heroStats.upcomingRaids}</div>
+              <div className="mt-1 text-lg font-semibold text-amber-50">{heroStats.upcomingRaids}</div>
             </div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 backdrop-blur-md shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+            <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] px-3.5 py-2.5 backdrop-blur-md shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                 길드원
               </div>
-              <div className="mt-1 text-base font-semibold text-amber-50">{heroStats.memberCount}</div>
+              <div className="mt-1 text-lg font-semibold text-amber-50">{heroStats.memberCount}</div>
             </div>
           </div>
 
-          <div className="mt-4 flex justify-center md:justify-start">
+          <div className="mt-5 flex justify-center md:justify-start">
             <button
               type="button"
               onClick={onOpenRaidCalendar}
-              className="group inline-flex items-center gap-2 rounded-2xl border border-amber-200/16 bg-amber-300/[0.08] px-4 py-2.5 text-sm font-medium text-amber-50 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-amber-100/26 hover:bg-amber-300/[0.12] hover:text-white hover:shadow-[0_14px_28px_rgba(214,164,78,0.12)]"
+              className="group inline-flex items-center gap-2 rounded-[1.3rem] border border-amber-200/16 bg-[linear-gradient(180deg,rgba(245,194,105,0.12),rgba(245,194,105,0.06))] px-4 py-2.5 text-sm font-medium text-amber-50 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-amber-100/26 hover:text-white hover:shadow-[0_16px_30px_rgba(214,164,78,0.14)]"
             >
               <CalendarDays size={16} className="transition-transform group-hover:scale-105" />
               월별 레이드 일정
@@ -2047,15 +1984,15 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           transition={{ duration: 0.76, delay: 0.05 }}
           className="relative hidden h-full lg:block"
         >
-          <div className="absolute inset-0 rounded-[1.9rem] bg-amber-300/8 blur-3xl" />
-          <div className="relative flex h-full min-h-[148px] flex-col overflow-hidden rounded-[1.8rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] p-3 backdrop-blur-2xl shadow-[0_20px_48px_rgba(0,0,0,0.22)]">
+          <div className="absolute inset-0 rounded-[2rem] bg-amber-300/8 blur-3xl" />
+          <div className="relative flex h-full min-h-[148px] flex-col overflow-hidden rounded-[1.85rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3 backdrop-blur-2xl shadow-[0_22px_52px_rgba(0,0,0,0.24)]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(246,205,127,0.14),transparent_46%)]" />
             <div className="relative flex items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">
                   Weekly Raid Schedule
                 </div>
-                <div className="mt-1.5 text-lg font-medium text-white">이번주 레이드</div>
+                <div className="mt-1 font-serif text-lg font-semibold text-white">이번주 레이드</div>
               </div>
               <button
                 type="button"
@@ -2079,10 +2016,10 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                     className={[
                       "relative flex h-11 flex-col items-center justify-center rounded-xl border text-center transition-all",
                       isSelected
-                        ? "border-amber-200/35 bg-amber-300/[0.14] text-white shadow-[0_0_0_1px_rgba(245,197,92,0.12)_inset]"
+                        ? "border-amber-200/35 bg-amber-300/[0.16] text-white shadow-[0_0_0_1px_rgba(245,197,92,0.12)_inset]"
                         : hasSchedule
-                        ? "border-amber-200/18 bg-amber-300/[0.07] text-amber-50 hover:border-amber-100/26 hover:bg-amber-300/[0.10]"
-                        : "border-white/7 bg-white/[0.035] text-stone-300 hover:border-white/10 hover:bg-white/[0.05]",
+                        ? "border-amber-200/18 bg-amber-300/[0.08] text-amber-50 hover:border-amber-100/26 hover:bg-amber-300/[0.11]"
+                        : "border-white/7 bg-white/[0.03] text-stone-300 hover:border-white/10 hover:bg-white/[0.05]",
                     ].join(" ")}
                   >
                     {hasSchedule && (
@@ -2095,7 +2032,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               })}
             </div>
 
-            <div className="relative mt-3 flex flex-1 flex-col rounded-xl border border-white/7 bg-black/18 p-2.5">
+            <div className="relative mt-3 flex flex-1 flex-col rounded-[1.1rem] border border-white/7 bg-black/18 p-2.5">
               <div className="flex items-center justify-between gap-3 text-xs">
                 <span className="font-semibold text-white">
                   {selectedDay ? `${selectedDay.label}요일 일정` : "이번주 일정"}
@@ -2106,10 +2043,10 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               </div>
 
               {primarySchedule ? (
-                <div className="mt-2 flex flex-1 flex-col justify-between rounded-xl border border-amber-200/14 bg-[linear-gradient(135deg,rgba(54,39,18,0.84),rgba(31,25,17,0.94))] px-3 py-2.5">
+                <div className="mt-2 flex flex-1 flex-col justify-between rounded-[1rem] border border-amber-200/14 bg-[linear-gradient(135deg,rgba(59,41,18,0.86),rgba(29,22,15,0.96))] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="truncate text-base font-medium text-white">
+                      <div className="truncate font-serif text-base font-semibold text-white">
                         {primarySchedule.raid_name}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-300">
@@ -2124,7 +2061,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                         )}
                       </div>
                     </div>
-                    <div className="shrink-0 text-base font-medium text-amber-50">
+                    <div className="shrink-0 text-base font-semibold text-amber-50">
                       {primarySchedule.raid_time || "--:--"}
                     </div>
                   </div>
@@ -2135,7 +2072,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                   </div>
                 </div>
               ) : (
-                <div className="mt-3 flex flex-1 items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-4 text-center text-sm text-stone-400">
+                <div className="mt-3 flex flex-1 items-center justify-center rounded-[1rem] border border-dashed border-white/10 bg-white/[0.03] px-4 text-center text-sm text-stone-400">
                   등록된 레이드 일정이 없습니다.
                 </div>
               )}
@@ -2149,15 +2086,15 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           transition={{ duration: 0.76, delay: 0.1 }}
           className="relative hidden h-full xl:block"
         >
-          <div className="absolute inset-0 rounded-[1.9rem] bg-amber-300/8 blur-3xl" />
-          <div className="relative flex h-full min-h-[148px] flex-col overflow-hidden rounded-[1.8rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] p-3 backdrop-blur-2xl shadow-[0_20px_48px_rgba(0,0,0,0.22)]">
+          <div className="absolute inset-0 rounded-[2rem] bg-amber-300/8 blur-3xl" />
+          <div className="relative flex h-full min-h-[148px] flex-col overflow-hidden rounded-[1.85rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3 backdrop-blur-2xl shadow-[0_22px_52px_rgba(0,0,0,0.24)]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(246,205,127,0.12),transparent_46%)]" />
             <div className="relative flex items-center justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">
                   Overview
                 </div>
-                <div className="mt-1.5 text-lg font-medium text-white">
+                <div className="mt-1 font-serif text-lg font-semibold text-white">
                   {getDisplayGuildName(settings?.guild_name)}
                 </div>
               </div>
@@ -2167,37 +2104,37 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
             </div>
 
             <div className="relative mt-3 grid grid-cols-3 gap-1.5">
-              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-2.5">
+              <div className="rounded-[1rem] border border-white/7 bg-white/[0.035] p-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   공지
                 </div>
-                <div className="mt-1.5 text-sm font-medium text-amber-50">{noticeCount}</div>
+                <div className="mt-1 text-lg font-semibold text-amber-50">{noticeCount}</div>
               </div>
-              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-2.5">
+              <div className="rounded-[1rem] border border-white/7 bg-white/[0.035] p-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   고정
                 </div>
-                <div className="mt-1.5 text-sm font-medium text-amber-50">{pinnedCount}</div>
+                <div className="mt-1 text-lg font-semibold text-amber-50">{pinnedCount}</div>
               </div>
-              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-2.5">
+              <div className="rounded-[1rem] border border-white/7 bg-white/[0.035] p-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   다음 일정
                 </div>
-                <div className="mt-1.5 text-sm font-medium text-white">{heroStats.nextRaidLabel}</div>
+                <div className="mt-1 truncate text-sm font-semibold text-white">{heroStats.nextRaidLabel}</div>
               </div>
             </div>
 
-            <div className="relative mt-2.5 rounded-2xl border border-white/8 bg-black/18 p-3">
+            <div className="relative mt-2.5 rounded-[1.2rem] border border-white/8 bg-black/18 p-3">
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
                 Next Raid
               </div>
-              <div className="mt-1.5 text-sm font-semibold text-white">{heroStats.nextRaidLabel}</div>
+              <div className="mt-1.5 truncate font-serif text-sm font-semibold text-white">{heroStats.nextRaidLabel}</div>
               <div className="mt-1 text-xs text-stone-400">
                 {heroStats.nextRaidDate || "예정된 일정이 없습니다."}
               </div>
             </div>
 
-            <div className="relative mt-2.5 flex-1 rounded-2xl border border-white/8 bg-black/18 p-3">
+            <div className="relative mt-2.5 flex-1 rounded-[1.2rem] border border-white/8 bg-black/18 p-3">
               <div className="flex items-center justify-between gap-2">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
@@ -2211,7 +2148,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                   className="inline-flex items-center gap-2 rounded-xl border border-amber-200/12 bg-amber-300/[0.08] px-2.5 py-1.5 text-[11px] font-medium text-amber-50 transition hover:border-amber-100/22 hover:bg-amber-300/[0.12]"
                 >
                   <CalendarDays size={14} />
-                  월별 레이드 일정 보기
+                  월별 일정
                 </button>
               </div>
             </div>
@@ -2322,28 +2259,28 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-slate-950/72 backdrop-blur-2xl shadow-[0_14px_40px_rgba(2,6,23,0.34)]">
+    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-amber-100/10 bg-[linear-gradient(180deg,rgba(16,12,9,0.9),rgba(10,8,6,0.78))] backdrop-blur-2xl shadow-[0_18px_50px_rgba(0,0,0,0.34)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => handleMove("home")}
-            className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.07]"
+            className="group flex items-center gap-3 rounded-[1.1rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] px-3 py-2 transition-all hover:border-amber-200/22 hover:bg-amber-300/[0.08] hover:shadow-[0_12px_30px_rgba(212,175,55,0.12)]"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200/15 bg-amber-300/10 text-amber-100 shadow-[0_8px_24px_rgba(214,164,78,0.12)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.16),rgba(120,53,15,0.08))] text-amber-100 shadow-[0_10px_24px_rgba(214,164,78,0.16)]">
               <Shield size={16} />
             </div>
             <div className="hidden text-left sm:block">
               <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/80">
                 Guild Service
               </div>
-              <div className="text-sm font-semibold text-white">
+              <div className="font-serif text-sm font-semibold tracking-[0.02em] text-white">
                 {profile?.role === "admin" ? "Control Center" : "Guild Workspace"}
               </div>
             </div>
           </button>
         </div>
 
-        <div className="hidden items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 backdrop-blur-md md:flex">
+        <div className="hidden items-center gap-1.5 rounded-[1.2rem] border border-amber-100/10 bg-white/[0.03] p-1.5 backdrop-blur-md md:flex">
           {navItems.map((item) => {
             const active = activeTab === item.id;
             return (
@@ -2352,13 +2289,13 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                 onClick={() => handleMove(item.id)}
                 className={`relative rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
                   active
-                    ? "bg-amber-400/12 text-amber-100 shadow-[inset_0_0_0_1px_rgba(246,205,127,0.12)]"
-                    : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                    ? "bg-[linear-gradient(180deg,rgba(245,194,105,0.16),rgba(245,194,105,0.08))] text-amber-50 shadow-[inset_0_0_0_1px_rgba(246,205,127,0.16),0_10px_24px_rgba(212,175,55,0.1)]"
+                    : "text-stone-400 hover:bg-white/[0.05] hover:text-white"
                 }`}
               >
                 <span className="relative z-10">{item.label}</span>
                 {active && (
-                  <span className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full bg-gradient-to-r from-amber-400 to-amber-200" />
+                  <span className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full bg-gradient-to-r from-transparent via-amber-200 to-transparent" />
                 )}
               </button>
             );
@@ -2369,7 +2306,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
           {user ? (
             <>
               <button
-                className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-amber-200/20 hover:bg-amber-300/[0.07] hover:text-white md:flex"
+                className="hidden h-11 w-11 items-center justify-center rounded-[1.1rem] border border-amber-100/10 bg-white/[0.03] text-stone-300 transition-all hover:-translate-y-0.5 hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white md:flex"
                 title="알림"
               >
                 <Bell size={16} />
@@ -2378,22 +2315,22 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setIsProfileMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.07]"
+                  className="flex items-center gap-3 rounded-[1.1rem] border border-amber-100/10 bg-white/[0.03] px-3 py-2 transition-all hover:border-amber-200/22 hover:bg-amber-300/[0.08] hover:shadow-[0_12px_30px_rgba(212,175,55,0.12)]"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-200/15 bg-amber-300/10 text-sm font-semibold text-amber-50 shadow-[0_8px_24px_rgba(214,164,78,0.12)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-amber-200/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.16),rgba(120,53,15,0.08))] text-sm font-semibold text-amber-50 shadow-[0_8px_24px_rgba(214,164,78,0.16)]">
                     {avatarText}
                   </div>
                   <div className="hidden text-left sm:block">
                     <div className="max-w-[140px] truncate text-sm font-semibold text-white">
                       {displayName}
                     </div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="text-[11px] text-stone-400">
                       {roleLabel}
                     </div>
                   </div>
                   <ChevronRight
                     size={16}
-                    className={`text-slate-500 transition-transform ${
+                    className={`text-stone-500 transition-transform ${
                       isProfileMenuOpen ? "rotate-90 text-amber-200" : ""
                     }`}
                   />
@@ -2406,20 +2343,20 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.98 }}
                       transition={{ duration: 0.16 }}
-                      className="absolute right-0 top-[calc(100%+12px)] z-[80] w-64 overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.5)] backdrop-blur-2xl"
+                      className="absolute right-0 top-[calc(100%+12px)] z-[80] w-64 overflow-hidden rounded-[1.5rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(20,15,11,0.96),rgba(10,8,6,0.94))] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
                     >
-                      <div className="rounded-[1.2rem] border border-white/8 bg-white/[0.04] p-3">
+                      <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] p-3">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
                           Signed In
                         </div>
-                        <div className="mt-2 text-base font-semibold text-white">{displayName}</div>
-                        <div className="mt-1 text-xs text-slate-400">{roleLabel}</div>
+                        <div className="mt-2 font-serif text-base font-semibold text-white">{displayName}</div>
+                        <div className="mt-1 text-xs text-stone-400">{roleLabel}</div>
                       </div>
 
                       <div className="mt-2 space-y-1">
                         <button
                           onClick={() => handleMove("myroom")}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300 transition-all hover:bg-white/[0.05] hover:text-white"
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
                         >
                           <span>마이룸 이동</span>
                           <ChevronRight size={15} />
@@ -2427,7 +2364,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
 
                         <button
                           onClick={() => handleMove("home")}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300 transition-all hover:bg-white/[0.05] hover:text-white"
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
                         >
                           <span>홈으로 이동</span>
                           <ChevronRight size={15} />
@@ -2436,7 +2373,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                         {profile?.role === "admin" && (
                           <button
                             onClick={() => handleMove("admin")}
-                            className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300 transition-all hover:bg-white/[0.05] hover:text-white"
+                            className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
                           >
                             <span>관리자 패널</span>
                             <ChevronRight size={15} />
@@ -2462,13 +2399,13 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleMove("login")}
-                className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-slate-300 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.07] hover:text-white"
+                className="rounded-[1.1rem] border border-amber-100/10 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-stone-300 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
               >
                 로그인
               </button>
               <button
                 onClick={() => handleMove("signup")}
-                className="rounded-2xl border border-amber-200/15 bg-amber-400/12 px-4 py-2.5 text-sm font-semibold text-amber-100 transition-all hover:bg-amber-400/20"
+                className="rounded-[1.1rem] border border-amber-200/14 bg-[linear-gradient(180deg,rgba(245,194,105,0.18),rgba(245,194,105,0.1))] px-4 py-2.5 text-sm font-semibold text-amber-100 transition-all hover:bg-[linear-gradient(180deg,rgba(245,194,105,0.24),rgba(245,194,105,0.12))]"
               >
                 회원가입
               </button>
