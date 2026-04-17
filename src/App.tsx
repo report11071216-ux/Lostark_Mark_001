@@ -829,7 +829,8 @@ const HomeFeaturePortal = ({
   ];
 
   return (
-    <section className="relative z-10 mx-auto -mt-3 max-w-7xl px-6 pb-3 md:-mt-4 md:pb-4">
+    <section className="relative mx-auto max-w-7xl px-6 pb-3 md:pb-4">
+      <div className="pointer-events-none absolute inset-x-0 -top-14 h-20 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.08),transparent_72%)] blur-2xl" />
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-sky-300">Feature Gateway</div>
@@ -1778,106 +1779,143 @@ const ToastViewport = () => {
 
 
 const PageShell = ({ children }: { children: React.ReactNode }) => (
-  <div className="relative min-h-screen overflow-hidden bg-[#04101d] font-sans text-white selection:bg-sky-400/30">
+  <div className="relative min-h-screen overflow-hidden bg-[#07111f] font-sans text-white selection:bg-sky-400/30">
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-8%,rgba(102,204,255,0.42),transparent_28%),linear-gradient(180deg,#0b3e6b_0%,#062949_22%,#031425_52%,#04111d_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_14%,rgba(59,130,246,0.22),transparent_18%),radial-gradient(circle_at_78%_18%,rgba(56,189,248,0.16),transparent_20%),radial-gradient(circle_at_50%_50%,rgba(14,165,233,0.08),transparent_42%),linear-gradient(180deg,#08111f_0%,#071423_26%,#081725_54%,#08131f_100%)]" />
 
       <motion.div
-        className="absolute left-1/2 top-[-14%] h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-cyan-300/22 blur-[120px] md:h-[520px] md:w-[1100px]"
-        animate={{ opacity: [0.72, 0.9, 0.72], scale: [1, 1.08, 1] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute -left-28 -top-28 h-[460px] w-[460px] rounded-full bg-blue-500/28 blur-[120px] md:h-[720px] md:w-[720px]"
+        animate={{ x: [0, 72, 0], y: [0, 42, 0], scale: [1, 1.15, 1] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute right-[-140px] top-[10%] h-[420px] w-[420px] rounded-full bg-sky-400/24 blur-[130px] md:h-[620px] md:w-[620px]"
+        animate={{ x: [0, -88, 0], y: [0, 46, 0], scale: [1, 1.18, 1] }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-[-180px] left-[22%] h-[360px] w-[360px] rounded-full bg-indigo-400/20 blur-[120px] md:h-[520px] md:w-[520px]"
+        animate={{ x: [0, 40, 0], y: [0, -56, 0], scale: [1, 1.12, 1] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute left-[45%] top-[28%] h-[220px] w-[220px] rounded-full bg-cyan-300/12 blur-[90px] md:h-[320px] md:w-[320px]"
+        animate={{ x: [0, -24, 0], y: [0, 28, 0], scale: [1, 1.12, 1] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
       />
 
       <motion.div
-        className="absolute left-1/2 top-[42%] h-[78px] w-[140%] -translate-x-1/2 rounded-full bg-white/12 blur-[22px]"
-        animate={{ opacity: [0.22, 0.34, 0.22], scaleX: [0.96, 1.02, 0.96] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      <motion.div
-        className="absolute left-1/2 top-[42%] h-[120px] w-[130%] -translate-x-1/2 rounded-full bg-sky-300/12 blur-[54px]"
-        animate={{ opacity: [0.14, 0.24, 0.14], scaleX: [0.98, 1.03, 0.98] }}
-        transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      <div
-        className="absolute inset-0 opacity-[0.04]"
+        className="absolute inset-0 opacity-[0.09]"
+        animate={{ opacity: [0.06, 0.1, 0.06] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
         style={{
           backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)",
-          backgroundSize: "52px 52px",
+            "linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)",
+          backgroundSize: "60px 60px",
         }}
       />
 
-      {Array.from({ length: 70 }).map((_, i) => {
-        const size = i % 9 === 0 ? 8 : i % 4 === 0 ? 4 : 2;
-        const top = 38 + ((i * 7) % 22);
-        const left = (i * 11 + 9) % 100;
-        return (
-          <motion.span
-            key={`band-${i}`}
-            className="absolute rounded-full bg-white"
-            style={{
-              top: `${top}%`,
-              left: `${left}%`,
-              width: size,
-              height: size,
-              opacity: size >= 8 ? 0.42 : size >= 4 ? 0.34 : 0.22,
-              boxShadow:
-                size >= 8
-                  ? "0 0 22px rgba(255,255,255,0.55)"
-                  : size >= 4
-                  ? "0 0 14px rgba(147,197,253,0.42)"
-                  : "0 0 10px rgba(191,219,254,0.28)",
-              filter: size >= 8 ? "blur(0.4px)" : "none",
-            }}
-            animate={{
-              y: [0, -10 - (i % 5) * 2, 0],
-              opacity: [
-                size >= 8 ? 0.28 : 0.12,
-                size >= 8 ? 0.7 : size >= 4 ? 0.48 : 0.3,
-                size >= 8 ? 0.28 : 0.12,
-              ],
-            }}
-            transition={{
-              duration: 5 + (i % 6),
-              delay: (i % 8) * 0.35,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-        );
-      })}
+      <div
+        className="absolute inset-0 opacity-[0.045]"
+        style={{
+          backgroundImage:
+            "radial-gradient(rgba(255,255,255,0.45) 1px, transparent 1px)",
+          backgroundSize: "3px 3px",
+        }}
+      />
 
-      {Array.from({ length: 36 }).map((_, i) => {
-        const size = i % 7 === 0 ? 10 : i % 3 === 0 ? 5 : 3;
-        const top = (i * 13 + 6) % 100;
-        const left = (i * 17 + 21) % 100;
-        return (
-          <motion.span
-            key={`float-${i}`}
-            className="absolute rounded-full bg-sky-100"
-            style={{
-              top: `${top}%`,
-              left: `${left}%`,
-              width: size,
-              height: size,
-              opacity: size >= 10 ? 0.22 : size >= 5 ? 0.16 : 0.1,
-              filter: "blur(0.5px)",
-              boxShadow: size >= 10 ? "0 0 26px rgba(125,211,252,0.35)" : "0 0 18px rgba(191,219,254,0.18)",
-            }}
-            animate={{ y: [0, -24 - (i % 4) * 5, 0], x: [0, (i % 2 === 0 ? 8 : -8), 0], opacity: [0.06, 0.26, 0.06] }}
-            transition={{
-              duration: 9 + (i % 5) * 1.4,
-              delay: (i % 6) * 0.55,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-        );
-      })}
+      {Array.from({ length: 54 }).map((_, i) => (
+        <motion.span
+          key={`particle-small-${i}`}
+          className="absolute rounded-full bg-white/60"
+          style={{
+            width: `${1 + (i % 2)}px`,
+            height: `${1 + (i % 2)}px`,
+            top: `${(i * 19 + 11) % 100}%`,
+            left: `${(i * 23 + 17) % 100}%`,
+            filter: i % 3 === 0 ? "blur(0.4px)" : "none",
+            boxShadow: i % 4 === 0 ? "0 0 10px rgba(255,255,255,0.28)" : "0 0 6px rgba(125,211,252,0.12)",
+          }}
+          animate={{
+            y: [0, -24 - (i % 5) * 8, 0],
+            x: [0, (i % 2 === 0 ? 8 : -8), 0],
+            opacity: [0.18, 0.88, 0.18],
+            scale: [0.9, 1.18, 0.9],
+          }}
+          transition={{
+            duration: 5 + (i % 6),
+            delay: (i % 7) * 0.45,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
 
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,8,20,0.02),rgba(2,8,20,0.18)_36%,rgba(2,8,20,0.30)_100%)]" />
+      {Array.from({ length: 16 }).map((_, i) => (
+        <motion.span
+          key={`particle-medium-${i}`}
+          className="absolute rounded-full bg-sky-200/80"
+          style={{
+            width: `${3 + (i % 2)}px`,
+            height: `${3 + (i % 2)}px`,
+            top: `${(i * 31 + 9) % 100}%`,
+            left: `${(i * 27 + 21) % 100}%`,
+            filter: "blur(0.8px)",
+            boxShadow: "0 0 18px rgba(125,211,252,0.34)",
+          }}
+          animate={{
+            y: [0, -42 - (i % 4) * 10, 0],
+            x: [0, (i % 2 === 0 ? 12 : -12), 0],
+            opacity: [0.2, 0.95, 0.2],
+            scale: [0.92, 1.28, 0.92],
+          }}
+          transition={{
+            duration: 7 + (i % 4),
+            delay: (i % 5) * 0.6,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+
+      {Array.from({ length: 8 }).map((_, i) => (
+        <motion.span
+          key={`particle-large-${i}`}
+          className="absolute rounded-full bg-cyan-200/85"
+          style={{
+            width: `${6 + (i % 3)}px`,
+            height: `${6 + (i % 3)}px`,
+            top: `${(i * 37 + 15) % 100}%`,
+            left: `${(i * 41 + 25) % 100}%`,
+            filter: "blur(1.2px)",
+            boxShadow: "0 0 26px rgba(103,232,249,0.42)",
+          }}
+          animate={{
+            y: [0, -54 - (i % 4) * 12, 0],
+            x: [0, (i % 2 === 0 ? 14 : -14), 0],
+            opacity: [0.16, 0.92, 0.16],
+            scale: [0.88, 1.36, 0.88],
+          }}
+          transition={{
+            duration: 6 + (i % 3),
+            delay: i * 0.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+
+      <motion.div
+        className="absolute inset-0 opacity-[0.12]"
+        animate={{ opacity: [0.08, 0.14, 0.08] }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          background:
+            "radial-gradient(circle at 50% 14%, rgba(125,211,252,0.12), transparent 22%), radial-gradient(circle at 18% 40%, rgba(59,130,246,0.12), transparent 20%), radial-gradient(circle at 80% 46%, rgba(34,211,238,0.08), transparent 22%)",
+        }}
+      />
+
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,17,31,0.02),rgba(7,17,31,0.32))]" />
     </div>
     {children}
   </div>
@@ -2026,10 +2064,8 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
   const primarySchedule = selectedSchedules[0];
 
   return (
-    <section className="relative flex min-h-[210px] items-center overflow-visible md:min-h-[255px]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-18%,rgba(125,211,252,0.18),transparent_28%),radial-gradient(circle_at_50%_48%,rgba(147,197,253,0.08),transparent_34%),linear-gradient(180deg,rgba(8,15,32,0.00),rgba(8,15,32,0.04)_42%,rgba(8,15,32,0.00)_100%)]" />
-      <div className="absolute inset-x-[-8%] bottom-[-56px] h-[120px] rounded-full bg-sky-200/10 blur-[54px]" />
-      <div className="absolute inset-x-0 bottom-[-28px] h-[72px] bg-[radial-gradient(ellipse_at_center,rgba(191,219,254,0.14),transparent_70%)]" />
+    <section className="relative flex min-h-[220px] items-center overflow-hidden md:min-h-[270px]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_24%,rgba(59,130,246,0.18),transparent_24%),radial-gradient(circle_at_76%_28%,rgba(103,232,249,0.11),transparent_20%),radial-gradient(circle_at_50%_110%,rgba(56,189,248,0.08),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.00),rgba(8,15,32,0.18)_58%,rgba(8,15,32,0.08)_100%)]" />
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,620px)] xl:grid-cols-[minmax(0,1fr)_340px_260px]">
         <motion.div
@@ -2259,7 +2295,6 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
         </motion.div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#091120] to-transparent" />
     </section>
   );
 };
@@ -4089,10 +4124,35 @@ const CreateRaidModal = ({
     try {
       const maxParticipants = form.type === "anime" ? 8 : form.raid_type === "4인" ? 4 : 8;
 
+      const buildRaidDateTime = (dateValue: string, timeValue: string) => {
+        if (!dateValue || !timeValue) return null;
+
+        const [year, month, day] = dateValue.split("-").map(Number);
+        const [hour, minute] = timeValue.split(":").map(Number);
+
+        if (
+          !Number.isFinite(year) ||
+          !Number.isFinite(month) ||
+          !Number.isFinite(day) ||
+          !Number.isFinite(hour) ||
+          !Number.isFinite(minute)
+        ) {
+          return null;
+        }
+
+        const localDate = new Date(year, month - 1, day, hour, minute, 0);
+        return Number.isNaN(localDate.getTime()) ? null : localDate.toISOString();
+      };
+
+      const raidDateTime = buildRaidDateTime(date, form.raid_time);
+
       const { error } = await supabase.from("raid_schedules").insert({
         raid_name: form.raid_name,
         raid_date: date,
         raid_time: form.raid_time,
+        raid_datetime: raidDateTime,
+        one_hour_reminded: false,
+        ten_min_reminded: false,
         difficulty: form.type === "anime" ? null : form.difficulty,
         raid_type: form.type === "anime" ? "시청" : form.raid_type,
         max_participants: maxParticipants,
