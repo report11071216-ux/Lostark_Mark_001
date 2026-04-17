@@ -71,7 +71,7 @@ export default async function handler(req, res) {
           message: "⏰ 레이드 1시간 전입니다!",
           embeds: [
             {
-              title: raid.title ?? "레이드 알림",
+              title: raid.raid_name ?? "레이드 알림",
               description: `시작 시간: ${new Date(raid.raid_datetime).toLocaleString("ko-KR")}`,
               color: 0xffcc00,
             },
