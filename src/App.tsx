@@ -4072,6 +4072,7 @@ const CreateRaidModal = ({
         raid_time: form.raid_time,
         raid_datetime: raidDateTime,
         one_hour_reminded: false,
+        ten_min_reminded: false,
         difficulty: form.type === "anime" ? null : form.difficulty,
         raid_type: form.type === "anime" ? "시청" : form.raid_type,
         max_participants: maxParticipants,
