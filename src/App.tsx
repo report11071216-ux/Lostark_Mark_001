@@ -170,26 +170,6 @@ const getCapacity = (raid: any) => {
 const formatDate = (year: number, month: number, day: number) =>
   `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
-const buildRaidDateTime = (date: string, time: string) => {
-  if (!date || !time) return null;
-
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-
-  if (
-    !Number.isFinite(year) ||
-    !Number.isFinite(month) ||
-    !Number.isFinite(day) ||
-    !Number.isFinite(hour) ||
-    !Number.isFinite(minute)
-  ) {
-    return null;
-  }
-
-  const localDate = new Date(year, month - 1, day, hour, minute, 0);
-  return Number.isNaN(localDate.getTime()) ? null : localDate.toISOString();
-};
-
 const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
@@ -4063,14 +4043,11 @@ const CreateRaidModal = ({
 
     try {
       const maxParticipants = form.type === "anime" ? 8 : form.raid_type === "4인" ? 4 : 8;
-      const raidDateTime = buildRaidDateTime(date, form.raid_time);
 
       const { error } = await supabase.from("raid_schedules").insert({
         raid_name: form.raid_name,
         raid_date: date,
         raid_time: form.raid_time,
-        raid_datetime: raidDateTime,
-        one_hour_reminded: false,
         difficulty: form.type === "anime" ? null : form.difficulty,
         raid_type: form.type === "anime" ? "시청" : form.raid_type,
         max_participants: maxParticipants,
