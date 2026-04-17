@@ -1,9 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/raid-reminder",
-      "schedule": "*/5 * * * *"
-    }
-  ],
-  "version": 2
-}
