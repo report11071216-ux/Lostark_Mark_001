@@ -829,8 +829,7 @@ const HomeFeaturePortal = ({
   ];
 
   return (
-    <section className="relative mx-auto max-w-7xl px-6 pb-3 md:pb-4">
-      <div className="pointer-events-none absolute inset-x-0 -top-14 h-20 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.08),transparent_72%)] blur-2xl" />
+    <section className="mx-auto max-w-7xl px-6 pb-3 md:pb-4">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-sky-300">Feature Gateway</div>
@@ -1779,71 +1778,69 @@ const ToastViewport = () => {
 
 
 const PageShell = ({ children }: { children: React.ReactNode }) => (
-  <div className="relative min-h-screen overflow-hidden bg-[#07111f] font-sans text-white selection:bg-sky-400/30">
+  <div className="relative min-h-screen overflow-hidden bg-[#040b16] font-sans text-white selection:bg-sky-400/30">
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_14%,rgba(59,130,246,0.22),transparent_18%),radial-gradient(circle_at_78%_18%,rgba(56,189,248,0.16),transparent_20%),radial-gradient(circle_at_50%_50%,rgba(14,165,233,0.08),transparent_42%),linear-gradient(180deg,#08111f_0%,#071423_26%,#081725_54%,#08131f_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_12%,rgba(49,130,246,0.24),transparent_18%),radial-gradient(circle_at_50%_22%,rgba(56,189,248,0.18),transparent_28%),radial-gradient(circle_at_18%_18%,rgba(37,99,235,0.12),transparent_22%),radial-gradient(circle_at_82%_20%,rgba(14,165,233,0.10),transparent_20%),linear-gradient(180deg,#07101f_0%,#05101c_36%,#04101a_68%,#061826_100%)]" />
 
       <motion.div
-        className="absolute -left-28 -top-28 h-[460px] w-[460px] rounded-full bg-blue-500/28 blur-[120px] md:h-[720px] md:w-[720px]"
-        animate={{ x: [0, 72, 0], y: [0, 42, 0], scale: [1, 1.15, 1] }}
+        className="absolute left-1/2 top-[-120px] h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-blue-500/30 blur-[120px] md:top-[-180px] md:h-[760px] md:w-[760px]"
+        animate={{ scale: [1, 1.08, 1], opacity: [0.38, 0.56, 0.38], y: [0, 22, 0] }}
+        transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute left-1/2 top-[6%] h-[320px] w-[72%] -translate-x-1/2 rounded-full bg-sky-400/14 blur-[120px] md:h-[420px]"
+        animate={{ opacity: [0.18, 0.32, 0.18], scaleX: [1, 1.06, 1] }}
+        transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute -left-24 top-[8%] h-[360px] w-[360px] rounded-full bg-blue-600/18 blur-[110px] md:h-[560px] md:w-[560px]"
+        animate={{ x: [0, 48, 0], y: [0, 36, 0], scale: [1, 1.08, 1] }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute right-[-140px] top-[10%] h-[380px] w-[380px] rounded-full bg-cyan-400/14 blur-[120px] md:h-[560px] md:w-[560px]"
+        animate={{ x: [0, -54, 0], y: [0, 44, 0], scale: [1, 1.1, 1] }}
+        transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-[-180px] left-1/2 h-[380px] w-[80%] -translate-x-1/2 rounded-full bg-sky-500/12 blur-[120px] md:h-[500px]"
+        animate={{ opacity: [0.12, 0.22, 0.12], y: [0, -24, 0] }}
         transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
-      <motion.div
-        className="absolute right-[-140px] top-[10%] h-[420px] w-[420px] rounded-full bg-sky-400/24 blur-[130px] md:h-[620px] md:w-[620px]"
-        animate={{ x: [0, -88, 0], y: [0, 46, 0], scale: [1, 1.18, 1] }}
-        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute bottom-[-180px] left-[22%] h-[360px] w-[360px] rounded-full bg-indigo-400/20 blur-[120px] md:h-[520px] md:w-[520px]"
-        animate={{ x: [0, 40, 0], y: [0, -56, 0], scale: [1, 1.12, 1] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute left-[45%] top-[28%] h-[220px] w-[220px] rounded-full bg-cyan-300/12 blur-[90px] md:h-[320px] md:w-[320px]"
-        animate={{ x: [0, -24, 0], y: [0, 28, 0], scale: [1, 1.12, 1] }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-      />
 
       <motion.div
-        className="absolute inset-0 opacity-[0.09]"
-        animate={{ opacity: [0.06, 0.1, 0.06] }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute inset-0 opacity-[0.11]"
+        animate={{ opacity: [0.08, 0.14, 0.08] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
         style={{
           backgroundImage:
             "linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
+          backgroundSize: "56px 56px",
         }}
       />
 
       <div
-        className="absolute inset-0 opacity-[0.045]"
+        className="absolute inset-0 opacity-[0.06]"
         style={{
           backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.45) 1px, transparent 1px)",
+            "radial-gradient(rgba(255,255,255,0.55) 1px, transparent 1px)",
           backgroundSize: "3px 3px",
         }}
       />
 
-      {Array.from({ length: 54 }).map((_, i) => (
+      {Array.from({ length: 36 }).map((_, i) => (
         <motion.span
           key={`particle-small-${i}`}
-          className="absolute rounded-full bg-white/60"
+          className="absolute rounded-full bg-white/45 shadow-[0_0_12px_rgba(255,255,255,0.28)]"
           style={{
             width: `${1 + (i % 2)}px`,
             height: `${1 + (i % 2)}px`,
             top: `${(i * 19 + 11) % 100}%`,
-            left: `${(i * 23 + 17) % 100}%`,
-            filter: i % 3 === 0 ? "blur(0.4px)" : "none",
-            boxShadow: i % 4 === 0 ? "0 0 10px rgba(255,255,255,0.28)" : "0 0 6px rgba(125,211,252,0.12)",
+            left: `${(i * 13 + 17) % 100}%`,
           }}
-          animate={{
-            y: [0, -24 - (i % 5) * 8, 0],
-            x: [0, (i % 2 === 0 ? 8 : -8), 0],
-            opacity: [0.18, 0.88, 0.18],
-            scale: [0.9, 1.18, 0.9],
-          }}
+          animate={{ y: [0, -22, 0], x: [0, (i % 2 === 0 ? 6 : -6), 0], opacity: [0.16, 0.72, 0.16] }}
           transition={{
-            duration: 5 + (i % 6),
+            duration: 5.5 + (i % 5),
             delay: (i % 7) * 0.45,
             repeat: Infinity,
             ease: "easeInOut",
@@ -1851,71 +1848,48 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
         />
       ))}
 
-      {Array.from({ length: 16 }).map((_, i) => (
+      {Array.from({ length: 20 }).map((_, i) => (
         <motion.span
           key={`particle-medium-${i}`}
-          className="absolute rounded-full bg-sky-200/80"
+          className="absolute rounded-full bg-sky-100/70 shadow-[0_0_18px_rgba(125,211,252,0.45)]"
           style={{
             width: `${3 + (i % 2)}px`,
             height: `${3 + (i % 2)}px`,
-            top: `${(i * 31 + 9) % 100}%`,
-            left: `${(i * 27 + 21) % 100}%`,
-            filter: "blur(0.8px)",
-            boxShadow: "0 0 18px rgba(125,211,252,0.34)",
+            top: `${(i * 23 + 9) % 88}%`,
+            left: `${(i * 21 + 7) % 100}%`,
           }}
-          animate={{
-            y: [0, -42 - (i % 4) * 10, 0],
-            x: [0, (i % 2 === 0 ? 12 : -12), 0],
-            opacity: [0.2, 0.95, 0.2],
-            scale: [0.92, 1.28, 0.92],
-          }}
+          animate={{ y: [0, -34, 0], x: [0, (i % 2 === 0 ? 10 : -10), 0], opacity: [0.24, 0.92, 0.24], scale: [1, 1.18, 1] }}
           transition={{
-            duration: 7 + (i % 4),
-            delay: (i % 5) * 0.6,
+            duration: 6.5 + (i % 4),
+            delay: (i % 6) * 0.6,
             repeat: Infinity,
             ease: "easeInOut",
           }}
         />
       ))}
 
-      {Array.from({ length: 8 }).map((_, i) => (
+      {Array.from({ length: 10 }).map((_, i) => (
         <motion.span
           key={`particle-large-${i}`}
-          className="absolute rounded-full bg-cyan-200/85"
+          className="absolute rounded-full bg-white/75 shadow-[0_0_24px_rgba(147,197,253,0.55)]"
           style={{
-            width: `${6 + (i % 3)}px`,
-            height: `${6 + (i % 3)}px`,
-            top: `${(i * 37 + 15) % 100}%`,
-            left: `${(i * 41 + 25) % 100}%`,
-            filter: "blur(1.2px)",
-            boxShadow: "0 0 26px rgba(103,232,249,0.42)",
+            width: `${5 + (i % 2)}px`,
+            height: `${5 + (i % 2)}px`,
+            top: `${12 + i * 7}%`,
+            left: `${8 + ((i * 11) % 82)}%`,
+            filter: "blur(0.2px)",
           }}
-          animate={{
-            y: [0, -54 - (i % 4) * 12, 0],
-            x: [0, (i % 2 === 0 ? 14 : -14), 0],
-            opacity: [0.16, 0.92, 0.16],
-            scale: [0.88, 1.36, 0.88],
-          }}
+          animate={{ y: [0, -44, 0], opacity: [0.24, 1, 0.24], scale: [1, 1.28, 1] }}
           transition={{
-            duration: 6 + (i % 3),
-            delay: i * 0.5,
+            duration: 7.5 + (i % 3),
+            delay: i * 0.4,
             repeat: Infinity,
             ease: "easeInOut",
           }}
         />
       ))}
 
-      <motion.div
-        className="absolute inset-0 opacity-[0.12]"
-        animate={{ opacity: [0.08, 0.14, 0.08] }}
-        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
-        style={{
-          background:
-            "radial-gradient(circle at 50% 14%, rgba(125,211,252,0.12), transparent 22%), radial-gradient(circle at 18% 40%, rgba(59,130,246,0.12), transparent 20%), radial-gradient(circle at 80% 46%, rgba(34,211,238,0.08), transparent 22%)",
-        }}
-      />
-
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,17,31,0.02),rgba(7,17,31,0.32))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,10,20,0.06),rgba(3,10,20,0.18)_34%,rgba(3,10,20,0.26)_58%,rgba(3,10,20,0.34)_100%)]" />
     </div>
     {children}
   </div>
@@ -2064,8 +2038,8 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
   const primarySchedule = selectedSchedules[0];
 
   return (
-    <section className="relative flex min-h-[220px] items-center overflow-hidden md:min-h-[270px]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_24%,rgba(59,130,246,0.18),transparent_24%),radial-gradient(circle_at_76%_28%,rgba(103,232,249,0.11),transparent_20%),radial-gradient(circle_at_50%_110%,rgba(56,189,248,0.08),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.00),rgba(8,15,32,0.18)_58%,rgba(8,15,32,0.08)_100%)]" />
+    <section className="relative flex min-h-[230px] items-center overflow-hidden md:min-h-[280px]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_14%,rgba(59,130,246,0.18),transparent_18%),radial-gradient(circle_at_50%_26%,rgba(125,211,252,0.10),transparent_28%),radial-gradient(circle_at_18%_30%,rgba(37,99,235,0.08),transparent_26%),radial-gradient(circle_at_82%_28%,rgba(14,165,233,0.07),transparent_24%),linear-gradient(180deg,rgba(5,12,24,0.00),rgba(5,12,24,0.10)_34%,rgba(5,12,24,0.14)_58%,rgba(5,12,24,0.02)_100%)]" />
 
       <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,620px)] xl:grid-cols-[minmax(0,1fr)_340px_260px]">
         <motion.div
@@ -2088,19 +2062,19 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           </p>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-            <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 backdrop-blur-md">
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 공지
               </div>
               <div className="mt-1 text-base font-semibold text-white">{noticeCount}</div>
             </div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 backdrop-blur-md">
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 7일 일정
               </div>
               <div className="mt-1 text-base font-semibold text-white">{heroStats.upcomingRaids}</div>
             </div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 backdrop-blur-md">
+            <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 길드원
               </div>
@@ -2127,7 +2101,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           className="relative hidden h-full lg:block"
         >
           <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
-          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.7rem] border border-white/8 bg-white/[0.04] p-3.5 backdrop-blur-2xl shadow-[0_14px_34px_rgba(15,23,42,0.24)]">
+          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.7rem] border border-white/8 bg-white/[0.035] p-3.5 backdrop-blur-2xl shadow-[0_14px_34px_rgba(15,23,42,0.24)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
@@ -2228,7 +2202,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           className="relative hidden h-full xl:block"
         >
           <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
-          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.7rem] border border-white/8 bg-white/[0.04] p-3.5 backdrop-blur-2xl shadow-[0_14px_34px_rgba(15,23,42,0.24)]">
+          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.7rem] border border-white/8 bg-white/[0.035] p-3.5 backdrop-blur-2xl shadow-[0_14px_34px_rgba(15,23,42,0.24)]">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
@@ -2295,6 +2269,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
         </motion.div>
       </div>
 
+      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#091120] to-transparent" />
     </section>
   );
 };
