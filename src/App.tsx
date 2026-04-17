@@ -3691,7 +3691,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                         </div>
                       )}
 
-                      {profile?.role === "admin" && scheduleView === "all" && (
+                      {user && scheduleView === "all" && (
                         <button
                           onClick={() => {
                             setSelectedDate(dateStr);
