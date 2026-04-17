@@ -170,6 +170,26 @@ const getCapacity = (raid: any) => {
 const formatDate = (year: number, month: number, day: number) =>
   `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
+const buildRaidDateTime = (date: string, time: string) => {
+  if (!date || !time) return null;
+
+  const [year, month, day] = date.split("-").map(Number);
+  const [hour, minute] = time.split(":").map(Number);
+
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(day) ||
+    !Number.isFinite(hour) ||
+    !Number.isFinite(minute)
+  ) {
+    return null;
+  }
+
+  const localDate = new Date(year, month - 1, day, hour, minute, 0);
+  return Number.isNaN(localDate.getTime()) ? null : localDate.toISOString();
+};
+
 const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
@@ -4043,7 +4063,6 @@ const CreateRaidModal = ({
 
     try {
       const maxParticipants = form.type === "anime" ? 8 : form.raid_type === "4인" ? 4 : 8;
-
       const raidDateTime = buildRaidDateTime(date, form.raid_time);
 
       const { error } = await supabase.from("raid_schedules").insert({
@@ -10433,15 +10452,3 @@ const AdminPointShopManager = () => {
     </div>
   );
 };
-
-const buildRaidDateTime = (dateKey: string, timeValue: string) => {
-  const [year, month, day] = String(dateKey || "").split("-").map(Number);
-  const [hour, minute] = String(timeValue || "00:00").split(":").map(Number);
-
-  if (!year || !month || !day) return null;
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
-
-  return new Date(year, month - 1, day, hour || 0, minute || 0, 0, 0).toISOString();
-};
-
-
