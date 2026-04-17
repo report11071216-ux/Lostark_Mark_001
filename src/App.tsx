@@ -829,7 +829,8 @@ const HomeFeaturePortal = ({
   ];
 
   return (
-    <section className="mx-auto max-w-7xl px-6 pb-3 md:pb-4">
+    <section className="relative mx-auto max-w-7xl px-6 pb-3 md:pb-4">
+      <div className="pointer-events-none absolute inset-x-0 -top-14 h-20 bg-[radial-gradient(circle_at_center,rgba(56,189,248,0.08),transparent_72%)] blur-2xl" />
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-sky-300">Feature Gateway</div>
@@ -1780,117 +1781,145 @@ const ToastViewport = () => {
 const PageShell = ({ children }: { children: React.ReactNode }) => (
   <div className="relative min-h-screen overflow-hidden bg-[#07111f] font-sans text-white selection:bg-sky-400/30">
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_14%,rgba(59,130,246,0.22),transparent_18%),radial-gradient(circle_at_78%_18%,rgba(56,189,248,0.16),transparent_20%),radial-gradient(circle_at_50%_50%,rgba(14,165,233,0.08),transparent_42%),linear-gradient(180deg,#08111f_0%,#071423_26%,#081725_54%,#08131f_100%)]" />
+
       <motion.div
-        className="absolute -left-24 -top-24 h-[420px] w-[420px] rounded-full bg-blue-500/26 blur-3xl md:h-[620px] md:w-[620px]"
-        animate={{ x: [0, 60, 0], y: [0, 36, 0], scale: [1, 1.12, 1] }}
+        className="absolute -left-28 -top-28 h-[460px] w-[460px] rounded-full bg-blue-500/28 blur-[120px] md:h-[720px] md:w-[720px]"
+        animate={{ x: [0, 72, 0], y: [0, 42, 0], scale: [1, 1.15, 1] }}
         transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute right-[-120px] top-[16%] h-[360px] w-[360px] rounded-full bg-sky-400/22 blur-3xl md:h-[520px] md:w-[520px]"
-        animate={{ x: [0, -70, 0], y: [0, 40, 0], scale: [1, 1.14, 1] }}
+        className="absolute right-[-140px] top-[10%] h-[420px] w-[420px] rounded-full bg-sky-400/24 blur-[130px] md:h-[620px] md:w-[620px]"
+        animate={{ x: [0, -88, 0], y: [0, 46, 0], scale: [1, 1.18, 1] }}
         transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-[-140px] left-[26%] h-[320px] w-[320px] rounded-full bg-indigo-400/20 blur-3xl md:h-[440px] md:w-[440px]"
-        animate={{ x: [0, 34, 0], y: [0, -48, 0], scale: [1, 1.1, 1] }}
+        className="absolute bottom-[-180px] left-[22%] h-[360px] w-[360px] rounded-full bg-indigo-400/20 blur-[120px] md:h-[520px] md:w-[520px]"
+        animate={{ x: [0, 40, 0], y: [0, -56, 0], scale: [1, 1.12, 1] }}
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute left-[45%] top-[28%] h-[220px] w-[220px] rounded-full bg-cyan-300/12 blur-[90px] md:h-[320px] md:w-[320px]"
+        animate={{ x: [0, -24, 0], y: [0, 28, 0], scale: [1, 1.12, 1] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
       />
 
       <motion.div
-        className="absolute inset-0 opacity-[0.14]"
-        animate={{ opacity: [0.09, 0.16, 0.09] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute inset-0 opacity-[0.09]"
+        animate={{ opacity: [0.06, 0.1, 0.06] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
         style={{
           backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "52px 52px",
+            "linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)",
+          backgroundSize: "60px 60px",
         }}
       />
 
       <div
-        className="absolute inset-0 opacity-[0.05]"
+        className="absolute inset-0 opacity-[0.045]"
         style={{
           backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.55) 1px, transparent 1px)",
+            "radial-gradient(rgba(255,255,255,0.45) 1px, transparent 1px)",
           backgroundSize: "3px 3px",
         }}
       />
 
-      {Array.from({ length: 22 }).map((_, i) => (
+      {Array.from({ length: 54 }).map((_, i) => (
         <motion.span
-          key={i}
-          className="absolute h-1.5 w-1.5 rounded-full bg-white/35"
+          key={`particle-small-${i}`}
+          className="absolute rounded-full bg-white/60"
           style={{
-            top: `${(i * 29 + 7) % 100}%`,
-            left: `${(i * 17 + 13) % 100}%`,
+            width: `${1 + (i % 2)}px`,
+            height: `${1 + (i % 2)}px`,
+            top: `${(i * 19 + 11) % 100}%`,
+            left: `${(i * 23 + 17) % 100}%`,
+            filter: i % 3 === 0 ? "blur(0.4px)" : "none",
+            boxShadow: i % 4 === 0 ? "0 0 10px rgba(255,255,255,0.28)" : "0 0 6px rgba(125,211,252,0.12)",
           }}
-          animate={{ y: [0, -28, 0], opacity: [0.18, 0.85, 0.18] }}
+          animate={{
+            y: [0, -24 - (i % 5) * 8, 0],
+            x: [0, (i % 2 === 0 ? 8 : -8), 0],
+            opacity: [0.18, 0.88, 0.18],
+            scale: [0.9, 1.18, 0.9],
+          }}
           transition={{
-            duration: 6 + (i % 5),
-            delay: (i % 6) * 0.8,
+            duration: 5 + (i % 6),
+            delay: (i % 7) * 0.45,
             repeat: Infinity,
             ease: "easeInOut",
           }}
         />
       ))}
 
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,17,31,0.14),rgba(7,17,31,0.54))]" />
+      {Array.from({ length: 16 }).map((_, i) => (
+        <motion.span
+          key={`particle-medium-${i}`}
+          className="absolute rounded-full bg-sky-200/80"
+          style={{
+            width: `${3 + (i % 2)}px`,
+            height: `${3 + (i % 2)}px`,
+            top: `${(i * 31 + 9) % 100}%`,
+            left: `${(i * 27 + 21) % 100}%`,
+            filter: "blur(0.8px)",
+            boxShadow: "0 0 18px rgba(125,211,252,0.34)",
+          }}
+          animate={{
+            y: [0, -42 - (i % 4) * 10, 0],
+            x: [0, (i % 2 === 0 ? 12 : -12), 0],
+            opacity: [0.2, 0.95, 0.2],
+            scale: [0.92, 1.28, 0.92],
+          }}
+          transition={{
+            duration: 7 + (i % 4),
+            delay: (i % 5) * 0.6,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+
+      {Array.from({ length: 8 }).map((_, i) => (
+        <motion.span
+          key={`particle-large-${i}`}
+          className="absolute rounded-full bg-cyan-200/85"
+          style={{
+            width: `${6 + (i % 3)}px`,
+            height: `${6 + (i % 3)}px`,
+            top: `${(i * 37 + 15) % 100}%`,
+            left: `${(i * 41 + 25) % 100}%`,
+            filter: "blur(1.2px)",
+            boxShadow: "0 0 26px rgba(103,232,249,0.42)",
+          }}
+          animate={{
+            y: [0, -54 - (i % 4) * 12, 0],
+            x: [0, (i % 2 === 0 ? 14 : -14), 0],
+            opacity: [0.16, 0.92, 0.16],
+            scale: [0.88, 1.36, 0.88],
+          }}
+          transition={{
+            duration: 6 + (i % 3),
+            delay: i * 0.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+
+      <motion.div
+        className="absolute inset-0 opacity-[0.12]"
+        animate={{ opacity: [0.08, 0.14, 0.08] }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          background:
+            "radial-gradient(circle at 50% 14%, rgba(125,211,252,0.12), transparent 22%), radial-gradient(circle at 18% 40%, rgba(59,130,246,0.12), transparent 20%), radial-gradient(circle at 80% 46%, rgba(34,211,238,0.08), transparent 22%)",
+        }}
+      />
+
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,17,31,0.02),rgba(7,17,31,0.32))]" />
     </div>
     {children}
   </div>
 );
-
-
-
-const HeroAmbientParticles = () => {
-  const particles = [
-    { left: "6%", top: "18%", size: "h-1.5 w-1.5", delay: "0s", duration: "8.5s", opacity: "0.35" },
-    { left: "14%", top: "62%", size: "h-2 w-2", delay: "1.2s", duration: "11s", opacity: "0.45" },
-    { left: "22%", top: "28%", size: "h-1 w-1", delay: "0.4s", duration: "9.5s", opacity: "0.4" },
-    { left: "31%", top: "72%", size: "h-2.5 w-2.5", delay: "2.4s", duration: "10.5s", opacity: "0.5" },
-    { left: "44%", top: "16%", size: "h-1.5 w-1.5", delay: "0.8s", duration: "8.8s", opacity: "0.42" },
-    { left: "56%", top: "64%", size: "h-3 w-3", delay: "1.6s", duration: "12s", opacity: "0.5" },
-    { left: "67%", top: "24%", size: "h-1 w-1", delay: "2.1s", duration: "9.2s", opacity: "0.38" },
-    { left: "76%", top: "52%", size: "h-2 w-2", delay: "0.3s", duration: "10.8s", opacity: "0.48" },
-    { left: "84%", top: "20%", size: "h-2.5 w-2.5", delay: "1.9s", duration: "12.5s", opacity: "0.55" },
-    { left: "91%", top: "68%", size: "h-1.5 w-1.5", delay: "0.6s", duration: "9.8s", opacity: "0.4" },
-    { left: "11%", top: "42%", size: "h-3.5 w-3.5", delay: "1.4s", duration: "14s", opacity: "0.2" },
-    { left: "59%", top: "38%", size: "h-4 w-4", delay: "2.8s", duration: "15s", opacity: "0.18" },
-  ];
-
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute -left-24 top-[-12%] h-[22rem] w-[22rem] rounded-full bg-sky-400/18 blur-[120px]" />
-      <div className="absolute right-[-6%] top-[8%] h-[18rem] w-[18rem] rounded-full bg-blue-500/16 blur-[110px]" />
-      <div className="absolute left-[38%] top-[18%] h-[14rem] w-[14rem] rounded-full bg-cyan-300/12 blur-[100px]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(125,211,252,0.12),transparent_18%),radial-gradient(circle_at_82%_24%,rgba(59,130,246,0.12),transparent_22%),radial-gradient(circle_at_52%_60%,rgba(56,189,248,0.08),transparent_28%),linear-gradient(180deg,rgba(5,10,22,0.02),rgba(5,10,22,0.34)_62%,rgba(5,10,22,0.12))]" />
-      <div className="absolute inset-0 opacity-[0.16] [background-image:linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:84px_84px] [mask-image:radial-gradient(circle_at_center,black,transparent_82%)]" />
-      {particles.map((particle, index) => (
-        <motion.span
-          key={index}
-          className={`absolute ${particle.size} rounded-full bg-white shadow-[0_0_18px_rgba(255,255,255,0.55)]`}
-          style={{
-            left: particle.left,
-            top: particle.top,
-            opacity: Number(particle.opacity),
-          }}
-          animate={{
-            y: [-10, 14, -12],
-            x: [0, index % 2 === 0 ? 10 : -8, 0],
-            scale: [1, 1.18, 0.96, 1],
-            opacity: [Number(particle.opacity) * 0.55, Number(particle.opacity), Number(particle.opacity) * 0.65],
-          }}
-          transition={{
-            duration: Number(String(particle.duration).replace("s", "")),
-            delay: Number(String(particle.delay).replace("s", "")),
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-    </div>
-  );
-};
 
 
 const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
@@ -2035,47 +2064,43 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
   const primarySchedule = selectedSchedules[0];
 
   return (
-    <section className="relative isolate overflow-hidden">
-      <HeroAmbientParticles />
+    <section className="relative flex min-h-[220px] items-center overflow-hidden md:min-h-[270px]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_24%,rgba(59,130,246,0.18),transparent_24%),radial-gradient(circle_at_76%_28%,rgba(103,232,249,0.11),transparent_20%),radial-gradient(circle_at_50%_110%,rgba(56,189,248,0.08),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.00),rgba(8,15,32,0.18)_58%,rgba(8,15,32,0.08)_100%)]" />
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[#08101d] via-[#08101d]/65 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#091120] via-[#091120]/72 to-transparent" />
-
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-5 px-6 py-8 md:py-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,620px)] xl:grid-cols-[minmax(0,1fr)_340px_260px]">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,620px)] xl:grid-cols-[minmax(0,1fr)_340px_260px]">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.72 }}
-          className="relative text-center md:text-left"
+          className="text-center md:text-left"
         >
-          <div className="pointer-events-none absolute -left-10 top-0 hidden h-40 w-40 rounded-full bg-sky-400/12 blur-3xl md:block" />
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-blue-100/90 backdrop-blur-xl">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-blue-100/90">
             <Sparkles size={10} />
             Guild System
           </span>
 
-          <h1 className="mt-3 bg-gradient-to-b from-white via-slate-100 to-slate-400 bg-clip-text text-3xl font-medium leading-none tracking-tight text-transparent drop-shadow-[0_6px_28px_rgba(148,163,184,0.14)] md:text-4xl">
+          <h1 className="mt-3 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-medium leading-none tracking-tight text-transparent md:text-4xl">
             {getDisplayGuildName(settings?.guild_name)}
           </h1>
 
-          <p className="mt-2 max-w-md text-sm font-normal leading-5 text-slate-300/95">
+          <p className="mt-2 max-w-md text-sm font-normal leading-5 text-slate-300">
             {settings?.guild_description}
           </p>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 backdrop-blur-xl shadow-[0_10px_30px_rgba(15,23,42,0.12)]">
+            <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 공지
               </div>
               <div className="mt-1 text-base font-semibold text-white">{noticeCount}</div>
             </div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 backdrop-blur-xl shadow-[0_10px_30px_rgba(15,23,42,0.12)]">
+            <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 7일 일정
               </div>
               <div className="mt-1 text-base font-semibold text-white">{heroStats.upcomingRaids}</div>
             </div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 backdrop-blur-xl shadow-[0_10px_30px_rgba(15,23,42,0.12)]">
+            <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 backdrop-blur-md">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                 길드원
               </div>
@@ -2087,7 +2112,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
             <button
               type="button"
               onClick={onOpenRaidCalendar}
-              className="group inline-flex items-center gap-2 rounded-2xl border border-blue-300/16 bg-blue-400/[0.08] px-4 py-2.5 text-sm font-medium text-sky-100 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-blue-200/26 hover:bg-blue-400/[0.12] hover:text-white hover:shadow-[0_10px_24px_rgba(59,130,246,0.16)]"
+              className="group inline-flex items-center gap-2 rounded-2xl border border-blue-300/16 bg-blue-400/[0.08] px-4 py-2.5 text-sm font-medium text-sky-100 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-blue-200/26 hover:bg-blue-400/[0.12] hover:text-white hover:shadow-[0_10px_24px_rgba(59,130,246,0.14)]"
             >
               <CalendarDays size={16} className="transition-transform group-hover:scale-105" />
               월별 레이드 일정
@@ -2101,9 +2126,8 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           transition={{ duration: 0.76, delay: 0.05 }}
           className="relative hidden h-full lg:block"
         >
-          <div className="absolute inset-0 rounded-[2rem] bg-sky-400/10 blur-3xl" />
-          <div className="absolute inset-0 rounded-[2rem] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))]" />
-          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.7rem] border border-white/8 bg-white/[0.035] p-3.5 backdrop-blur-[24px] shadow-[0_18px_44px_rgba(15,23,42,0.22)]">
+          <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
+          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.7rem] border border-white/8 bg-white/[0.04] p-3.5 backdrop-blur-2xl shadow-[0_14px_34px_rgba(15,23,42,0.24)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
@@ -2149,7 +2173,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               })}
             </div>
 
-            <div className="mt-4 flex flex-1 flex-col rounded-xl border border-white/7 bg-slate-950/24 p-3">
+            <div className="mt-4 flex flex-1 flex-col rounded-xl border border-white/7 bg-slate-950/28 p-3">
               <div className="flex items-center justify-between gap-3 text-xs">
                 <span className="font-semibold text-white">
                   {selectedDay ? `${selectedDay.label}요일 일정` : "이번주 일정"}
@@ -2203,9 +2227,8 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           transition={{ duration: 0.76, delay: 0.1 }}
           className="relative hidden h-full xl:block"
         >
-          <div className="absolute inset-0 rounded-[2rem] bg-blue-400/10 blur-3xl" />
-          <div className="absolute inset-0 rounded-[2rem] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))]" />
-          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.7rem] border border-white/8 bg-white/[0.035] p-3.5 backdrop-blur-[24px] shadow-[0_18px_44px_rgba(15,23,42,0.22)]">
+          <div className="absolute inset-0 rounded-[1.9rem] bg-blue-400/10 blur-3xl" />
+          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.7rem] border border-white/8 bg-white/[0.04] p-3.5 backdrop-blur-2xl shadow-[0_14px_34px_rgba(15,23,42,0.24)]">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-200/80">
@@ -2241,7 +2264,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               </div>
             </div>
 
-            <div className="mt-3 flex flex-1 flex-col rounded-xl border border-white/8 bg-slate-950/24 p-3">
+            <div className="mt-3 flex flex-1 flex-col rounded-xl border border-white/8 bg-slate-950/30 p-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-normal text-slate-300">다음 7일 일정</span>
                 <span className="font-medium text-blue-200">{heroStats.upcomingRaids}건</span>
@@ -2271,6 +2294,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           </div>
         </motion.div>
       </div>
+
     </section>
   );
 };
