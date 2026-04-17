@@ -803,8 +803,8 @@ const HomeFeaturePortal = ({
       badge: "Core Content",
       icon: <Swords size={22} />,
       stats: "주요 레이드 콘텐츠",
-      glow: "from-blue-500/16 via-sky-400/10 to-transparent",
-      activeClass: "border-blue-300/20 bg-blue-400/[0.07] shadow-[0_12px_28px_rgba(59,130,246,0.14)]",
+      glow: "from-amber-300/14 via-amber-200/8 to-transparent",
+      activeClass: "border-amber-200/22 bg-amber-300/[0.07] shadow-[0_18px_34px_rgba(245,188,93,0.12)]",
     },
     {
       key: "가디언 토벌",
@@ -813,8 +813,8 @@ const HomeFeaturePortal = ({
       badge: "Field Hunt",
       icon: <Shield size={22} />,
       stats: "토벌 정보 바로가기",
-      glow: "from-violet-400/14 via-fuchsia-400/8 to-transparent",
-      activeClass: "border-violet-300/20 bg-violet-400/[0.07] shadow-[0_12px_28px_rgba(139,92,246,0.12)]",
+      glow: "from-yellow-200/12 via-amber-200/8 to-transparent",
+      activeClass: "border-yellow-200/20 bg-yellow-200/[0.06] shadow-[0_18px_34px_rgba(250,218,122,0.10)]",
     },
     {
       key: "클래스",
@@ -823,26 +823,26 @@ const HomeFeaturePortal = ({
       badge: "Class Index",
       icon: <Sparkles size={22} />,
       stats: "캐릭터 빌드 탐색",
-      glow: "from-cyan-400/14 via-emerald-300/8 to-transparent",
-      activeClass: "border-cyan-300/20 bg-cyan-400/[0.07] shadow-[0_12px_28px_rgba(34,211,238,0.12)]",
+      glow: "from-orange-200/12 via-amber-200/8 to-transparent",
+      activeClass: "border-orange-200/20 bg-orange-200/[0.06] shadow-[0_18px_34px_rgba(251,191,36,0.10)]",
     },
   ];
 
   return (
-    <section className="mx-auto max-w-7xl px-6 pb-3 md:pb-4">
+    <section className="relative z-10 mx-auto max-w-7xl px-6 pb-3 md:pb-4">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-sky-300">Feature Gateway</div>
+          <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-amber-300/90">Feature Gateway</div>
           <h2 className="mt-2 text-lg font-medium tracking-tight text-white md:text-xl">
             핵심 콘텐츠 바로가기
           </h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-stone-400">
             레이드, 가디언 토벌, 클래스 정보를 더 눈에 띄게 모아봤어.
           </p>
         </div>
-        <div className="hidden rounded-2xl border border-white/8 bg-white/[0.035] px-4 py-3 text-right md:block">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">현재 선택</div>
-          <div className="mt-1 text-base font-semibold text-sky-200">{contentView}</div>
+        <div className="hidden rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-right shadow-[0_12px_30px_rgba(0,0,0,0.18)] md:block">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">현재 선택</div>
+          <div className="mt-1 text-base font-semibold text-amber-100">{contentView}</div>
         </div>
       </div>
 
@@ -855,38 +855,38 @@ const HomeFeaturePortal = ({
               whileHover={{ y: -2, scale: 1.005 }}
               onClick={() => setContentView(card.key)}
               className={cn(
-                "group relative overflow-hidden rounded-[1.45rem] border border-white/8 bg-white/[0.035] p-3 text-left backdrop-blur-xl transition-all",
-                active ? card.activeClass : "hover:border-white/14 hover:bg-white/[0.05]"
+                "group relative overflow-hidden rounded-[1.45rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.032),rgba(255,255,255,0.02))] p-3 text-left backdrop-blur-xl transition-all shadow-[0_16px_34px_rgba(0,0,0,0.22)]",
+                active ? card.activeClass : "hover:border-amber-200/16 hover:bg-white/[0.045]"
               )}
             >
               <div className={`absolute inset-0 bg-gradient-to-br ${card.glow} opacity-90`} />
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/15 to-transparent" />
 
               <div className="relative z-10">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex h-[34px] w-[34px] items-center justify-center rounded-xl border border-white/8 bg-white/[0.06] text-sky-100 shadow-[0_6px_16px_rgba(15,23,42,0.14)]">
+                  <div className="flex h-[34px] w-[34px] items-center justify-center rounded-xl border border-white/8 bg-white/[0.05] text-amber-100 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
                     {card.icon}
                   </div>
-                  <div className="rounded-full border border-white/8 bg-white/[0.04] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-slate-300">
+                  <div className="rounded-full border border-white/8 bg-white/[0.035] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-stone-300">
                     {card.badge}
                   </div>
                 </div>
 
                 <div className="mt-2.5">
                   <div className="text-base font-medium text-white">{card.title}</div>
-                  <div className="mt-1 text-xs leading-[1.35rem] text-slate-300">
+                  <div className="mt-1 text-xs leading-[1.35rem] text-stone-300">
                     {card.subtitle}
                   </div>
                 </div>
 
                 <div className="mt-2.5 flex items-center justify-between gap-3">
-                  <div className="text-xs font-medium text-slate-400">{card.stats}</div>
+                  <div className="text-xs font-medium text-stone-400">{card.stats}</div>
                   <div
                     className={cn(
                       "rounded-xl border px-3 py-1.5 text-[11px] font-medium transition-all",
                       active
-                        ? "border-white/10 bg-white/[0.08] text-white"
-                        : "border-white/10 bg-white/[0.04] text-slate-300 group-hover:text-white"
+                        ? "border-amber-100/12 bg-white/[0.08] text-amber-50"
+                        : "border-white/10 bg-white/[0.04] text-stone-300 group-hover:text-amber-50"
                     )}
                   >
                     {active ? "현재 선택됨" : "열기"}
@@ -930,40 +930,40 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
 
   return (
     <section className="max-w-7xl mx-auto px-6 pt-2 md:pt-3 pb-4">
-      <div className="overflow-hidden rounded-[1.75rem] border border-blue-500/15 bg-gradient-to-br from-blue-500/8 via-white/[0.04] to-transparent">
-        <div className="border-b border-white/10 px-5 py-4 md:px-6">
+      <div className="overflow-hidden rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.018))] shadow-[0_24px_60px_rgba(0,0,0,0.24)]">
+        <div className="border-b border-white/8 px-5 py-4 md:px-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-sky-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/16 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200">
                 <Bell size={13} />
                 Guild Notice
               </div>
               <h2 className="mt-3 text-xl font-semibold tracking-tight md:text-2xl">
                 공지사항
               </h2>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-stone-400">
                 중요한 공지를 빠르게 확인해.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-right">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-right">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
                 Total
               </div>
-              <div className="mt-1 text-lg font-semibold text-sky-200">{notices.length}</div>
+              <div className="mt-1 text-lg font-semibold text-amber-100">{notices.length}</div>
             </div>
           </div>
         </div>
 
         <div className="space-y-2 p-3 md:p-4">
           {loading && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-stone-500">
               공지 불러오는 중...
             </div>
           )}
 
           {!loading && notices.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-8 text-center text-sm text-stone-500">
               아직 등록된 공지가 없어.
             </div>
           )}
@@ -973,9 +973,9 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
               <button
                 key={notice.id}
                 className={cn(
-                  "w-full rounded-[1.2rem] border px-4 py-3 text-left transition-all hover:border-sky-400/35 hover:bg-white/[0.06]",
+                  "w-full rounded-[1.2rem] border px-4 py-3 text-left transition-all hover:border-amber-200/22 hover:bg-white/[0.05]",
                   notice.is_pinned
-                    ? "border-blue-400/18 bg-blue-500/[0.08]"
+                    ? "border-amber-200/18 bg-amber-300/[0.07]"
                     : "border-white/10 bg-white/[0.03]"
                 )}
               >
@@ -983,26 +983,26 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex flex-wrap items-center gap-2">
                       {notice.is_pinned && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-500/20 bg-rose-500/12 px-2 py-1 text-[10px] font-semibold text-rose-300">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/18 bg-amber-300/12 px-2 py-1 text-[10px] font-semibold text-amber-100">
                           <Pin size={11} />
                           PIN
                         </span>
                       )}
-                      <span className="inline-flex rounded-full border border-blue-500/20 bg-blue-500/12 px-2 py-1 text-[10px] font-semibold text-sky-300">
+                      <span className="inline-flex rounded-full border border-amber-200/18 bg-amber-300/12 px-2 py-1 text-[10px] font-semibold text-amber-200">
                         공지
                       </span>
-                      <span className="text-[11px] text-slate-500">{formatDateTime(notice.created_at)}</span>
+                      <span className="text-[11px] text-stone-500">{formatDateTime(notice.created_at)}</span>
                     </div>
 
                     <div className="truncate text-sm font-semibold text-white md:text-base">
                       {notice.title}
                     </div>
-                    <div className="mt-1 line-clamp-1 text-xs text-slate-400 md:text-sm">
+                    <div className="mt-1 line-clamp-1 text-xs text-stone-400 md:text-sm">
                       {notice.content}
                     </div>
                   </div>
 
-                  <div className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-[11px] font-medium text-slate-300">
+                  <div className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-[11px] font-medium text-stone-300">
                     보기
                   </div>
                 </div>
@@ -1778,63 +1778,65 @@ const ToastViewport = () => {
 
 
 const PageShell = ({ children }: { children: React.ReactNode }) => (
-  <div className="relative min-h-screen overflow-hidden bg-[#07111f] font-sans text-white selection:bg-sky-400/30">
+  <div className="relative min-h-screen overflow-hidden bg-[#0d0a07] font-sans text-white selection:bg-amber-300/30">
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-8%,rgba(246,201,118,0.22),transparent_34%),radial-gradient(circle_at_50%_15%,rgba(177,126,48,0.16),transparent_26%),radial-gradient(circle_at_16%_24%,rgba(102,62,16,0.18),transparent_28%),radial-gradient(circle_at_84%_16%,rgba(126,84,24,0.16),transparent_24%),linear-gradient(180deg,#18120d_0%,#110d09_38%,#0b0908_100%)]" />
       <motion.div
-        className="absolute -left-24 -top-24 h-[420px] w-[420px] rounded-full bg-blue-500/26 blur-3xl md:h-[620px] md:w-[620px]"
-        animate={{ x: [0, 60, 0], y: [0, 36, 0], scale: [1, 1.12, 1] }}
-        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute right-[-120px] top-[16%] h-[360px] w-[360px] rounded-full bg-sky-400/22 blur-3xl md:h-[520px] md:w-[520px]"
-        animate={{ x: [0, -70, 0], y: [0, 40, 0], scale: [1, 1.14, 1] }}
+        className="absolute left-1/2 top-[-180px] h-[460px] w-[920px] -translate-x-1/2 rounded-full bg-amber-200/15 blur-[132px] md:h-[560px] md:w-[1180px]"
+        animate={{ opacity: [0.38, 0.62, 0.38], scale: [0.96, 1.05, 0.96] }}
         transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-[-140px] left-[26%] h-[320px] w-[320px] rounded-full bg-indigo-400/20 blur-3xl md:h-[440px] md:w-[440px]"
-        animate={{ x: [0, 34, 0], y: [0, -48, 0], scale: [1, 1.1, 1] }}
+        className="absolute left-1/2 top-[10%] h-[160px] w-[1180px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,228,167,0.18)_0%,rgba(176,126,50,0.11)_36%,transparent_74%)] blur-[68px]"
+        animate={{ opacity: [0.2, 0.36, 0.2], y: [0, 14, 0] }}
+        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute bottom-[-180px] left-[10%] h-[380px] w-[380px] rounded-full bg-amber-900/24 blur-[120px]"
+        animate={{ x: [0, 22, 0], y: [0, -24, 0], scale: [1, 1.08, 1] }}
         transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
       />
-
       <motion.div
-        className="absolute inset-0 opacity-[0.14]"
-        animate={{ opacity: [0.09, 0.16, 0.09] }}
+        className="absolute bottom-[-210px] right-[8%] h-[420px] w-[420px] rounded-full bg-orange-900/20 blur-[130px]"
+        animate={{ x: [0, -28, 0], y: [0, -18, 0], scale: [1, 1.1, 1] }}
+        transition={{ duration: 19, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute inset-0 opacity-[0.08]"
+        animate={{ opacity: [0.05, 0.09, 0.05] }}
         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
         style={{
           backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "52px 52px",
+            "linear-gradient(rgba(255,248,235,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,248,235,0.025) 1px, transparent 1px)",
+          backgroundSize: "58px 58px",
         }}
       />
-
       <div
-        className="absolute inset-0 opacity-[0.05]"
+        className="absolute inset-0 opacity-[0.035]"
         style={{
           backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.55) 1px, transparent 1px)",
+            "radial-gradient(rgba(255,240,214,0.55) 1px, transparent 1px)",
           backgroundSize: "3px 3px",
         }}
       />
-
-      {Array.from({ length: 22 }).map((_, i) => (
+      {Array.from({ length: 28 }).map((_, i) => (
         <motion.span
           key={i}
-          className="absolute h-1.5 w-1.5 rounded-full bg-white/35"
+          className={i % 6 === 0 ? "absolute h-2.5 w-2.5 rounded-full bg-amber-100/45 blur-[1px]" : i % 3 === 0 ? "absolute h-2 w-2 rounded-full bg-amber-200/26" : "absolute h-1.5 w-1.5 rounded-full bg-white/24"}
           style={{
-            top: `${(i * 29 + 7) % 100}%`,
+            top: `${(i * 23 + 7) % 100}%`,
             left: `${(i * 17 + 13) % 100}%`,
           }}
-          animate={{ y: [0, -28, 0], opacity: [0.18, 0.85, 0.18] }}
+          animate={{ y: [0, -32, 0], opacity: [0.08, 0.72, 0.08], scale: [0.94, 1.12, 0.94] }}
           transition={{
-            duration: 6 + (i % 5),
-            delay: (i % 6) * 0.8,
+            duration: 7 + (i % 5),
+            delay: (i % 6) * 0.7,
             repeat: Infinity,
             ease: "easeInOut",
           }}
         />
       ))}
-
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,17,31,0.14),rgba(7,17,31,0.54))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,9,8,0.02),rgba(11,9,8,0.24)_32%,rgba(11,9,8,0.62))]" />
     </div>
     {children}
   </div>
@@ -1983,47 +1985,47 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
   const primarySchedule = selectedSchedules[0];
 
   return (
-    <section className="relative flex min-h-[210px] items-center overflow-hidden md:min-h-[255px]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_26%,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_78%_34%,rgba(96,165,250,0.10),transparent_24%),linear-gradient(180deg,rgba(8,15,32,0.06),rgba(8,15,32,0.46))]" />
+    <div className="relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(245,194,105,0.14),transparent_28%),linear-gradient(180deg,rgba(24,18,13,0.02),rgba(24,18,13,0.06)_48%,transparent)]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-4 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,620px)] xl:grid-cols-[minmax(0,1fr)_340px_260px]">
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-start gap-4 px-6 pb-4 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,620px)] xl:grid-cols-[minmax(0,1fr)_340px_260px]">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.72 }}
-          className="text-center md:text-left"
+          className="pt-1 text-center md:text-left"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-blue-100/90">
+          <span className="inline-flex items-center gap-2 rounded-full border border-amber-200/14 bg-white/[0.035] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-amber-200">
             <Sparkles size={10} />
-            Guild System
+            Guild Residence
           </span>
 
-          <h1 className="mt-3 bg-gradient-to-b from-white to-slate-300 bg-clip-text text-3xl font-medium leading-none tracking-tight text-transparent md:text-4xl">
+          <h1 className="mt-3 bg-gradient-to-b from-[#fff7eb] via-[#f2e3c2] to-[#b9985d] bg-clip-text text-3xl font-medium leading-none tracking-tight text-transparent md:text-4xl">
             {getDisplayGuildName(settings?.guild_name)}
           </h1>
 
-          <p className="mt-2 max-w-md text-sm font-normal leading-5 text-slate-300">
+          <p className="mt-2 max-w-md text-sm font-normal leading-6 text-stone-300">
             {settings?.guild_description}
           </p>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-            <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 backdrop-blur-md">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 backdrop-blur-md shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                 공지
               </div>
-              <div className="mt-1 text-base font-semibold text-white">{noticeCount}</div>
+              <div className="mt-1 text-base font-semibold text-amber-50">{noticeCount}</div>
             </div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 backdrop-blur-md">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 backdrop-blur-md shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                 7일 일정
               </div>
-              <div className="mt-1 text-base font-semibold text-white">{heroStats.upcomingRaids}</div>
+              <div className="mt-1 text-base font-semibold text-amber-50">{heroStats.upcomingRaids}</div>
             </div>
-            <div className="rounded-xl border border-white/8 bg-white/[0.04] px-3 py-2 backdrop-blur-md">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+            <div className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-2 backdrop-blur-md shadow-[0_10px_24px_rgba(0,0,0,0.16)]">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                 길드원
               </div>
-              <div className="mt-1 text-base font-semibold text-white">{heroStats.memberCount}</div>
+              <div className="mt-1 text-base font-semibold text-amber-50">{heroStats.memberCount}</div>
             </div>
           </div>
 
@@ -2031,7 +2033,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
             <button
               type="button"
               onClick={onOpenRaidCalendar}
-              className="group inline-flex items-center gap-2 rounded-2xl border border-amber-300/16 bg-amber-400/[0.08] px-4 py-2.5 text-sm font-medium text-amber-100 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-amber-200/26 hover:bg-amber-400/[0.12] hover:text-white hover:shadow-[0_10px_24px_rgba(245,158,11,0.14)]"
+              className="group inline-flex items-center gap-2 rounded-2xl border border-amber-200/16 bg-amber-300/[0.08] px-4 py-2.5 text-sm font-medium text-amber-50 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-amber-100/26 hover:bg-amber-300/[0.12] hover:text-white hover:shadow-[0_14px_28px_rgba(214,164,78,0.12)]"
             >
               <CalendarDays size={16} className="transition-transform group-hover:scale-105" />
               월별 레이드 일정
@@ -2045,11 +2047,12 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           transition={{ duration: 0.76, delay: 0.05 }}
           className="relative hidden h-full lg:block"
         >
-          <div className="absolute inset-0 rounded-[1.9rem] bg-amber-400/[0.08] blur-3xl" />
-          <div className="relative flex h-full min-h-[220px] flex-col overflow-hidden rounded-[1.7rem] border border-amber-200/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] p-3.5 backdrop-blur-2xl shadow-[0_14px_34px_rgba(0,0,0,0.28)]">
-            <div className="flex items-start justify-between gap-3">
+          <div className="absolute inset-0 rounded-[1.9rem] bg-amber-300/8 blur-3xl" />
+          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.8rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] p-3.5 backdrop-blur-2xl shadow-[0_20px_48px_rgba(0,0,0,0.22)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(246,205,127,0.14),transparent_46%)]" />
+            <div className="relative flex items-start justify-between gap-3">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/78">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">
                   Weekly Raid Schedule
                 </div>
                 <div className="mt-1.5 text-lg font-medium text-white">이번주 레이드</div>
@@ -2057,14 +2060,14 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               <button
                 type="button"
                 onClick={onOpenRaidCalendar}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-amber-300/12 bg-amber-400/[0.08] text-amber-100 transition-all hover:border-amber-200/24 hover:bg-amber-400/[0.12] hover:text-white"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200/12 bg-amber-300/[0.08] text-amber-50 transition-all hover:border-amber-100/24 hover:bg-amber-300/[0.12] hover:text-white"
                 aria-label="월별 레이드 일정 보기"
               >
                 <CalendarDays size={16} />
               </button>
             </div>
 
-            <div className="mt-4 grid grid-cols-7 gap-2">
+            <div className="relative mt-4 grid grid-cols-7 gap-2">
               {currentWeekDays.map((day) => {
                 const hasSchedule = (weeklySchedules[day.key]?.length || 0) > 0;
                 const isSelected = selectedDay?.key === day.key;
@@ -2076,14 +2079,14 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                     className={[
                       "relative flex h-14 flex-col items-center justify-center rounded-xl border text-center transition-all",
                       isSelected
-                        ? "border-amber-300/35 bg-amber-400/[0.14] text-white shadow-[0_0_0_1px_rgba(251,191,36,0.14)_inset]"
+                        ? "border-amber-200/35 bg-amber-300/[0.14] text-white shadow-[0_0_0_1px_rgba(245,197,92,0.12)_inset]"
                         : hasSchedule
-                        ? "border-amber-300/18 bg-amber-400/[0.07] text-amber-100 hover:border-amber-200/26 hover:bg-amber-400/[0.10]"
-                        : "border-white/7 bg-white/[0.04] text-slate-300 hover:border-white/10 hover:bg-white/[0.06]",
+                        ? "border-amber-200/18 bg-amber-300/[0.07] text-amber-50 hover:border-amber-100/26 hover:bg-amber-300/[0.10]"
+                        : "border-white/7 bg-white/[0.035] text-stone-300 hover:border-white/10 hover:bg-white/[0.05]",
                     ].join(" ")}
                   >
                     {hasSchedule && (
-                      <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.75)]" />
+                      <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-amber-200 shadow-[0_0_8px_rgba(251,191,36,0.55)]" />
                     )}
                     <span className="text-[10px] font-semibold">{day.label}</span>
                     <span className="mt-1 text-lg font-medium leading-none">{day.day}</span>
@@ -2092,47 +2095,47 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               })}
             </div>
 
-            <div className="mt-3 flex flex-1 flex-col rounded-xl border border-amber-200/8 bg-black/20 p-3">
+            <div className="relative mt-4 flex flex-1 flex-col rounded-xl border border-white/7 bg-black/18 p-3">
               <div className="flex items-center justify-between gap-3 text-xs">
                 <span className="font-semibold text-white">
                   {selectedDay ? `${selectedDay.label}요일 일정` : "이번주 일정"}
                 </span>
-                <span className="text-slate-400">
+                <span className="text-stone-400">
                   {selectedDay ? parseLocalDate(selectedDay.key).toLocaleDateString("ko-KR") : ""}
                 </span>
               </div>
 
               {primarySchedule ? (
-                <div className="mt-2.5 flex flex-1 flex-col justify-between rounded-xl border border-amber-300/14 bg-[linear-gradient(180deg,rgba(120,83,17,0.18),rgba(36,24,5,0.28))] px-4 py-3">
+                <div className="mt-3 flex flex-1 flex-col justify-between rounded-xl border border-amber-200/14 bg-[linear-gradient(135deg,rgba(54,39,18,0.84),rgba(31,25,17,0.94))] px-4 py-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="truncate text-xl font-medium text-white">
                         {primarySchedule.raid_name}
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-300">
                         <span>{primarySchedule.difficulty || "노말"}</span>
-                        <span className="text-slate-500">·</span>
+                        <span className="text-stone-600">·</span>
                         <span>{primarySchedule.type || "raid"}</span>
                         {selectedSchedules.length > 1 && (
                           <>
-                            <span className="text-slate-500">·</span>
+                            <span className="text-stone-600">·</span>
                             <span>+{selectedSchedules.length - 1}건 더 있음</span>
                           </>
                         )}
                       </div>
                     </div>
-                    <div className="shrink-0 text-xl font-medium text-amber-100">
+                    <div className="shrink-0 text-xl font-medium text-amber-50">
                       {primarySchedule.raid_time || "--:--"}
                     </div>
                   </div>
-                  <div className="mt-3 text-[11px] text-slate-400">
+                  <div className="mt-3 text-[11px] text-stone-400">
                     {selectedSchedules.length > 1
                       ? `이 날 등록된 레이드가 ${selectedSchedules.length}건 있습니다.`
                       : "등록된 레이드 정보를 확인하세요."}
                   </div>
                 </div>
               ) : (
-                <div className="mt-3 flex flex-1 items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-4 text-center text-sm text-slate-400">
+                <div className="mt-3 flex flex-1 items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.03] px-4 text-center text-sm text-stone-400">
                   등록된 레이드 일정이 없습니다.
                 </div>
               )}
@@ -2146,79 +2149,78 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           transition={{ duration: 0.76, delay: 0.1 }}
           className="relative hidden h-full xl:block"
         >
-          <div className="absolute inset-0 rounded-[1.9rem] bg-amber-400/[0.08] blur-3xl" />
-          <div className="relative flex h-full min-h-[220px] flex-col overflow-hidden rounded-[1.7rem] border border-amber-200/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] p-3.5 backdrop-blur-2xl shadow-[0_14px_34px_rgba(0,0,0,0.28)]">
-            <div className="flex items-center justify-between gap-3">
+          <div className="absolute inset-0 rounded-[1.9rem] bg-amber-300/8 blur-3xl" />
+          <div className="relative flex h-full min-h-[286px] flex-col overflow-hidden rounded-[1.8rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.02))] p-3.5 backdrop-blur-2xl shadow-[0_20px_48px_rgba(0,0,0,0.22)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(246,205,127,0.12),transparent_46%)]" />
+            <div className="relative flex items-center justify-between gap-3">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/78">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">
                   Overview
                 </div>
                 <div className="mt-1.5 text-lg font-medium text-white">
                   {getDisplayGuildName(settings?.guild_name)}
                 </div>
               </div>
-              <div className="rounded-xl border border-amber-300/14 bg-amber-400/[0.08] px-2.5 py-1.5 text-[11px] font-medium text-amber-100">
+              <div className="rounded-xl border border-amber-200/12 bg-amber-300/[0.08] px-2.5 py-1.5 text-[11px] font-medium text-amber-100">
                 Live
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className="rounded-xl border border-amber-200/8 bg-white/[0.035] p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            <div className="relative mt-3 grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   공지
                 </div>
-                <div className="mt-1.5 text-sm font-medium text-white">{noticeCount}</div>
+                <div className="mt-1.5 text-sm font-medium text-amber-50">{noticeCount}</div>
               </div>
-              <div className="rounded-xl border border-amber-200/8 bg-white/[0.035] p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   고정
                 </div>
-                <div className="mt-1.5 text-sm font-medium text-white">{pinnedCount}</div>
+                <div className="mt-1.5 text-sm font-medium text-amber-50">{pinnedCount}</div>
               </div>
-              <div className="rounded-xl border border-amber-200/8 bg-white/[0.035] p-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                  길드원
+              <div className="rounded-xl border border-white/7 bg-white/[0.035] p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+                  다음 일정
                 </div>
-                <div className="mt-1.5 text-sm font-medium text-white">{heroStats.memberCount}</div>
+                <div className="mt-1.5 text-sm font-medium text-white">{heroStats.nextRaidLabel}</div>
               </div>
             </div>
 
-            <div className="mt-3 flex flex-1 flex-col rounded-xl border border-white/8 bg-slate-950/30 p-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-normal text-slate-300">다음 7일 일정</span>
-                <span className="font-medium text-blue-200">{heroStats.upcomingRaids}건</span>
+            <div className="relative mt-3 rounded-2xl border border-white/8 bg-black/18 p-4">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+                Next Raid
               </div>
-              <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-white/8">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-400 to-sky-300 transition-all"
-                  style={{ width: `${Math.min(100, Math.max(12, heroStats.upcomingRaids * 16))}%` }}
-                />
+              <div className="mt-2 text-base font-semibold text-white">{heroStats.nextRaidLabel}</div>
+              <div className="mt-1 text-sm text-stone-400">
+                {heroStats.nextRaidDate || "예정된 일정이 없습니다."}
               </div>
-              <div className="mt-3 text-sm font-medium text-white truncate">
-                {heroStats.nextRaidLabel}
-              </div>
-              <div className="mt-1 text-[11px] text-slate-400">
-                {heroStats.nextRaidDate || "등록된 일정이 아직 없습니다."}
-              </div>
+            </div>
 
-              <button
-                type="button"
-                onClick={onOpenRaidCalendar}
-                className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-xl border border-blue-300/12 bg-blue-400/[0.08] px-3 py-2 text-sm font-medium text-sky-100 transition-all hover:border-blue-200/24 hover:bg-blue-400/[0.12] hover:text-white"
-              >
-                <CalendarDays size={15} />
-                월별 레이드 일정 보기
-              </button>
+            <div className="relative mt-3 flex-1 rounded-2xl border border-white/8 bg-black/18 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+                    다음 7일 일정
+                  </div>
+                  <div className="mt-2 text-lg font-semibold text-white">{heroStats.upcomingRaids}건</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onOpenRaidCalendar}
+                  className="inline-flex items-center gap-2 rounded-xl border border-amber-200/12 bg-amber-300/[0.08] px-3 py-2 text-xs font-medium text-amber-50 transition hover:border-amber-100/22 hover:bg-amber-300/[0.12]"
+                >
+                  <CalendarDays size={14} />
+                  월별 레이드 일정 보기
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>
       </div>
-
-      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-[#091120] to-transparent" />
-    </section>
+    </div>
   );
 };
-
 
 const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
   useEffect(() => {
@@ -2320,18 +2322,18 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-amber-200/10 bg-[#090806]/88 backdrop-blur-2xl shadow-[0_16px_40px_rgba(0,0,0,0.42)]">
+    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-slate-950/72 backdrop-blur-2xl shadow-[0_14px_40px_rgba(2,6,23,0.34)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => handleMove("home")}
-            className="group flex items-center gap-3 rounded-2xl border border-amber-200/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] px-3 py-2 transition-all hover:border-amber-300/20 hover:bg-amber-400/[0.06]"
+            className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.07]"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-300/16 bg-amber-400/[0.10] text-amber-100 shadow-[0_8px_24px_rgba(245,158,11,0.14)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-blue-300/15 bg-blue-400/10 text-sky-200 shadow-[0_8px_24px_rgba(59,130,246,0.12)]">
               <Shield size={16} />
             </div>
             <div className="hidden text-left sm:block">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/75">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-sky-300/80">
                 Guild Service
               </div>
               <div className="text-sm font-semibold text-white">
@@ -2341,7 +2343,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
           </button>
         </div>
 
-        <div className="hidden items-center gap-2 rounded-2xl border border-amber-200/10 bg-white/[0.035] p-1.5 backdrop-blur-md md:flex">
+        <div className="hidden items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 backdrop-blur-md md:flex">
           {navItems.map((item) => {
             const active = activeTab === item.id;
             return (
@@ -2350,13 +2352,13 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                 onClick={() => handleMove(item.id)}
                 className={`relative rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
                   active
-                    ? "bg-amber-400/[0.10] text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]"
+                    ? "bg-blue-500/12 text-sky-200 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.12)]"
                     : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
                 }`}
               >
                 <span className="relative z-10">{item.label}</span>
                 {active && (
-                  <span className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200" />
+                  <span className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full bg-gradient-to-r from-blue-400 to-sky-300" />
                 )}
               </button>
             );
@@ -2367,7 +2369,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
           {user ? (
             <>
               <button
-                className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-amber-200/10 bg-white/[0.035] text-stone-300 transition-all hover:-translate-y-0.5 hover:border-amber-300/20 hover:bg-amber-400/[0.06] hover:text-amber-50 md:flex"
+                className="hidden h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-blue-300/20 hover:bg-blue-400/[0.07] hover:text-white md:flex"
                 title="알림"
               >
                 <Bell size={16} />
@@ -2376,9 +2378,9 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setIsProfileMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-3 rounded-2xl border border-amber-200/10 bg-white/[0.035] px-3 py-2 transition-all hover:border-amber-300/20 hover:bg-amber-400/[0.06]"
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.07]"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-amber-300/16 bg-amber-400/[0.10] text-sm font-semibold text-amber-50 shadow-[0_8px_24px_rgba(245,158,11,0.14)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-blue-300/15 bg-blue-400/10 text-sm font-semibold text-sky-100 shadow-[0_8px_24px_rgba(59,130,246,0.12)]">
                     {avatarText}
                   </div>
                   <div className="hidden text-left sm:block">
@@ -2392,7 +2394,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                   <ChevronRight
                     size={16}
                     className={`text-slate-500 transition-transform ${
-                      isProfileMenuOpen ? "rotate-90 text-amber-300" : ""
+                      isProfileMenuOpen ? "rotate-90 text-sky-300" : ""
                     }`}
                   />
                 </button>
@@ -2404,10 +2406,10 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.98 }}
                       transition={{ duration: 0.16 }}
-                      className="absolute right-0 top-[calc(100%+12px)] z-[80] w-64 overflow-hidden rounded-[1.5rem] border border-amber-200/10 bg-[#0b0907]/95 p-2 shadow-[0_24px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
+                      className="absolute right-0 top-[calc(100%+12px)] z-[80] w-64 overflow-hidden rounded-[1.5rem] border border-white/10 bg-slate-950/95 p-2 shadow-[0_24px_80px_rgba(2,6,23,0.5)] backdrop-blur-2xl"
                     >
                       <div className="rounded-[1.2rem] border border-white/8 bg-white/[0.04] p-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-300">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-300">
                           Signed In
                         </div>
                         <div className="mt-2 text-base font-semibold text-white">{displayName}</div>
@@ -2460,13 +2462,13 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleMove("login")}
-                className="rounded-2xl border border-amber-200/10 bg-white/[0.035] px-4 py-2.5 text-sm font-medium text-stone-200 transition-all hover:border-amber-300/20 hover:bg-amber-400/[0.06] hover:text-amber-50"
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-slate-300 transition-all hover:border-blue-300/20 hover:bg-blue-400/[0.07] hover:text-white"
               >
                 로그인
               </button>
               <button
                 onClick={() => handleMove("signup")}
-                className="rounded-2xl border border-amber-300/18 bg-amber-400/[0.12] px-4 py-2.5 text-sm font-semibold text-amber-100 transition-all hover:bg-amber-400/[0.18]"
+                className="rounded-2xl border border-blue-300/15 bg-blue-500/12 px-4 py-2.5 text-sm font-semibold text-sky-200 transition-all hover:bg-blue-500/20"
               >
                 회원가입
               </button>
@@ -3546,7 +3548,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                   onClick={() => setScheduleView("all")}
                   className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
                     scheduleView === "all"
-                      ? "bg-amber-400/[0.10] text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]"
+                      ? "bg-blue-500/12 text-sky-200 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.12)]"
                       : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
                   }`}
                 >
@@ -3560,7 +3562,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                   disabled={!user}
                   className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
                     scheduleView === "mine"
-                      ? "bg-amber-400/[0.10] text-amber-100 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)]"
+                      ? "bg-blue-500/12 text-sky-200 shadow-[inset_0_0_0_1px_rgba(125,211,252,0.12)]"
                       : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
                   } disabled:cursor-not-allowed disabled:opacity-45`}
                 >
