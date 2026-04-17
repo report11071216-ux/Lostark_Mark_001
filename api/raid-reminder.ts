@@ -22,62 +22,60 @@ export default async function handler(req, res) {
   try {
     const now = new Date();
 
-    const from = new Date(now.getTime() + 55 * 60 * 1000).toISOString();
-    const to = new Date(now.getTime() + 61 * 60 * 1000).toISOString();
+    // 1시간 전 범위
+    const oneHourFrom = new Date(now.getTime() + 55 * 60 * 1000).toISOString();
+    const oneHourTo = new Date(now.getTime() + 61 * 60 * 1000).toISOString();
 
-    const { data: raids, error } = await supabase
+    // 10분 전 범위
+    const tenMinFrom = new Date(now.getTime() + 9 * 60 * 1000).toISOString();
+    const tenMinTo = new Date(now.getTime() + 11 * 60 * 1000).toISOString();
+
+    // 1시간 전 대상
+    const { data: oneHourRaids, error: oneHourError } = await supabase
       .from("raid_schedules")
       .select("*")
       .eq("one_hour_reminded", false)
       .not("raid_datetime", "is", null)
-      .gte("raid_datetime", from)
-      .lt("raid_datetime", to);
+      .gte("raid_datetime", oneHourFrom)
+      .lt("raid_datetime", oneHourTo);
 
-    const { data: latestRaids, error: latestError } = await supabase
+    if (oneHourError) {
+      return res.status(500).json({
+        ok: false,
+        step: "one_hour_select",
+        error: oneHourError.message,
+      });
+    }
+
+    // 10분 전 대상
+    const { data: tenMinRaids, error: tenMinError } = await supabase
       .from("raid_schedules")
-      .select("id, raid_name, raid_date, raid_time, raid_datetime, one_hour_reminded")
-      .order("created_at", { ascending: false })
-      .limit(5);
+      .select("*")
+      .eq("ten_min_reminded", false)
+      .not("raid_datetime", "is", null)
+      .gte("raid_datetime", tenMinFrom)
+      .lt("raid_datetime", tenMinTo);
 
-    if (error) {
+    if (tenMinError) {
       return res.status(500).json({
         ok: false,
-        step: "supabase_select",
-        error: error.message,
+        step: "ten_min_select",
+        error: tenMinError.message,
       });
     }
 
-    if (latestError) {
-      return res.status(500).json({
-        ok: false,
-        step: "supabase_latest_select",
-        error: latestError.message,
-      });
-    }
+    let oneHourSentCount = 0;
+    let tenMinSentCount = 0;
 
-    if (!raids || raids.length === 0) {
-      return res.status(200).json({
-        ok: true,
-        count: 0,
-        debug: {
-          now: now.toISOString(),
-          from,
-          to,
-          latestRaids,
-        },
-      });
-    }
-
-    let sentCount = 0;
-
-    for (const raid of raids) {
+    // 1시간 전 알림
+    for (const raid of oneHourRaids ?? []) {
       const discordResponse = await fetch(discordWebhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: "⏰ 레이드 1시간 전입니다!",
+          content: "⏰ 레이드 1시간 전입니다!",
           embeds: [
             {
               title: raid.raid_name ?? "레이드 알림",
@@ -93,7 +91,7 @@ export default async function handler(req, res) {
 
         return res.status(500).json({
           ok: false,
-          step: "discord_send",
+          step: "one_hour_discord_send",
           raidId: raid.id,
           error: errorText,
         });
@@ -107,22 +105,72 @@ export default async function handler(req, res) {
       if (updateError) {
         return res.status(500).json({
           ok: false,
-          step: "supabase_update",
+          step: "one_hour_update",
           raidId: raid.id,
           error: updateError.message,
         });
       }
 
-      sentCount += 1;
+      oneHourSentCount += 1;
+    }
+
+    // 10분 전 알림
+    for (const raid of tenMinRaids ?? []) {
+      const discordResponse = await fetch(discordWebhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: "⚠️ 레이드 10분 전입니다! 미리 집결해주세요.",
+          embeds: [
+            {
+              title: raid.raid_name ?? "레이드 알림",
+              description: `시작 시간: ${new Date(raid.raid_datetime).toLocaleString("ko-KR")}`,
+              color: 0xff6600,
+            },
+          ],
+        }),
+      });
+
+      if (!discordResponse.ok) {
+        const errorText = await discordResponse.text();
+
+        return res.status(500).json({
+          ok: false,
+          step: "ten_min_discord_send",
+          raidId: raid.id,
+          error: errorText,
+        });
+      }
+
+      const { error: updateError } = await supabase
+        .from("raid_schedules")
+        .update({ ten_min_reminded: true })
+        .eq("id", raid.id);
+
+      if (updateError) {
+        return res.status(500).json({
+          ok: false,
+          step: "ten_min_update",
+          raidId: raid.id,
+          error: updateError.message,
+        });
+      }
+
+      tenMinSentCount += 1;
     }
 
     return res.status(200).json({
       ok: true,
-      count: sentCount,
+      oneHourCount: oneHourSentCount,
+      tenMinCount: tenMinSentCount,
       debug: {
         now: now.toISOString(),
-        from,
-        to,
+        oneHourFrom,
+        oneHourTo,
+        tenMinFrom,
+        tenMinTo,
       },
     });
   } catch (error) {
