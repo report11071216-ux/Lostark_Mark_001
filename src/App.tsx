@@ -833,7 +833,7 @@ const HomeFeaturePortal = ({
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-amber-300/90">Feature Gateway</div>
-          <h2 className="mt-2 font-serif text-xl font-semibold tracking-[0.02em] text-white md:text-2xl">
+          <h2 className="mt-2 text-xl font-semibold tracking-[0.02em] text-white md:text-2xl">
             핵심 콘텐츠 바로가기
           </h2>
           <p className="mt-2 text-sm text-stone-400">
@@ -842,7 +842,7 @@ const HomeFeaturePortal = ({
         </div>
         <div className="hidden rounded-[1.35rem] border border-amber-100/10 bg-white/[0.03] px-4 py-3 text-right shadow-[0_12px_30px_rgba(0,0,0,0.18)] md:block">
           <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">현재 선택</div>
-          <div className="mt-1 font-serif text-base font-semibold text-amber-100">{contentView}</div>
+          <div className="mt-1 text-base font-semibold text-amber-100">{contentView}</div>
         </div>
       </div>
 
@@ -873,7 +873,7 @@ const HomeFeaturePortal = ({
                 </div>
 
                 <div className="mt-4">
-                  <div className="font-serif text-lg font-semibold text-white">{card.title}</div>
+                  <div className="text-lg font-semibold text-white">{card.title}</div>
                   <div className="mt-1.5 text-sm leading-6 text-stone-300">
                     {card.subtitle}
                   </div>
@@ -938,7 +938,7 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                 <Bell size={13} />
                 Guild Notice
               </div>
-              <h2 className="mt-3 font-serif text-2xl font-semibold tracking-[0.02em] text-white">
+              <h2 className="mt-3 text-2xl font-semibold tracking-[0.02em] text-white">
                 공지사항
               </h2>
               <p className="mt-1 text-sm text-stone-400">
@@ -994,7 +994,7 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                       <span className="text-[11px] text-stone-500">{formatDateTime(notice.created_at)}</span>
                     </div>
 
-                    <div className="truncate font-serif text-base font-semibold text-white">
+                    <div className="truncate text-base font-semibold text-white">
                       {notice.title}
                     </div>
                     <div className="mt-1.5 line-clamp-1 text-sm text-stone-400">
@@ -1778,7 +1778,7 @@ const ToastViewport = () => {
 
 
 const PageShell = ({ children }: { children: React.ReactNode }) => (
-  <div className="relative min-h-screen overflow-hidden bg-[#090705] font-sans text-white selection:bg-amber-300/25">
+  <div className="relative min-h-screen overflow-hidden bg-[#090705] text-white selection:bg-amber-300/25">
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-12%,rgba(247,210,129,0.18),transparent_28%),radial-gradient(circle_at_50%_12%,rgba(176,126,50,0.14),transparent_24%),radial-gradient(circle_at_14%_22%,rgba(99,61,17,0.16),transparent_28%),radial-gradient(circle_at_84%_16%,rgba(120,81,29,0.14),transparent_24%),linear-gradient(180deg,#16110d_0%,#0f0b08_42%,#080706_100%)]" />
       <motion.div
@@ -1937,7 +1937,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
             Guild Residence
           </span>
 
-          <h1 className="mt-4 bg-gradient-to-b from-[#fff9ef] via-[#f3e1b8] to-[#b88d44] bg-clip-text font-serif text-4xl font-semibold leading-none tracking-[0.01em] text-transparent md:text-5xl">
+          <h1 className="mt-4 bg-gradient-to-b from-[#fff9ef] via-[#f3e1b8] to-[#b88d44] bg-clip-text text-4xl font-semibold leading-none tracking-[0.01em] text-transparent md:text-5xl">
             {getDisplayGuildName(settings?.guild_name)}
           </h1>
 
@@ -1992,7 +1992,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">
                   Weekly Raid Schedule
                 </div>
-                <div className="mt-1 font-serif text-lg font-semibold text-white">이번주 레이드</div>
+                <div className="mt-1 text-lg font-semibold text-white">이번주 레이드</div>
               </div>
               <button
                 type="button"
@@ -2046,7 +2046,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                 <div className="mt-2 flex flex-1 flex-col justify-between rounded-[1rem] border border-amber-200/14 bg-[linear-gradient(135deg,rgba(59,41,18,0.86),rgba(29,22,15,0.96))] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="truncate font-serif text-base font-semibold text-white">
+                      <div className="truncate text-base font-semibold text-white">
                         {primarySchedule.raid_name}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-300">
@@ -2094,7 +2094,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
                 <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">
                   Overview
                 </div>
-                <div className="mt-1 font-serif text-lg font-semibold text-white">
+                <div className="mt-1 text-lg font-semibold text-white">
                   {getDisplayGuildName(settings?.guild_name)}
                 </div>
               </div>
@@ -2128,7 +2128,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
               <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
                 Next Raid
               </div>
-              <div className="mt-1.5 truncate font-serif text-sm font-semibold text-white">{heroStats.nextRaidLabel}</div>
+              <div className="mt-1.5 truncate text-sm font-semibold text-white">{heroStats.nextRaidLabel}</div>
               <div className="mt-1 text-xs text-stone-400">
                 {heroStats.nextRaidDate || "예정된 일정이 없습니다."}
               </div>
@@ -2273,7 +2273,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
               <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/80">
                 Guild Service
               </div>
-              <div className="font-serif text-sm font-semibold tracking-[0.02em] text-white">
+              <div className="text-sm font-semibold tracking-[0.02em] text-white">
                 {profile?.role === "admin" ? "Control Center" : "Guild Workspace"}
               </div>
             </div>
@@ -2349,7 +2349,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
                           Signed In
                         </div>
-                        <div className="mt-2 font-serif text-base font-semibold text-white">{displayName}</div>
+                        <div className="mt-2 text-base font-semibold text-white">{displayName}</div>
                         <div className="mt-1 text-xs text-stone-400">{roleLabel}</div>
                       </div>
 
