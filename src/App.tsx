@@ -167,6 +167,132 @@ const getCapacity = (raid: any) => {
     : { maxParticipants: 8, dealerLimit: 6, supportLimit: 2 };
 };
 
+
+const getDiscordParticipantSummary = (participants: any[]) => {
+  const dealers = participants.filter((item: any) => item.position === "딜러");
+  const supporters = participants.filter((item: any) => item.position === "서포터");
+  const others = participants.filter(
+    (item: any) => item.position !== "딜러" && item.position !== "서포터"
+  );
+
+  const formatGroup = (items: any[]) =>
+    items.length > 0
+      ? items
+          .map(
+            (item: any) =>
+              `• ${item.character_name || "이름 없음"}${item.class_name ? ` (${item.class_name})` : ""}`
+          )
+          .join("\\n")
+      : "-";
+
+  return {
+    dealers: formatGroup(dealers),
+    supporters: formatGroup(supporters),
+    others: formatGroup(others),
+    totalCount: participants.length,
+  };
+};
+
+const buildRaidDiscordEmbed = (raid: any, participants: any[]) => {
+  const capacity = getCapacity(raid);
+  const summary = getDiscordParticipantSummary(participants);
+
+  return {
+    title: "레이드 일정",
+    description: raid.raid_name,
+    color: 5814783,
+    fields: [
+      { name: "날짜", value: raid.raid_date || "-", inline: true },
+      { name: "시간", value: raid.raid_time || "-", inline: true },
+      {
+        name: "난이도",
+        value:
+          raid.type === "anime"
+            ? "시청"
+            : raid.difficulty || raid.experience || "미정",
+        inline: true,
+      },
+      {
+        name: "구분",
+        value: raid.type === "anime" ? "시청" : raid.raid_type || "레이드",
+        inline: true,
+      },
+      { name: "딜러", value: summary.dealers, inline: true },
+      { name: "서포터", value: summary.supporters, inline: true },
+      ...(summary.others !== "-"
+        ? [{ name: "참가", value: summary.others, inline: true }]
+        : []),
+      {
+        name: "현재 인원",
+        value: `${summary.totalCount}/${capacity.maxParticipants}`,
+        inline: false,
+      },
+      { name: "참여", value: "사이트에서 참여 체크", inline: false },
+    ],
+    footer: {
+      text: "참가자 변경 시 자동 갱신",
+    },
+    timestamp: new Date().toISOString(),
+  };
+};
+
+const syncRaidDiscordMessage = async (raidId: string | number) => {
+  try {
+    const client = getSupabaseOrThrow();
+
+    const { data: raid, error: raidError } = await client
+      .from("raid_schedules")
+      .select("*")
+      .eq("id", raidId)
+      .single();
+
+    if (raidError || !raid) {
+      throw new Error(raidError?.message || "레이드 정보를 찾을 수 없습니다.");
+    }
+
+    const { data: participants, error: participantError } = await client
+      .from("raid_participants")
+      .select("*")
+      .eq("schedule_id", raidId)
+      .order("created_at", { ascending: true });
+
+    if (participantError) {
+      throw new Error(participantError.message || "참가자 정보를 불러오지 못했습니다.");
+    }
+
+    const response = await fetch("/api/discord", {
+      method: raid.discord_message_id ? "PATCH" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messageId: raid.discord_message_id || undefined,
+        message: "",
+        embeds: [buildRaidDiscordEmbed(raid, participants || [])],
+      }),
+    });
+
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(result?.error || "디스코드 메시지 동기화 실패");
+    }
+
+    if (!raid.discord_message_id && result?.messageId) {
+      const { error: updateError } = await client
+        .from("raid_schedules")
+        .update({ discord_message_id: result.messageId })
+        .eq("id", raidId);
+
+      if (updateError) {
+        throw new Error(updateError.message || "discord_message_id 저장 실패");
+      }
+    }
+  } catch (error) {
+    console.error("syncRaidDiscordMessage error:", error);
+  }
+};
+
 const formatDate = (year: number, month: number, day: number) =>
   `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
@@ -4044,55 +4170,27 @@ const CreateRaidModal = ({
     try {
       const maxParticipants = form.type === "anime" ? 8 : form.raid_type === "4인" ? 4 : 8;
 
-      const { error } = await supabase.from("raid_schedules").insert({
-        raid_name: form.raid_name,
-        raid_date: date,
-        raid_time: form.raid_time,
-        difficulty: form.type === "anime" ? null : form.difficulty,
-        raid_type: form.type === "anime" ? "시청" : form.raid_type,
-        max_participants: maxParticipants,
-        type: form.type,
-        experience: form.type === "anime" ? null : form.experience,
-      });
+      const { data: insertedRaid, error } = await supabase
+        .from("raid_schedules")
+        .insert({
+          raid_name: form.raid_name,
+          raid_date: date,
+          raid_time: form.raid_time,
+          difficulty: form.type === "anime" ? null : form.difficulty,
+          raid_type: form.type === "anime" ? "시청" : form.raid_type,
+          max_participants: maxParticipants,
+          type: form.type,
+          experience: form.type === "anime" ? null : form.experience,
+        })
+        .select("*")
+        .single();
 
-      if (error) {
-        showToast(error.message, "error");
+      if (error || !insertedRaid) {
+        showToast(error?.message || "일정 생성 실패", "error");
         return;
       }
 
-      try {
-        const raidDifficultyLabel =
-          form.type === "anime"
-            ? "시청"
-            : form.difficulty || (form.experience ? `${form.experience}` : "미정");
-
-        const raidTypeLabel = form.type === "anime" ? "시청" : form.raid_type || "레이드";
-
-        await fetch("/api/discord", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            embeds: [
-              {
-                title: "레이드 일정",
-                description: form.raid_name,
-                color: 5814783,
-                fields: [
-                  { name: "날짜", value: date, inline: true },
-                  { name: "시간", value: form.raid_time, inline: true },
-                  { name: "난이도", value: raidDifficultyLabel, inline: true },
-                  { name: "구분", value: raidTypeLabel, inline: true },
-                  { name: "참여", value: "사이트에서 참여 체크", inline: false },
-                ],
-              },
-            ],
-          }),
-        });
-      } catch (discordError) {
-        console.error("discord webhook send error:", discordError);
-      }
+      await syncRaidDiscordMessage(insertedRaid.id);
 
       showToast("일정 생성 완료", "success");
       onRefresh();
@@ -4500,6 +4598,7 @@ const ParticipantItem = ({
       .eq("id", participant.id);
 
     if (!error) {
+      await syncRaidDiscordMessage(participant.schedule_id);
       onRefresh();
     } else {
       showToast(error.message || "취소 실패", "error");
@@ -4699,6 +4798,7 @@ const JoinForm = ({
       });
 
       if (!error) {
+        await syncRaidDiscordMessage(raid.id);
         onSuccess();
       } else {
         showToast(error.message || "참여 실패", "error");
