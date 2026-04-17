@@ -82,7 +82,7 @@ export default async function handler(req, res) {
     let sentCount = 0;
 
     for (const raid of raids) {
-      const discordResponse = await fetch(`${baseUrl}/api/discord`, {
+      const discordResponse = await fetch("/api/discord", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
