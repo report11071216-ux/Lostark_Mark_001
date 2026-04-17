@@ -837,7 +837,7 @@ const HomeFeaturePortal = ({
             핵심 콘텐츠 바로가기
           </h2>
           <p className="mt-2 text-sm text-stone-400">
-            .
+            자주 보는 콘텐츠를 더 빠르고 선명하게 모아둔 구간이야.
           </p>
         </div>
         <div className="hidden rounded-[1.35rem] border border-amber-100/10 bg-white/[0.03] px-4 py-3 text-right shadow-[0_12px_30px_rgba(0,0,0,0.18)] md:block">
@@ -942,7 +942,7 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
                 공지사항
               </h2>
               <p className="mt-1 text-sm text-stone-400">
-                .
+                길드 운영에 필요한 핵심 공지를 정리해서 보여줘.
               </p>
             </div>
 
@@ -1791,7 +1791,34 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
         animate={{ opacity: [0.14, 0.28, 0.14], y: [0, 12, 0] }}
         transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <motion.div
+          className="relative h-[380px] w-[380px] opacity-[0.08] blur-[0.2px] md:h-[520px] md:w-[520px] xl:h-[620px] xl:w-[620px]"
+          animate={{ rotate: 360, scale: [0.985, 1.015, 0.985], opacity: [0.06, 0.1, 0.06] }}
+          transition={{ rotate: { duration: 72, repeat: Infinity, ease: "linear" }, scale: { duration: 18, repeat: Infinity, ease: "easeInOut" }, opacity: { duration: 14, repeat: Infinity, ease: "easeInOut" } }}
+        >
+          <svg viewBox="0 0 600 600" className="h-full w-full text-amber-200/80" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="300" cy="300" r="228" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.38" />
+            <circle cx="300" cy="300" r="178" stroke="currentColor" strokeWidth="1.8" strokeOpacity="0.3" strokeDasharray="10 18" />
+            <circle cx="300" cy="300" r="126" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.24" />
+            <rect x="182" y="182" width="236" height="236" rx="36" stroke="currentColor" strokeWidth="2" strokeOpacity="0.34" />
+            <rect x="230" y="230" width="140" height="140" rx="24" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.28" transform="rotate(45 300 300)" />
+            <path d="M300 118L332 188L412 188L348 236L372 316L300 270L228 316L252 236L188 188L268 188L300 118Z" stroke="currentColor" strokeWidth="1.8" strokeOpacity="0.24" />
+            <path d="M300 210L324 276H390L336 318L356 384L300 344L244 384L264 318L210 276H276L300 210Z" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.22" />
+            <circle cx="300" cy="300" r="18" fill="currentColor" fillOpacity="0.22" />
+            <circle cx="300" cy="72" r="7" fill="currentColor" fillOpacity="0.55" />
+            <circle cx="528" cy="300" r="7" fill="currentColor" fillOpacity="0.55" />
+            <circle cx="300" cy="528" r="7" fill="currentColor" fillOpacity="0.55" />
+            <circle cx="72" cy="300" r="7" fill="currentColor" fillOpacity="0.55" />
+            <circle cx="300" cy="148" r="4" fill="currentColor" fillOpacity="0.52" />
+            <circle cx="452" cy="300" r="4" fill="currentColor" fillOpacity="0.52" />
+            <circle cx="300" cy="452" r="4" fill="currentColor" fillOpacity="0.52" />
+            <circle cx="148" cy="300" r="4" fill="currentColor" fillOpacity="0.52" />
+          </svg>
+        </motion.div>
+      </div>
       <div className="absolute inset-0 opacity-[0.045]" style={{ backgroundImage: "linear-gradient(rgba(255,249,237,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,249,237,0.02) 1px, transparent 1px)", backgroundSize: "72px 72px" }} />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(8,6,4,0.08)_42%,rgba(8,6,4,0.28)_68%,rgba(7,5,4,0.62)_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,5,4,0.02),rgba(7,5,4,0.22)_36%,rgba(7,5,4,0.72))]" />
     </div>
     {children}
