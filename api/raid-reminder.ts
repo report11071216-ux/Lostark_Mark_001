@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     const now = new Date();
 
     // 55분 ~ 61분 후 범위
-    const from = new Date(now.getTime() + 55 * 60 * 1000).toISOString();
-    const to = new Date(now.getTime() + 61 * 60 * 1000).toISOString();
+    const from = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
+    const to = new Date(now.getTime() + 90 * 60 * 1000).toISOString();
 
     // 대상 레이드 조회
     const { data: raids, error } = await supabase
