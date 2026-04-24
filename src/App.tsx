@@ -9188,18 +9188,22 @@ const PointShopPage = ({ user, profile }: any) => {
     if (error) return showToast(error.message, "error");
 
     if (item.reward_type === "badge") {
-      const badgeMetaPayload = {
-        badge_name: item.badge_name || item.title || "뱃지",
-        badge_color: item.badge_color || "#8b5cf6",
-        badge_card_effect: item.badge_card_effect || "none",
-        badge_gradient_from: item.badge_gradient_from || null,
-        badge_gradient_to: item.badge_gradient_to || null,
-        badge_glow_color: item.badge_glow_color || null,
-      };
-
       const ensureBadgeInventoryRow = async () => {
-        const badgeItemColumnCandidates = ["badge_item_id", "shop_item_id", "item_id", "badge_id"];
         const failedAttempts: string[] = [];
+
+        try {
+          const { error: rpcError } = await client.rpc("ensure_user_badge_inventory", {
+            p_user_id: user.id,
+            p_item_id: item.id,
+          });
+
+          if (!rpcError) return { ok: true, errorMessage: "" };
+          failedAttempts.push(`rpc ensure_user_badge_inventory: ${rpcError.message}`);
+        } catch (rpcUnexpectedError: any) {
+          failedAttempts.push(`rpc ensure_user_badge_inventory unexpected: ${rpcUnexpectedError?.message || String(rpcUnexpectedError)}`);
+        }
+
+        const badgeItemColumnCandidates = ["badge_item_id", "shop_item_id", "item_id", "badge_id"];
 
         for (const itemColumn of badgeItemColumnCandidates) {
           try {
@@ -9216,28 +9220,17 @@ const PointShopPage = ({ user, profile }: any) => {
 
             if (readError) {
               failedAttempts.push(`read user_badges.${itemColumn}: ${readError.message}`);
+              continue;
             }
 
-            const fullPayload = {
+            const { error: insertError } = await client.from("user_badges").insert({
               user_id: user.id,
               [itemColumn]: item.id,
-              ...badgeMetaPayload,
-            };
+            });
 
-            const { error: fullInsertError } = await client.from("user_badges").insert(fullPayload);
-            if (!fullInsertError) return { ok: true, errorMessage: "" };
+            if (!insertError) return { ok: true, errorMessage: "" };
 
-            failedAttempts.push(`insert user_badges.${itemColumn} full: ${fullInsertError.message}`);
-
-            const minimalPayload = {
-              user_id: user.id,
-              [itemColumn]: item.id,
-            };
-
-            const { error: minimalInsertError } = await client.from("user_badges").insert(minimalPayload);
-            if (!minimalInsertError) return { ok: true, errorMessage: "" };
-
-            failedAttempts.push(`insert user_badges.${itemColumn} minimal: ${minimalInsertError.message}`);
+            failedAttempts.push(`insert user_badges.${itemColumn}: ${insertError.message}`);
           } catch (inventoryError: any) {
             failedAttempts.push(`user_badges.${itemColumn} unexpected: ${inventoryError?.message || String(inventoryError)}`);
           }
@@ -9245,7 +9238,7 @@ const PointShopPage = ({ user, profile }: any) => {
 
         return {
           ok: false,
-          errorMessage: failedAttempts.slice(-6).join("\n"),
+          errorMessage: failedAttempts.slice(-8).join("\n"),
         };
       };
 
