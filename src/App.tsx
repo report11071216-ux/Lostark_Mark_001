@@ -7204,20 +7204,61 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     if (!confirm(`정말 "${badge.badge_name || badge.badge_label || "뱃지"}" 뱃지를 삭제할까요? 삭제 후 복구되지 않을 수 있어요.`)) return;
 
     const client = getSupabaseOrThrow();
-    const { data: deleted, error } = await client.rpc("delete_user_badge_v2", {
-      p_user_id: user.id,
-      p_badge_row_id: badgeRowId || null,
-      p_badge_item_id: badgeItemId || null,
-      p_badge_code: badgeCode || null,
-    });
 
-    if (error) {
-      showToast(`뱃지 삭제 실패: ${error.message}`, "error");
-      return;
+    let deletedRows: any[] | null = null;
+    const deleteErrors: string[] = [];
+
+    if (badgeRowId) {
+      const { data, error } = await client
+        .from("user_badges")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("id", badgeRowId)
+        .select("id");
+
+      if (error) {
+        deleteErrors.push(`id 기준 삭제: ${error.message}`);
+      } else if (Array.isArray(data) && data.length > 0) {
+        deletedRows = data;
+      }
     }
 
-    if (!deleted) {
-      showToast("삭제된 뱃지가 없어. 이미 삭제됐거나 DB 기준값이 달라.", "error");
+    if (!deletedRows && badgeItemId) {
+      let query = client
+        .from("user_badges")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("badge_item_id", badgeItemId);
+
+      if (badgeCode) query = query.eq("badge_code", badgeCode);
+
+      const { data, error } = await query.select("id");
+
+      if (error) {
+        deleteErrors.push(`badge_item_id 기준 삭제: ${error.message}`);
+      } else if (Array.isArray(data) && data.length > 0) {
+        deletedRows = data;
+      }
+    }
+
+    if (!deletedRows && badgeCode) {
+      const { data, error } = await client
+        .from("user_badges")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("badge_code", badgeCode)
+        .select("id");
+
+      if (error) {
+        deleteErrors.push(`badge_code 기준 삭제: ${error.message}`);
+      } else if (Array.isArray(data) && data.length > 0) {
+        deletedRows = data;
+      }
+    }
+
+    if (!deletedRows) {
+      const detail = deleteErrors.length ? ` (${deleteErrors.join(" / ")})` : "";
+      showToast(`삭제된 뱃지가 없어. 이미 삭제됐거나 DB 기준값이 달라.${detail}`, "error");
       await fetchOwnedBadges();
       return;
     }
