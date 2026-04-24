@@ -7206,24 +7206,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
     const client = getSupabaseOrThrow();
 
-    const isSameBadge = (item: any) => {
-      const itemRowId = String(item.id || "");
-      const itemBadgeItemId = String(item.badge_item_id || item.shop_item_id || item.item_id || item.badge_id || "");
-      const itemBadgeCode = String(item.badge_code || "");
-      const itemBadgeLabel = String(item.badge_label || item.badge_name || item.name || item.title || "");
-
-      return Boolean(
-        (badgeRowId && itemRowId === badgeRowId) ||
-          (badgeItemId && itemBadgeItemId === badgeItemId) ||
-          (badgeCode && itemBadgeCode === badgeCode) ||
-          (badgeLabel && itemBadgeLabel === badgeLabel)
-      );
-    };
-
-    const removeBadgeFromScreen = () => {
-      setOwnedBadges((prev) => prev.filter((item: any) => !isSameBadge(item)));
-    };
-
     const deleteAttempts: Array<{ label: string; run: () => Promise<{ data: any[] | null; error: any }> }> = [];
 
     if (badgeRowId) {
@@ -7298,24 +7280,43 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       }
 
       deletedCount += Array.isArray(data) ? data.length : 0;
-
-      if (deletedCount > 0) break;
     }
 
+    const hardDeletedIds = new Set<string>();
+    const hardDeletedItemIds = new Set<string>();
+    const hardDeletedCodes = new Set<string>();
+    const hardDeletedLabels = new Set<string>();
+
+    if (badgeRowId) hardDeletedIds.add(badgeRowId);
+    if (badgeItemId) hardDeletedItemIds.add(badgeItemId);
+    if (badgeCode) hardDeletedCodes.add(badgeCode);
+    if (badgeLabel) hardDeletedLabels.add(badgeLabel);
+
+    const filterDeletedBadges = (items: any[]) =>
+      items.filter((item: any) => {
+        const itemRowId = String(item.id || "");
+        const itemBadgeItemId = String(item.badge_item_id || item.shop_item_id || item.item_id || item.badge_id || "");
+        const itemBadgeCode = String(item.badge_code || "");
+        const itemBadgeLabel = String(item.badge_label || item.badge_name || item.name || item.title || "");
+
+        return !(
+          (itemRowId && hardDeletedIds.has(itemRowId)) ||
+          (itemBadgeItemId && hardDeletedItemIds.has(itemBadgeItemId)) ||
+          (itemBadgeCode && hardDeletedCodes.has(itemBadgeCode)) ||
+          (itemBadgeLabel && hardDeletedLabels.has(itemBadgeLabel))
+        );
+      });
+
     if (errors.length > 0 && deletedCount === 0 && errors.every((message) => !message.includes("does not exist") && !message.includes("schema cache"))) {
+      setOwnedBadges((prev) => filterDeletedBadges(prev));
       showToast(`뱃지 삭제 실패: ${errors.join(" / ")}`, "error");
       return;
     }
 
-    removeBadgeFromScreen();
+    setOwnedBadges((prev) => filterDeletedBadges(prev));
+    await fetchOwnedBadges();
 
-    if (deletedCount > 0) {
-      showToast("뱃지를 삭제했어.", "success");
-      await fetchOwnedBadges();
-      return;
-    }
-
-    showToast("이미 DB에서 삭제된 뱃지라 화면 목록에서 정리했어.", "success");
+    showToast(deletedCount > 0 ? "뱃지를 삭제했어." : "이미 DB에서 삭제된 뱃지라 화면 목록만 정리했어.", "success");
   };
 
   const saveCharacter = async () => {
