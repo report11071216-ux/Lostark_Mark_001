@@ -6387,28 +6387,67 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   };
 
   const fetchOwnedBadges = useCallback(async () => {
-    const client = getSupabaseOrThrow();
-    const { data, error } = await client
-      .from("user_owned_badges")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+    if (!user?.id) return;
 
-    if (error) {
-      console.error("fetchOwnedBadges error:", error);
-      setOwnedBadges([]);
-      return;
-    }
+    const client = getSupabaseOrThrow();
+
+    const normalizeOwnedBadgeRow = (badge: any, sourceTable: string) => ({
+      ...badge,
+      source_table: sourceTable,
+      badge_item_id: String(
+        badge?.badge_item_id ||
+        badge?.shop_item_id ||
+        badge?.item_id ||
+        badge?.badge_id ||
+        badge?.id ||
+        ""
+      ),
+    });
+
+    const readBadgeTable = async (tableName: string) => {
+      try {
+        const { data, error } = await client
+          .from(tableName)
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) {
+          console.error(`${tableName} fetchOwnedBadges error:`, error);
+          return [];
+        }
+
+        return (data || []).map((badge: any) => normalizeOwnedBadgeRow(badge, tableName));
+      } catch (error) {
+        console.error(`${tableName} fetchOwnedBadges unexpected error:`, error);
+        return [];
+      }
+    };
+
+    const [ownedBadgeRows, legacyBadgeRows] = await Promise.all([
+      readBadgeTable("user_owned_badges"),
+      readBadgeTable("user_badges"),
+    ]);
+
+    const mergedRows = [...ownedBadgeRows, ...legacyBadgeRows].filter((badge: any) => badge.badge_item_id);
+    const uniqueRows = Array.from(
+      new Map(
+        mergedRows.map((badge: any) => [
+          `${badge.source_table}-${badge.id || badge.badge_item_id}`,
+          badge,
+        ])
+      ).values()
+    );
 
     const badgeItemIds = Array.from(
-      new Set((data || []).map((item: any) => String(item.badge_item_id || "")).filter(Boolean))
+      new Set(uniqueRows.map((item: any) => String(item.badge_item_id || "")).filter(Boolean))
     );
 
     let itemMap = new Map<string, any>();
     if (badgeItemIds.length > 0) {
       const { data: itemRows, error: itemError } = await client
         .from("point_shop_items")
-        .select("id, badge_name, badge_color, badge_card_effect, badge_gradient_from, badge_gradient_to, badge_glow_color")
+        .select("id, title, badge_name, badge_color, badge_card_effect, badge_gradient_from, badge_gradient_to, badge_glow_color")
         .in("id", badgeItemIds);
 
       if (itemError) {
@@ -6419,16 +6458,16 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     }
 
     setOwnedBadges(
-      (data || []).map((badge: any) => {
+      uniqueRows.map((badge: any) => {
         const itemMeta = itemMap.get(String(badge.badge_item_id || "")) || {};
         return {
           ...badge,
-          badge_name: badge.badge_name || itemMeta.badge_name || "뱃지",
-          badge_color: badge.badge_color || itemMeta.badge_color || "#8b5cf6",
-          badge_card_effect: badge.badge_card_effect || itemMeta.badge_card_effect || "none",
-          badge_gradient_from: badge.badge_gradient_from || itemMeta.badge_gradient_from || null,
-          badge_gradient_to: badge.badge_gradient_to || itemMeta.badge_gradient_to || null,
-          badge_glow_color: badge.badge_glow_color || itemMeta.badge_glow_color || null,
+          badge_name: badge.badge_name || badge.name || badge.title || itemMeta.badge_name || itemMeta.title || "뱃지",
+          badge_color: badge.badge_color || badge.color || itemMeta.badge_color || "#8b5cf6",
+          badge_card_effect: badge.badge_card_effect || badge.card_effect || itemMeta.badge_card_effect || "none",
+          badge_gradient_from: badge.badge_gradient_from || badge.gradient_from || itemMeta.badge_gradient_from || null,
+          badge_gradient_to: badge.badge_gradient_to || badge.gradient_to || itemMeta.badge_gradient_to || null,
+          badge_glow_color: badge.badge_glow_color || badge.glow_color || itemMeta.badge_glow_color || null,
         };
       })
     );
@@ -8707,10 +8746,16 @@ const GuildMembersPage = () => {
                 <div className="relative z-10">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex gap-4 min-w-0">
-                      <img
-                        src={member.avatar_url || member.image_url || "https://placehold.co/120x120?text=%EC%81%98%EB%B0%8D"}
-                        className="h-20 w-20 rounded-2xl object-cover border border-white/10"
-                      />
+                      {member.avatar_url || member.image_url ? (
+                        <img
+                          src={member.avatar_url || member.image_url}
+                          className="h-20 w-20 rounded-2xl object-cover border border-white/10"
+                        />
+                      ) : (
+                        <div className="h-20 w-20 shrink-0 rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/20 via-slate-950 to-purple-500/10 flex items-center justify-center text-sm font-semibold text-amber-100">
+                          쁘밍
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <div className="flex flex-wrap gap-2 mb-2">
                           {member.is_main && (
