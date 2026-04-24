@@ -1796,6 +1796,38 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
         animate={{ opacity: [0.14, 0.28, 0.14], y: [0, 12, 0] }}
         transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
+      <div className="pointer-events-none absolute left-[-90px] top-0 hidden h-full w-[430px] 2xl:block">
+        <div className="absolute left-0 top-[8%] h-[76%] w-full rounded-r-[3rem] border-r border-amber-200/10 bg-[radial-gradient(circle_at_28%_34%,rgba(245,190,91,0.16),transparent_34%),radial-gradient(circle_at_62%_64%,rgba(34,211,238,0.08),transparent_32%),linear-gradient(90deg,rgba(27,18,10,0.72),rgba(27,18,10,0.22),transparent)] blur-[0.2px]" />
+        <div className="absolute left-[-48px] top-[14%] h-[70%] w-[360px] overflow-hidden rounded-r-[3.2rem] border-y border-r border-amber-200/10 bg-black/10 shadow-[0_0_90px_rgba(245,158,11,0.08)]">
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,5,4,0.92),rgba(17,12,8,0.35),transparent)]" />
+          <svg viewBox="0 0 360 760" className="absolute inset-y-0 left-0 h-full w-full text-amber-200/70" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M36 86C104 132 150 206 158 292C168 394 118 472 64 552" stroke="currentColor" strokeWidth="2" strokeOpacity="0.18" />
+            <path d="M92 118C170 190 210 274 202 382C195 474 150 542 90 626" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.14" strokeDasharray="10 16" />
+            <circle cx="126" cy="334" r="118" stroke="currentColor" strokeWidth="1.8" strokeOpacity="0.18" />
+            <circle cx="126" cy="334" r="72" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.14" />
+            <path d="M126 222L148 292H222L162 334L186 406L126 362L66 406L90 334L30 292H104L126 222Z" stroke="currentColor" strokeWidth="1.7" strokeOpacity="0.22" />
+            <path d="M44 676C92 612 156 574 240 560" stroke="currentColor" strokeWidth="2" strokeOpacity="0.13" />
+            <path d="M18 706C98 658 178 642 306 662" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.1" />
+          </svg>
+          <div className="absolute bottom-[13%] left-[18px] h-[240px] w-[185px] rotate-[-6deg] rounded-[48%_52%_40%_60%/46%_42%_58%_54%] bg-[radial-gradient(circle_at_50%_18%,rgba(255,241,202,0.18),transparent_18%),linear-gradient(155deg,rgba(251,191,36,0.18),rgba(14,10,6,0.1)_54%,transparent)] blur-[1px]" />
+        </div>
+      </div>
+      <div className="pointer-events-none absolute right-[-90px] top-0 hidden h-full w-[430px] 2xl:block">
+        <div className="absolute right-0 top-[8%] h-[76%] w-full rounded-l-[3rem] border-l border-amber-200/10 bg-[radial-gradient(circle_at_72%_30%,rgba(251,191,36,0.14),transparent_34%),radial-gradient(circle_at_34%_68%,rgba(59,130,246,0.1),transparent_30%),linear-gradient(270deg,rgba(27,18,10,0.72),rgba(27,18,10,0.22),transparent)] blur-[0.2px]" />
+        <div className="absolute right-[-48px] top-[14%] h-[70%] w-[360px] overflow-hidden rounded-l-[3.2rem] border-y border-l border-amber-200/10 bg-black/10 shadow-[0_0_90px_rgba(245,158,11,0.08)]">
+          <div className="absolute inset-0 bg-[linear-gradient(270deg,rgba(7,5,4,0.92),rgba(17,12,8,0.35),transparent)]" />
+          <svg viewBox="0 0 360 760" className="absolute inset-y-0 right-0 h-full w-full text-amber-200/70" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M324 86C256 132 210 206 202 292C192 394 242 472 296 552" stroke="currentColor" strokeWidth="2" strokeOpacity="0.18" />
+            <path d="M268 118C190 190 150 274 158 382C165 474 210 542 270 626" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.14" strokeDasharray="10 16" />
+            <circle cx="234" cy="334" r="118" stroke="currentColor" strokeWidth="1.8" strokeOpacity="0.18" />
+            <circle cx="234" cy="334" r="72" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.14" />
+            <path d="M234 222L256 292H330L270 334L294 406L234 362L174 406L198 334L138 292H212L234 222Z" stroke="currentColor" strokeWidth="1.7" strokeOpacity="0.22" />
+            <path d="M316 676C268 612 204 574 120 560" stroke="currentColor" strokeWidth="2" strokeOpacity="0.13" />
+            <path d="M342 706C262 658 182 642 54 662" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.1" />
+          </svg>
+          <div className="absolute bottom-[13%] right-[18px] h-[240px] w-[185px] rotate-[6deg] rounded-[52%_48%_60%_40%/42%_46%_54%_58%] bg-[radial-gradient(circle_at_50%_18%,rgba(255,241,202,0.18),transparent_18%),linear-gradient(205deg,rgba(251,191,36,0.18),rgba(14,10,6,0.1)_54%,transparent)] blur-[1px]" />
+        </div>
+      </div>
       <div className="absolute inset-0 flex items-center justify-center">
         <motion.div
           className="relative h-[380px] w-[380px] opacity-[0.08] blur-[0.2px] md:h-[520px] md:w-[520px] xl:h-[620px] xl:w-[620px]"
