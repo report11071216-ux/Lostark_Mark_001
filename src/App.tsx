@@ -117,6 +117,11 @@ const defaultSettings = {
       epic: 22,
       legendary: 30,
     },
+    ui_images: {
+      background_image_url: "",
+      side_left_image_url: "",
+      side_right_image_url: "",
+    },
   },
 };
 
@@ -1144,6 +1149,11 @@ type PointRateSettings = {
   daily_cap: number;
   enhancement_bonus_per_5: number;
   rate_by_rarity: Record<WeaponRarityKey, number>;
+  ui_images?: {
+    background_image_url?: string;
+    side_left_image_url?: string;
+    side_right_image_url?: string;
+  };
 };
 
 const normalizePointRateSettings = (value: any): PointRateSettings => {
@@ -1158,6 +1168,11 @@ const normalizePointRateSettings = (value: any): PointRateSettings => {
       rare: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.rare) || 15)),
       epic: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.epic) || 22)),
       legendary: Math.max(0, Math.round(Number(raw?.rate_by_rarity?.legendary) || 30)),
+    },
+    ui_images: {
+      background_image_url: String(raw?.ui_images?.background_image_url || ""),
+      side_left_image_url: String(raw?.ui_images?.side_left_image_url || ""),
+      side_right_image_url: String(raw?.ui_images?.side_right_image_url || ""),
     },
   };
 };
@@ -1782,10 +1797,41 @@ const ToastViewport = () => {
 };
 
 
-const PageShell = ({ children }: { children: React.ReactNode }) => (
+const PageShell = ({ children }: { children: React.ReactNode }) => {
+  const shellSettings = normalizeAppSettings(readCache(CACHE_KEYS.settings, defaultSettings));
+  const uiImages = shellSettings?.point_rate_settings?.ui_images || {};
+  const backgroundImageUrl = String(uiImages?.background_image_url || "").trim();
+  const sideLeftImageUrl = String(uiImages?.side_left_image_url || "").trim();
+  const sideRightImageUrl = String(uiImages?.side_right_image_url || "").trim();
+
+  return (
   <div className="relative min-h-screen overflow-hidden bg-[#090705] text-white selection:bg-amber-300/25">
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-12%,rgba(247,210,129,0.18),transparent_28%),radial-gradient(circle_at_50%_12%,rgba(176,126,50,0.14),transparent_24%),radial-gradient(circle_at_14%_22%,rgba(99,61,17,0.16),transparent_28%),radial-gradient(circle_at_84%_16%,rgba(120,81,29,0.14),transparent_24%),linear-gradient(180deg,#16110d_0%,#0f0b08_42%,#080706_100%)]" />
+      {backgroundImageUrl ? (
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `linear-gradient(180deg,rgba(9,7,5,0.38),rgba(9,7,5,0.78)), url(${backgroundImageUrl})` }}
+        />
+      ) : (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-12%,rgba(247,210,129,0.18),transparent_28%),radial-gradient(circle_at_50%_12%,rgba(176,126,50,0.14),transparent_24%),radial-gradient(circle_at_14%_22%,rgba(99,61,17,0.16),transparent_28%),radial-gradient(circle_at_84%_16%,rgba(120,81,29,0.14),transparent_24%),linear-gradient(180deg,#16110d_0%,#0f0b08_42%,#080706_100%)]" />
+      )}
+
+      {sideLeftImageUrl && (
+        <div className="absolute left-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
+          <div
+            className="absolute inset-y-[9%] left-0 w-full rounded-r-[3rem] bg-contain bg-left bg-no-repeat opacity-70"
+            style={{ backgroundImage: `linear-gradient(90deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideLeftImageUrl})` }}
+          />
+        </div>
+      )}
+      {sideRightImageUrl && (
+        <div className="absolute right-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
+          <div
+            className="absolute inset-y-[9%] right-0 w-full rounded-l-[3rem] bg-contain bg-right bg-no-repeat opacity-70"
+            style={{ backgroundImage: `linear-gradient(270deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideRightImageUrl})` }}
+          />
+        </div>
+      )}
       <motion.div
         className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-amber-200/12 blur-[148px] md:h-[620px] md:w-[1220px]"
         animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
@@ -1860,7 +1906,8 @@ const PageShell = ({ children }: { children: React.ReactNode }) => (
     </div>
     {children}
   </div>
-);
+  );
+};
 
 
 const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
@@ -5016,6 +5063,35 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
 };
 
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
+  const uiImages = settings?.point_rate_settings?.ui_images || {};
+
+  const updateUiImage = (key: "background_image_url" | "side_left_image_url" | "side_right_image_url", value: string) => {
+    setSettings({
+      ...settings,
+      point_rate_settings: {
+        ...normalizePointRateSettings(settings?.point_rate_settings),
+        ui_images: {
+          ...uiImages,
+          [key]: value,
+        },
+      },
+    });
+  };
+
+  const handleUiImageUpload = async (
+    key: "background_image_url" | "side_left_image_url" | "side_right_image_url",
+    file: File | null
+  ) => {
+    if (!file) return;
+    try {
+      const publicUrl = await uploadGuildImage(file, "ui-backgrounds");
+      updateUiImage(key, publicUrl);
+      showToast("이미지 업로드 완료", "success");
+    } catch (error: any) {
+      showToast(error?.message || "이미지 업로드 실패", "error");
+    }
+  };
+
   const handleSave = async () => {
     const { error, payload } = await saveSingletonSettings(settings);
     if (error) showToast(error.message, "error");
@@ -5039,6 +5115,51 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
         value={settings.guild_description}
         onChange={(v: any) => setSettings({ ...settings, guild_description: v })}
       />
+      <div className="rounded-[2rem] border border-white/10 bg-black/20 p-6 space-y-6">
+        <div>
+          <div className="text-sm font-semibold text-white">UI 배경 설정</div>
+          <p className="mt-1 text-xs text-slate-500">
+            이미지를 넣지 않으면 기존 배경/사이드 장식이 유지됩니다. URL 입력 또는 이미지 첨부 둘 다 가능합니다.
+          </p>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-3">
+          {[
+            ["background_image_url", "전체 배경 이미지"],
+            ["side_left_image_url", "좌측 사이드 이미지"],
+            ["side_right_image_url", "우측 사이드 이미지"],
+          ].map(([key, label]) => {
+            const value = String(uiImages?.[key] || "");
+            return (
+              <div key={key} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{label}</label>
+                <input
+                  value={value}
+                  onChange={(e) => updateUiImage(key as any, e.target.value)}
+                  placeholder="이미지 URL 입력"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-white outline-none focus:border-amber-200/30"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => void handleUiImageUpload(key as any, e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-400 file:mr-3 file:rounded-full file:border-0 file:bg-amber-500 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-black"
+                />
+                {value ? (
+                  <div className="h-28 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                    <img src={value} alt={label} className="h-full w-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-white/10 bg-black/20 text-xs text-slate-600">
+                    기존 배경 유지
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <button
         onClick={handleSave}
         className="w-full bg-amber-500 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-amber-400 transition-all"
