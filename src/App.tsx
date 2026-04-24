@@ -10078,7 +10078,8 @@ const AdminPointShopManager = () => {
           ))}
         </div>
       </div>
-      {productAdminTab === "badge" && (
+      {productAdminTab === "badge" ? (
+      <>
       <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
         <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
           <div>
@@ -10325,9 +10326,8 @@ const AdminPointShopManager = () => {
             </div>
           </SectionPanel>
       </div>
-      )}
-
-      {productAdminTab !== "badge" && (
+      </>
+      ) : (
       <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-6">
         <div className={cn("rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6", productAdminTab !== "weapon_parts" && "hidden")}>
           <div>
@@ -10577,7 +10577,8 @@ const AdminPointShopManager = () => {
           )}
         </div>
       </div>
-    </div>      )}
+      )}
+    </div>
 
   );
 };
