@@ -9186,7 +9186,67 @@ const PointShopPage = ({ user, profile }: any) => {
     });
 
     if (error) return showToast(error.message, "error");
-    showToast(item.reward_type === "badge" ? "뱃지를 구매했어. 이제 마이룸에서 캐릭터에게 착용할 수 있어!" : "구매 요청 완료");
+
+    if (item.reward_type === "badge") {
+      const badgePayload = {
+        user_id: user.id,
+        badge_item_id: item.id,
+        badge_name: item.badge_name || item.title || "뱃지",
+        badge_color: item.badge_color || "#8b5cf6",
+        badge_card_effect: item.badge_card_effect || "none",
+        badge_gradient_from: item.badge_gradient_from || null,
+        badge_gradient_to: item.badge_gradient_to || null,
+        badge_glow_color: item.badge_glow_color || null,
+      };
+
+      const ensureBadgeInventoryRow = async (tableName: string) => {
+        try {
+          const { data: existingRow, error: readError } = await client
+            .from(tableName)
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("badge_item_id", item.id)
+            .maybeSingle();
+
+          if (!readError && existingRow?.id) return true;
+          if (readError) console.error(`${tableName} badge inventory read error:`, readError);
+
+          const { error: fullInsertError } = await client.from(tableName).insert(badgePayload);
+          if (!fullInsertError) return true;
+
+          console.error(`${tableName} badge inventory full insert error:`, fullInsertError);
+
+          const { error: minimalInsertError } = await client.from(tableName).insert({
+            user_id: user.id,
+            badge_item_id: item.id,
+          });
+
+          if (!minimalInsertError) return true;
+          console.error(`${tableName} badge inventory minimal insert error:`, minimalInsertError);
+
+          return false;
+        } catch (inventoryError) {
+          console.error(`${tableName} badge inventory unexpected error:`, inventoryError);
+          return false;
+        }
+      };
+
+      const savedToInventory =
+        (await ensureBadgeInventoryRow("user_owned_badges")) ||
+        (await ensureBadgeInventoryRow("user_badges"));
+
+      if (!savedToInventory) {
+        showToast("구매는 완료됐지만 뱃지 보관함 저장에 실패했어. user_owned_badges/user_badges SQL 또는 RLS 정책을 확인해줘.", "error");
+        fetchShop();
+        return;
+      }
+
+      showToast("뱃지를 구매했어. 이제 마이룸에서 캐릭터에게 착용할 수 있어!");
+      fetchShop();
+      return;
+    }
+
+    showToast("구매 요청 완료");
     fetchShop();
   };
 
