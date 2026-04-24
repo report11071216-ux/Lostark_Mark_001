@@ -7208,7 +7208,9 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     try {
       const { data: rpcDeleted, error: rpcError } = await client.rpc("delete_user_badge", {
         p_user_id: user.id,
+        p_badge_row_id: badge.id || null,
         p_badge_item_id: badgeItemId,
+        p_badge_code: badge.badge_code || null,
       });
 
       if (!rpcError && rpcDeleted) {
@@ -9180,6 +9182,23 @@ const PointShopPage = ({ user, profile }: any) => {
       return;
     }
 
+    if (item.reward_type === "badge") {
+      const { data: badgePurchaseResult, error: badgePurchaseError } = await client.rpc("purchase_badge_item_and_inventory", {
+        p_user_id: user.id,
+        p_item_id: item.id,
+      });
+
+      if (badgePurchaseError) {
+        showToast(badgePurchaseError.message || "뱃지 구매에 실패했어.", "error");
+        await fetchShop();
+        return;
+      }
+
+      await Promise.all([fetchOwnedBadges(), fetchShop(), fetchMyPoint()]);
+      showToast(`${item.title} 구매 완료! 마이룸에서 바로 착용할 수 있어.`, "success");
+      return;
+    }
+
     const { error } = await supabase.rpc("purchase_shop_item", {
       p_user_id: user.id,
       p_item_id: item.id,
@@ -9187,94 +9206,8 @@ const PointShopPage = ({ user, profile }: any) => {
 
     if (error) return showToast(error.message, "error");
 
-    if (item.reward_type === "badge") {
-      const ensureBadgeInventoryRow = async () => {
-        const failedAttempts: string[] = [];
-
-        try {
-          const { error: rpcError } = await client.rpc("ensure_user_badge_inventory", {
-            p_user_id: user.id,
-            p_item_id: item.id,
-          });
-
-          if (!rpcError) return { ok: true, errorMessage: "" };
-          failedAttempts.push(`rpc ensure_user_badge_inventory: ${rpcError.message}`);
-        } catch (rpcUnexpectedError: any) {
-          failedAttempts.push(`rpc ensure_user_badge_inventory unexpected: ${rpcUnexpectedError?.message || String(rpcUnexpectedError)}`);
-        }
-
-        const badgeCode = String(
-          item.badge_code ||
-            item.code ||
-            item.slug ||
-            item.badge_name ||
-            item.title ||
-            item.id
-        );
-
-        const badgeLabel = String(
-          item.badge_label ||
-            item.label ||
-            item.badge_name ||
-            item.title ||
-            badgeCode
-        );
-
-        try {
-          const { data: existingRows, error: readError } = await client
-            .from("user_badges")
-            .select("*")
-            .eq("user_id", user.id)
-            .eq("badge_item_id", item.id)
-            .limit(1);
-
-          if (!readError && Array.isArray(existingRows) && existingRows.length > 0) {
-            return { ok: true, errorMessage: "" };
-          }
-
-          if (readError) {
-            failedAttempts.push(`read user_badges.badge_item_id: ${readError.message}`);
-          } else {
-            const { error: insertError } = await client.from("user_badges").insert({
-              user_id: user.id,
-              badge_item_id: item.id,
-              badge_code: badgeCode,
-              badge_label: badgeLabel,
-            });
-
-            if (!insertError) return { ok: true, errorMessage: "" };
-
-            failedAttempts.push(`insert user_badges.badge_item_id: ${insertError.message}`);
-          }
-        } catch (inventoryError: any) {
-          failedAttempts.push(`user_badges.badge_item_id unexpected: ${inventoryError?.message || String(inventoryError)}`);
-        }
-
-        return {
-          ok: false,
-          errorMessage: failedAttempts.slice(-8).join("\n"),
-        };
-      };
-
-      const savedToInventory = await ensureBadgeInventoryRow();
-
-      if (!savedToInventory.ok) {
-        showToast(
-          `구매는 완료됐지만 뱃지 보관함 저장에 실패했어.\n\n${savedToInventory.errorMessage || "Supabase user_badges 테이블 구조/RLS를 확인해줘."}`,
-          "error"
-        );
-        fetchShop();
-        return;
-      }
-
-      await fetchOwnedBadges();
-      showToast("뱃지를 구매했어. 이제 마이룸에서 캐릭터에게 착용할 수 있어!");
-      fetchShop();
-      return;
-    }
-
-    showToast("구매 요청 완료");
-    fetchShop();
+    showToast("구매 요청 완료", "success");
+    await Promise.all([fetchShop(), fetchMyPoint()]);
   };
 
   const drawWeaponGacha = async (product: any, drawCount = 1) => {
