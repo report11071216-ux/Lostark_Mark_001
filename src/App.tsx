@@ -422,25 +422,30 @@ const getCharacterBadges = (character: any): BadgeLike[] => {
   };
 
   if (equipped.length > 0) {
-    return equipped.map((badge: any, index: number) => ({
-      ...badge,
-      badge_card_effect:
-        badge?.badge_card_effect ||
-        badge?.card_effect ||
-        (index === 0 ? topLevelBadgeTheme.badge_card_effect : "none"),
-      badge_gradient_from:
-        badge?.badge_gradient_from ||
-        badge?.gradient_from ||
-        (index === 0 ? topLevelBadgeTheme.badge_gradient_from : null),
-      badge_gradient_to:
-        badge?.badge_gradient_to ||
-        badge?.gradient_to ||
-        (index === 0 ? topLevelBadgeTheme.badge_gradient_to : null),
-      badge_glow_color:
-        badge?.badge_glow_color ||
-        badge?.glow_color ||
-        (index === 0 ? topLevelBadgeTheme.badge_glow_color : null),
-    }));
+    return equipped.map((badge: any, index: number) => {
+      const badgeEffect = badge?.badge_card_effect || badge?.card_effect || "none";
+      const shouldUseTopLevelEffect =
+        index === 0 && normalizeBadgeEffectKey(badgeEffect) === "none";
+
+      return {
+        ...badge,
+        badge_card_effect: shouldUseTopLevelEffect
+          ? topLevelBadgeTheme.badge_card_effect
+          : badgeEffect,
+        badge_gradient_from:
+          badge?.badge_gradient_from ||
+          badge?.gradient_from ||
+          (index === 0 ? topLevelBadgeTheme.badge_gradient_from : null),
+        badge_gradient_to:
+          badge?.badge_gradient_to ||
+          badge?.gradient_to ||
+          (index === 0 ? topLevelBadgeTheme.badge_gradient_to : null),
+        badge_glow_color:
+          badge?.badge_glow_color ||
+          badge?.glow_color ||
+          (index === 0 ? topLevelBadgeTheme.badge_glow_color : null),
+      };
+    });
   }
 
   if (Array.isArray(character?.equipped_badge_names) && character.equipped_badge_names.length > 0) {
@@ -8572,12 +8577,28 @@ const GuildMembersPage = () => {
         console.error("guild_member_overview fetch error:", overviewRes.value.error);
       }
 
-      const overviewMap = new Map(overviewRows.map((row: any) => [row.id, row]));
+      const overviewMap = new Map<string, any>();
+      overviewRows.forEach((row: any) => {
+        [row.id, row.character_id, row.guild_member_id]
+          .map((key: any) => String(key || "").trim())
+          .filter(Boolean)
+          .forEach((key: string) => overviewMap.set(key, row));
+      });
+
       const baseMembers = (liveRows.length > 0 ? liveRows : overviewRows).map((row: any) => {
-        const overview = overviewMap.get(row.id) || {};
+        const overview =
+          overviewMap.get(String(row.id || "").trim()) ||
+          overviewMap.get(String(row.character_id || "").trim()) ||
+          overviewMap.get(String(row.guild_member_id || "").trim()) ||
+          {};
         const baseRow = { ...overview, ...row };
+
         return {
           ...baseRow,
+          badge_card_effect: baseRow.badge_card_effect || overview.badge_card_effect || "none",
+          badge_gradient_from: baseRow.badge_gradient_from || overview.badge_gradient_from || null,
+          badge_gradient_to: baseRow.badge_gradient_to || overview.badge_gradient_to || null,
+          badge_glow_color: baseRow.badge_glow_color || overview.badge_glow_color || null,
           equipped_badges: getCharacterBadges(baseRow),
         };
       });
@@ -8642,7 +8663,7 @@ const GuildMembersPage = () => {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
           <h1 className="text-3xl md:text-4xl font-semibold">길드 캐릭터</h1>
-          <p className="text-slate-400 mt-2">메인/부캐, 템렙, 캐릭터 레벨, 전투력, 생일, MBTI, 장착 뱃지와 장비 파츠 [무기]까지 한 번에 볼 수 있습니다.</p>
+          <p className="text-slate-400 mt-2">메인캐, 템렙, 캐릭터 레벨, 전투력, 생일, MBTI, 장착 뱃지와 장비 파츠 [무기]까지 한 번에 볼 수 있습니다.</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -8687,19 +8708,15 @@ const GuildMembersPage = () => {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex gap-4 min-w-0">
                       <img
-                        src={member.avatar_url || member.image_url || "https://placehold.co/120x120?text=INXX"}
+                        src={member.avatar_url || member.image_url || "https://placehold.co/120x120?text=%EC%81%98%EB%B0%8D"}
                         className="h-20 w-20 rounded-2xl object-cover border border-white/10"
                       />
                       <div className="min-w-0">
                         <div className="flex flex-wrap gap-2 mb-2">
-                          {member.is_main ? (
+                          {member.is_main && (
                             <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 inline-flex items-center gap-1">
                               <Crown size={11} />
                               MAIN
-                            </span>
-                          ) : (
-                            <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-white/10 text-slate-300 border border-white/10">
-                              부캐
                             </span>
                           )}
                           {member.role_hint === "서포터" && (
