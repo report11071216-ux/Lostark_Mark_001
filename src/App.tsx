@@ -9203,37 +9203,51 @@ const PointShopPage = ({ user, profile }: any) => {
           failedAttempts.push(`rpc ensure_user_badge_inventory unexpected: ${rpcUnexpectedError?.message || String(rpcUnexpectedError)}`);
         }
 
-        const badgeItemColumnCandidates = ["badge_item_id", "shop_item_id", "item_id", "badge_id"];
+        const badgeCode = String(
+          item.badge_code ||
+            item.code ||
+            item.slug ||
+            item.badge_name ||
+            item.title ||
+            item.id
+        );
 
-        for (const itemColumn of badgeItemColumnCandidates) {
-          try {
-            const { data: existingRows, error: readError } = await client
-              .from("user_badges")
-              .select("*")
-              .eq("user_id", user.id)
-              .eq(itemColumn, item.id)
-              .limit(1);
+        const badgeLabel = String(
+          item.badge_label ||
+            item.label ||
+            item.badge_name ||
+            item.title ||
+            badgeCode
+        );
 
-            if (!readError && Array.isArray(existingRows) && existingRows.length > 0) {
-              return { ok: true, errorMessage: "" };
-            }
+        try {
+          const { data: existingRows, error: readError } = await client
+            .from("user_badges")
+            .select("*")
+            .eq("user_id", user.id)
+            .eq("badge_item_id", item.id)
+            .limit(1);
 
-            if (readError) {
-              failedAttempts.push(`read user_badges.${itemColumn}: ${readError.message}`);
-              continue;
-            }
+          if (!readError && Array.isArray(existingRows) && existingRows.length > 0) {
+            return { ok: true, errorMessage: "" };
+          }
 
+          if (readError) {
+            failedAttempts.push(`read user_badges.badge_item_id: ${readError.message}`);
+          } else {
             const { error: insertError } = await client.from("user_badges").insert({
               user_id: user.id,
-              [itemColumn]: item.id,
+              badge_item_id: item.id,
+              badge_code: badgeCode,
+              badge_label: badgeLabel,
             });
 
             if (!insertError) return { ok: true, errorMessage: "" };
 
-            failedAttempts.push(`insert user_badges.${itemColumn}: ${insertError.message}`);
-          } catch (inventoryError: any) {
-            failedAttempts.push(`user_badges.${itemColumn} unexpected: ${inventoryError?.message || String(inventoryError)}`);
+            failedAttempts.push(`insert user_badges.badge_item_id: ${insertError.message}`);
           }
+        } catch (inventoryError: any) {
+          failedAttempts.push(`user_badges.badge_item_id unexpected: ${inventoryError?.message || String(inventoryError)}`);
         }
 
         return {
