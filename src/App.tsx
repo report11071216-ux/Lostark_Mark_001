@@ -9690,6 +9690,7 @@ const AdminPointShopManager = () => {
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
   const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "weapon" | "enhance_stone">("guild");
+  const [productAdminTab, setProductAdminTab] = useState<"badge" | "weapon_parts" | "gacha">("badge");
 
   const [weaponName, setWeaponName] = useState("");
   const [weaponDescription, setWeaponDescription] = useState("");
@@ -10048,28 +10049,36 @@ const AdminPointShopManager = () => {
 
   return (
     <div className="space-y-10">
-      <div className="flex flex-wrap gap-3">
-        {[
-          { key: "guild", label: "길드 탭" },
-          { key: "nickname", label: "닉네임 탭" },
-          { key: "weapon", label: "무기 탭" },
-          { key: "enhance_stone", label: "강화석 탭" },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => {
-              setManagerTab(tab.key as any);
-              if (tab.key === "nickname") setRewardType("nickname_effect");
-              else if (tab.key === "enhance_stone") setRewardType("enhance_stone");
-              else setRewardType("badge");
-            }}
-            className={cn("px-4 py-2 rounded-full text-xs font-semibold tracking-[0.18em] uppercase border", managerTab === tab.key ? "bg-amber-500 border-amber-400 text-white" : "bg-black/30 border-white/10 text-slate-400")}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="rounded-[2rem] border border-white/10 bg-black/20 p-3">
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: "badge", label: "뱃지" },
+            { key: "weapon_parts", label: "무기파츠" },
+            { key: "gacha", label: "가챠" },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => {
+                setProductAdminTab(tab.key as "badge" | "weapon_parts" | "gacha");
+                if (tab.key === "badge") {
+                  setRewardType("badge");
+                  setManagerTab("guild");
+                }
+              }}
+              className={cn(
+                "px-5 py-3 rounded-2xl text-sm font-semibold transition-all border",
+                productAdminTab === tab.key
+                  ? "bg-amber-500 border-amber-400 text-white shadow-[0_0_30px_rgba(245,158,11,0.22)]"
+                  : "bg-white/[0.04] border-white/10 text-slate-400 hover:bg-white/[0.08] hover:text-white"
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
+      {productAdminTab === "badge" && (
       <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
         <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
           <div>
@@ -10267,8 +10276,60 @@ const AdminPointShopManager = () => {
         </div>
       </div>
 
+
+      <div className="max-w-4xl">
+        <SectionPanel title="등록된 포인트샵 상품" description="뱃지와 강화석 상품을 함께 관리할 수 있어.">
+            <div className="space-y-4">
+              {items.filter((item) => item.reward_type === "badge").map((item) => {
+                const badgeTheme = getBadgeVisualTheme(item);
+                return (
+                  <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-[#0b1020] p-5 relative overflow-hidden">
+                    <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: getPointShopCardBackground(item, badgeTheme) }} />
+                    <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: getPointShopAuraBackground(item, badgeTheme) }} />
+                    <div className="relative z-10 flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-white/10 bg-white/5 text-white/70">
+                            {getShopRewardTypeLabel(item)}
+                          </span>
+                          <span
+                            className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border"
+                            style={{
+                              color: item.reward_type === "badge" ? badgeTheme.chipText : "#fde68a",
+                              borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(250,204,21,0.35)",
+                              background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(245,158,11,0.16)",
+                            }}
+                          >
+                            {item.reward_type === "enhance_stone" ? getEnhancementItemEffectText(item) : getShopItemStatusText(item)}
+                          </span>
+                        </div>
+                        <div className="mt-3 text-xl font-semibold break-words">{item.title}</div>
+                        <div className="mt-2 text-sm text-white/70">{getShopMoodLine(item)}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-2xl font-semibold text-amber-200">{item.price}P</div>
+                        <div className="text-xs text-slate-500">{item.reward_type === "badge" ? "뱃지 상품" : "강화석 상품"}</div>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <button onClick={() => toggleActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-semibold text-sm">
+                        {item.is_active ? "비활성화" : "활성화"}
+                      </button>
+                      <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-semibold text-sm">
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </SectionPanel>
+      </div>
+      )}
+
+      {productAdminTab !== "badge" && (
       <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-6">
-        <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
+        <div className={cn("rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6", productAdminTab !== "weapon_parts" && "hidden")}>
           <div>
             <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-amber-200">Weapon Part Builder</div>
             <div className="mt-2 text-2xl font-semibold">장비 파츠 [무기] 등록</div>
@@ -10298,7 +10359,22 @@ const AdminPointShopManager = () => {
             />
           </div>
 
-          <AdminInput label="무기 이미지 URL" value={weaponImageUrl} onChange={setWeaponImageUrl} placeholder="https://..." />
+          <div className="space-y-3">
+            <ImageUploader
+              label="무기 이미지 첨부"
+              folder="weapon-parts"
+              onUpload={(url) => {
+                setWeaponImageUrl(url);
+                showToast("무기 이미지 첨부 완료!", "success");
+              }}
+            />
+            {weaponImageUrl && (
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
+                <div className="mb-2 text-xs text-slate-400">첨부 이미지 미리보기</div>
+                <img src={weaponImageUrl} className="h-40 w-full rounded-2xl object-cover" />
+              </div>
+            )}
+          </div>
 
           <button onClick={createWeaponPart} className="w-full bg-amber-500 p-4 rounded-2xl font-semibold uppercase hover:bg-amber-400 transition-all">
             무기 파츠 등록
@@ -10331,7 +10407,7 @@ const AdminPointShopManager = () => {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
+          <div className={cn("rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6", productAdminTab !== "gacha" && "hidden")}>
             <div>
               <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-amber-200">Weapon Gacha Builder</div>
               <div className="mt-2 text-2xl font-semibold">무기 가챠 상품 생성</div>
@@ -10440,53 +10516,7 @@ const AdminPointShopManager = () => {
             )}
           </div>
 
-          <SectionPanel title="등록된 포인트샵 상품" description="뱃지와 강화석 상품을 함께 관리할 수 있어.">
-            <div className="space-y-4">
-              {items.map((item) => {
-                const badgeTheme = getBadgeVisualTheme(item);
-                return (
-                  <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-[#0b1020] p-5 relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: getPointShopCardBackground(item, badgeTheme) }} />
-                    <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: getPointShopAuraBackground(item, badgeTheme) }} />
-                    <div className="relative z-10 flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border border-white/10 bg-white/5 text-white/70">
-                            {getShopRewardTypeLabel(item)}
-                          </span>
-                          <span
-                            className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border"
-                            style={{
-                              color: item.reward_type === "badge" ? badgeTheme.chipText : "#fde68a",
-                              borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(250,204,21,0.35)",
-                              background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(245,158,11,0.16)",
-                            }}
-                          >
-                            {item.reward_type === "enhance_stone" ? getEnhancementItemEffectText(item) : getShopItemStatusText(item)}
-                          </span>
-                        </div>
-                        <div className="mt-3 text-xl font-semibold break-words">{item.title}</div>
-                        <div className="mt-2 text-sm text-white/70">{getShopMoodLine(item)}</div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-2xl font-semibold text-amber-200">{item.price}P</div>
-                        <div className="text-xs text-slate-500">{item.reward_type === "badge" ? "뱃지 상품" : "강화석 상품"}</div>
-                      </div>
-                    </div>
-                    <div className="mt-4 flex gap-2">
-                      <button onClick={() => toggleActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-semibold text-sm">
-                        {item.is_active ? "비활성화" : "활성화"}
-                      </button>
-                      <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-semibold text-sm">
-                        삭제
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </SectionPanel>
-
+                    {productAdminTab === "gacha" && (
           <SectionPanel title="등록된 무기 가챠 상품" description="가챠 상품과 연결된 무기 확률을 함께 확인.">
             <div className="space-y-4">
               {gachaProducts.map((item: any) => {
@@ -10544,8 +10574,10 @@ const AdminPointShopManager = () => {
               })}
             </div>
           </SectionPanel>
+          )}
         </div>
       </div>
-    </div>
+    </div>      )}
+
   );
 };
