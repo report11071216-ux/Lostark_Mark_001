@@ -6424,12 +6424,9 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       }
     };
 
-    const [ownedBadgeRows, legacyBadgeRows] = await Promise.all([
-      readBadgeTable("user_owned_badges"),
-      readBadgeTable("user_badges"),
-    ]);
+    const ownedBadgeRows = await readBadgeTable("user_badges");
 
-    const mergedRows = [...ownedBadgeRows, ...legacyBadgeRows].filter((badge: any) => badge.badge_item_id);
+    const mergedRows = [...ownedBadgeRows].filter((badge: any) => badge.badge_item_id);
     const uniqueRows = Array.from(
       new Map(
         mergedRows.map((badge: any) => [
@@ -7190,75 +7187,52 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   };
 
   const deleteOwnedBadge = async (badge: any) => {
-    const badgeItemId = String(badge.badge_item_id || badge.id || "");
-    if (!badgeItemId) {
-      showToast("삭제할 뱃지 정보를 찾지 못했어.");
+    const badgeRowId = badge.id ? String(badge.id) : "";
+    const badgeItemId = String(badge.badge_item_id || "");
+    const badgeCode = String(badge.badge_code || "");
+
+    if (!badgeRowId && !badgeItemId && !badgeCode) {
+      showToast("삭제할 뱃지 정보를 찾지 못했어.", "error");
       return;
     }
 
-    if (usedBadgeIds.has(badgeItemId)) {
-      showToast("이 뱃지는 현재 캐릭터가 착용 중이야. 먼저 장착 해제 후 삭제해줘.");
+    if (badgeItemId && usedBadgeIds.has(badgeItemId)) {
+      showToast("이 뱃지는 현재 캐릭터가 착용 중이야. 먼저 장착 해제 후 삭제해줘.", "error");
       return;
     }
 
-    if (!confirm(`정말 "${badge.badge_name}" 뱃지를 삭제할까요? 삭제 후 복구되지 않을 수 있어요.`)) return;
+    if (!confirm(`정말 "${badge.badge_name || badge.badge_label || "뱃지"}" 뱃지를 삭제할까요? 삭제 후 복구되지 않을 수 있어요.`)) return;
 
     const client = getSupabaseOrThrow();
+    const { data: deleted, error } = await client.rpc("delete_user_badge_v2", {
+      p_user_id: user.id,
+      p_badge_row_id: badgeRowId || null,
+      p_badge_item_id: badgeItemId || null,
+      p_badge_code: badgeCode || null,
+    });
 
-    try {
-      const { data: rpcDeleted, error: rpcError } = await client.rpc("delete_user_badge", {
-        p_user_id: user.id,
-        p_badge_row_id: badge.id || null,
-        p_badge_item_id: badgeItemId,
-        p_badge_code: badge.badge_code || null,
-      });
-
-      if (!rpcError && rpcDeleted) {
-        showToast("뱃지를 삭제했어.");
-        await fetchOwnedBadges();
-        return;
-      }
-
-      if (rpcError) {
-        console.error("delete_user_badge rpc error:", rpcError);
-      }
-    } catch (rpcUnexpectedError) {
-      console.error("delete_user_badge rpc unexpected error:", rpcUnexpectedError);
-    }
-
-    const tryDelete = async (table: string, matcher: (query: any) => any) => {
-      try {
-        const { error } = await matcher(client.from(table).delete());
-        return !error;
-      } catch (error) {
-        return false;
-      }
-    };
-
-    let deleted = false;
-
-    if (badge.id) {
-      deleted = await tryDelete("user_badges", (q) => q.eq("id", badge.id).eq("user_id", user.id));
-      if (!deleted) deleted = await tryDelete("user_owned_badges", (q) => q.eq("id", badge.id).eq("user_id", user.id));
-    }
-
-    if (!deleted) {
-      deleted = await tryDelete("user_badges", (q) => q.eq("user_id", user.id).eq("badge_item_id", badgeItemId));
-    }
-    if (!deleted) {
-      deleted = await tryDelete("user_owned_badges", (q) => q.eq("user_id", user.id).eq("badge_item_id", badgeItemId));
-    }
-    if (!deleted && badge.badge_code) {
-      deleted = await tryDelete("user_badges", (q) => q.eq("user_id", user.id).eq("badge_code", badge.badge_code));
-    }
-
-    if (!deleted) {
-      showToast("뱃지 삭제에 실패했어. 함께 보낸 SQL 파일 적용 후 다시 시도해줘.", "error");
+    if (error) {
+      showToast(`뱃지 삭제 실패: ${error.message}`, "error");
       return;
     }
 
-    showToast("뱃지를 삭제했어.");
+    if (!deleted) {
+      showToast("삭제된 뱃지가 없어. 이미 삭제됐거나 DB 기준값이 달라.", "error");
+      await fetchOwnedBadges();
+      return;
+    }
+
+    setOwnedBadges((prev) =>
+      prev.filter((item: any) => {
+        const sameRow = badgeRowId && String(item.id || "") === badgeRowId;
+        const sameItem = badgeItemId && String(item.badge_item_id || "") === badgeItemId;
+        const sameCode = badgeCode && String(item.badge_code || "") === badgeCode;
+        return !(sameRow || sameItem || sameCode);
+      })
+    );
+
     await fetchOwnedBadges();
+    showToast("뱃지를 삭제했어.", "success");
   };
 
   const saveCharacter = async () => {
@@ -9010,6 +8984,7 @@ const PointShopPage = ({ user, profile }: any) => {
   const [shopTab, setShopTab] = useState<"guild" | "nickname" | "enhance" | "gacha">("guild");
   const [drawSession, setDrawSession] = useState<any>(null);
   const [drawingProductId, setDrawingProductId] = useState<string | null>(null);
+  const [purchasingItemId, setPurchasingItemId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchShop();
@@ -9090,10 +9065,14 @@ const PointShopPage = ({ user, profile }: any) => {
   const purchase = async (item: any) => {
     if (!user) return showToast("로그인 후 사용 가능합니다.", "error");
     if (!isShopItemAvailable(item)) return showToast("지금은 구매 가능한 시간이 아니야.", "success");
+    if (purchasingItemId) return showToast("구매 처리 중입니다. 잠시만 기다려줘.", "info");
     if (myPoint < item.price) return showToast("포인트가 부족합니다.");
     if (!confirm(`${item.title} 구매 시 ${item.price}P가 차감됩니다. 진행할까요?`)) return;
 
     const client = getSupabaseOrThrow();
+    setPurchasingItemId(String(item.id));
+
+    try {
 
     if (item.reward_type === "enhance_stone") {
       const nextPoint = Math.max(0, myPoint - Number(item.price || 0));
@@ -9183,7 +9162,7 @@ const PointShopPage = ({ user, profile }: any) => {
     }
 
     if (item.reward_type === "badge") {
-      const { data: badgePurchaseResult, error: badgePurchaseError } = await client.rpc("purchase_badge_item_and_inventory", {
+      const { data: badgePurchaseResult, error: badgePurchaseError } = await client.rpc("purchase_badge_item_and_inventory_v2", {
         p_user_id: user.id,
         p_item_id: item.id,
       });
@@ -9194,8 +9173,14 @@ const PointShopPage = ({ user, profile }: any) => {
         return;
       }
 
+      const remainingPoints = Number(
+        (badgePurchaseResult as any)?.remaining_points ??
+          Math.max(0, Number(myPoint || 0) - Number(item.price || 0))
+      );
+      setMyPoint(remainingPoints);
+      showToast(`${item.title} 구매 완료! ${Number(item.price || 0)}P 차감됐어.`, "success");
+      window.setTimeout(() => showToast(`${item.title} 구매 완료!`, "success"), 120);
       await Promise.all([fetchOwnedBadges(), fetchShop(), fetchMyPoint()]);
-      showToast(`${item.title} 구매 완료! 마이룸에서 바로 착용할 수 있어.`, "success");
       return;
     }
 
@@ -9208,6 +9193,9 @@ const PointShopPage = ({ user, profile }: any) => {
 
     showToast("구매 요청 완료", "success");
     await Promise.all([fetchShop(), fetchMyPoint()]);
+    } finally {
+      setPurchasingItemId(null);
+    }
   };
 
   const drawWeaponGacha = async (product: any, drawCount = 1) => {
@@ -9354,13 +9342,13 @@ const PointShopPage = ({ user, profile }: any) => {
                   <div className="text-3xl font-semibold">{item.price}P</div>
                   <button
                     onClick={() => purchase(item)}
-                    disabled={!available || !user}
+                    disabled={!available || !user || purchasingItemId === String(item.id)}
                     className={cn(
                       "px-4 py-3 rounded-xl font-semibold text-sm transition",
-                      available && user ? "bg-amber-500 hover:bg-amber-400 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
+                      available && user && purchasingItemId !== String(item.id) ? "bg-amber-500 hover:bg-amber-400 text-white" : "bg-slate-800 text-slate-400 cursor-not-allowed"
                     )}
                   >
-                    {available ? (user ? "구매하기" : "로그인 필요") : "구매 불가"}
+                    {purchasingItemId === String(item.id) ? "구매 처리중" : available ? (user ? "구매하기" : "로그인 필요") : "구매 불가"}
                   </button>
                 </div>
               </div>
