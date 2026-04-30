@@ -123,6 +123,8 @@ const defaultSettings = {
       side_right_image_url: "",
       side_left_enabled: true,
       side_right_enabled: true,
+      spline_scene_url: "",
+      spline_enabled: false,
     },
   },
 };
@@ -1235,6 +1237,8 @@ type PointRateSettings = {
     side_right_image_url?: string;
     side_left_enabled?: boolean;
     side_right_enabled?: boolean;
+    spline_scene_url?: string;
+    spline_enabled?: boolean;
   };
 };
 
@@ -1257,6 +1261,8 @@ const normalizePointRateSettings = (value: any): PointRateSettings => {
       side_right_image_url: String(raw?.ui_images?.side_right_image_url || ""),
       side_left_enabled: raw?.ui_images?.side_left_enabled !== false,
       side_right_enabled: raw?.ui_images?.side_right_enabled !== false,
+      spline_scene_url: String(raw?.ui_images?.spline_scene_url || ""),
+      spline_enabled: raw?.ui_images?.spline_enabled === true,
     },
   };
 };
@@ -1883,6 +1889,58 @@ const ToastViewport = () => {
 };
 
 
+
+// ─────────────────────────────────────────────
+// Spline 배경 컴포넌트 (Web Component 동적 로드)
+// ─────────────────────────────────────────────
+const SPLINE_VIEWER_SRC = "https://unpkg.com/@splinetool/viewer@1.12.90/build/spline-viewer.js";
+
+const SplineBackground = ({ sceneUrl }: { sceneUrl: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!sceneUrl) return;
+
+    const existingScript = document.querySelector(`script[src="${SPLINE_VIEWER_SRC}"]`);
+    if (existingScript) {
+      setLoaded(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.type = "module";
+    script.src = SPLINE_VIEWER_SRC;
+    script.onload = () => setLoaded(true);
+    script.onerror = () => console.warn("Spline viewer 스크립트 로드 실패");
+    document.head.appendChild(script);
+
+    return () => {
+      // 스크립트는 전역 등록이므로 제거하지 않음
+    };
+  }, [sceneUrl]);
+
+  useEffect(() => {
+    if (!loaded || !containerRef.current || !sceneUrl) return;
+    containerRef.current.innerHTML = "";
+    const viewer = document.createElement("spline-viewer") as HTMLElement;
+    viewer.setAttribute("url", sceneUrl);
+    viewer.setAttribute("loading-anim-type", "none");
+    viewer.style.cssText = "width:100%;height:100%;position:absolute;inset:0;";
+    containerRef.current.appendChild(viewer);
+  }, [loaded, sceneUrl]);
+
+  if (!sceneUrl) return null;
+
+  return (
+    <div
+      ref={containerRef}
+      className="absolute inset-0"
+      style={{ zIndex: 0 }}
+    />
+  );
+};
+
 const PageShell = ({ children, settings: settingsProp }: { children: React.ReactNode; settings?: any }) => {
   const shellSettings = normalizeAppSettings(settingsProp || readCache(CACHE_KEYS.settings, defaultSettings));
   const uiImages = shellSettings?.point_rate_settings?.ui_images || {};
@@ -1892,6 +1950,8 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
   const sideRightImageUrl = String(uiImages?.side_right_image_url || "").trim();
   const sideLeftEnabled = uiImages?.side_left_enabled !== false;
   const sideRightEnabled = uiImages?.side_right_enabled !== false;
+  const splineSceneUrl = String(uiImages?.spline_scene_url || "").trim();
+  const splineEnabled = uiImages?.spline_enabled === true && !!splineSceneUrl;
 
   const showLeft = sideLeftEnabled && !!sideLeftImageUrl;
   const showRight = sideRightEnabled && !!sideRightImageUrl;
@@ -1900,16 +1960,25 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
     <div className="relative min-h-screen overflow-hidden bg-[#090705] text-white selection:bg-amber-300/25">
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         
-        {/* 배경 */}
-        {backgroundImageUrl ? (
-          <div
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-            style={{
-              backgroundImage: `linear-gradient(180deg,rgba(9,7,5,0.38),rgba(9,7,5,0.78)), url(${backgroundImageUrl})`,
-            }}
-          />
+        {/* Spline 배경 (활성화 시 최우선 표시) */}
+        {splineEnabled ? (
+          <>
+            <SplineBackground sceneUrl={splineSceneUrl} />
+            {/* Spline 위에 어두운 오버레이로 가독성 확보 */}
+            <div className="absolute inset-0 bg-[#090705]/40" style={{ zIndex: 1 }} />
+          </>
         ) : (
-          <div className="absolute inset-0 bg-black" />
+          /* 기존 이미지 배경 */
+          backgroundImageUrl ? (
+            <div
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{
+                backgroundImage: `linear-gradient(180deg,rgba(9,7,5,0.38),rgba(9,7,5,0.78)), url(${backgroundImageUrl})`,
+              }}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-black" />
+          )
         )}
 
         {/* 좌측 사이드 이미지 */}
@@ -5162,7 +5231,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
   const uiImages = settings?.point_rate_settings?.ui_images || {};
 
-  const updateUiImage = (key: "background_image_url" | "side_left_image_url" | "side_right_image_url" | "side_left_enabled" | "side_right_enabled", value: string | boolean) => {
+  const updateUiImage = (key: "background_image_url" | "side_left_image_url" | "side_right_image_url" | "side_left_enabled" | "side_right_enabled" | "spline_scene_url" | "spline_enabled", value: string | boolean) => {
     setSettings({
       ...settings,
       point_rate_settings: {
@@ -5202,6 +5271,8 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
 
   const sideLeftEnabled = uiImages?.side_left_enabled !== false;
   const sideRightEnabled = uiImages?.side_right_enabled !== false;
+  const splineSceneUrl = String(uiImages?.spline_scene_url || "");
+  const splineEnabled = uiImages?.spline_enabled === true;
 
   return (
     <div className="space-y-8">
@@ -5215,11 +5286,65 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
         value={settings.guild_description}
         onChange={(v: any) => setSettings({ ...settings, guild_description: v })}
       />
+
+      {/* ── Spline 배경 설정 ── */}
+      <div className="rounded-[2rem] border border-amber-400/20 bg-amber-400/[0.04] p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-semibold text-amber-200">Spline 3D 배경</div>
+            <p className="mt-1 text-xs text-slate-500">
+              Spline 씬 URL을 입력하면 홈페이지 전체 배경으로 3D 애니메이션이 재생됩니다.
+              활성화 시 기존 이미지 배경보다 우선 표시됩니다.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => updateUiImage("spline_enabled", !splineEnabled)}
+            className={cn(
+              "shrink-0 px-4 py-2 rounded-full text-xs font-semibold border transition",
+              splineEnabled
+                ? "bg-amber-500/20 border-amber-400/40 text-amber-200"
+                : "bg-white/5 border-white/10 text-slate-500"
+            )}
+          >
+            {splineEnabled ? "ON" : "OFF"}
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500 ml-1">
+            Spline Scene URL
+          </label>
+          <input
+            value={splineSceneUrl}
+            onChange={(e) => updateUiImage("spline_scene_url", e.target.value)}
+            placeholder="https://prod.spline.design/XBHnJdtppEynMSPI/scene.splinecode"
+            className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-white outline-none focus:border-amber-200/30"
+          />
+          <p className="text-[10px] text-slate-600 ml-1">
+            Spline → Share → Embed → scene.splinecode URL을 복사하여 붙여넣으세요.
+          </p>
+        </div>
+
+        {splineSceneUrl && (
+          <div className={cn(
+            "rounded-xl border px-4 py-3 text-xs font-semibold",
+            splineEnabled
+              ? "border-amber-400/30 bg-amber-400/10 text-amber-200"
+              : "border-white/10 bg-white/5 text-slate-400"
+          )}>
+            {splineEnabled
+              ? "✓ Spline 배경 활성화됨 — 저장 후 홈페이지에 3D 배경이 표시됩니다."
+              : "Spline URL 입력됨, 하지만 현재 OFF 상태입니다."}
+          </div>
+        )}
+      </div>
+
       <div className="rounded-[2rem] border border-white/10 bg-black/20 p-6 space-y-6">
         <div>
-          <div className="text-sm font-semibold text-white">UI 배경 설정</div>
+          <div className="text-sm font-semibold text-white">이미지 배경 설정</div>
           <p className="mt-1 text-xs text-slate-500">
-            이미지를 넣지 않으면 기존 배경/사이드 장식이 유지됩니다. URL 입력 또는 이미지 첨부 둘 다 가능합니다.
+            Spline이 OFF 상태일 때 사용됩니다. URL 입력 또는 이미지 첨부 둘 다 가능합니다.
           </p>
         </div>
 
