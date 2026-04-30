@@ -121,6 +121,8 @@ const defaultSettings = {
       background_image_url: "",
       side_left_image_url: "",
       side_right_image_url: "",
+      side_left_enabled: true,
+      side_right_enabled: true,
     },
   },
 };
@@ -1153,6 +1155,8 @@ type PointRateSettings = {
     background_image_url?: string;
     side_left_image_url?: string;
     side_right_image_url?: string;
+    side_left_enabled?: boolean;
+    side_right_enabled?: boolean;
   };
 };
 
@@ -1173,6 +1177,8 @@ const normalizePointRateSettings = (value: any): PointRateSettings => {
       background_image_url: String(raw?.ui_images?.background_image_url || ""),
       side_left_image_url: String(raw?.ui_images?.side_left_image_url || ""),
       side_right_image_url: String(raw?.ui_images?.side_right_image_url || ""),
+      side_left_enabled: raw?.ui_images?.side_left_enabled !== false,
+      side_right_enabled: raw?.ui_images?.side_right_enabled !== false,
     },
   };
 };
@@ -1605,7 +1611,7 @@ const fetchInitialData = async () => {
   }
 
   return (
-    <PageShell>
+    <PageShell settings={settings}>
       <ToastViewport />
       <div className="relative z-10">
         {profile?.role === "admin" && (
@@ -1797,54 +1803,21 @@ const ToastViewport = () => {
 };
 
 
-const PageShell = ({ children }: { children: React.ReactNode }) => {
-  const shellSettings = normalizeAppSettings(readCache(CACHE_KEYS.settings, defaultSettings));
+const PageShell = ({ children, settings: settingsProp }: { children: React.ReactNode; settings?: any }) => {
+  const shellSettings = normalizeAppSettings(settingsProp || readCache(CACHE_KEYS.settings, defaultSettings));
   const uiImages = shellSettings?.point_rate_settings?.ui_images || {};
 
   const backgroundImageUrl = String(uiImages?.background_image_url || "").trim();
   const sideLeftImageUrl = String(uiImages?.side_left_image_url || "").trim();
   const sideRightImageUrl = String(uiImages?.side_right_image_url || "").trim();
+  const sideLeftEnabled = uiImages?.side_left_enabled !== false;
+  const sideRightEnabled = uiImages?.side_right_enabled !== false;
 
-  // ✅ 추가: 레이아웃 상태
-  const [layoutMode, setLayoutMode] = useState<"three" | "two" | "one">("three");
-
-  const [imageSlots, setImageSlots] = useState({
-    left: true,
-    right: true,
-  });
-
-  const toggleSlot = (slot: "left" | "right") => {
-    setImageSlots(prev => ({
-      ...prev,
-      [slot]: !prev[slot],
-    }));
-  };
-
-  const activeSides = [
-    imageSlots.left && sideLeftImageUrl,
-    imageSlots.right && sideRightImageUrl,
-  ].filter(Boolean);
+  const showLeft = sideLeftEnabled && !!sideLeftImageUrl;
+  const showRight = sideRightEnabled && !!sideRightImageUrl;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#090705] text-white selection:bg-amber-300/25">
-      
-      {/* 🎛️ 컨트롤 UI (원하면 위치 옮겨도 됨) */}
-      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 bg-black/60 p-3 rounded-lg backdrop-blur">
-        <div className="flex gap-2">
-          <button onClick={() => setLayoutMode("three")} className="px-2 py-1 bg-amber-500/20">3</button>
-          <button onClick={() => setLayoutMode("two")} className="px-2 py-1 bg-amber-500/20">2</button>
-          <button onClick={() => setLayoutMode("one")} className="px-2 py-1 bg-amber-500/20">1</button>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => toggleSlot("left")} className="px-2 py-1 bg-white/10">
-            L {imageSlots.left ? "ON" : "OFF"}
-          </button>
-          <button onClick={() => toggleSlot("right")} className="px-2 py-1 bg-white/10">
-            R {imageSlots.right ? "ON" : "OFF"}
-          </button>
-        </div>
-      </div>
-
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         
         {/* 배경 */}
@@ -1859,65 +1832,31 @@ const PageShell = ({ children }: { children: React.ReactNode }) => {
           <div className="absolute inset-0 bg-black" />
         )}
 
-        {/* 🔥 핵심: 레이아웃 적용 */}
-        {layoutMode === "three" && (
-          <>
-            {imageSlots.left && sideLeftImageUrl && (
-              <div className="absolute left-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
-                <div
-                  className="absolute inset-y-[9%] left-0 w-full rounded-r-[3rem] bg-contain bg-left bg-no-repeat opacity-70"
-                  style={{
-                    backgroundImage: `linear-gradient(90deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideLeftImageUrl})`,
-                  }}
-                />
-              </div>
-            )}
-
-            {imageSlots.right && sideRightImageUrl && (
-              <div className="absolute right-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
-                <div
-                  className="absolute inset-y-[9%] right-0 w-full rounded-l-[3rem] bg-contain bg-right bg-no-repeat opacity-70"
-                  style={{
-                    backgroundImage: `linear-gradient(270deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideRightImageUrl})`,
-                  }}
-                />
-              </div>
-            )}
-          </>
-        )}
-
-        {/* 👉 2개 모드 */}
-        {layoutMode === "two" && activeSides.length > 0 && (
-          <>
-            {activeSides.slice(0, 2).map((img, i) => (
-              <div
-                key={i}
-                className={`absolute top-0 hidden h-full w-[420px] 2xl:block ${
-                  i === 0 ? "left-[-40px]" : "right-[-40px]"
-                }`}
-              >
-                <div
-                  className="absolute inset-y-[9%] w-full bg-contain bg-no-repeat opacity-70"
-                  style={{
-                    backgroundImage: `url(${img})`,
-                  }}
-                />
-              </div>
-            ))}
-          </>
-        )}
-
-        {/* 👉 1개 집중 모드 */}
-        {layoutMode === "one" && activeSides[0] && (
-          <div className="absolute inset-0 flex items-center justify-center">
+        {/* 좌측 사이드 이미지 */}
+        {showLeft && (
+          <div className="absolute left-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
             <div
-              className="h-[80%] w-[60%] bg-contain bg-center bg-no-repeat opacity-70"
-              style={{ backgroundImage: `url(${activeSides[0]})` }}
+              className="absolute inset-y-[9%] left-0 w-full rounded-r-[3rem] bg-contain bg-left bg-no-repeat opacity-70"
+              style={{
+                backgroundImage: `linear-gradient(90deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideLeftImageUrl})`,
+              }}
             />
           </div>
         )}
 
-        {/* 기존 motion / 효과 그대로 유지 */}
+        {/* 우측 사이드 이미지 */}
+        {showRight && (
+          <div className="absolute right-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
+            <div
+              className="absolute inset-y-[9%] right-0 w-full rounded-l-[3rem] bg-contain bg-right bg-no-repeat opacity-70"
+              style={{
+                backgroundImage: `linear-gradient(270deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideRightImageUrl})`,
+              }}
+            />
+          </div>
+        )}
+
+        {/* 기존 ambient glow 유지 */}
         <motion.div
           className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-amber-200/12 blur-[148px]"
           animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
@@ -5086,7 +5025,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
   const uiImages = settings?.point_rate_settings?.ui_images || {};
 
-  const updateUiImage = (key: "background_image_url" | "side_left_image_url" | "side_right_image_url", value: string) => {
+  const updateUiImage = (key: "background_image_url" | "side_left_image_url" | "side_right_image_url" | "side_left_enabled" | "side_right_enabled", value: string | boolean) => {
     setSettings({
       ...settings,
       point_rate_settings: {
@@ -5124,6 +5063,9 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
     }
   };
 
+  const sideLeftEnabled = uiImages?.side_left_enabled !== false;
+  const sideRightEnabled = uiImages?.side_right_enabled !== false;
+
   return (
     <div className="space-y-8">
       <AdminInput
@@ -5145,30 +5087,38 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-3">
-          {[
-            ["background_image_url", "전체 배경 이미지"],
-            ["side_left_image_url", "좌측 사이드 이미지"],
-            ["side_right_image_url", "우측 사이드 이미지"],
-          ].map(([key, label]) => {
+          {/* 배경 이미지 */}
+          {(() => {
+            const key = "background_image_url";
+            const label = "전체 배경 이미지";
             const value = String(uiImages?.[key] || "");
             return (
               <div key={key} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
                 <label className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{label}</label>
                 <input
                   value={value}
-                  onChange={(e) => updateUiImage(key as any, e.target.value)}
+                  onChange={(e) => updateUiImage(key, e.target.value)}
                   placeholder="이미지 URL 입력"
                   className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-white outline-none focus:border-amber-200/30"
                 />
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => void handleUiImageUpload(key as any, e.target.files?.[0] || null)}
+                  onChange={(e) => void handleUiImageUpload(key, e.target.files?.[0] || null)}
                   className="w-full text-xs text-slate-400 file:mr-3 file:rounded-full file:border-0 file:bg-amber-500 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-black"
                 />
                 {value ? (
-                  <div className="h-28 overflow-hidden rounded-xl border border-white/10 bg-black/30">
-                    <img src={value} alt={label} className="h-full w-full object-cover" />
+                  <div className="space-y-2">
+                    <div className="h-28 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                      <img src={value} alt={label} className="h-full w-full object-cover" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateUiImage(key, "")}
+                      className="w-full rounded-xl border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-400/16 transition"
+                    >
+                      이미지 제거
+                    </button>
                   </div>
                 ) : (
                   <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-white/10 bg-black/20 text-xs text-slate-600">
@@ -5177,7 +5127,129 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
                 )}
               </div>
             );
-          })}
+          })()}
+
+          {/* 좌측 사이드 이미지 */}
+          {(() => {
+            const key = "side_left_image_url";
+            const label = "좌측 사이드 이미지";
+            const value = String(uiImages?.[key] || "");
+            return (
+              <div key={key} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{label}</label>
+                  <button
+                    type="button"
+                    onClick={() => updateUiImage("side_left_enabled", !sideLeftEnabled)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[10px] font-semibold border transition",
+                      sideLeftEnabled
+                        ? "bg-amber-500/20 border-amber-400/40 text-amber-200"
+                        : "bg-white/5 border-white/10 text-slate-500"
+                    )}
+                  >
+                    {sideLeftEnabled ? "ON" : "OFF"}
+                  </button>
+                </div>
+                <input
+                  value={value}
+                  onChange={(e) => updateUiImage(key, e.target.value)}
+                  placeholder="이미지 URL 입력"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-white outline-none focus:border-amber-200/30"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => void handleUiImageUpload(key, e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-400 file:mr-3 file:rounded-full file:border-0 file:bg-amber-500 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-black"
+                />
+                {value ? (
+                  <div className="space-y-2">
+                    <div className={cn("h-28 overflow-hidden rounded-xl border border-white/10 bg-black/30", !sideLeftEnabled && "opacity-40")}>
+                      <img src={value} alt={label} className="h-full w-full object-cover" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateUiImage(key, "")}
+                      className="w-full rounded-xl border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-400/16 transition"
+                    >
+                      이미지 제거
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-white/10 bg-black/20 text-xs text-slate-600">
+                    이미지 없음
+                  </div>
+                )}
+                {!sideLeftEnabled && (
+                  <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
+                    현재 OFF 상태 — 저장 후 좌측 이미지가 숨겨집니다.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 우측 사이드 이미지 */}
+          {(() => {
+            const key = "side_right_image_url";
+            const label = "우측 사이드 이미지";
+            const value = String(uiImages?.[key] || "");
+            return (
+              <div key={key} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">{label}</label>
+                  <button
+                    type="button"
+                    onClick={() => updateUiImage("side_right_enabled", !sideRightEnabled)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-[10px] font-semibold border transition",
+                      sideRightEnabled
+                        ? "bg-amber-500/20 border-amber-400/40 text-amber-200"
+                        : "bg-white/5 border-white/10 text-slate-500"
+                    )}
+                  >
+                    {sideRightEnabled ? "ON" : "OFF"}
+                  </button>
+                </div>
+                <input
+                  value={value}
+                  onChange={(e) => updateUiImage(key, e.target.value)}
+                  placeholder="이미지 URL 입력"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-white outline-none focus:border-amber-200/30"
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => void handleUiImageUpload(key, e.target.files?.[0] || null)}
+                  className="w-full text-xs text-slate-400 file:mr-3 file:rounded-full file:border-0 file:bg-amber-500 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-black"
+                />
+                {value ? (
+                  <div className="space-y-2">
+                    <div className={cn("h-28 overflow-hidden rounded-xl border border-white/10 bg-black/30", !sideRightEnabled && "opacity-40")}>
+                      <img src={value} alt={label} className="h-full w-full object-cover" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => updateUiImage(key, "")}
+                      className="w-full rounded-xl border border-rose-400/20 bg-rose-400/10 px-3 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-400/16 transition"
+                    >
+                      이미지 제거
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-white/10 bg-black/20 text-xs text-slate-600">
+                    이미지 없음
+                  </div>
+                )}
+                {!sideRightEnabled && (
+                  <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">
+                    현재 OFF 상태 — 저장 후 우측 이미지가 숨겨집니다.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
