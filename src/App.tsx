@@ -1895,48 +1895,68 @@ const ToastViewport = () => {
 // ─────────────────────────────────────────────
 const SPLINE_VIEWER_SRC = "https://unpkg.com/@splinetool/viewer@1.12.90/build/spline-viewer.js";
 
+/** customElements에 spline-viewer가 등록될 때까지 폴링 후 Promise resolve */
+const waitForSplineViewer = (): Promise<void> =>
+  new Promise((resolve) => {
+    if (customElements.get("spline-viewer")) {
+      resolve();
+      return;
+    }
+    const id = window.setInterval(() => {
+      if (customElements.get("spline-viewer")) {
+        window.clearInterval(id);
+        resolve();
+      }
+    }, 80);
+    // 8초 타임아웃
+    window.setTimeout(() => { window.clearInterval(id); resolve(); }, 8000);
+  });
+
 const SplineBackground = ({ sceneUrl }: { sceneUrl: string }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [loaded, setLoaded] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!sceneUrl) return;
+    let cancelled = false;
 
-    const existingScript = document.querySelector(`script[src="${SPLINE_VIEWER_SRC}"]`);
-    if (existingScript) {
-      setLoaded(true);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.type = "module";
-    script.src = SPLINE_VIEWER_SRC;
-    script.onload = () => setLoaded(true);
-    script.onerror = () => console.warn("Spline viewer 스크립트 로드 실패");
-    document.head.appendChild(script);
-
-    return () => {
-      // 스크립트는 전역 등록이므로 제거하지 않음
+    const load = async () => {
+      // 이미 스크립트가 삽입되어 있으면 추가 삽입 생략
+      if (!document.querySelector(`script[data-spline-viewer]`)) {
+        const script = document.createElement("script");
+        script.type = "module";
+        script.src = SPLINE_VIEWER_SRC;
+        script.dataset.splineViewer = "1";
+        document.head.appendChild(script);
+      }
+      // Web Component 등록 완료까지 대기
+      await waitForSplineViewer();
+      if (!cancelled) setReady(true);
     };
+
+    load();
+    return () => { cancelled = true; };
   }, [sceneUrl]);
 
   useEffect(() => {
-    if (!loaded || !containerRef.current || !sceneUrl) return;
+    if (!ready || !containerRef.current || !sceneUrl) return;
     containerRef.current.innerHTML = "";
     const viewer = document.createElement("spline-viewer") as HTMLElement;
     viewer.setAttribute("url", sceneUrl);
     viewer.setAttribute("loading-anim-type", "none");
-    viewer.style.cssText = "width:100%;height:100%;position:absolute;inset:0;";
+    // Spline 로고 숨기기 (가능한 경우)
+    viewer.setAttribute("hint", "false");
+    viewer.style.cssText = "width:100%;height:100%;position:absolute;inset:0;display:block;";
     containerRef.current.appendChild(viewer);
-  }, [loaded, sceneUrl]);
+  }, [ready, sceneUrl]);
 
   if (!sceneUrl) return null;
 
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0"
-      style={{ zIndex: 0 }}
+      // pointer-events를 살려야 Spline 인터랙션 동작
+      style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "auto" }}
     />
   );
 };
@@ -1958,14 +1978,15 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#090705] text-white selection:bg-amber-300/25">
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      {/* 배경 레이어: Spline은 pointer-events 살림, 나머지는 none 유지 */}
+      <div className="fixed inset-0 z-0 overflow-hidden" style={{ pointerEvents: splineEnabled ? "auto" : "none" }}>
         
         {/* Spline 배경 (활성화 시 최우선 표시) */}
         {splineEnabled ? (
           <>
             <SplineBackground sceneUrl={splineSceneUrl} />
-            {/* Spline 위에 어두운 오버레이로 가독성 확보 */}
-            <div className="absolute inset-0 bg-[#090705]/40" style={{ zIndex: 1 }} />
+            {/* Spline 위에 어두운 오버레이로 텍스트 가독성 확보 — pointer-events는 none */}
+            <div className="absolute inset-0 bg-[#090705]/50" style={{ zIndex: 2, pointerEvents: "none" }} />
           </>
         ) : (
           /* 기존 이미지 배경 */
