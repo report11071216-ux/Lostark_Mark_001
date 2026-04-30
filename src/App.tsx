@@ -1977,20 +1977,31 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
   const showRight = sideRightEnabled && !!sideRightImageUrl;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#090705] text-white selection:bg-amber-300/25">
-      {/* 배경 레이어: Spline은 pointer-events 살림, 나머지는 none 유지 */}
-      <div className="fixed inset-0 z-0 overflow-hidden" style={{ pointerEvents: splineEnabled ? "auto" : "none" }}>
-        
-        {/* Spline 배경 (활성화 시 최우선 표시) */}
-        {splineEnabled ? (
-          <>
-            <SplineBackground sceneUrl={splineSceneUrl} />
-            {/* Spline 위에 어두운 오버레이로 텍스트 가독성 확보 — pointer-events는 none */}
-            <div className="absolute inset-0 bg-[#090705]/50" style={{ zIndex: 2, pointerEvents: "none" }} />
-          </>
-        ) : (
-          /* 기존 이미지 배경 */
-          backgroundImageUrl ? (
+    // 최상위: bg 제거 — Spline ON 시 배경색이 Spline 캔버스로 대체됨
+    <div
+      className="relative min-h-screen overflow-hidden text-white selection:bg-amber-300/25"
+      style={{ background: splineEnabled ? "transparent" : "#090705" }}
+    >
+      {/* ── Spline 3D 배경 (z-index: -1, 완전히 뒤) ── */}
+      {splineEnabled && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: -1,
+            // Spline 캔버스가 마우스 이벤트 직접 수신
+            pointerEvents: "auto",
+            background: "#090705",
+          }}
+        >
+          <SplineBackground sceneUrl={splineSceneUrl} />
+        </div>
+      )}
+
+      {/* ── 기존 이미지 배경 (Spline OFF 시) ── */}
+      {!splineEnabled && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+          {backgroundImageUrl ? (
             <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat"
               style={{
@@ -1999,42 +2010,46 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
             />
           ) : (
             <div className="absolute inset-0 bg-black" />
-          )
-        )}
+          )}
 
-        {/* 좌측 사이드 이미지 */}
-        {showLeft && (
-          <div className="absolute left-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
-            <div
-              className="absolute inset-y-[9%] left-0 w-full rounded-r-[3rem] bg-contain bg-left bg-no-repeat opacity-70"
-              style={{
-                backgroundImage: `linear-gradient(90deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideLeftImageUrl})`,
-              }}
-            />
-          </div>
-        )}
+          {/* 좌측 사이드 이미지 */}
+          {showLeft && (
+            <div className="absolute left-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
+              <div
+                className="absolute inset-y-[9%] left-0 w-full rounded-r-[3rem] bg-contain bg-left bg-no-repeat opacity-70"
+                style={{
+                  backgroundImage: `linear-gradient(90deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideLeftImageUrl})`,
+                }}
+              />
+            </div>
+          )}
 
-        {/* 우측 사이드 이미지 */}
-        {showRight && (
-          <div className="absolute right-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
-            <div
-              className="absolute inset-y-[9%] right-0 w-full rounded-l-[3rem] bg-contain bg-right bg-no-repeat opacity-70"
-              style={{
-                backgroundImage: `linear-gradient(270deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideRightImageUrl})`,
-              }}
-            />
-          </div>
-        )}
+          {/* 우측 사이드 이미지 */}
+          {showRight && (
+            <div className="absolute right-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
+              <div
+                className="absolute inset-y-[9%] right-0 w-full rounded-l-[3rem] bg-contain bg-right bg-no-repeat opacity-70"
+                style={{
+                  backgroundImage: `linear-gradient(270deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideRightImageUrl})`,
+                }}
+              />
+            </div>
+          )}
 
-        {/* 기존 ambient glow 유지 */}
-        <motion.div
-          className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-amber-200/12 blur-[148px]"
-          animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-        />
+          {/* ambient glow */}
+          <motion.div
+            className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-amber-200/12 blur-[148px]"
+            animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
+            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+      )}
+
+      {/* ── 페이지 콘텐츠 (z-index: auto, Spline 위에 올라가되 배경은 투명) ── */}
+      {/* pointer-events: none인 영역(빈 공간)은 클릭이 Spline까지 투과됨 */}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        {children}
       </div>
-
-      {children}
     </div>
   );
 };
