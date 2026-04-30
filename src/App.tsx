@@ -916,6 +916,7 @@ const HomeFeaturePortal = ({
 const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: ProfileLike }) => {
   const [notices, setNotices] = useState<PostLike[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedNotice, setSelectedNotice] = useState<PostLike | null>(null);
 
   useEffect(() => {
     fetchNotices();
@@ -984,8 +985,9 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
             notices.map((notice) => (
               <button
                 key={notice.id}
+                onClick={() => setSelectedNotice(notice)}
                 className={cn(
-                  "w-full rounded-[1.35rem] border px-4 py-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-amber-200/22 hover:bg-white/[0.05] hover:shadow-[0_14px_28px_rgba(0,0,0,0.16)]",
+                  "w-full rounded-[1.35rem] border px-4 py-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-amber-200/22 hover:bg-white/[0.05] hover:shadow-[0_14px_28px_rgba(0,0,0,0.16)] cursor-pointer",
                   notice.is_pinned
                     ? "border-amber-200/18 bg-[linear-gradient(180deg,rgba(245,194,105,0.09),rgba(245,194,105,0.04))]"
                     : "border-white/10 bg-white/[0.03]"
@@ -1022,6 +1024,82 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
             ))}
         </div>
       </div>
+
+      {/* 공지 상세 모달 */}
+      <AnimatePresence>
+        {selectedNotice && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(2,6,23,0.82)] p-4 backdrop-blur-xl md:p-6"
+            onClick={() => setSelectedNotice(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.22 }}
+              className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-amber-100/12 bg-[#0d0a06]/95 shadow-[0_28px_80px_rgba(0,0,0,0.56)] backdrop-blur-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* 모달 헤더 */}
+              <div className="border-b border-white/8 px-6 py-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      {selectedNotice.is_pinned && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/18 bg-amber-300/12 px-2 py-1 text-[10px] font-semibold text-amber-100">
+                          <Pin size={11} />
+                          PIN
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/16 bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200">
+                        <Bell size={11} />
+                        공지
+                      </span>
+                      <span className="text-[11px] text-stone-500">{formatDateTime(selectedNotice.created_at)}</span>
+                    </div>
+                    <h3 className="text-xl font-semibold leading-snug text-white md:text-2xl">
+                      {selectedNotice.title}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setSelectedNotice(null)}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* 모달 본문 */}
+              <div className="max-h-[60vh] overflow-y-auto px-6 py-6">
+                <div className="text-sm leading-7 text-stone-300 whitespace-pre-wrap">
+                  {selectedNotice.content || "내용이 없습니다."}
+                </div>
+                {selectedNotice.image_url && (
+                  <img
+                    src={selectedNotice.image_url}
+                    alt="공지 이미지"
+                    className="mt-6 w-full rounded-2xl border border-white/10 object-cover"
+                  />
+                )}
+              </div>
+
+              {/* 모달 푸터 */}
+              <div className="border-t border-white/8 px-6 py-4">
+                <button
+                  onClick={() => setSelectedNotice(null)}
+                  className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
+                >
+                  닫기
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };
@@ -1402,6 +1480,7 @@ export default function App() {
   const [posts, setPosts] = useState<PostLike[]>([]);
   const [settings, setSettings] = useState(defaultSettings);
   const [isRaidCalendarModalOpen, setIsRaidCalendarModalOpen] = useState(false);
+  const [postInitialTab, setPostInitialTab] = useState("all");
 
 
 useEffect(() => {
@@ -1650,6 +1729,7 @@ const fetchInitialData = async () => {
                   settings={settings}
                   posts={posts}
                   onOpenRaidCalendar={() => setIsRaidCalendarModalOpen(true)}
+                  onNavigateToNotices={() => { setPostInitialTab("notice"); setActiveTab("posts"); }}
                 />
                 <HomeFeaturePortal contentView={contentView} setContentView={setContentView} />
                 <MainContentViewer type={contentView} />
@@ -1670,7 +1750,7 @@ const fetchInitialData = async () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} />
+                <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} initialTab={postInitialTab} />
               </motion.div>
             )}
 
@@ -1870,7 +1950,7 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
 };
 
 
-const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
+const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices }: any) => {
   const [heroStats, setHeroStats] = useState({
     memberCount: 0,
     upcomingRaids: 0,
@@ -2017,12 +2097,17 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
           </p>
 
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
-            <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] px-3.5 py-2.5 backdrop-blur-md shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
+            <button
+              type="button"
+              onClick={onNavigateToNotices}
+              className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] px-3.5 py-2.5 backdrop-blur-md shadow-[0_12px_28px_rgba(0,0,0,0.16)] hover:border-amber-200/30 hover:bg-amber-300/[0.06] transition-all cursor-pointer text-left"
+              title="게시판 공지 탭으로 이동"
+            >
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                 공지
               </div>
               <div className="mt-1 text-lg font-semibold text-amber-50">{noticeCount}</div>
-            </div>
+            </button>
             <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] px-3.5 py-2.5 backdrop-blur-md shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                 7일 일정
@@ -2175,12 +2260,17 @@ const Hero = ({ settings, posts, onOpenRaidCalendar }: any) => {
             </div>
 
             <div className="relative mt-3 grid grid-cols-3 gap-1.5">
-              <div className="rounded-[1rem] border border-white/7 bg-white/[0.035] p-2.5">
+              <button
+                type="button"
+                onClick={onNavigateToNotices}
+                className="rounded-[1rem] border border-white/7 bg-white/[0.035] p-2.5 hover:border-amber-200/30 hover:bg-amber-300/[0.06] transition-all cursor-pointer text-left"
+                title="게시판 공지 탭으로 이동"
+              >
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   공지
                 </div>
                 <div className="mt-1 text-lg font-semibold text-amber-50">{noticeCount}</div>
-              </div>
+              </button>
               <div className="rounded-[1rem] border border-white/7 bg-white/[0.035] p-2.5">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
                   고정
@@ -4307,6 +4397,37 @@ const RaidDetailModal = ({
   onRefresh: () => void;
 }) => {
   const [showJoin, setShowJoin] = useState(false);
+  const [myCharacterNames, setMyCharacterNames] = useState<string[]>([]);
+
+  // 로그인한 경우 내 캐릭터 이름 목록 불러오기
+  useEffect(() => {
+    if (!user?.id) {
+      setMyCharacterNames([]);
+      return;
+    }
+    const fetchMyNames = async () => {
+      try {
+        const client = getSupabaseOrThrow();
+        const { data, error } = await client
+          .from("guild_members")
+          .select("character_name")
+          .or(`user_id.eq.${user.id},owner_id.eq.${user.id}`);
+        if (error) {
+          console.error("myCharacterNames fetch error:", error);
+          setMyCharacterNames([]);
+          return;
+        }
+        setMyCharacterNames(
+          (data || []).map((row: any) => String(row.character_name || "").trim()).filter(Boolean)
+        );
+      } catch (e) {
+        console.error("myCharacterNames unexpected error:", e);
+        setMyCharacterNames([]);
+      }
+    };
+    void fetchMyNames();
+  }, [user]);
+
   const capacity = getCapacity(raid);
   const dealers = parts.filter((p: any) => p.position === "딜러").length;
   const supports = parts.filter((p: any) => p.position === "서포터").length;
@@ -4439,6 +4560,8 @@ const RaidDetailModal = ({
                   participant={participant}
                   canCancel={profile?.role === "admin"}
                   onRefresh={onRefresh}
+                  user={user}
+                  myCharacterNames={myCharacterNames}
                 />
               ))}
             </div>
@@ -4495,10 +4618,14 @@ const ParticipantItem = ({
   participant,
   canCancel,
   onRefresh,
+  user,
+  myCharacterNames,
 }: {
   participant: any;
   canCancel: boolean;
   onRefresh: () => void;
+  user?: any;
+  myCharacterNames?: string[];
 }) => {
   const handleLeave = async () => {
     const ok = confirm("참여를 취소하시겠습니까?");
@@ -4515,6 +4642,16 @@ const ParticipantItem = ({
       showToast(error.message || "취소 실패", "error");
     }
   };
+
+  // 본인 캐릭터 여부 확인
+  const isMine =
+    user &&
+    Array.isArray(myCharacterNames) &&
+    myCharacterNames.some(
+      (name) => name.trim() === (participant.character_name || "").trim()
+    );
+
+  const showCancel = canCancel || isMine;
 
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -4534,12 +4671,12 @@ const ParticipantItem = ({
           {participant.position || "참가"}
         </span>
 
-        {canCancel && (
+        {showCancel && (
           <button
             onClick={handleLeave}
             className="text-xs text-red-300 hover:text-red-200 font-bold"
           >
-            취소
+            취소{isMine && !canCancel ? " (내 캐릭터)" : ""}
           </button>
         )}
       </div>
@@ -5900,8 +6037,8 @@ const ClassContentEditor = () => {
 
 
 
-const PostBoard = ({ posts, user, profile, onRefresh }: any) => {
-  const [tab, setTab] = useState("all");
+const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
+  const [tab, setTab] = useState(initialTab || "all");
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, any[]>>({});
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
@@ -8836,6 +8973,31 @@ const RankingPage = ({ user, profile }: any) => {
         </div>
       </div>
 
+      {/* 내 순위 고정 표시 (리스트 상단에 항상 표시) */}
+      {user && myRank && (() => {
+        const myRow = rows.find((m: any) => (m.id || m.profile_id) === user.id);
+        // 상위 30위 안에 내 항목이 없을 때만 상단에 고정 표시
+        const isInList = myRank <= 30;
+        if (isInList) return null;
+        return (
+          <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-5 flex justify-between items-center">
+            <div className="flex items-center gap-5">
+              <div className="text-xl font-semibold w-12 text-center text-amber-300">#{myRank}</div>
+              <div>
+                <div className="text-base font-semibold text-amber-100">
+                  {myRow?.nickname || myRow?.owner_nickname || "나"}{" "}
+                  <span className="ml-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-300/70 border border-amber-400/30 rounded-full px-2 py-0.5">MY RANK</span>
+                </div>
+                <div className="text-xs text-slate-500 uppercase mt-0.5">
+                  {tab === "points" ? myRow?.rank_name || "Seed" : tab === "weekly" ? "주간 활동 집계" : tab === "support" ? "서포트 기여도 집계" : "참여율 집계"}
+                </div>
+              </div>
+            </div>
+            <div className="text-lg font-semibold text-amber-300">{myRow ? renderValue(myRow) : "-"}</div>
+          </div>
+        );
+      })()}
+
       <div className="space-y-4">
         {rows.slice(0, 30).map((member: any, index: number) => (
           <div
@@ -8851,7 +9013,12 @@ const RankingPage = ({ user, profile }: any) => {
                 {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
               </div>
               <div>
-                <div className="text-lg font-semibold">{member.nickname || member.owner_nickname}</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-semibold">{member.nickname || member.owner_nickname}</span>
+                  {user?.id === (member.id || member.profile_id) && (
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-300 border border-amber-400/30 rounded-full px-2 py-0.5">나</span>
+                  )}
+                </div>
                 <div className="text-xs text-slate-500 uppercase">
                   {tab === "points"
                     ? member.rank_name || "Seed"
@@ -8869,12 +9036,29 @@ const RankingPage = ({ user, profile }: any) => {
         ))}
       </div>
 
-      {user && myRank && (
-        <div className="mt-12 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl">
-          <div className="text-sm text-slate-400 mb-2 uppercase">My Rank</div>
-          <div className="text-3xl font-semibold text-yellow-400">#{myRank}</div>
-        </div>
-      )}
+      {/* 내 순위 하단 고정 표시 (30위 안에 있어도 항상 하단에 표시) */}
+      {user && myRank && (() => {
+        const myRow = rows.find((m: any) => (m.id || m.profile_id) === user.id);
+        return (
+          <div className="mt-8 sticky bottom-4 z-10">
+            <div className="rounded-2xl border border-amber-400/40 bg-[#0d0a06]/90 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl p-5 flex justify-between items-center">
+              <div className="flex items-center gap-5">
+                <div className="text-xl font-semibold w-12 text-center text-amber-300">#{myRank}</div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-semibold text-white">{myRow?.nickname || myRow?.owner_nickname || "나"}</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-300 border border-amber-400/30 rounded-full px-2 py-0.5">내 순위</span>
+                  </div>
+                  <div className="text-xs text-slate-500 uppercase mt-0.5">
+                    {tab === "points" ? myRow?.rank_name || "Seed" : tab === "weekly" ? "주간 활동 집계" : tab === "support" ? "서포트 기여도 집계" : "참여율 집계"}
+                  </div>
+                </div>
+              </div>
+              <div className="text-lg font-semibold text-amber-300">{myRow ? renderValue(myRow) : "-"}</div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -8885,6 +9069,8 @@ const GuildMembersPage = () => {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [classFilter, setClassFilter] = useState("all");
 
   useEffect(() => {
     fetchMembers();
@@ -8997,11 +9183,30 @@ const GuildMembersPage = () => {
     }
   };
 
+  const availableClasses = useMemo(() => {
+    const classes = Array.from(
+      new Set(members.map((m: any) => String(m.class_name || "").trim()).filter(Boolean))
+    ).sort((a, b) => a.localeCompare(b, "ko"));
+    return classes;
+  }, [members]);
+
   const filteredMembers = useMemo(() => {
-    if (filter === "main") return members.filter((m: any) => m.is_main);
-    if (filter === "support") return members.filter((m: any) => m.role_hint === "서포터");
-    return members;
-  }, [members, filter]);
+    let result = members;
+    if (filter === "main") result = result.filter((m: any) => m.is_main);
+    if (filter === "support") result = result.filter((m: any) => m.role_hint === "서포터");
+    if (classFilter !== "all") {
+      result = result.filter((m: any) => String(m.class_name || "").trim() === classFilter);
+    }
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      result = result.filter(
+        (m: any) =>
+          String(m.character_name || "").toLowerCase().includes(query) ||
+          String(m.class_name || "").toLowerCase().includes(query)
+      );
+    }
+    return result;
+  }, [members, filter, classFilter, searchQuery]);
 
   return (
     <div className="max-w-6xl mx-auto px-6 py-20">
@@ -9029,6 +9234,49 @@ const GuildMembersPage = () => {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* 검색 & 직업 필터 */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="캐릭터명 또는 직업으로 검색..."
+            className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 pl-10 text-sm text-white placeholder-stone-500 outline-none focus:border-amber-200/30 focus:bg-white/[0.06] transition-all"
+          />
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500">
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+          </div>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-500 hover:text-white transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+        {availableClasses.length > 0 && (
+          <select
+            value={classFilter}
+            onChange={(e) => setClassFilter(e.target.value)}
+            className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30 transition-all appearance-none cursor-pointer min-w-[140px]"
+          >
+            <option value="all" className="bg-[#0d0a06]">직업 전체</option>
+            {availableClasses.map((cls) => (
+              <option key={cls} value={cls} className="bg-[#0d0a06]">{cls}</option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* 결과 카운트 */}
+      <div className="mb-4 text-xs text-stone-500 font-medium">
+        {filteredMembers.length}명 표시 중 (전체 {members.length}명)
       </div>
 
       {loading ? (
