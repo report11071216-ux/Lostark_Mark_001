@@ -1800,112 +1800,133 @@ const ToastViewport = () => {
 const PageShell = ({ children }: { children: React.ReactNode }) => {
   const shellSettings = normalizeAppSettings(readCache(CACHE_KEYS.settings, defaultSettings));
   const uiImages = shellSettings?.point_rate_settings?.ui_images || {};
+
   const backgroundImageUrl = String(uiImages?.background_image_url || "").trim();
   const sideLeftImageUrl = String(uiImages?.side_left_image_url || "").trim();
   const sideRightImageUrl = String(uiImages?.side_right_image_url || "").trim();
 
-  return (
-  <div className="relative min-h-screen overflow-hidden bg-[#090705] text-white selection:bg-amber-300/25">
-    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      {backgroundImageUrl ? (
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `linear-gradient(180deg,rgba(9,7,5,0.38),rgba(9,7,5,0.78)), url(${backgroundImageUrl})` }}
-        />
-      ) : (
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-12%,rgba(247,210,129,0.18),transparent_28%),radial-gradient(circle_at_50%_12%,rgba(176,126,50,0.14),transparent_24%),radial-gradient(circle_at_14%_22%,rgba(99,61,17,0.16),transparent_28%),radial-gradient(circle_at_84%_16%,rgba(120,81,29,0.14),transparent_24%),linear-gradient(180deg,#16110d_0%,#0f0b08_42%,#080706_100%)]" />
-      )}
+  // ✅ 추가: 레이아웃 상태
+  const [layoutMode, setLayoutMode] = useState<"three" | "two" | "one">("three");
 
-      {sideLeftImageUrl && (
-        <div className="absolute left-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
-          <div
-            className="absolute inset-y-[9%] left-0 w-full rounded-r-[3rem] bg-contain bg-left bg-no-repeat opacity-70"
-            style={{ backgroundImage: `linear-gradient(90deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideLeftImageUrl})` }}
-          />
+  const [imageSlots, setImageSlots] = useState({
+    left: true,
+    right: true,
+  });
+
+  const toggleSlot = (slot: "left" | "right") => {
+    setImageSlots(prev => ({
+      ...prev,
+      [slot]: !prev[slot],
+    }));
+  };
+
+  const activeSides = [
+    imageSlots.left && sideLeftImageUrl,
+    imageSlots.right && sideRightImageUrl,
+  ].filter(Boolean);
+
+  return (
+    <div className="relative min-h-screen overflow-hidden bg-[#090705] text-white selection:bg-amber-300/25">
+      
+      {/* 🎛️ 컨트롤 UI (원하면 위치 옮겨도 됨) */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 bg-black/60 p-3 rounded-lg backdrop-blur">
+        <div className="flex gap-2">
+          <button onClick={() => setLayoutMode("three")} className="px-2 py-1 bg-amber-500/20">3</button>
+          <button onClick={() => setLayoutMode("two")} className="px-2 py-1 bg-amber-500/20">2</button>
+          <button onClick={() => setLayoutMode("one")} className="px-2 py-1 bg-amber-500/20">1</button>
         </div>
-      )}
-      {sideRightImageUrl && (
-        <div className="absolute right-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
-          <div
-            className="absolute inset-y-[9%] right-0 w-full rounded-l-[3rem] bg-contain bg-right bg-no-repeat opacity-70"
-            style={{ backgroundImage: `linear-gradient(270deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideRightImageUrl})` }}
-          />
-        </div>
-      )}
-      <motion.div
-        className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-amber-200/12 blur-[148px] md:h-[620px] md:w-[1220px]"
-        animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute left-1/2 top-[8%] h-[180px] w-[1040px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(252,227,171,0.12)_0%,rgba(176,126,50,0.09)_36%,transparent_72%)] blur-[76px]"
-        animate={{ opacity: [0.14, 0.28, 0.14], y: [0, 12, 0] }}
-        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <div className="pointer-events-none absolute left-[-90px] top-0 hidden h-full w-[430px] 2xl:block">
-        <div className="absolute left-0 top-[8%] h-[76%] w-full rounded-r-[3rem] border-r border-amber-200/10 bg-[radial-gradient(circle_at_28%_34%,rgba(245,190,91,0.16),transparent_34%),radial-gradient(circle_at_62%_64%,rgba(34,211,238,0.08),transparent_32%),linear-gradient(90deg,rgba(27,18,10,0.72),rgba(27,18,10,0.22),transparent)] blur-[0.2px]" />
-        <div className="absolute left-[-48px] top-[14%] h-[70%] w-[360px] overflow-hidden rounded-r-[3.2rem] border-y border-r border-amber-200/10 bg-black/10 shadow-[0_0_90px_rgba(245,158,11,0.08)]">
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,5,4,0.92),rgba(17,12,8,0.35),transparent)]" />
-          <svg viewBox="0 0 360 760" className="absolute inset-y-0 left-0 h-full w-full text-amber-200/70" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M36 86C104 132 150 206 158 292C168 394 118 472 64 552" stroke="currentColor" strokeWidth="2" strokeOpacity="0.18" />
-            <path d="M92 118C170 190 210 274 202 382C195 474 150 542 90 626" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.14" strokeDasharray="10 16" />
-            <circle cx="126" cy="334" r="118" stroke="currentColor" strokeWidth="1.8" strokeOpacity="0.18" />
-            <circle cx="126" cy="334" r="72" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.14" />
-            <path d="M126 222L148 292H222L162 334L186 406L126 362L66 406L90 334L30 292H104L126 222Z" stroke="currentColor" strokeWidth="1.7" strokeOpacity="0.22" />
-            <path d="M44 676C92 612 156 574 240 560" stroke="currentColor" strokeWidth="2" strokeOpacity="0.13" />
-            <path d="M18 706C98 658 178 642 306 662" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.1" />
-          </svg>
-          <div className="absolute bottom-[13%] left-[18px] h-[240px] w-[185px] rotate-[-6deg] rounded-[48%_52%_40%_60%/46%_42%_58%_54%] bg-[radial-gradient(circle_at_50%_18%,rgba(255,241,202,0.18),transparent_18%),linear-gradient(155deg,rgba(251,191,36,0.18),rgba(14,10,6,0.1)_54%,transparent)] blur-[1px]" />
+        <div className="flex gap-2">
+          <button onClick={() => toggleSlot("left")} className="px-2 py-1 bg-white/10">
+            L {imageSlots.left ? "ON" : "OFF"}
+          </button>
+          <button onClick={() => toggleSlot("right")} className="px-2 py-1 bg-white/10">
+            R {imageSlots.right ? "ON" : "OFF"}
+          </button>
         </div>
       </div>
-      <div className="pointer-events-none absolute right-[-90px] top-0 hidden h-full w-[430px] 2xl:block">
-        <div className="absolute right-0 top-[8%] h-[76%] w-full rounded-l-[3rem] border-l border-amber-200/10 bg-[radial-gradient(circle_at_72%_30%,rgba(251,191,36,0.14),transparent_34%),radial-gradient(circle_at_34%_68%,rgba(59,130,246,0.1),transparent_30%),linear-gradient(270deg,rgba(27,18,10,0.72),rgba(27,18,10,0.22),transparent)] blur-[0.2px]" />
-        <div className="absolute right-[-48px] top-[14%] h-[70%] w-[360px] overflow-hidden rounded-l-[3.2rem] border-y border-l border-amber-200/10 bg-black/10 shadow-[0_0_90px_rgba(245,158,11,0.08)]">
-          <div className="absolute inset-0 bg-[linear-gradient(270deg,rgba(7,5,4,0.92),rgba(17,12,8,0.35),transparent)]" />
-          <svg viewBox="0 0 360 760" className="absolute inset-y-0 right-0 h-full w-full text-amber-200/70" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M324 86C256 132 210 206 202 292C192 394 242 472 296 552" stroke="currentColor" strokeWidth="2" strokeOpacity="0.18" />
-            <path d="M268 118C190 190 150 274 158 382C165 474 210 542 270 626" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.14" strokeDasharray="10 16" />
-            <circle cx="234" cy="334" r="118" stroke="currentColor" strokeWidth="1.8" strokeOpacity="0.18" />
-            <circle cx="234" cy="334" r="72" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.14" />
-            <path d="M234 222L256 292H330L270 334L294 406L234 362L174 406L198 334L138 292H212L234 222Z" stroke="currentColor" strokeWidth="1.7" strokeOpacity="0.22" />
-            <path d="M316 676C268 612 204 574 120 560" stroke="currentColor" strokeWidth="2" strokeOpacity="0.13" />
-            <path d="M342 706C262 658 182 642 54 662" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.1" />
-          </svg>
-          <div className="absolute bottom-[13%] right-[18px] h-[240px] w-[185px] rotate-[6deg] rounded-[52%_48%_60%_40%/42%_46%_54%_58%] bg-[radial-gradient(circle_at_50%_18%,rgba(255,241,202,0.18),transparent_18%),linear-gradient(205deg,rgba(251,191,36,0.18),rgba(14,10,6,0.1)_54%,transparent)] blur-[1px]" />
-        </div>
-      </div>
-      <div className="absolute inset-0 flex items-center justify-center">
+
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        
+        {/* 배경 */}
+        {backgroundImageUrl ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{
+              backgroundImage: `linear-gradient(180deg,rgba(9,7,5,0.38),rgba(9,7,5,0.78)), url(${backgroundImageUrl})`,
+            }}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-black" />
+        )}
+
+        {/* 🔥 핵심: 레이아웃 적용 */}
+        {layoutMode === "three" && (
+          <>
+            {imageSlots.left && sideLeftImageUrl && (
+              <div className="absolute left-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
+                <div
+                  className="absolute inset-y-[9%] left-0 w-full rounded-r-[3rem] bg-contain bg-left bg-no-repeat opacity-70"
+                  style={{
+                    backgroundImage: `linear-gradient(90deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideLeftImageUrl})`,
+                  }}
+                />
+              </div>
+            )}
+
+            {imageSlots.right && sideRightImageUrl && (
+              <div className="absolute right-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
+                <div
+                  className="absolute inset-y-[9%] right-0 w-full rounded-l-[3rem] bg-contain bg-right bg-no-repeat opacity-70"
+                  style={{
+                    backgroundImage: `linear-gradient(270deg,rgba(9,7,5,0.28),transparent 52%,rgba(9,7,5,0.66)), url(${sideRightImageUrl})`,
+                  }}
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* 👉 2개 모드 */}
+        {layoutMode === "two" && activeSides.length > 0 && (
+          <>
+            {activeSides.slice(0, 2).map((img, i) => (
+              <div
+                key={i}
+                className={`absolute top-0 hidden h-full w-[420px] 2xl:block ${
+                  i === 0 ? "left-[-40px]" : "right-[-40px]"
+                }`}
+              >
+                <div
+                  className="absolute inset-y-[9%] w-full bg-contain bg-no-repeat opacity-70"
+                  style={{
+                    backgroundImage: `url(${img})`,
+                  }}
+                />
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* 👉 1개 집중 모드 */}
+        {layoutMode === "one" && activeSides[0] && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div
+              className="h-[80%] w-[60%] bg-contain bg-center bg-no-repeat opacity-70"
+              style={{ backgroundImage: `url(${activeSides[0]})` }}
+            />
+          </div>
+        )}
+
+        {/* 기존 motion / 효과 그대로 유지 */}
         <motion.div
-          className="relative h-[380px] w-[380px] opacity-[0.08] blur-[0.2px] md:h-[520px] md:w-[520px] xl:h-[620px] xl:w-[620px]"
-          animate={{ rotate: 360, scale: [0.985, 1.015, 0.985], opacity: [0.06, 0.1, 0.06] }}
-          transition={{ rotate: { duration: 72, repeat: Infinity, ease: "linear" }, scale: { duration: 18, repeat: Infinity, ease: "easeInOut" }, opacity: { duration: 14, repeat: Infinity, ease: "easeInOut" } }}
-        >
-          <svg viewBox="0 0 600 600" className="h-full w-full text-amber-200/80" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="300" cy="300" r="228" stroke="currentColor" strokeWidth="2.5" strokeOpacity="0.38" />
-            <circle cx="300" cy="300" r="178" stroke="currentColor" strokeWidth="1.8" strokeOpacity="0.3" strokeDasharray="10 18" />
-            <circle cx="300" cy="300" r="126" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.24" />
-            <rect x="182" y="182" width="236" height="236" rx="36" stroke="currentColor" strokeWidth="2" strokeOpacity="0.34" />
-            <rect x="230" y="230" width="140" height="140" rx="24" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.28" transform="rotate(45 300 300)" />
-            <path d="M300 118L332 188L412 188L348 236L372 316L300 270L228 316L252 236L188 188L268 188L300 118Z" stroke="currentColor" strokeWidth="1.8" strokeOpacity="0.24" />
-            <path d="M300 210L324 276H390L336 318L356 384L300 344L244 384L264 318L210 276H276L300 210Z" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.22" />
-            <circle cx="300" cy="300" r="18" fill="currentColor" fillOpacity="0.22" />
-            <circle cx="300" cy="72" r="7" fill="currentColor" fillOpacity="0.55" />
-            <circle cx="528" cy="300" r="7" fill="currentColor" fillOpacity="0.55" />
-            <circle cx="300" cy="528" r="7" fill="currentColor" fillOpacity="0.55" />
-            <circle cx="72" cy="300" r="7" fill="currentColor" fillOpacity="0.55" />
-            <circle cx="300" cy="148" r="4" fill="currentColor" fillOpacity="0.52" />
-            <circle cx="452" cy="300" r="4" fill="currentColor" fillOpacity="0.52" />
-            <circle cx="300" cy="452" r="4" fill="currentColor" fillOpacity="0.52" />
-            <circle cx="148" cy="300" r="4" fill="currentColor" fillOpacity="0.52" />
-          </svg>
-        </motion.div>
+          className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-amber-200/12 blur-[148px]"
+          animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
+          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+        />
       </div>
-      <div className="absolute inset-0 opacity-[0.045]" style={{ backgroundImage: "linear-gradient(rgba(255,249,237,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,249,237,0.02) 1px, transparent 1px)", backgroundSize: "72px 72px" }} />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(8,6,4,0.08)_42%,rgba(8,6,4,0.28)_68%,rgba(7,5,4,0.62)_100%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,5,4,0.02),rgba(7,5,4,0.22)_36%,rgba(7,5,4,0.72))]" />
+
+      {children}
     </div>
-    {children}
-  </div>
   );
 };
 
