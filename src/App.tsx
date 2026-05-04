@@ -8804,6 +8804,11 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       }
       if (data.CharacterLevel) setCharacterLevel(String(data.CharacterLevel));
       if (data.CharacterImage) setLostarkImageUrl(data.CharacterImage);
+      // 전투력: Stats 배열에서 Type === "전투력" 찾기
+      if (Array.isArray(data.Stats)) {
+        const cpStat = data.Stats.find((s: any) => s.Type === "전투력");
+        if (cpStat?.Value) setCombatPower(String(cpStat.Value).replace(/,/g, ""));
+      }
       setLostarkFetched(true);
       showToast("전투정보실 정보를 불러왔어!", "success");
     } catch (e: any) {
