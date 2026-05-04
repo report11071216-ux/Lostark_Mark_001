@@ -2877,29 +2877,47 @@ const ProkyonWidget = () => {
                     </div>
 
                     {/* 보상 아이템 */}
-                    {item.RewardItems && item.RewardItems.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {item.RewardItems.slice(0, 5).map((reward, ri) => (
-                          <div key={ri} className="relative group">
-                            <img
-                              src={reward.Icon}
-                              alt={reward.Name}
-                              className="h-7 w-7 rounded-lg object-cover bg-black/40"
-                              style={{ boxShadow: `0 0 0 1.5px ${GRADE_COLORS_WIDGET[reward.Grade] || "#666"}` }}
-                            />
-                            {/* 툴팁 */}
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-50 pointer-events-none">
-                              <div className="whitespace-nowrap rounded-lg bg-black/90 border border-white/10 px-2 py-1 text-[10px] text-white shadow-xl">
-                                {reward.Name}
+                    {item.RewardItems && item.RewardItems.length > 0 && (() => {
+                      // API 응답 구조: RewardItems = [ { ItemLevel, Items: [...] } ] 또는 [ { Name, Icon, Grade } ]
+                      const flatItems: Array<{ Name: string; Icon: string; Grade: string }> = [];
+                      item.RewardItems.forEach((r: any) => {
+                        if (Array.isArray(r.Items)) {
+                          // 중첩 구조: { ItemLevel, Items: [...] }
+                          r.Items.forEach((it: any) => flatItems.push(it));
+                        } else if (r.Icon) {
+                          // 단순 구조: { Name, Icon, Grade }
+                          flatItems.push(r);
+                        }
+                      });
+                      // 중복 아이템명 제거
+                      const unique = flatItems.filter((it, idx, arr) =>
+                        arr.findIndex(x => x.Name === it.Name) === idx
+                      );
+                      if (unique.length === 0) return null;
+                      return (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {unique.slice(0, 6).map((reward, ri) => (
+                            <div key={ri} className="relative group">
+                              <img
+                                src={reward.Icon}
+                                alt={reward.Name}
+                                className="h-7 w-7 rounded-lg object-cover bg-black/40"
+                                style={{ boxShadow: `0 0 0 1.5px ${GRADE_COLORS_WIDGET[reward.Grade] || "#666"}` }}
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                              />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-50 pointer-events-none">
+                                <div className="whitespace-nowrap rounded-lg bg-black/90 border border-white/10 px-2 py-1 text-[10px] text-white shadow-xl">
+                                  {reward.Name}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                        {item.RewardItems.length > 5 && (
-                          <span className="text-[10px] text-stone-500">+{item.RewardItems.length - 5}</span>
-                        )}
-                      </div>
-                    )}
+                          ))}
+                          {unique.length > 6 && (
+                            <span className="text-[10px] text-stone-500">+{unique.length - 6}</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </motion.div>
                 );
               })}
