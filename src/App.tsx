@@ -10912,10 +10912,9 @@ const GuildMembersPage = () => {
             return (
               <div
                 key={member.id}
-                className="rounded-[2rem] border overflow-hidden relative"
-                style={{ background: theme.cardBackground, borderColor: theme.cardBorder, boxShadow: theme.cardShadow }}
+                className="rounded-[2rem] border border-white/10 overflow-hidden relative"
+                style={{ background: "#000", boxShadow: "0 4px 32px rgba(0,0,0,0.6)" }}
               >
-                <div className="absolute inset-0 pointer-events-none" style={{ background: theme.aura }} />
                 <div className="relative z-10">
 
                   {/* ══ 상단 헤더: 캐릭터 이미지 전체 배경 ══ */}
@@ -10930,44 +10929,22 @@ const GuildMembersPage = () => {
                           className="w-full h-full object-cover"
                           style={{ objectPosition: "top center", filter: "brightness(0.55) saturate(1.1)" }}
                         />
-                        {/* 카드 배경색과 블렌딩 */}
-                        <div className="absolute inset-0" style={{ background: theme.aura, opacity: 0.7 }} />
-                        {/* 하단 페이드 — 탭 영역으로 자연스럽게 */}
-                        <div
-                          className="absolute inset-0"
-                          style={{ background: `linear-gradient(to bottom, transparent 30%, ${theme.cardBackground.split(",")[0].replace("linear-gradient(135deg","").replace("(","").trim()} 100%)` }}
-                        />
+                        {/* 하단 페이드 → 검정으로 */}
+                        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 30%, #000 100%)" }} />
                       </div>
                     )}
 
                     {/* 텍스트 오버레이 */}
                     <div className="relative z-10 p-5 flex flex-col justify-between" style={{ minHeight: 200 }}>
                       <div>
-                        {/* 서버 + 배지 행 */}
-                        <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                          {(armoryProfile?.ServerName || member.server_name) && (
+                        {/* 서버 뱃지만 유지 */}
+                        {(armoryProfile?.ServerName || member.server_name) && (
+                          <div className="mb-3">
                             <span className="px-2 py-0.5 rounded-md bg-black/50 text-[10px] font-semibold text-white/70 backdrop-blur-sm">
                               {armoryProfile?.ServerName || member.server_name}
                             </span>
-                          )}
-                          {member.is_main && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 inline-flex items-center gap-1 backdrop-blur-sm">
-                              <Crown size={9} />MAIN
-                            </span>
-                          )}
-                          {member.role_hint === "서포터" && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-400/20 text-sky-300 border border-sky-400/30 backdrop-blur-sm">서폿</span>
-                          )}
-                          {getCharacterBadges(member).map((badge: any, idx: number) => {
-                            const bt = getBadgeVisualTheme(badge);
-                            return (
-                              <span key={idx} className="px-2 py-0.5 rounded-md text-[10px] font-bold border backdrop-blur-sm"
-                                style={{ color: bt.chipText, borderColor: bt.chipBorder, background: bt.chipBackground }}>
-                                {badge.badge_name}
-                              </span>
-                            );
-                          })}
-                        </div>
+                          </div>
+                        )}
 
                         {/* 캐릭터명 + 직업 + 칭호 */}
                         <div className="text-2xl font-bold drop-shadow-lg">{member.character_name}</div>
@@ -11026,9 +11003,9 @@ const GuildMembersPage = () => {
 
                   {/* ══ 전투 스탯 바 ══ */}
                   {armoryProfile?.Stats && (
-                    <div className="flex">
+                    <div className="flex border-t border-white/8">
                       {armoryProfile.Stats.filter((s: any) => Number(s.Value) > 0 && ["치명","특화","신속","제압","인내","숙련"].includes(s.Type)).map((s: any) => (
-                        <div key={s.Type} className="flex-1 text-center py-2.5 bg-black/20 border-r border-white/5 last:border-r-0">
+                        <div key={s.Type} className="flex-1 text-center py-2.5 border-r border-white/5 last:border-r-0">
                           <div className="text-[9px] text-white/30 uppercase">{s.Type}</div>
                           <div className="text-xs font-bold text-amber-200">{Number(s.Value).toLocaleString()}</div>
                         </div>
@@ -11064,8 +11041,8 @@ const GuildMembersPage = () => {
                   {/* ══ 탭 패널 (로드 후) ══ */}
                   {armory?.opened && (
                     <div>
-                      {/* 탭 바 — 구분선 없음 */}
-                      <div className="flex overflow-x-auto bg-black/20">
+                      {/* 탭 바 — 검정 배경 */}
+                      <div className="flex overflow-x-auto border-t border-white/8" style={{ background: "#0a0a0a" }}>
                         {CARD_TABS.map(t => (
                           <button
                             key={t.id}
@@ -11095,7 +11072,7 @@ const GuildMembersPage = () => {
                       </div>
 
                       {/* 탭 컨텐츠 */}
-                      <div className="min-h-[160px]">
+                      <div className="min-h-[160px]" style={{ background: "#000" }}>
 
                         {/* 로딩 */}
                         {curTabState?.loading && (
