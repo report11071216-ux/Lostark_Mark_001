@@ -7090,79 +7090,81 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
     if (cErr) return showToast(cErr.message, "error");
 
-    const detailPayload = {
-      content_id: data.id,
-      difficulty: isRaid ? difficulty : null,
-      gate_num: isRaid ? Number(selectedGate) : 0,
-      hp: form.hp,
-      element_type: form.element,
-      attribute: form.attribute,
-      clear_gold: Number(form.gold) || 0,
-      battle_items: form.battle_items || null,
-      guide: form.guide || null,
-      mechanics: form.mechanics || null,
-      tip: form.tip || null,
-      reward_items: form.reward_items || null,
+    // ── 기존 row 조회 후 insert / update 분리 (onConflict unique constraint 불필요)
+    const diffVal    = isRaid ? difficulty : null;
+    const gateVal    = isRaid ? Number(selectedGate) : 0;
+
+    let existQuery = supabase
+      .from("content_details")
+      .select("id")
+      .eq("content_id", data.id)
+      .eq("gate_num", gateVal);
+
+    if (diffVal !== null) {
+      existQuery = existQuery.eq("difficulty", diffVal);
+    } else {
+      existQuery = existQuery.is("difficulty", null);
+    }
+
+    const { data: existRow } = await existQuery.maybeSingle();
+
+    // 전체 필드 payload
+    const detailPayload: Record<string, any> = {
+      content_id:      data.id,
+      difficulty:      diffVal,
+      gate_num:        gateVal,
+      hp:              form.hp || null,
+      element_type:    form.element || null,
+      attribute:       form.attribute || null,
+      clear_gold:      Number(form.gold) || 0,
+      battle_items:    form.battle_items || null,
+      guide:           form.guide || null,
+      mechanics:       form.mechanics || null,
+      tip:             form.tip || null,
+      reward_items:    form.reward_items || null,
       reward_materials: form.reward_materials || null,
       reward_image_url: form.reward_image_url || null,
     };
 
     let dErr: any = null;
 
-    const firstTry = await supabase
-      .from("content_details")
-      .upsert(detailPayload, { onConflict: "content_id,difficulty,gate_num" });
+    if (existRow?.id) {
+      // UPDATE
+      const { error } = await supabase
+        .from("content_details")
+        .update(detailPayload)
+        .eq("id", existRow.id);
+      dErr = error;
+    } else {
+      // INSERT
+      const { error } = await supabase
+        .from("content_details")
+        .insert(detailPayload);
+      dErr = error;
+    }
 
-    dErr = firstTry.error;
-
+    // 컬럼 없음 오류 → reward_image_url 제외하고 재시도
     if (dErr && (String(dErr.message || "").includes("column") || String(dErr.message || "").includes("does not exist"))) {
-      // battle_items / reward_image_url 등 신규 컬럼이 없을 수 있음 → 핵심 필드만 저장
-      const fallback = await supabase.from("content_details").upsert(
-        {
-          content_id: data.id,
-          difficulty: isRaid ? difficulty : null,
-          gate_num: isRaid ? Number(selectedGate) : 0,
-          hp: form.hp,
-          element_type: form.element,
-          attribute: form.attribute,
-          clear_gold: Number(form.gold) || 0,
-          battle_items: form.battle_items || null,
-          guide: form.guide || null,
-          mechanics: form.mechanics || null,
-          tip: form.tip || null,
-          reward_items: form.reward_items || null,
-          reward_materials: form.reward_materials || null,
-        },
-        { onConflict: "content_id,difficulty,gate_num" },
-      );
-
-      dErr = fallback.error;
-
-      if (dErr && String(dErr.message || "").includes("column")) {
-        // reward_image_url 컬럼이 없는 경우 최소한의 필드만
-        const minimal = await supabase.from("content_details").upsert(
-          {
-            content_id: data.id,
-            difficulty: isRaid ? difficulty : null,
-            gate_num: isRaid ? Number(selectedGate) : 0,
-            hp: form.hp,
-            element_type: form.element,
-            attribute: form.attribute,
-            clear_gold: Number(form.gold) || 0,
-          },
-          { onConflict: "content_id,difficulty,gate_num" },
-        );
-        dErr = minimal.error;
-        if (!dErr) {
-          showToast("기본 데이터 저장 완료. reward_image_url/battle_items 컬럼 추가가 필요합니다. (Supabase SQL 에디터에서 마이그레이션 실행)", "info");
-        }
-      } else if (!dErr) {
-        showToast("데이터 저장 완료! (reward_image_url 컬럼 추가 시 이미지도 저장됩니다)", "info");
+      const { reward_image_url, ...payloadWithout } = detailPayload;
+      let retryErr: any = null;
+      if (existRow?.id) {
+        const { error } = await supabase.from("content_details").update(payloadWithout).eq("id", existRow.id);
+        retryErr = error;
+      } else {
+        const { error } = await supabase.from("content_details").insert(payloadWithout);
+        retryErr = error;
+      }
+      dErr = retryErr;
+      if (!retryErr) {
+        showToast("저장 완료! (reward_image_url 컬럼이 없어 이미지는 미저장)", "info");
+        await fetchList();
+        resetForm();
+        return;
       }
     }
 
     if (dErr) {
-      showToast(dErr.message, "error");
+      showToast("저장 실패: " + (dErr.message || JSON.stringify(dErr)), "error");
       return;
     }
 
