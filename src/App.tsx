@@ -1781,6 +1781,15 @@ const fetchInitialData = async () => {
                   posts={posts}
                   onOpenRaidCalendar={() => setIsRaidCalendarModalOpen(true)}
                   onNavigateToNotices={() => { setPostInitialTab("notice"); setActiveTab("posts"); }}
+                  onRaidSearch={(raid: any) => {
+                    // 검색 결과 레이드 클릭 시 RaidCalendar의 모달을 열기
+                    // RaidCalendar에 직접 접근 불가이므로 activeTab을 raid로 전환 후 이벤트 발행
+                    setActiveTab("raid");
+                    // 커스텀 이벤트로 RaidCalendar에 전달
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent("openRaidById", { detail: { raidId: raid.id } }));
+                    }, 150);
+                  }}
                 />
                 <HomeFeaturePortal contentView={contentView} setContentView={setContentView} />
                 <MainContentViewer type={contentView} />
@@ -2930,7 +2939,7 @@ const ProkyonWidget = () => {
 };
 // ── End ProkyonWidget ────────────────────────────────────────
 
-const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices }: any) => {
+const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaidSearch }: any) => {
   const [heroStats, setHeroStats] = useState({
     memberCount: 0,
     upcomingRaids: 0,
@@ -2939,6 +2948,11 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices }: any)
   });
   const [weeklySchedules, setWeeklySchedules] = useState<Record<string, any[]>>({});
   const [selectedWeekDate, setSelectedWeekDate] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const noticeCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_notice).length : 0;
   const pinnedCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_pinned).length : 0;
 
@@ -3048,6 +3062,37 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices }: any)
     };
   }, [posts, currentWeekRange.start, currentWeekRange.end, currentWeekDays]);
 
+  // 레이드 검색 로직
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); setSearchOpen(false); return; }
+    setSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from("raid_schedules")
+          .select("*")
+          .ilike("raid_name", `%${searchQuery.trim()}%`)
+          .gte("raid_date", getTodayKey())
+          .order("raid_date", { ascending: true })
+          .order("raid_time", { ascending: true })
+          .limit(8);
+        setSearchResults(data || []);
+        setSearchOpen(true);
+      } catch { setSearchResults([]); }
+      setSearchLoading(false);
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // 검색창 바깥 클릭 시 닫기
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   const selectedDay = currentWeekDays.find((day) => day.key === selectedWeekDate) || currentWeekDays[0];
   const selectedSchedules = selectedDay ? weeklySchedules[selectedDay.key] || [] : [];
   const primarySchedule = selectedSchedules[0];
@@ -3111,6 +3156,88 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices }: any)
               <CalendarDays size={16} className="transition-transform group-hover:scale-105" />
               월별 레이드 일정
             </button>
+          </div>
+
+          {/* 레이드 검색 */}
+          <div ref={searchRef} className="relative mt-5 w-full max-w-md mx-auto md:mx-0">
+            <div className="relative flex items-center">
+              <div className="pointer-events-none absolute left-3.5 text-stone-500">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
+                placeholder="레이드 검색... (예: 카제로스, 에키드나)"
+                className="w-full rounded-[1.3rem] border border-white/10 bg-white/[0.05] py-3 pl-10 pr-10 text-sm text-white placeholder-stone-500 outline-none backdrop-blur-md transition-all focus:border-amber-200/30 focus:bg-white/[0.08] focus:ring-1 focus:ring-amber-400/10"
+              />
+              {searchLoading && (
+                <div className="absolute right-3.5">
+                  <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+                    className="h-4 w-4 rounded-full border-2 border-amber-400 border-t-transparent" />
+                </div>
+              )}
+              {searchQuery && !searchLoading && (
+                <button onClick={() => { setSearchQuery(""); setSearchResults([]); setSearchOpen(false); }}
+                  className="absolute right-3.5 text-stone-500 hover:text-white transition-colors">
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* 검색 결과 드롭다운 */}
+            <AnimatePresence>
+              {searchOpen && searchResults.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-[1.3rem] border border-white/10 bg-[#0e0b07]/96 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
+                >
+                  {searchResults.map((raid, idx) => (
+                    <button
+                      key={raid.id}
+                      onClick={() => { onRaidSearch?.(raid); setSearchOpen(false); setSearchQuery(""); }}
+                      className={cn(
+                        "flex w-full items-center justify-between px-4 py-3 text-left transition-all hover:bg-amber-400/[0.07]",
+                        idx < searchResults.length - 1 && "border-b border-white/[0.05]"
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white truncate">{raid.raid_name}</span>
+                          <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-stone-400">{raid.difficulty}</span>
+                          {raid.experience && (
+                            <span className="shrink-0 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300">{raid.experience}</span>
+                          )}
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-2 text-xs text-stone-500">
+                          <CalendarDays size={10} />
+                          <span>{formatShortDate(raid.raid_date)}</span>
+                          <span>·</span>
+                          <Clock size={10} />
+                          <span>{raid.raid_time}</span>
+                        </div>
+                      </div>
+                      <div className="ml-3 shrink-0 text-[10px] text-amber-400/60">→ 바로가기</div>
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+              {searchOpen && !searchLoading && searchQuery.trim() && searchResults.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute left-0 right-0 top-full z-50 mt-2 rounded-[1.3rem] border border-white/10 bg-[#0e0b07]/96 px-4 py-5 text-center text-sm text-stone-500 backdrop-blur-2xl"
+                >
+                  "{searchQuery}" 에 해당하는 예정 레이드가 없어요.
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
 
@@ -4417,6 +4544,25 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
   const [scheduleView, setScheduleView] = useState<"all" | "mine">("all");
   const [myCharacterNames, setMyCharacterNames] = useState<string[]>([]);
 
+  // Hero 검색에서 openRaidById 이벤트 수신
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { raidId } = (e as CustomEvent).detail || {};
+      if (!raidId) return;
+      const found = raids.find((r: any) => r.id === raidId);
+      if (found) {
+        setSelectedRaid(found);
+      } else {
+        // raids가 아직 로딩 안됐을 수 있어 DB에서 직접 조회
+        supabase?.from("raid_schedules").select("*").eq("id", raidId).single().then(({ data }) => {
+          if (data) setSelectedRaid(data);
+        });
+      }
+    };
+    window.addEventListener("openRaidById", handler);
+    return () => window.removeEventListener("openRaidById", handler);
+  }, [raids]);
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const firstDate = new Date(year, month, 1);
@@ -5365,6 +5511,21 @@ const CreateRaidModal = ({
   );
 };
 
+const ATTRIBUTE_ICON: Record<string, { icon: string; color: string; bg: string }> = {
+  "화속성 취약": { icon: "🔥", color: "text-orange-300", bg: "bg-orange-400/10 border-orange-400/25" },
+  "수속성 취약": { icon: "💧", color: "text-blue-300",   bg: "bg-blue-400/10 border-blue-400/25" },
+  "암속성 취약": { icon: "🌑", color: "text-purple-300", bg: "bg-purple-400/10 border-purple-400/25" },
+  "빛속성 취약": { icon: "☀️", color: "text-yellow-200", bg: "bg-yellow-400/10 border-yellow-400/25" },
+  "토속성 취약": { icon: "🪨", color: "text-amber-300",  bg: "bg-amber-400/10 border-amber-400/25" },
+  "뇌속성 취약": { icon: "⚡", color: "text-cyan-300",   bg: "bg-cyan-400/10 border-cyan-400/25" },
+};
+
+const BATTLE_ITEM_ICON: Record<string, string> = {
+  "홀리 워터": "💊", "고급 폭탄": "💣", "정밀 폭탄": "🎯", "시간의 모래": "⏳",
+  "상급 회복 물약": "🧪", "고급 수류탄": "💥", "각성 포션": "✨", "흑마법 폭탄": "🖤",
+  "화염 수류탄": "🔥", "독 폭탄": "☠️", "섬광 수류탄": "💡",
+};
+
 const RaidDetailModal = ({
   raid,
   parts,
@@ -5382,162 +5543,321 @@ const RaidDetailModal = ({
 }) => {
   const [showJoin, setShowJoin] = useState(false);
   const [myCharacterNames, setMyCharacterNames] = useState<string[]>([]);
+  const [allDetails, setAllDetails] = useState<any[]>([]);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState<"info" | "participants">("info");
 
-  // 로그인한 경우 내 캐릭터 이름 목록 불러오기
   useEffect(() => {
-    if (!user?.id) {
-      setMyCharacterNames([]);
-      return;
-    }
+    if (!user?.id) { setMyCharacterNames([]); return; }
     const fetchMyNames = async () => {
       try {
         const client = getSupabaseOrThrow();
-        const { data, error } = await client
-          .from("guild_members")
-          .select("character_name")
+        const { data } = await client
+          .from("guild_members").select("character_name")
           .or(`user_id.eq.${user.id},owner_id.eq.${user.id}`);
-        if (error) {
-          console.error("myCharacterNames fetch error:", error);
-          setMyCharacterNames([]);
-          return;
-        }
-        setMyCharacterNames(
-          (data || []).map((row: any) => String(row.character_name || "").trim()).filter(Boolean)
-        );
-      } catch (e) {
-        console.error("myCharacterNames unexpected error:", e);
-        setMyCharacterNames([]);
-      }
+        setMyCharacterNames((data || []).map((r: any) => String(r.character_name || "").trim()).filter(Boolean));
+      } catch { setMyCharacterNames([]); }
     };
     void fetchMyNames();
   }, [user]);
+
+  // content_details에서 관문 정보 로드
+  useEffect(() => {
+    if (raid.type === "anime") return;
+    const fetchDetails = async () => {
+      setLoadingDetails(true);
+      try {
+        // contents 테이블에서 raid_name 매칭
+        const { data: contents } = await supabase
+          .from("contents").select("id, name").eq("category", "레이드");
+        const matched = (contents || []).find((c: any) =>
+          String(c.name || "").trim().toLowerCase() === String(raid.raid_name || "").trim().toLowerCase()
+        );
+        if (!matched) { setAllDetails([]); setLoadingDetails(false); return; }
+        const { data: details } = await supabase
+          .from("content_details").select("*")
+          .eq("content_id", matched.id)
+          .eq("difficulty", raid.difficulty || "노말")
+          .order("gate_num", { ascending: true });
+        setAllDetails(details || []);
+      } catch { setAllDetails([]); }
+      setLoadingDetails(false);
+    };
+    void fetchDetails();
+  }, [raid]);
 
   const capacity = getCapacity(raid);
   const dealers = parts.filter((p: any) => p.position === "딜러").length;
   const supports = parts.filter((p: any) => p.position === "서포터").length;
   const isAnime = raid.type === "anime";
   const isFull = parts.length >= capacity.maxParticipants;
-  const colors = classNameByMode(raid.type);
+
+  const totalGold = allDetails.reduce((sum, d) => sum + (Number(d.clear_gold) || 0), 0);
+  const totalHp   = allDetails.reduce((sum, d) => sum + (Number(String(d.hp || "0").replace(/,/g, "")) || 0), 0);
+
+  // 모든 관문에서 속성/배틀아이템 수집 (중복 제거)
+  const allAttributes = Array.from(new Set(
+    allDetails.map((d) => String(d.attribute || "").trim()).filter(Boolean)
+  ));
+  const allBattleItems = Array.from(new Set(
+    allDetails.flatMap((d) => String(d.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean))
+  ));
 
   const handleDelete = async () => {
-    if (profile?.role !== "admin") {
-      showToast("관리자만 삭제할 수 있어.", "error");
-      return;
-    }
-
-    const ok = confirm("일정을 삭제하시겠습니까?");
-    if (!ok) return;
-
+    if (profile?.role !== "admin") { showToast("관리자만 삭제할 수 있어.", "error"); return; }
+    if (!confirm("일정을 삭제하시겠습니까?")) return;
     try {
       await supabase.from("raid_participants").delete().eq("schedule_id", raid.id);
       await supabase.from("raid_schedules").delete().eq("id", raid.id);
       onRefresh();
-    } catch (error) {
-      console.error(error);
-      showToast("일정 삭제 실패", "error");
-    }
+    } catch { showToast("일정 삭제 실패", "error"); }
   };
 
   return (
     <ModalFrame onClose={onClose}>
-      <div className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.16),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_48%)]" />
+      <div className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#0a0806]/96 shadow-[0_40px_120px_rgba(0,0,0,0.7)] backdrop-blur-2xl">
+        {/* 배경 그라디언트 */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,180,60,0.13),transparent_42%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,100,60,0.05),transparent_38%)]" />
+        </div>
 
-        <div className="relative border-b border-white/10 px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-7">
+        {/* ── 헤더 ── */}
+        <div className="relative border-b border-white/[0.07] px-6 py-5">
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className={`mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] ${colors.badge}`}>
-                {raid.type === "anime" ? "Watch Party" : "Raid Detail"}
-              </div>
-              <h3 className="truncate text-3xl font-semibold text-white">{raid.raid_name}</h3>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200">
-                  {formatShortDate(raid.raid_date)}
-                </span>
-                <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200">
-                  {raid.raid_time}
+            <div className="min-w-0 flex-1">
+              {/* 배지 */}
+              <div className="mb-2.5 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">
+                  {isAnime ? "Watch Party" : "⚔️ Raid"}
                 </span>
                 {!isAnime && (
                   <>
-                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200">
-                      {raid.raid_type}
-                    </span>
-                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs text-slate-200">
-                      {raid.difficulty}
-                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold text-slate-300">{raid.difficulty}</span>
+                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold text-slate-300">{raid.raid_type}</span>
                     {raid.experience && (
-                      <span className="rounded-full border border-amber-200/15 bg-amber-300/10 px-3 py-1.5 text-xs text-amber-100">
-                        {raid.experience}
-                      </span>
+                      <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">{raid.experience}</span>
                     )}
                   </>
                 )}
               </div>
+              <h3 className="text-2xl font-bold tracking-tight text-white md:text-3xl">{raid.raid_name}</h3>
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-stone-400">
+                <span className="flex items-center gap-1.5"><CalendarDays size={13} />{formatShortDate(raid.raid_date)}</span>
+                <span className="flex items-center gap-1.5"><Clock size={13} />{raid.raid_time}</span>
+                <span className={cn(
+                  "flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                  isFull ? "bg-rose-400/10 text-rose-300" : "bg-emerald-400/10 text-emerald-300"
+                )}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", isFull ? "bg-rose-400" : "bg-emerald-400 animate-pulse")} />
+                  {isFull ? "모집 완료" : "모집 중"}
+                </span>
+              </div>
             </div>
-
             <button
               onClick={onClose}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
             >
-              <X size={18} />
+              <X size={17} />
             </button>
+          </div>
+
+          {/* 참여 프로그레스 바 */}
+          <div className="mt-4">
+            <div className="mb-1.5 flex items-center justify-between text-xs text-stone-500">
+              <span>참여 현황</span>
+              <span className="font-semibold text-stone-300">{parts.length} / {capacity.maxParticipants}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(100, (parts.length / capacity.maxParticipants) * 100)}%` }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
+                className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300"
+              />
+            </div>
+            {!isAnime && (
+              <div className="mt-1.5 flex gap-3 text-[11px] text-stone-500">
+                <span>⚔️ 딜러 {dealers}/{capacity.dealerLimit}</span>
+                <span>🛡️ 서포터 {supports}/{capacity.supportLimit}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="relative space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 md:px-8 md:py-7">
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
-            <SummaryChip icon={<Users size={14} />} label="총 인원" value={`${parts.length}/${capacity.maxParticipants}`} />
-            <SummaryChip icon={<Swords size={14} />} label="딜러" value={isAnime ? "-" : `${dealers}/${capacity.dealerLimit}`} />
-            <SummaryChip icon={<Shield size={14} />} label="서포터" value={isAnime ? "-" : `${supports}/${capacity.supportLimit}`} />
-            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md transition-all">
-              <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
-                <Clock size={14} />
-                상태
-              </div>
-              <div className="text-2xl font-semibold text-white">{isFull ? "Full" : "Open"}</div>
-            </div>
+        {/* ── 탭 ── */}
+        {!isAnime && (
+          <div className="relative flex gap-1 border-b border-white/[0.07] px-6 pt-3 pb-0">
+            {([["info", "레이드 정보"], ["participants", "참가자 목록"]] as const).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={cn(
+                  "relative pb-3 px-3 text-sm font-semibold transition-all",
+                  activeTab === id ? "text-amber-300" : "text-stone-500 hover:text-stone-300"
+                )}
+              >
+                {label}
+                {activeTab === id && (
+                  <motion.div layoutId="raid-modal-tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-amber-400" />
+                )}
+              </button>
+            ))}
           </div>
+        )}
 
-          <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="text-sm font-semibold text-white">참가 현황</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {isAnime ? "참가형 일정" : `딜러 ${dealers}/${capacity.dealerLimit} · 서포터 ${supports}/${capacity.supportLimit}`}
-                </div>
-              </div>
-              <div className={`rounded-full px-3 py-1 text-xs font-semibold ${isFull ? "bg-rose-400/12 text-rose-200" : "bg-emerald-400/12 text-emerald-200"}`}>
-                {isFull ? "모집 완료" : "참여 가능"}
-              </div>
-            </div>
+        {/* ── 바디 ── */}
+        <div className="relative max-h-[58vh] overflow-y-auto px-6 py-5 space-y-4">
 
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/[0.06]">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-200"
-                style={{ width: `${Math.min(100, (parts.length / capacity.maxParticipants) * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.03] p-5">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <div>
-                <div className="text-sm font-semibold text-white">참가자 목록</div>
-                <div className="mt-1 text-xs text-slate-400">현재 등록된 참가자 정보를 확인할 수 있어.</div>
-              </div>
-              <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-                {parts.length} entries
-              </div>
-            </div>
-
-            <div className="max-h-[360px] space-y-3 overflow-y-auto pr-1">
-              {parts.length === 0 && (
-                <div className="rounded-[1.35rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm text-slate-500">
-                  아직 참가자가 없습니다.
+          {/* ── INFO 탭 ── */}
+          {(isAnime || activeTab === "info") && (
+            <>
+              {/* 총계 카드 행 */}
+              {!isAnime && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <SummaryChip icon={<Users size={13} />} label="총 인원" value={`${parts.length}/${capacity.maxParticipants}`} />
+                  <SummaryChip icon={<Swords size={13} />} label="딜러" value={`${dealers}/${capacity.dealerLimit}`} />
+                  <SummaryChip icon={<Shield size={13} />} label="서포터" value={`${supports}/${capacity.supportLimit}`} />
+                  <div className="rounded-[1.3rem] border border-yellow-400/20 bg-yellow-400/8 px-4 py-3 backdrop-blur-md">
+                    <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-yellow-300/70">Total Gold</div>
+                    <div className="text-xl font-bold text-yellow-300">{totalGold > 0 ? `${formatLargeNumber(totalGold)} G` : "-"}</div>
+                  </div>
                 </div>
               )}
 
+              {/* 취약 속성 + 배틀아이템 */}
+              {!isAnime && (allAttributes.length > 0 || allBattleItems.length > 0) && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {allAttributes.length > 0 && (
+                    <div className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
+                      <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-stone-500">취약 속성</div>
+                      <div className="flex flex-wrap gap-2">
+                        {allAttributes.map((attr) => {
+                          const info = ATTRIBUTE_ICON[attr] || { icon: "⚡", color: "text-white", bg: "bg-white/5 border-white/10" };
+                          return (
+                            <span key={attr} className={cn("flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold", info.bg, info.color)}>
+                              {info.icon} {attr}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {allBattleItems.length > 0 && (
+                    <div className="rounded-[1.3rem] border border-white/8 bg-white/[0.03] p-4">
+                      <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-stone-500">필요 배틀아이템</div>
+                      <div className="flex flex-wrap gap-2">
+                        {allBattleItems.map((item) => (
+                          <span key={item} className="flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/8 px-3 py-1.5 text-xs font-semibold text-amber-200">
+                            {BATTLE_ITEM_ICON[item] || "🎒"} {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 관문별 상세 정보 */}
+              {!isAnime && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-bold text-white">관문별 상세 정보</div>
+                    {loadingDetails && <div className="text-[11px] text-stone-500 animate-pulse">불러오는 중...</div>}
+                    {!loadingDetails && totalHp > 0 && (
+                      <div className="text-[11px] text-stone-500">총 HP <span className="text-amber-200 font-semibold">{formatLargeNumber(totalHp)}</span></div>
+                    )}
+                  </div>
+
+                  {!loadingDetails && allDetails.length === 0 && (
+                    <div className="rounded-[1.3rem] border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-center text-sm text-stone-500">
+                      등록된 관문 정보가 없습니다.<br />
+                      <span className="text-xs text-stone-600">관리자가 콘텐츠 관리에서 레이드명과 동일하게 등록하면 여기에 표시됩니다.</span>
+                    </div>
+                  )}
+
+                  {allDetails.map((detail, idx) => {
+                    const gateGold = Number(detail.clear_gold) || 0;
+                    const gateHp   = Number(String(detail.hp || "0").replace(/,/g, "")) || 0;
+                    const gateAttr = String(detail.attribute || "").trim();
+                    const attrInfo = ATTRIBUTE_ICON[gateAttr] || null;
+                    const gateBattleItems = String(detail.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+
+                    return (
+                      <div key={idx} className="overflow-hidden rounded-[1.3rem] border border-white/8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
+                        {/* 관문 헤더 */}
+                        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/15 text-sm font-bold text-amber-300">
+                              {detail.gate_num}관
+                            </div>
+                            {detail.element_type && (
+                              <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold text-slate-300">{detail.element_type}</span>
+                            )}
+                            {attrInfo && (
+                              <span className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold", attrInfo.bg, attrInfo.color)}>
+                                {attrInfo.icon} {gateAttr}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-sm">
+                            {gateHp > 0 && (
+                              <span className="text-stone-400">HP <span className="font-semibold text-white">{formatLargeNumber(gateHp)}</span></span>
+                            )}
+                            {gateGold > 0 && (
+                              <span className="font-bold text-yellow-300">{formatLargeNumber(gateGold)} G</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* 관문 세부 */}
+                        {(detail.guide || detail.mechanics || detail.tip || gateBattleItems.length > 0) && (
+                          <div className="space-y-2.5 px-4 py-3">
+                            {gateBattleItems.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {gateBattleItems.map((item: string) => (
+                                  <span key={item} className="flex items-center gap-1 rounded-full border border-amber-400/15 bg-amber-400/6 px-2.5 py-1 text-[10px] font-semibold text-amber-200">
+                                    {BATTLE_ITEM_ICON[item] || "🎒"} {item}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {detail.guide && (
+                              <div>
+                                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">공략</div>
+                                <p className="text-xs leading-6 text-stone-300 whitespace-pre-wrap">{detail.guide}</p>
+                              </div>
+                            )}
+                            {detail.mechanics && (
+                              <div>
+                                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">주요 기믹</div>
+                                <p className="text-xs leading-6 text-stone-300 whitespace-pre-wrap">{detail.mechanics}</p>
+                              </div>
+                            )}
+                            {detail.tip && (
+                              <div>
+                                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">팁</div>
+                                <p className="text-xs leading-6 text-amber-100/80 whitespace-pre-wrap">{detail.tip}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── PARTICIPANTS 탭 ── */}
+          {(!isAnime && activeTab === "participants") && (
+            <div className="space-y-2.5">
+              {parts.length === 0 && (
+                <div className="rounded-[1.3rem] border border-dashed border-white/10 bg-white/[0.02] px-4 py-10 text-center text-sm text-stone-500">
+                  아직 참가자가 없습니다.
+                </div>
+              )}
               {parts.map((participant: any) => (
                 <ParticipantItem
                   key={participant.id}
@@ -5549,30 +5869,43 @@ const RaidDetailModal = ({
                 />
               ))}
             </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+          {/* 애니/Watch Party 참가자 */}
+          {isAnime && (
+            <div className="space-y-2.5">
+              {parts.length === 0 && (
+                <div className="rounded-[1.3rem] border border-dashed border-white/10 bg-white/[0.02] px-4 py-10 text-center text-sm text-stone-500">아직 참가자가 없습니다.</div>
+              )}
+              {parts.map((participant: any) => (
+                <ParticipantItem key={participant.id} participant={participant} canCancel={profile?.role === "admin"} onRefresh={onRefresh} user={user} myCharacterNames={myCharacterNames} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── 푸터 버튼 ── */}
+        <div className="relative border-t border-white/[0.07] px-6 py-4">
+          <div className="flex flex-wrap gap-2">
             {user && !isFull && (
               <button
                 onClick={() => setShowJoin(true)}
-                className="rounded-[1.35rem] bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
+                className="flex-1 rounded-[1.2rem] bg-gradient-to-r from-amber-500 to-amber-400 px-4 py-3 text-sm font-bold text-slate-950 transition-all hover:brightness-110 active:scale-[0.98] shadow-[0_4px_20px_rgba(245,158,11,0.3)]"
               >
                 참여하기
               </button>
             )}
-
             {profile?.role === "admin" && (
               <button
                 onClick={handleDelete}
-                className="rounded-[1.35rem] border border-rose-400/20 bg-rose-400/10 px-4 py-3.5 text-sm font-semibold text-rose-200 transition-all hover:bg-rose-400/16"
+                className="rounded-[1.2rem] border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm font-semibold text-rose-300 transition-all hover:bg-rose-400/16"
               >
-                일정 삭제
+                삭제
               </button>
             )}
-
             <button
               onClick={onClose}
-              className="rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
+              className="rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.07] hover:text-white"
             >
               닫기
             </button>
@@ -5582,16 +5915,7 @@ const RaidDetailModal = ({
 
       <AnimatePresence>
         {showJoin && (
-          <JoinForm
-            raid={raid}
-            parts={parts}
-            user={user}
-            onClose={() => setShowJoin(false)}
-            onSuccess={() => {
-              setShowJoin(false);
-              onRefresh();
-            }}
-          />
+          <JoinForm raid={raid} parts={parts} user={user} onClose={() => setShowJoin(false)} onSuccess={() => { setShowJoin(false); onRefresh(); }} />
         )}
       </AnimatePresence>
     </ModalFrame>
@@ -6568,6 +6892,10 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
   const elementOptions = ["악마형", "야수형", "인간형", "정령형", "기계형", "고대", "불사", "신"];
   const attributeOptions = ["화속성 취약", "수속성 취약", "암속성 취약", "빛속성 취약", "토속성 취약", "뇌속성 취약"];
+  const battleItemOptions = [
+    "홀리 워터", "고급 폭탄", "정밀 폭탄", "시간의 모래", "상급 회복 물약",
+    "고급 수류탄", "각성 포션", "흑마법 폭탄", "화염 수류탄", "독 폭탄", "섬광 수류탄",
+  ];
 
   useEffect(() => {
     fetchList();
@@ -6604,6 +6932,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     element: "",
     attribute: "",
     gold: 0,
+    battle_items: "",
     guide: "",
     mechanics: "",
     tip: "",
@@ -6653,6 +6982,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       element: data?.element_type || "",
       attribute: data?.attribute || "",
       gold: data?.clear_gold || 0,
+      battle_items: data?.battle_items || "",
       guide: data?.guide || data?.description || data?.desc || data?.memo || data?.note || "",
       mechanics: data?.mechanics || data?.pattern || data?.patterns || data?.mechanic || "",
       tip: data?.tip || data?.tips || data?.recommendation || data?.recommend || data?.comment || "",
@@ -6695,6 +7025,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       element_type: form.element,
       attribute: form.attribute,
       clear_gold: Number(form.gold) || 0,
+      battle_items: form.battle_items || null,
       guide: form.guide || null,
       mechanics: form.mechanics || null,
       tip: form.tip || null,
@@ -6911,6 +7242,36 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
                 options={attributeOptions}
                 placeholder="속성 선택"
               />
+            </div>
+            <div className="mt-4">
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">필요 배틀아이템</div>
+              <div className="flex flex-wrap gap-2">
+                {battleItemOptions.map((item) => {
+                  const selected = (form.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean).includes(item);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => {
+                        const current = (form.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+                        const next = selected ? current.filter((v: string) => v !== item) : [...current, item];
+                        setForm({ ...form, battle_items: next.join(", ") });
+                      }}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                        selected
+                          ? "border-amber-400/50 bg-amber-400/20 text-amber-200"
+                          : "border-white/10 bg-black/20 text-slate-400 hover:border-white/20 hover:text-white"
+                      )}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
+              {form.battle_items && (
+                <div className="mt-2 text-[11px] text-slate-500">선택됨: {form.battle_items}</div>
+              )}
             </div>
           </AdminSectionCard>
 
