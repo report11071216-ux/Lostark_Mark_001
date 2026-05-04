@@ -4056,10 +4056,12 @@ const DetailPopup = ({ item, type, onClose }: any) => {
   const [allDetails, setAllDetails] = useState<any[]>([]);
   const [loading, setLoading] = useState(type !== "클래스");
 
-  // 커스텀 배틀아이템 (localStorage)
-  const [customBattleItemDefs] = useState<Array<{name:string;icon:string;image_url:string}>>(() => {
-    try { return JSON.parse(localStorage.getItem("custom_battle_items") || "[]"); } catch { return []; }
-  });
+  // 커스텀 배틀아이템 — Supabase DB에서 로드
+  const [customBattleItemDefs, setCustomBattleItemDefs] = useState<Array<{name:string;icon:string;image_url:string}>>([]);
+  useEffect(() => {
+    supabase.from("battle_items").select("*").order("created_at")
+      .then(({ data }) => setCustomBattleItemDefs(data || []));
+  }, []);
   const getBattleItemDisplay = (name: string) => {
     const custom = customBattleItemDefs.find(c => c.name === name);
     if (custom?.image_url) return { type: "img" as const, src: custom.image_url };
@@ -5568,9 +5570,12 @@ const RaidDetailModal = ({
   const [normalDetails, setNormalDetails] = useState<any[]>([]);
   const [hardDetails,   setHardDetails]   = useState<any[]>([]);
   const [contentId, setContentId] = useState<string | null>(null);
-  const [customBattleItemDefs] = useState<Array<{name:string;icon:string;image_url:string}>>(() => {
-    try { return JSON.parse(localStorage.getItem("custom_battle_items") || "[]"); } catch { return []; }
-  });
+  // 커스텀 배틀아이템 — Supabase DB에서 로드
+  const [customBattleItemDefs, setCustomBattleItemDefs] = useState<Array<{name:string;icon:string;image_url:string}>>([]);
+  useEffect(() => {
+    supabase.from("battle_items").select("*").order("created_at")
+      .then(({ data }) => setCustomBattleItemDefs(data || []));
+  }, []);
 
   const getBattleItemDisplay = (name: string) => {
     const custom = customBattleItemDefs.find(c => c.name === name);
@@ -7081,13 +7086,24 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const [difficulty, setDifficulty] = useState("노말");
   const [editingId, setEditingId] = useState<string | null>(null);
   // 커스텀 배틀아이템 관리
-  const [customBattleItems, setCustomBattleItems] = useState<Array<{name:string;icon:string;image_url:string}>>(() => {
-    try { return JSON.parse(localStorage.getItem("custom_battle_items") || "[]"); } catch { return []; }
-  });
+  // ── 배틀아이템 — Supabase DB 기반 ──
+  const [customBattleItems, setCustomBattleItems] = useState<Array<{id?:string;name:string;icon:string;image_url:string}>>([]);
   const [newBattleItem, setNewBattleItem] = useState({ name:"", icon:"🎒", image_url:"" });
   const [showAddBattleItem, setShowAddBattleItem] = useState(false);
   const [uploadingBattleIcon, setUploadingBattleIcon] = useState(false);
   const [uploadingRewardImg, setUploadingRewardImg] = useState(false);
+  const [savingBattleItem, setSavingBattleItem] = useState(false);
+
+  // 커스텀 배틀아이템 DB 로드
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const { data } = await supabase.from("battle_items").select("*").order("created_at");
+        setCustomBattleItems(data || []);
+      } catch {}
+    };
+    load();
+  }, []);
   const [form, setForm] = useState<any>({
     name: "",
     image_url: "",
@@ -7131,9 +7147,30 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   ];
   const allBattleItemDefs = [...defaultBattleItems, ...customBattleItems];
 
-  const saveCustomBattleItems = (items: typeof customBattleItems) => {
-    setCustomBattleItems(items);
-    try { localStorage.setItem("custom_battle_items", JSON.stringify(items)); } catch {}
+  const saveCustomBattleItem = async (item: {name:string;icon:string;image_url:string}) => {
+    setSavingBattleItem(true);
+    try {
+      const { data, error } = await supabase.from("battle_items").insert(item).select().single();
+      if (error) throw error;
+      setCustomBattleItems(p => [...p, data]);
+      showToast("배틀아이템 추가 완료!", "success");
+    } catch (e: any) {
+      showToast("저장 실패: " + (e.message || "오류"), "error");
+    }
+    setSavingBattleItem(false);
+  };
+
+  const deleteCustomBattleItem = async (id: string, name: string) => {
+    try {
+      await supabase.from("battle_items").delete().eq("id", id);
+      setCustomBattleItems(p => p.filter(c => c.id !== id));
+      // 선택된 배틀아이템에서도 제거
+      const current = (form.battle_items || "").split(",").map((s:string)=>s.trim()).filter(Boolean);
+      if (current.includes(name)) {
+        setForm((p: any) => ({ ...p, battle_items: current.filter((v:string)=>v!==name).join(", ") }));
+      }
+      showToast("삭제 완료", "success");
+    } catch (e: any) { showToast("삭제 실패: " + e.message, "error"); }
   };
 
   const uploadBattleIcon = async (file: File) => {
@@ -7634,15 +7671,15 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={async () => {
                         if (!newBattleItem.name.trim()) return;
-                        saveCustomBattleItems([...customBattleItems, { ...newBattleItem, name: newBattleItem.name.trim() }]);
+                        await saveCustomBattleItem({ ...newBattleItem, name: newBattleItem.name.trim() });
                         setNewBattleItem({ name:"", icon:"🎒", image_url:"" });
                         setShowAddBattleItem(false);
-                        showToast("배틀아이템 추가 완료!", "success");
                       }}
-                      className="flex-1 rounded-xl border border-amber-400/30 bg-amber-400/15 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-400/25 transition-all"
-                    >추가</button>
+                      disabled={savingBattleItem}
+                      className="flex-1 rounded-xl border border-amber-400/30 bg-amber-400/15 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-400/25 transition-all disabled:opacity-50"
+                    >{savingBattleItem ? "저장 중..." : "추가"}</button>
                     <button type="button" onClick={() => setShowAddBattleItem(false)}
                       className="rounded-xl border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-all">취소</button>
                   </div>
@@ -7678,7 +7715,10 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
                       {customBattleItems.some(c => c.name === itemDef.name) && (
                         <button
                           type="button"
-                          onClick={() => saveCustomBattleItems(customBattleItems.filter(c => c.name !== itemDef.name))}
+                          onClick={() => {
+                            const found = customBattleItems.find(c => c.name === itemDef.name);
+                            if (found?.id) deleteCustomBattleItem(found.id, found.name);
+                          }}
                           className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white text-[9px] shadow"
                         >✕</button>
                       )}
