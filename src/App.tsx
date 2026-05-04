@@ -10645,25 +10645,21 @@ const GuildMembersPage = () => {
       {loading ? (
         <div className="text-center text-slate-500 py-10">길드원 불러오는 중...</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           {filteredMembers.map((member: any) => {
             const { theme } = getPrimaryBadgeTheme(member);
-
-            // ── 인라인 전투정보실 데이터 ──
             const armory     = armoryCache[member.character_name];
             const activeTab  = cardTabs[member.character_name] || "profile";
             const profState  = armory?.profile;
             const equipState = armory?.equipment;
             const engState   = armory?.engravings;
             const gemState   = armory?.gems;
-            const cardState  = armory?.cards;
             const sibState   = armory?.siblings;
 
             const armoryProfile  = profState?.data;
             const armoryEquip    = equipState?.data || [];
             const armoryEngrav   = engState?.data   || [];
             const armoryGems     = gemState?.data   || [];
-            const armoryCards    = cardState?.data  || [];
             const armorySiblings = sibState?.data   || [];
 
             const CARD_TABS = [
@@ -10671,7 +10667,6 @@ const GuildMembersPage = () => {
               { id: "equipment",  label: "장비" },
               { id: "engravings", label: "각인" },
               { id: "gems",       label: "보석" },
-              { id: "cards",      label: "카드" },
               { id: "siblings",   label: `원정대${armorySiblings.length ? ` (${armorySiblings.length})` : ""}` },
             ] as const;
 
@@ -10680,116 +10675,167 @@ const GuildMembersPage = () => {
               equipment:  equipState,
               engravings: engState,
               gems:       gemState,
-              cards:      cardState,
               siblings:   sibState,
             };
             const curTabState = tabStateMap[activeTab];
 
+            // 장비 슬롯 순서 (인게임과 동일)
+            const EQUIP_ORDER = ["무기","투구","어깨","상의","하의","장갑","목걸이","귀걸이","귀걸이","반지","반지","어빌리티 스톤","팔찌","보조장비"];
+            const sortedEquip = [...armoryEquip].sort((a, b) => {
+              const ai = EQUIP_ORDER.indexOf(a.Type);
+              const bi = EQUIP_ORDER.indexOf(b.Type);
+              return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+            });
+
             return (
               <div
                 key={member.id}
-                className="rounded-[2rem] border overflow-hidden relative flex flex-col"
-                style={{
-                  background: theme.cardBackground,
-                  borderColor: theme.cardBorder,
-                  boxShadow: theme.cardShadow,
-                }}
+                className="rounded-[2rem] border overflow-hidden relative"
+                style={{ background: theme.cardBackground, borderColor: theme.cardBorder, boxShadow: theme.cardShadow }}
               >
                 <div className="absolute inset-0 pointer-events-none" style={{ background: theme.aura }} />
-                <div className="relative z-10 flex flex-col h-full p-5">
+                <div className="relative z-10">
 
-                  {/* ── 캐릭터 헤더 ── */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex gap-4 min-w-0">
-                      {member.avatar_url || member.image_url ? (
+                  {/* ══ 상단 헤더: 캐릭터 이미지 + 기본정보 ══ */}
+                  <div className="flex items-stretch gap-0 border-b border-white/8">
+
+                    {/* 캐릭터 이미지 영역 */}
+                    <div
+                      className="relative shrink-0 w-[140px] flex items-end justify-center overflow-hidden"
+                      style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%)" }}
+                    >
+                      {armoryProfile?.CharacterImage ? (
+                        <img
+                          src={armoryProfile.CharacterImage}
+                          alt={member.character_name}
+                          className="w-full object-cover object-top"
+                          style={{ height: 180, objectPosition: "top center" }}
+                        />
+                      ) : member.avatar_url || member.image_url ? (
                         <img
                           src={member.avatar_url || member.image_url}
-                          className="h-20 w-20 rounded-2xl object-cover border border-white/10 shrink-0"
+                          alt={member.character_name}
+                          className="w-full h-[180px] object-cover"
                         />
                       ) : (
-                        <div className="h-20 w-20 shrink-0 rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/20 via-slate-950 to-purple-500/10 flex items-center justify-center text-sm font-semibold text-amber-100">
-                          쁘밍
+                        <div className="w-full h-[180px] flex items-center justify-center text-xs text-white/30 bg-white/5">
+                          이미지 없음
                         </div>
                       )}
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap gap-2 mb-2">
+                      {/* 서버 뱃지 */}
+                      {(armoryProfile?.ServerName || member.server_name) && (
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 text-[10px] font-semibold text-white/80">
+                          {armoryProfile?.ServerName || member.server_name}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 캐릭터 기본 정보 */}
+                    <div className="flex-1 min-w-0 p-4 flex flex-col justify-between">
+                      <div>
+                        {/* 배지 행 */}
+                        <div className="flex flex-wrap gap-1.5 mb-2">
                           {member.is_main && (
-                            <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 inline-flex items-center gap-1">
-                              <Crown size={11} />MAIN
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 inline-flex items-center gap-1">
+                              <Crown size={9} />MAIN
                             </span>
                           )}
                           {member.role_hint === "서포터" && (
-                            <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-amber-400/15 text-amber-200 border border-amber-400/20">
-                              서폿
-                            </span>
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-400/15 text-sky-300 border border-sky-400/20">서폿</span>
                           )}
-                          {getCharacterBadges(member).map((badge: any, index: number) => {
-                            const badgeTheme = getBadgeVisualTheme(badge);
+                          {getCharacterBadges(member).map((badge: any, idx: number) => {
+                            const bt = getBadgeVisualTheme(badge);
                             return (
-                              <span
-                                key={`${badge.badge_item_id}-${index}`}
-                                className="px-2 py-1 rounded-full text-[10px] font-semibold border"
-                                style={{
-                                  color: badgeTheme.chipText,
-                                  borderColor: badgeTheme.chipBorder,
-                                  background: badgeTheme.chipBackground,
-                                  boxShadow: `0 0 14px ${hexToRgba(badgeTheme.glow, 0.14)}`,
-                                }}
-                              >
+                              <span key={idx} className="px-2 py-0.5 rounded-md text-[10px] font-bold border"
+                                style={{ color: bt.chipText, borderColor: bt.chipBorder, background: bt.chipBackground }}>
                                 {badge.badge_name}
                               </span>
                             );
                           })}
                         </div>
-                        <div className="text-xl font-semibold truncate">{member.character_name}</div>
-                        <div className="text-sm text-slate-300/80 truncate">{member.class_name}</div>
-                        <div className="mt-1 text-amber-100 font-semibold">아이템 Lv. {member.item_level}</div>
+
+                        {/* 캐릭터명 + 직업 */}
+                        <div className="text-xl font-bold truncate">{member.character_name}</div>
+                        <div className="text-xs text-slate-400 mt-0.5 truncate">
+                          {armoryProfile?.CharacterClassName || member.class_name}
+                          {armoryProfile?.Title && (
+                            <span className="ml-1.5 text-amber-400/80">· {armoryProfile.Title}</span>
+                          )}
+                        </div>
+
+                        {/* 아이템 레벨 */}
+                        <div className="mt-2 flex items-baseline gap-1.5">
+                          <span className="text-[10px] text-slate-500 uppercase tracking-widest">아이템</span>
+                          <span className="text-lg font-bold text-amber-300">
+                            {armoryProfile?.ItemAvgLevel || member.item_level}
+                          </span>
+                        </div>
+
+                        {/* 전투/원정대 레벨 */}
+                        <div className="mt-1 flex gap-3 text-[11px] text-slate-400">
+                          {armoryProfile ? (
+                            <>
+                              <span>전투 <b className="text-white">{armoryProfile.CharacterLevel}</b></span>
+                              <span>원정대 <b className="text-white">{armoryProfile.ExpeditionLevel}</b></span>
+                            </>
+                          ) : (
+                            <>
+                              <span>캐릭터 <b className="text-white">{member.character_level || "-"}</b></span>
+                              <span>전투력 <b className="text-amber-300">{member.combat_power || "-"}</b></span>
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-[10px] text-white/50 uppercase tracking-widest">Owner</div>
-                      <div
-                        className="text-sm font-bold"
-                        style={getNicknameEffectStyle({
-                          active_nickname_effect: member.owner_active_nickname_effect,
-                          nickname_gradient_from: member.owner_nickname_gradient_from,
-                          nickname_gradient_to: member.owner_nickname_gradient_to,
-                          nickname_glow_color: member.owner_nickname_glow_color,
-                        })}
-                      >
-                        {member.owner_profile_nickname || member.owner_nickname || "-"}
+
+                      {/* Owner + 생일/MBTI */}
+                      <div className="mt-3 flex items-end justify-between">
+                        <div className="flex gap-3 text-[11px]">
+                          <span className="text-slate-500">생일 <b className="text-white">{member.birthday ? formatShortDate(member.birthday) : "-"}</b></span>
+                          <span className="text-slate-500">MBTI <b className="text-white">{member.mbti || "-"}</b></span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[9px] text-white/30 uppercase tracking-widest">Owner</div>
+                          <div className="text-xs font-bold" style={getNicknameEffectStyle({
+                            active_nickname_effect: member.owner_active_nickname_effect,
+                            nickname_gradient_from: member.owner_nickname_gradient_from,
+                            nickname_gradient_to:   member.owner_nickname_gradient_to,
+                            nickname_glow_color:    member.owner_nickname_glow_color,
+                          })}>
+                            {member.owner_profile_nickname || member.owner_nickname || "-"}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* ── 생일 & MBTI (DB 데이터, 항상 표시) ── */}
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <InfoMiniCard title="생일" value={member.birthday ? formatShortDate(member.birthday) : "-"} />
-                    <InfoMiniCard title="MBTI" value={member.mbti || "-"} />
-                  </div>
-
-                  {member.character_intro && (
-                    <div className="mt-3 text-sm text-slate-300 whitespace-pre-wrap border-t border-white/5 pt-3">
-                      {member.character_intro}
+                  {/* ══ 전투 스탯 바 (프로필 로드 시) ══ */}
+                  {armoryProfile?.Stats && (
+                    <div className="flex gap-0 border-b border-white/8">
+                      {armoryProfile.Stats.filter((s: any) => Number(s.Value) > 0 && ["치명","특화","신속","제압","인내","숙련"].includes(s.Type)).map((s: any) => (
+                        <div key={s.Type} className="flex-1 text-center py-2 border-r border-white/6 last:border-r-0">
+                          <div className="text-[9px] text-slate-500 uppercase">{s.Type}</div>
+                          <div className="text-xs font-bold text-amber-200">{Number(s.Value).toLocaleString()}</div>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  {/* ── 전투정보실 패널 ── */}
-                  {!armory?.opened ? (
-                    <div className="mt-4 flex gap-2">
+                  {/* ══ 전투정보실 미로드 상태 ══ */}
+                  {!armory?.opened && (
+                    <div className="flex gap-2 p-4">
                       <button
                         onClick={() => openArmoryCard(member.character_name)}
-                        className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-2.5 text-xs font-semibold text-amber-300 transition-all hover:border-amber-400/40 hover:bg-amber-400/14 hover:text-amber-200 active:scale-[0.98]"
+                        className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-amber-400/25 bg-amber-400/8 py-2.5 text-xs font-semibold text-amber-300 hover:bg-amber-400/15 hover:border-amber-400/40 transition-all"
                       >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
                         </svg>
-                        전투정보실 펼치기
+                        전투정보실 불러오기
                       </button>
                       <button
                         onClick={() => setLostarkTarget(member.character_name)}
-                        className="px-3 py-2.5 rounded-2xl border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
-                        title="전체화면 모달로 보기"
+                        className="px-3 rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
+                        title="전체화면"
                       >
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
@@ -10797,93 +10843,90 @@ const GuildMembersPage = () => {
                         </svg>
                       </button>
                     </div>
-                  ) : (
-                    <div className="mt-4 rounded-[1.5rem] border border-amber-400/15 bg-black/30 overflow-hidden">
+                  )}
 
+                  {/* ══ 탭 패널 (로드 후) ══ */}
+                  {armory?.opened && (
+                    <div>
                       {/* 탭 바 */}
-                      <div className="flex gap-1 px-3 py-2 border-b border-white/8 overflow-x-auto">
+                      <div className="flex border-b border-white/8 overflow-x-auto">
                         {CARD_TABS.map(t => (
                           <button
                             key={t.id}
                             onClick={() => setCardTab(member.character_name, t.id)}
                             className={cn(
-                              "shrink-0 rounded-xl px-3 py-1 text-[11px] font-semibold transition-all whitespace-nowrap",
+                              "shrink-0 px-4 py-2.5 text-[11px] font-semibold border-b-2 transition-all whitespace-nowrap",
                               activeTab === t.id
-                                ? "bg-amber-500 text-white shadow"
-                                : "text-slate-400 hover:bg-white/8 hover:text-white"
+                                ? "border-amber-400 text-amber-300 bg-amber-400/5"
+                                : "border-transparent text-slate-400 hover:text-white hover:bg-white/5"
                             )}
                           >
                             {t.label}
                           </button>
                         ))}
-                        <button
-                          onClick={() => setLostarkTarget(member.character_name)}
-                          className="ml-auto shrink-0 rounded-xl px-2 py-1 text-slate-500 hover:text-amber-300 hover:bg-white/8 transition-all"
-                          title="전체화면으로 보기"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-                            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-                          </svg>
-                        </button>
+                        <div className="ml-auto flex items-center pr-2">
+                          <button
+                            onClick={() => setLostarkTarget(member.character_name)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-amber-300 hover:bg-white/8 transition-all"
+                            title="전체화면"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                              <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
 
                       {/* 탭 컨텐츠 */}
-                      <div className="p-4 space-y-2 max-h-[400px] overflow-y-auto">
+                      <div className="min-h-[160px]">
 
-                        {/* 공통: 탭 로딩 */}
+                        {/* 로딩 */}
                         {curTabState?.loading && (
-                          <div className="flex items-center justify-center gap-2 py-8">
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                              className="h-5 w-5 rounded-full border-2 border-amber-400 border-t-transparent"
-                            />
+                          <div className="flex items-center justify-center gap-2 py-10">
+                            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                              className="h-5 w-5 rounded-full border-2 border-amber-400 border-t-transparent" />
                             <span className="text-xs text-slate-400">불러오는 중...</span>
                           </div>
                         )}
 
-                        {/* 공통: 탭 에러 */}
+                        {/* 에러 */}
                         {!curTabState?.loading && curTabState?.error && (
-                          <div className="rounded-xl border border-rose-400/20 bg-rose-400/8 p-4 text-center">
-                            <div className="text-xs text-rose-300 font-semibold mb-1">조회 실패</div>
-                            <div className="text-[11px] text-slate-400 mb-2">{curTabState.error}</div>
-                            <button
-                              onClick={() => retryArmory(member.character_name)}
-                              className="text-[11px] text-amber-400 underline underline-offset-2"
-                            >재시도</button>
+                          <div className="p-4 text-center">
+                            <div className="text-xs text-rose-300 mb-1">{curTabState.error}</div>
+                            <button onClick={() => retryArmory(member.character_name)} className="text-[11px] text-amber-400 underline">재시도</button>
                           </div>
                         )}
 
                         {/* ── 프로필 탭 ── */}
                         {activeTab === "profile" && !curTabState?.loading && !curTabState?.error && (
                           armoryProfile ? (
-                            <div className="space-y-2">
-                              <div className="grid grid-cols-2 gap-2">
+                            <div className="p-4 space-y-3">
+                              {/* 영지 / 칭호 / PVP */}
+                              <div className="grid grid-cols-3 gap-2">
                                 {[
-                                  { label: "서버",        value: armoryProfile.ServerName },
-                                  { label: "원정대 레벨", value: `Lv.${armoryProfile.ExpeditionLevel}` },
-                                  { label: "캐릭터 레벨", value: `Lv.${armoryProfile.CharacterLevel}` },
-                                  { label: "평균 아이템", value: armoryProfile.ItemAvgLevel },
-                                  { label: "직업",        value: armoryProfile.CharacterClassName },
-                                  { label: "영지",        value: armoryProfile.TownName ? `${armoryProfile.TownName} Lv.${armoryProfile.TownLevel}` : "-" },
-                                  { label: "칭호",        value: armoryProfile.Title || "-" },
-                                  { label: "PVP",         value: armoryProfile.PvpGradeName || "-" },
+                                  { label: "길드",  value: armoryProfile.GuildName || "-" },
+                                  { label: "영지",  value: armoryProfile.TownName ? `${armoryProfile.TownName} Lv.${armoryProfile.TownLevel}` : "-" },
+                                  { label: "PVP",   value: armoryProfile.PvpGradeName || "-" },
                                 ].map(({ label, value }) => (
-                                  <div key={label} className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
-                                    <div className="text-[9px] font-semibold uppercase tracking-widest text-slate-500 mb-1">{label}</div>
-                                    <div className="text-xs font-semibold text-white truncate">{value || "-"}</div>
+                                  <div key={label} className="rounded-xl bg-white/[0.04] border border-white/8 px-3 py-2 text-center">
+                                    <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">{label}</div>
+                                    <div className="text-xs font-semibold text-white truncate">{value}</div>
                                   </div>
                                 ))}
                               </div>
-                              {armoryProfile.Stats && armoryProfile.Stats.filter((s: any) => Number(s.Value) > 0).length > 0 && (
-                                <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
-                                  <div className="text-[9px] font-semibold uppercase tracking-widest text-slate-500 mb-2">전투 스탯</div>
-                                  <div className="grid grid-cols-3 gap-1">
-                                    {armoryProfile.Stats.filter((s: any) => Number(s.Value) > 0).map((stat: any) => (
-                                      <div key={stat.Type} className="flex items-center justify-between">
-                                        <span className="text-[11px] text-slate-400">{stat.Type}</span>
-                                        <span className="text-[11px] font-bold text-amber-300">{Number(stat.Value).toLocaleString()}</span>
+                              {/* 성향 */}
+                              {armoryProfile.Tendencies && armoryProfile.Tendencies.length > 0 && (
+                                <div>
+                                  <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-2">성향</div>
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                                    {armoryProfile.Tendencies.map((t: any) => (
+                                      <div key={t.Type} className="flex items-center gap-2">
+                                        <span className="text-[10px] text-slate-400 w-10 shrink-0">{t.Type}</span>
+                                        <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                                          <div className="h-full rounded-full bg-amber-400" style={{ width: `${Math.round((t.Point / t.MaxPoint) * 100)}%` }} />
+                                        </div>
+                                        <span className="text-[10px] text-amber-300 font-bold w-8 text-right">{t.Point}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -10891,9 +10934,8 @@ const GuildMembersPage = () => {
                               )}
                             </div>
                           ) : (
-                            <div className="text-center py-8 text-xs text-slate-500">
-                              프로필 정보가 없습니다.<br/>
-                              <span className="text-[10px]">전투정보실이 비공개 상태일 수 있어요.</span>
+                            <div className="py-10 text-center text-xs text-slate-500">
+                              프로필 정보 없음<br/><span className="text-[10px]">전투정보실이 비공개 상태일 수 있어요.</span>
                             </div>
                           )
                         )}
@@ -10901,68 +10943,24 @@ const GuildMembersPage = () => {
                         {/* ── 장비 탭 ── */}
                         {activeTab === "equipment" && !curTabState?.loading && !curTabState?.error && (
                           armoryEquip.length === 0 ? (
-                            <div className="text-center py-8 text-xs text-slate-500">장비 정보가 없습니다.</div>
+                            <div className="py-10 text-center text-xs text-slate-500">장비 정보 없음</div>
                           ) : (
-                            armoryEquip.map((eq: LostarkEquipment, i: number) => (
-                              <div key={i} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-2.5">
-                                <img
-                                  src={eq.Icon} alt={eq.Name}
-                                  className="h-10 w-10 rounded-lg object-cover bg-black/20 shrink-0"
-                                  style={{ borderWidth: 1, borderStyle: "solid", borderColor: gradeColor(eq.Grade) }}
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-xs font-semibold truncate">{eq.Name}</div>
-                                  <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-[10px] text-slate-400">{eq.Type}</span>
-                                    <span className="text-[10px] font-bold" style={{ color: gradeColor(eq.Grade) }}>{eq.Grade}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))
-                          )
-                        )}
-
-                        {/* ── 각인 탭 ── */}
-                        {activeTab === "engravings" && !curTabState?.loading && !curTabState?.error && (
-                          armoryEngrav.length === 0 ? (
-                            <div className="text-center py-8 text-xs text-slate-500">각인 정보가 없습니다.</div>
-                          ) : (
-                            armoryEngrav.map((eng: LostarkEngraving, i: number) => (
-                              <div key={i} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-2.5">
-                                <img src={eng.Icon} alt={eng.Name} className="h-9 w-9 rounded-lg border border-white/10 object-cover bg-black/20 shrink-0" />
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold">{eng.Name}</span>
-                                    <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">Lv.{eng.Level}</span>
-                                  </div>
-                                  <div className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{eng.Description}</div>
-                                </div>
-                              </div>
-                            ))
-                          )
-                        )}
-
-                        {/* ── 보석 탭 ── */}
-                        {activeTab === "gems" && !curTabState?.loading && !curTabState?.error && (
-                          armoryGems.length === 0 ? (
-                            <div className="text-center py-8 text-xs text-slate-500">보석 정보가 없습니다.</div>
-                          ) : (
-                            <div className="grid grid-cols-2 gap-2">
-                              {[...armoryGems].sort((a: LostarkGem, b: LostarkGem) => b.Level - a.Level).map((gem: LostarkGem, i: number) => (
-                                <div key={i} className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] p-2">
+                            <div className="p-3 grid grid-cols-1 gap-1.5">
+                              {sortedEquip.map((eq: LostarkEquipment, i: number) => (
+                                <div key={i} className="flex items-center gap-2.5 rounded-xl px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] transition-colors">
                                   <div className="relative shrink-0">
                                     <img
-                                      src={gem.Icon} alt={gem.Name}
-                                      className="h-9 w-9 rounded-lg object-cover bg-black/20"
-                                      style={{ borderWidth: 1, borderStyle: "solid", borderColor: gradeColor(gem.Grade) }}
+                                      src={eq.Icon} alt={eq.Name}
+                                      className="h-9 w-9 rounded-lg object-cover bg-black/40"
+                                      style={{ boxShadow: `0 0 0 1.5px ${gradeColor(eq.Grade)}` }}
                                     />
-                                    <span className="absolute -bottom-1 -right-1 rounded-full bg-amber-500 px-1 py-0.5 text-[8px] font-bold text-white shadow">
-                                      {gem.Level}
-                                    </span>
                                   </div>
-                                  <div className="min-w-0">
-                                    <div className="text-[11px] font-semibold truncate">{gem.Skill?.Name || gem.Name}</div>
-                                    <div className="text-[10px] mt-0.5" style={{ color: gradeColor(gem.Grade) }}>{gem.Grade}</div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-xs font-semibold truncate text-white/90">{eq.Name}</div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[10px] text-slate-500">{eq.Type}</span>
+                                      <span className="text-[10px] font-bold" style={{ color: gradeColor(eq.Grade) }}>·{eq.Grade}</span>
+                                    </div>
                                   </div>
                                 </div>
                               ))}
@@ -10970,24 +10968,48 @@ const GuildMembersPage = () => {
                           )
                         )}
 
-                        {/* ── 카드 탭 ── */}
-                        {activeTab === "cards" && !curTabState?.loading && !curTabState?.error && (
-                          armoryCards.length === 0 ? (
-                            <div className="text-center py-8 text-xs text-slate-500">카드 정보가 없습니다.</div>
+                        {/* ── 각인 탭 ── */}
+                        {activeTab === "engravings" && !curTabState?.loading && !curTabState?.error && (
+                          armoryEngrav.length === 0 ? (
+                            <div className="py-10 text-center text-xs text-slate-500">각인 정보 없음</div>
                           ) : (
-                            <div className="grid grid-cols-3 gap-2">
-                              {armoryCards.map((card: LostarkCard, i: number) => (
-                                <div key={i} className="flex flex-col items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.03] p-2 text-center">
-                                  <img
-                                    src={card.Icon} alt={card.Name}
-                                    className="h-14 w-10 rounded-lg object-cover bg-black/20"
-                                    style={{ borderWidth: 1, borderStyle: "solid", borderColor: gradeColor(card.Grade) }}
-                                  />
-                                  <div>
-                                    <div className="text-[10px] font-semibold line-clamp-2 leading-tight">{card.Name}</div>
-                                    <div className="mt-0.5 text-[9px]" style={{ color: gradeColor(card.Grade) }}>{card.Grade}</div>
-                                    <div className="text-[9px] text-slate-500 mt-0.5">각성 {card.AwakeCount}/{card.AwakeTotal}</div>
+                            <div className="p-3 space-y-1.5">
+                              {armoryEngrav.map((eng: LostarkEngraving, i: number) => (
+                                <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2 bg-white/[0.03] hover:bg-white/[0.06] transition-colors">
+                                  <img src={eng.Icon} alt={eng.Name} className="h-9 w-9 rounded-lg border border-white/10 object-cover bg-black/30 shrink-0" />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold text-white">{eng.Name}</span>
+                                      <span className="px-1.5 py-0.5 rounded bg-amber-400/15 text-[10px] font-bold text-amber-300">Lv.{eng.Level}</span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{eng.Description}</div>
                                   </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        )}
+
+                        {/* ── 보석 탭 ── */}
+                        {activeTab === "gems" && !curTabState?.loading && !curTabState?.error && (
+                          armoryGems.length === 0 ? (
+                            <div className="py-10 text-center text-xs text-slate-500">보석 정보 없음</div>
+                          ) : (
+                            <div className="p-3 grid grid-cols-4 gap-2">
+                              {[...armoryGems].sort((a: LostarkGem, b: LostarkGem) => b.Level - a.Level).map((gem: LostarkGem, i: number) => (
+                                <div key={i} className="flex flex-col items-center gap-1 rounded-xl p-2 bg-white/[0.03] hover:bg-white/[0.06] transition-colors text-center">
+                                  <div className="relative">
+                                    <img
+                                      src={gem.Icon} alt={gem.Name}
+                                      className="h-10 w-10 rounded-lg object-cover bg-black/40"
+                                      style={{ boxShadow: `0 0 0 1.5px ${gradeColor(gem.Grade)}` }}
+                                    />
+                                    <span className="absolute -bottom-1 -right-1 rounded-full bg-black border border-amber-400/50 px-1 text-[8px] font-bold text-amber-300">
+                                      {gem.Level}
+                                    </span>
+                                  </div>
+                                  <div className="text-[9px] text-slate-300 leading-tight truncate w-full">{gem.Skill?.Name || gem.Name}</div>
+                                  <div className="text-[9px]" style={{ color: gradeColor(gem.Grade) }}>{gem.Grade}</div>
                                 </div>
                               ))}
                             </div>
@@ -10997,46 +11019,53 @@ const GuildMembersPage = () => {
                         {/* ── 원정대 탭 ── */}
                         {activeTab === "siblings" && !curTabState?.loading && !curTabState?.error && (
                           armorySiblings.length === 0 ? (
-                            <div className="text-center py-8 text-xs text-slate-500">원정대 정보가 없습니다.</div>
+                            <div className="py-10 text-center text-xs text-slate-500">원정대 정보 없음</div>
                           ) : (
-                            [...armorySiblings]
-                              .sort((a: LostarkSibling, b: LostarkSibling) =>
-                                Number(b.ItemAvgLevel?.replace(/,/g, "") || 0) - Number(a.ItemAvgLevel?.replace(/,/g, "") || 0)
-                              )
-                              .map((sib: LostarkSibling, i: number) => (
-                                <div
-                                  key={i}
-                                  className={cn(
-                                    "flex items-center justify-between rounded-xl border p-2.5",
-                                    sib.CharacterName === member.character_name
-                                      ? "border-amber-400/30 bg-amber-400/8"
-                                      : "border-white/8 bg-white/[0.03]"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-[10px] font-bold text-amber-300">
-                                      {i + 1}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-xs font-semibold truncate">{sib.CharacterName}</span>
-                                        {sib.CharacterName === member.character_name && (
-                                          <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300 shrink-0">현재</span>
-                                        )}
+                            <div className="p-3 space-y-1">
+                              {[...armorySiblings]
+                                .sort((a: LostarkSibling, b: LostarkSibling) =>
+                                  Number(b.ItemAvgLevel?.replace(/,/g, "") || 0) - Number(a.ItemAvgLevel?.replace(/,/g, "") || 0)
+                                )
+                                .map((sib: LostarkSibling, i: number) => (
+                                  <div key={i}
+                                    className={cn(
+                                      "flex items-center justify-between rounded-xl px-3 py-2 transition-colors",
+                                      sib.CharacterName === member.character_name
+                                        ? "bg-amber-400/10 border border-amber-400/25"
+                                        : "bg-white/[0.03] hover:bg-white/[0.06]"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-[10px] font-bold text-amber-400/70 w-4 shrink-0">{i + 1}</span>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="text-xs font-semibold truncate">{sib.CharacterName}</span>
+                                          {sib.CharacterName === member.character_name && (
+                                            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-[9px] font-bold text-amber-300 shrink-0">현재</span>
+                                          )}
+                                        </div>
+                                        <div className="text-[10px] text-slate-500">{sib.ServerName} · {sib.CharacterClassName}</div>
                                       </div>
-                                      <div className="text-[10px] text-slate-400 truncate">{sib.ServerName} · {sib.CharacterClassName}</div>
+                                    </div>
+                                    <div className="text-right shrink-0 ml-2">
+                                      <div className="text-xs font-bold text-amber-300">{sib.ItemAvgLevel}</div>
+                                      <div className="text-[10px] text-slate-500">Lv.{sib.CharacterLevel}</div>
                                     </div>
                                   </div>
-                                  <div className="text-right shrink-0 ml-2">
-                                    <div className="text-xs font-bold text-amber-300">{sib.ItemAvgLevel}</div>
-                                    <div className="text-[10px] text-slate-500">Lv.{sib.CharacterLevel}</div>
-                                  </div>
-                                </div>
-                              ))
+                                ))
+                              }
+                            </div>
                           )
                         )}
 
-                      </div>{/* /tab body */}
+                      </div>{/* /tab content */}
+                    </div>
+                  )}
+
+                  {/* 자기소개 */}
+                  {member.character_intro && (
+                    <div className="px-4 pb-4 text-xs text-slate-400 border-t border-white/5 pt-3 whitespace-pre-wrap">
+                      {member.character_intro}
                     </div>
                   )}
 
