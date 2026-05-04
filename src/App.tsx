@@ -7111,349 +7111,524 @@ const ClassContentEditor = () => {
 
 
 
+// ── 카테고리 정의 ──────────────────────────────────────────
+const POST_CATEGORIES = [
+  { key: "all",   label: "전체",     color: "" },
+  { key: "notice",label: "공지",     color: "text-amber-200 bg-amber-400/15 border-amber-400/20" },
+  { key: "자유",  label: "자유",     color: "text-slate-200 bg-white/10 border-white/10" },
+  { key: "공략",  label: "공략",     color: "text-emerald-200 bg-emerald-400/15 border-emerald-400/20" },
+  { key: "레이드후기", label: "레이드후기", color: "text-violet-200 bg-violet-400/15 border-violet-400/20" },
+  { key: "질문",  label: "질문",     color: "text-sky-200 bg-sky-400/15 border-sky-400/20" },
+  { key: "스크린샷", label: "스크린샷", color: "text-pink-200 bg-pink-400/15 border-pink-400/20" },
+];
+
+const getCategoryStyle = (cat: string, isNotice: boolean) => {
+  if (isNotice) return "text-amber-200 bg-amber-400/15 border-amber-400/20";
+  return POST_CATEGORIES.find((c) => c.key === cat)?.color || "text-slate-200 bg-white/10 border-white/10";
+};
+
+// ── YouTube URL 파싱 ───────────────────────────────────────
+const extractYoutubeId = (text: string): string | null => {
+  const m = text.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
+  return m ? m[1] : null;
+};
+
+// ── 이미지 라이트박스 ──────────────────────────────────────
+const ImageLightbox = ({ src, onClose }: { src: string; onClose: () => void }) => (
+  <AnimatePresence>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4"
+      onClick={onClose}
+    >
+      <motion.img
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        src={src}
+        className="max-h-[90vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      />
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+      >
+        <X size={20} />
+      </button>
+    </motion.div>
+  </AnimatePresence>
+);
+
+// ── 게시글 상세 모달 ───────────────────────────────────────
+const PostDetailModal = ({ post, comments, user, profile, onClose, onDelete, onTogglePin, onSubmitComment, onDeleteComment, onRefresh }: any) => {
+  const [commentDraft, setCommentDraft] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [reactions, setReactions] = useState<Record<string, number>>({});
+  const [myReactions, setMyReactions] = useState<Record<string, boolean>>({});
+  const [reactionsLoaded, setReactionsLoaded] = useState(false);
+
+  const youtubeId = post.youtube_url ? extractYoutubeId(post.youtube_url) : extractYoutubeId(post.content || "");
+
+  // 조회수 증가
+  useEffect(() => {
+    const client = getSupabaseOrThrow();
+    client.from("posts").update({ views: (post.views || 0) + 1 }).eq("id", post.id).then(() => {});
+  }, [post.id]);
+
+  // 반응 불러오기
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const client = getSupabaseOrThrow();
+        const { data } = await client.from("post_reactions").select("emoji, user_id").eq("post_id", post.id);
+        if (!data) return;
+        const counts: Record<string, number> = {};
+        const mine: Record<string, boolean> = {};
+        data.forEach((r: any) => {
+          counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+          if (user && r.user_id === user.id) mine[r.emoji] = true;
+        });
+        setReactions(counts);
+        setMyReactions(mine);
+        setReactionsLoaded(true);
+      } catch { setReactionsLoaded(true); }
+    };
+    load();
+  }, [post.id, user]);
+
+  const toggleReaction = async (emoji: string) => {
+    if (!user) return showToast("로그인 후 반응을 남길 수 있어요.", "error");
+    try {
+      const client = getSupabaseOrThrow();
+      if (myReactions[emoji]) {
+        await client.from("post_reactions").delete().eq("post_id", post.id).eq("user_id", user.id).eq("emoji", emoji);
+        setReactions((p) => ({ ...p, [emoji]: Math.max(0, (p[emoji] || 1) - 1) }));
+        setMyReactions((p) => ({ ...p, [emoji]: false }));
+      } else {
+        await client.from("post_reactions").insert({ post_id: post.id, user_id: user.id, emoji });
+        setReactions((p) => ({ ...p, [emoji]: (p[emoji] || 0) + 1 }));
+        setMyReactions((p) => ({ ...p, [emoji]: true }));
+      }
+    } catch { showToast("반응 처리 중 오류가 발생했어요.", "error"); }
+  };
+
+  const handleSubmitComment = async () => {
+    const content = commentDraft.trim();
+    if (!content) return;
+    setSubmitting(true);
+    await onSubmitComment(post.id, content);
+    setCommentDraft("");
+    setSubmitting(false);
+  };
+
+  const EMOJIS = ["👍", "❤️", "😂", "😮", "🔥", "🎉"];
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-[rgba(2,6,23,0.80)] px-3 py-4 backdrop-blur-xl sm:p-6"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 12, scale: 0.98 }}
+          transition={{ duration: 0.22 }}
+          className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#0e0b08]/97 shadow-[0_32px_80px_rgba(2,6,23,0.6)] backdrop-blur-2xl my-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* 헤더 */}
+          <div className="relative border-b border-white/8 px-5 py-5 sm:px-7 sm:py-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  {post.is_pinned && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/20 bg-rose-400/12 px-2.5 py-1 text-[10px] font-semibold text-rose-300">
+                      <Pin size={10} /> PIN
+                    </span>
+                  )}
+                  <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold", getCategoryStyle(post.category, post.is_notice))}>
+                    {post.is_notice ? "공지" : (post.category || "자유")}
+                  </span>
+                  <span className="text-[11px] text-stone-500">{formatDateTime(post.created_at)}</span>
+                  {(post.views || 0) > 0 && (
+                    <span className="text-[11px] text-stone-500">👁 {post.views}</span>
+                  )}
+                </div>
+                <h2 className="text-xl font-semibold leading-snug text-white sm:text-2xl">{post.title}</h2>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-sm font-semibold text-amber-100/80">{post.author_name || post.author || "익명"}</span>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                {profile?.role === "admin" && post.is_notice && (
+                  <button onClick={() => onTogglePin(post)} className="rounded-xl border border-amber-200/20 bg-amber-300/10 px-3 py-2 text-[11px] font-semibold text-amber-200 hover:bg-amber-300/16 transition">
+                    {post.is_pinned ? "고정 해제" : "고정"}
+                  </button>
+                )}
+                {(profile?.role === "admin" || user?.id === post.user_id) && (
+                  <button onClick={() => { onDelete(post.id); onClose(); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-500 hover:border-rose-400/20 hover:bg-rose-400/10 hover:text-rose-300 transition">
+                    <Trash2 size={15} />
+                  </button>
+                )}
+                <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-400 hover:text-white transition">
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 본문 */}
+          <div className="max-h-[60vh] overflow-y-auto px-5 py-5 sm:px-7 sm:py-6 space-y-5">
+            {/* 이미지 */}
+            {post.image_url && (
+              <div
+                className="cursor-zoom-in overflow-hidden rounded-2xl border border-white/10"
+                onClick={() => setLightboxSrc(post.image_url)}
+              >
+                <img src={post.image_url} className="w-full max-h-[400px] object-cover hover:scale-[1.02] transition-transform duration-300" />
+                <div className="px-3 py-1.5 text-[10px] text-stone-500">클릭하면 원본 크기로 볼 수 있어</div>
+              </div>
+            )}
+
+            {/* 유튜브 */}
+            {youtubeId && (
+              <div className="overflow-hidden rounded-2xl border border-white/10 aspect-video">
+                <iframe
+                  src={`https://www.youtube.com/embed/${youtubeId}`}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )}
+
+            {/* 내용 */}
+            <p className="whitespace-pre-wrap text-sm leading-7 text-stone-300">{post.content}</p>
+
+            {/* 이모지 반응 */}
+            <div className="border-t border-white/8 pt-4">
+              <div className="flex flex-wrap gap-2">
+                {EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => toggleReaction(emoji)}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-all",
+                      myReactions[emoji]
+                        ? "border-amber-400/40 bg-amber-400/15 text-amber-100"
+                        : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:bg-white/[0.08]"
+                    )}
+                  >
+                    <span>{emoji}</span>
+                    {(reactions[emoji] || 0) > 0 && (
+                      <span className="text-xs font-semibold">{reactions[emoji]}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 댓글 */}
+            <div className="border-t border-white/8 pt-4 space-y-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+                댓글 {comments.length}개
+              </div>
+              {comments.length === 0 && (
+                <div className="text-sm text-stone-500">아직 댓글이 없어. 첫 댓글을 남겨봐!</div>
+              )}
+              {comments.map((comment: any) => (
+                <div key={comment.id} className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-sm font-semibold text-white">{comment.author_name || comment.author || "익명"}</span>
+                      <span className="ml-2 text-[10px] text-stone-500">{formatDateTime(comment.created_at)}</span>
+                    </div>
+                    {(profile?.role === "admin" || user?.id === comment.user_id) && (
+                      <button onClick={() => onDeleteComment(comment.id)} className="text-slate-600 hover:text-rose-400 transition">
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-2 text-sm text-stone-300 whitespace-pre-wrap">{comment.content}</p>
+                </div>
+              ))}
+
+              {user && (
+                <div className="flex gap-2 pt-1">
+                  <textarea
+                    value={commentDraft}
+                    onChange={(e) => setCommentDraft(e.target.value)}
+                    placeholder="댓글 작성 시 +5P 지급"
+                    rows={2}
+                    className="flex-1 resize-none rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-stone-600 focus:border-amber-200/25"
+                  />
+                  <button
+                    onClick={handleSubmitComment}
+                    disabled={submitting || !commentDraft.trim()}
+                    className="flex h-auto w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-black hover:bg-amber-400 transition disabled:opacity-40"
+                  >
+                    <Send size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+    </>
+  );
+};
+
+// ── PostBoard ──────────────────────────────────────────────
 const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
   const [tab, setTab] = useState(initialTab || "all");
+  const [search, setSearch] = useState("");
   const [showWriteModal, setShowWriteModal] = useState(false);
+  const [selectedPost, setSelectedPost] = useState<any>(null);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, any[]>>({});
-  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
-  const [openCommentPosts, setOpenCommentPosts] = useState<Record<string, boolean>>({});
   const [commentsEnabled, setCommentsEnabled] = useState(true);
 
   const visiblePosts = useMemo(() => {
-    const pinned = posts
-      .filter((p: any) => p.is_pinned)
-      .sort((a: any, b: any) => +new Date(b.created_at) - +new Date(a.created_at));
-    const normal = posts
-      .filter((p: any) => !p.is_pinned)
-      .sort((a: any, b: any) => +new Date(b.created_at) - +new Date(a.created_at));
-    const merged = [...pinned, ...normal];
-
-    if (tab === "notice") return merged.filter((p: any) => p.is_notice);
-    if (tab === "free") return merged.filter((p: any) => !p.is_notice);
+    const pinned = posts.filter((p: any) => p.is_pinned).sort((a: any, b: any) => +new Date(b.created_at) - +new Date(a.created_at));
+    const normal = posts.filter((p: any) => !p.is_pinned).sort((a: any, b: any) => +new Date(b.created_at) - +new Date(a.created_at));
+    let merged = [...pinned, ...normal];
+    if (tab === "notice") merged = merged.filter((p: any) => p.is_notice);
+    else if (tab !== "all") merged = merged.filter((p: any) => !p.is_notice && p.category === tab);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      merged = merged.filter((p: any) =>
+        (p.title || "").toLowerCase().includes(q) ||
+        (p.content || "").toLowerCase().includes(q) ||
+        (p.author_name || "").toLowerCase().includes(q)
+      );
+    }
     return merged;
-  }, [posts, tab]);
+  }, [posts, tab, search]);
 
   const fetchComments = useCallback(async () => {
-    if (!posts || posts.length === 0) {
-      setCommentsByPost({});
-      return;
-    }
-
+    if (!posts || posts.length === 0) { setCommentsByPost({}); return; }
     try {
       const client = getSupabaseOrThrow();
-      const postIds = posts.map((post: any) => post.id).filter(Boolean);
-
-      if (postIds.length === 0) {
-        setCommentsByPost({});
-        return;
-      }
-
-      const { data, error } = await client
-        .from("post_comments")
-        .select("*")
-        .in("post_id", postIds)
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("post_comments fetch error:", error);
-        setCommentsEnabled(false);
-        setCommentsByPost({});
-        return;
-      }
-
-      const grouped = (data || []).reduce((acc: Record<string, any[]>, item: any) => {
-        const key = String(item.post_id);
-        acc[key] = acc[key] || [];
-        acc[key].push(item);
-        return acc;
-      }, {});
-
+      const postIds = posts.map((p: any) => p.id).filter(Boolean);
+      if (!postIds.length) { setCommentsByPost({}); return; }
+      const { data, error } = await client.from("post_comments").select("*").in("post_id", postIds).order("created_at", { ascending: true });
+      if (error) { setCommentsEnabled(false); setCommentsByPost({}); return; }
       setCommentsEnabled(true);
-      setCommentsByPost(grouped);
-    } catch (error) {
-      console.error("fetchComments error:", error);
-      setCommentsEnabled(false);
-      setCommentsByPost({});
-    }
+      setCommentsByPost((data || []).reduce((acc: Record<string, any[]>, item: any) => {
+        const k = String(item.post_id); acc[k] = acc[k] || []; acc[k].push(item); return acc;
+      }, {}));
+    } catch { setCommentsEnabled(false); setCommentsByPost({}); }
   }, [posts]);
 
-  useEffect(() => {
-    void fetchComments();
-  }, [fetchComments]);
+  useEffect(() => { void fetchComments(); }, [fetchComments]);
 
   const handleDelete = async (postId: string) => {
-    if (!confirm("정말 게시글을 삭제할까요? 연결된 댓글도 함께 사라질 수 있어요.")) return;
-
+    if (!confirm("게시글을 삭제할까요?")) return;
     try {
       const client = getSupabaseOrThrow();
-      try {
-        await client.from("post_comments").delete().eq("post_id", postId);
-      } catch (commentDeleteError) {
-        console.error("post_comments delete skipped:", commentDeleteError);
-      }
+      try { await client.from("post_comments").delete().eq("post_id", postId); } catch {}
       const { error } = await client.from("posts").delete().eq("id", postId);
       if (error) return showToast(error.message, "error");
-      onRefresh();
-      void fetchComments();
-    } catch (error: any) {
-      showToast(error?.message || "게시글 삭제 중 오류가 발생했어요.", "error");
-    }
+      setSelectedPost(null);
+      onRefresh(); void fetchComments();
+    } catch (e: any) { showToast(e?.message || "삭제 오류", "error"); }
   };
 
   const togglePin = async (post: any) => {
-    if (profile?.role !== "admin") return;
-    if (!post.is_notice) return showToast("공지글만 고정 가능합니다.");
-
+    if (profile?.role !== "admin" || !post.is_notice) return;
     const client = getSupabaseOrThrow();
-
-    if (!post.is_pinned) {
-      await client.from("posts").update({ is_pinned: false }).eq("is_notice", true).eq("is_pinned", true);
-    }
-
+    if (!post.is_pinned) await client.from("posts").update({ is_pinned: false }).eq("is_notice", true).eq("is_pinned", true);
     const { error } = await client.from("posts").update({ is_pinned: !post.is_pinned }).eq("id", post.id);
     if (error) return showToast(error.message, "error");
     onRefresh();
   };
 
-  const submitComment = async (postId: string) => {
+  const submitComment = async (postId: string, content: string) => {
     if (!user) return showToast("로그인 후 댓글을 작성할 수 있어요.", "error");
-    if (!commentsEnabled) return showToast("댓글 기능용 SQL이 아직 적용되지 않았어요.", "success");
-    const content = (commentDrafts[postId] || "").trim();
-    if (!content) return showToast("댓글 내용을 입력해줘.");
-
+    if (!commentsEnabled) return showToast("댓글 기능용 SQL이 아직 적용되지 않았어요.", "error");
     try {
       const client = getSupabaseOrThrow();
-      const payload = {
-        post_id: postId,
-        content,
-        user_id: user.id,
-        author: profile?.nickname || "Anonymous",
-        author_name: profile?.nickname || "Anonymous",
-      };
-
-      const { error } = await client.from("post_comments").insert([payload]);
-      if (error) {
-        showToast(error.message, "error");
-        return;
-      }
-
-      await client.rpc("add_points", {
-        p_user_id: user.id,
-        p_points: 5,
-        p_type: "comment",
-      });
-
-      setCommentDrafts((prev) => ({ ...prev, [postId]: "" }));
-      setOpenCommentPosts((prev) => ({ ...prev, [postId]: true }));
+      const { error } = await client.from("post_comments").insert([{ post_id: postId, content, user_id: user.id, author: profile?.nickname || "Anonymous", author_name: profile?.nickname || "Anonymous" }]);
+      if (error) { showToast(error.message, "error"); return; }
+      await client.rpc("add_points", { p_user_id: user.id, p_points: 5, p_type: "comment" });
       await fetchComments();
-      showToast("댓글 작성 완료! +5 포인트 획득 🎉", "success");
-    } catch (error: any) {
-      showToast(error?.message || "댓글 등록 중 오류가 발생했어요.", "error");
-    }
+      // 선택된 게시글 댓글 갱신
+      setSelectedPost((prev: any) => prev ? { ...prev } : prev);
+      showToast("댓글 작성 완료! +5P 🎉", "success");
+    } catch (e: any) { showToast(e?.message || "댓글 등록 오류", "error"); }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
+  const deleteComment = async (commentId: string) => {
     if (!confirm("댓글을 삭제할까요?")) return;
-
     try {
       const client = getSupabaseOrThrow();
       const { error } = await client.from("post_comments").delete().eq("id", commentId);
-      if (error) {
-        showToast(error.message, "error");
-        return;
-      }
+      if (error) { showToast(error.message, "error"); return; }
       await fetchComments();
-    } catch (error: any) {
-      showToast(error?.message || "댓글 삭제 중 오류가 발생했어요.", "error");
-    }
+    } catch (e: any) { showToast(e?.message || "댓글 삭제 오류", "error"); }
   };
 
-  if (!user) {
-    return (
-      <div className="max-w-2xl mx-auto py-32 text-center space-y-6">
-        <Shield size={64} className="mx-auto text-slate-800" />
-        <h2 className="text-3xl font-semibold uppercase tracking-tight">
-          Access Denied
-        </h2>
-        <p className="text-slate-500 font-bold">게시판은 로그인한 회원만 이용 가능합니다.</p>
-      </div>
-    );
-  }
+  if (!user) return (
+    <div className="max-w-2xl mx-auto py-32 text-center space-y-6">
+      <Shield size={64} className="mx-auto text-slate-800" />
+      <h2 className="text-3xl font-semibold uppercase tracking-tight">Access Denied</h2>
+      <p className="text-slate-500 font-bold">게시판은 로그인한 회원만 이용 가능합니다.</p>
+    </div>
+  );
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-6xl mx-auto p-6 md:p-12 text-left">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-6xl mx-auto px-4 py-8 md:px-12 md:py-12 text-left">
+      {/* 헤더 */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-4xl font-semibold uppercase tracking-tight">Bulletin Board</h2>
-          <p className="text-slate-500 font-bold mt-2">게시글 작성 +5P, 댓글 작성 +5P, 이미지 첨부와 공지 고정까지 한 번에 관리합니다.</p>
+          <h2 className="text-3xl font-semibold uppercase tracking-tight sm:text-4xl">Bulletin Board</h2>
+          <p className="text-slate-500 text-sm mt-2">게시글 +5P · 댓글 +5P</p>
         </div>
+        <button
+          onClick={() => setShowWriteModal(true)}
+          className="flex items-center gap-2 rounded-2xl bg-amber-500 hover:bg-amber-400 transition px-5 py-3 font-semibold text-sm text-black shadow-lg shadow-amber-500/20"
+        >
+          <Plus size={17} /> 글 작성
+        </button>
+      </div>
 
-        <div className="flex flex-wrap gap-2 items-center">
-          {[
-            ["all", "전체"],
-            ["notice", "공지"],
-            ["free", "일반"],
-          ].map(([key, label]) => (
+      {/* 검색 + 카테고리 필터 */}
+      <div className="mb-6 space-y-3">
+        <div className="relative">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="제목, 내용, 작성자 검색..."
+            className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3.5 pr-10 text-sm text-white outline-none placeholder:text-stone-600 focus:border-amber-200/25 transition"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-500 hover:text-white">
+              <X size={15} />
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {POST_CATEGORIES.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
               className={cn(
-                "whitespace-nowrap px-5 py-3 rounded-full text-[11px] font-semibold uppercase transition-all",
-                tab === key ? "bg-amber-500 text-white" : "bg-white/5 text-slate-500 hover:bg-white/10"
+                "rounded-full border px-4 py-2 text-[11px] font-semibold transition-all",
+                tab === key
+                  ? "border-amber-400/40 bg-amber-400/15 text-amber-200"
+                  : "border-white/10 bg-white/[0.04] text-slate-500 hover:border-white/20 hover:text-slate-300"
               )}
             >
               {label}
+              {key !== "all" && (
+                <span className="ml-1.5 text-[10px] opacity-60">
+                  {key === "notice"
+                    ? posts.filter((p: any) => p.is_notice).length
+                    : posts.filter((p: any) => !p.is_notice && p.category === key).length}
+                </span>
+              )}
             </button>
           ))}
-
-          <button
-            onClick={() => setShowWriteModal(true)}
-            className="ml-1 h-12 w-12 rounded-2xl bg-amber-500 hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center"
-            title="글 작성"
-          >
-            <Plus size={20} />
-          </button>
         </div>
       </div>
 
-      {!commentsEnabled && (
-        <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          댓글 테이블이 아직 없어서 댓글 기능이 비활성화돼 있어. 함께 전달한 SQL 파일을 먼저 적용해줘.
-        </div>
-      )}
-
-      <div className="space-y-4">
+      {/* 게시글 목록 */}
+      <div className="space-y-2">
         {visiblePosts.length === 0 && (
-          <div className="rounded-[2rem] border border-dashed border-white/10 bg-white/5 p-10 text-center text-slate-500">
-            아직 게시글이 없습니다.
+          <div className="rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] p-12 text-center text-stone-500">
+            {search ? `"${search}" 검색 결과가 없어요.` : "게시글이 없어요."}
           </div>
         )}
-
         {visiblePosts.map((post: any) => {
           const postComments = commentsByPost[String(post.id)] || [];
-          const commentsOpen = Boolean(openCommentPosts[post.id]) || postComments.length > 0;
-
+          const youtubeId = post.youtube_url ? extractYoutubeId(post.youtube_url) : extractYoutubeId(post.content || "");
           return (
-            <div
+            <motion.div
               key={post.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => setSelectedPost(post)}
               className={cn(
-                "group p-6 md:p-8 rounded-[2rem] border transition-all relative overflow-hidden",
-                post.is_pinned ? "border-amber-400/30 bg-amber-400/10" : post.is_notice ? "border-amber-400/30 bg-amber-400/10" : "border-white/10 bg-white/5"
+                "group cursor-pointer rounded-[1.6rem] border px-5 py-4 transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(0,0,0,0.2)]",
+                post.is_pinned
+                  ? "border-amber-400/25 bg-amber-400/[0.07] hover:border-amber-400/40"
+                  : "border-white/8 bg-white/[0.025] hover:border-white/16 hover:bg-white/[0.04]"
               )}
             >
-              <div className="flex justify-between items-start mb-4 gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  {post.is_pinned && (
-                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/20">
-                      PINNED
-                    </span>
-                  )}
-                  {post.is_notice ? (
-                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-amber-400/15 text-amber-200 border border-amber-400/20">
-                      공지
-                    </span>
-                  ) : (
-                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-white/10 text-slate-300 border border-white/10">
-                      {post.category || "자유"}
-                    </span>
-                  )}
-                  <span className="text-[10px] text-slate-500 font-semibold uppercase">
-                    {formatDateTime(post.created_at)}
-                  </span>
-                </div>
+              <div className="flex items-start gap-4">
+                {/* 섬네일 */}
+                {post.image_url && (
+                  <div className="hidden sm:block shrink-0 h-14 w-20 overflow-hidden rounded-xl border border-white/10">
+                    <img src={post.image_url} className="h-full w-full object-cover" />
+                  </div>
+                )}
+                {!post.image_url && youtubeId && (
+                  <div className="hidden sm:block shrink-0 h-14 w-20 overflow-hidden rounded-xl border border-white/10 bg-black">
+                    <img src={`https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`} className="h-full w-full object-cover" />
+                  </div>
+                )}
 
-                <div className="flex items-center gap-3 shrink-0">
-                  {profile?.role === "admin" && post.is_notice && (
-                    <button onClick={() => togglePin(post)} className="text-[11px] text-amber-200 font-semibold">
-                      {post.is_pinned ? "고정 해제" : "고정"}
-                    </button>
-                  )}
-                  {(profile?.role === "admin" || user?.id === post.user_id) && (
-                    <button onClick={() => handleDelete(post.id)} className="text-slate-600 hover:text-red-500 transition-colors">
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {post.image_url && (
-                <img src={post.image_url} className="w-full h-56 md:h-72 object-cover rounded-2xl mb-5 border border-white/5" />
-              )}
-
-              <h3 className="text-2xl font-semibold text-white mb-3">{post.title}</h3>
-              <p className="text-slate-300 text-sm mb-4 whitespace-pre-wrap">{post.content}</p>
-
-              <div className="flex flex-wrap justify-between items-center gap-3 text-[10px] text-slate-500 font-semibold uppercase">
-                <span>{post.author_name || post.author || "-"}</span>
-                <button
-                  onClick={() => setOpenCommentPosts((prev) => ({ ...prev, [post.id]: !Boolean(prev[post.id]) }))}
-                  className="px-3 py-2 rounded-full border border-white/10 bg-black/20 text-slate-300 hover:border-amber-400/40"
-                >
-                  댓글 {postComments.length}개 {commentsOpen ? "닫기" : "열기"}
-                </button>
-              </div>
-
-              {commentsOpen && (
-                <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4 space-y-4">
-                  <div className="space-y-3">
-                    {postComments.length === 0 && (
-                      <div className="text-sm text-slate-500">아직 댓글이 없습니다.</div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                    {post.is_pinned && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/20 bg-rose-400/10 px-2 py-0.5 text-[9px] font-semibold text-rose-300">
+                        <Pin size={9} /> PIN
+                      </span>
                     )}
-
-                    {postComments.map((comment: any) => (
-                      <div key={comment.id} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-semibold text-white">{comment.author_name || comment.author || "-"}</div>
-                            <div className="text-[10px] text-slate-500 uppercase mt-1">{formatDateTime(comment.created_at)}</div>
-                          </div>
-
-                          {(profile?.role === "admin" || user?.id === comment.user_id) && (
-                            <button
-                              onClick={() => handleDeleteComment(comment.id)}
-                              className="text-slate-500 hover:text-red-400"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </div>
-                        <div className="mt-3 text-sm text-slate-300 whitespace-pre-wrap">{comment.content}</div>
-                      </div>
-                    ))}
+                    <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-semibold", getCategoryStyle(post.category, post.is_notice))}>
+                      {post.is_notice ? "공지" : (post.category || "자유")}
+                    </span>
                   </div>
-
-                  <div className="flex flex-col md:flex-row gap-3">
-                    <textarea
-                      value={commentDrafts[post.id] || ""}
-                      onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [post.id]: e.target.value }))}
-                      placeholder="댓글을 입력하면 +5 포인트가 지급돼요."
-                      className="flex-1 bg-black border border-white/10 rounded-2xl p-4 min-h-[96px]"
-                    />
-                    <button
-                      onClick={() => submitComment(post.id)}
-                      className="md:w-36 bg-amber-500 px-5 py-4 rounded-2xl font-semibold text-sm hover:bg-amber-400 transition-all flex items-center justify-center gap-2"
-                    >
-                      <Send size={16} />
-                      댓글 작성
-                    </button>
+                  <div className="truncate text-sm font-semibold text-white group-hover:text-amber-100 transition-colors">
+                    {post.title}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-stone-500">
+                    <span className="font-medium text-stone-400">{post.author_name || post.author || "익명"}</span>
+                    <span>{formatDateTime(post.created_at)}</span>
+                    {(post.views || 0) > 0 && <span>👁 {post.views}</span>}
+                    {postComments.length > 0 && <span>💬 {postComments.length}</span>}
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            </motion.div>
           );
         })}
       </div>
 
+      {/* 글쓰기 모달 */}
       <AnimatePresence>
         {showWriteModal && (
           <PostWriteModal
             user={user}
             profile={profile}
-            onRefresh={async () => {
-              await onRefresh();
-              await fetchComments();
-            }}
+            onRefresh={async () => { await onRefresh(); await fetchComments(); }}
             onClose={() => setShowWriteModal(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* 상세 모달 */}
+      <AnimatePresence>
+        {selectedPost && (
+          <PostDetailModal
+            post={selectedPost}
+            comments={commentsByPost[String(selectedPost.id)] || []}
+            user={user}
+            profile={profile}
+            onClose={() => setSelectedPost(null)}
+            onDelete={handleDelete}
+            onTogglePin={togglePin}
+            onSubmitComment={submitComment}
+            onDeleteComment={deleteComment}
+            onRefresh={onRefresh}
           />
         )}
       </AnimatePresence>
@@ -7461,163 +7636,138 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
   );
 };
 
-
-
+// ── PostWriteModal ─────────────────────────────────────────
 const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [category, setCategory] = useState("자유");
   const [imgUrl, setImgUrl] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
   const [isNotice, setIsNotice] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const handlePost = async () => {
-    if (!title.trim() || !content.trim()) {
-      showToast("제목과 내용을 입력하세요.");
-      return;
-    }
-
+    if (!title.trim() || !content.trim()) { showToast("제목과 내용을 입력하세요."); return; }
     try {
       setSubmitting(true);
       const client = getSupabaseOrThrow();
-
-      const { data, error } = await client
-        .from("posts")
-        .insert([
-          {
-            title: title.trim(),
-            content: content.trim(),
-            category: isNotice ? "공지" : category,
-            image_url: imgUrl || null,
-            author: profile?.nickname || "Anonymous",
-            author_name: profile?.nickname || "Anonymous",
-            user_id: user.id,
-            author_id: user.id,
-            is_notice: Boolean(isNotice),
-            is_pinned: profile?.role === "admin" ? Boolean(isNotice && isPinned) : false,
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        showToast(error.message, "error");
-        return;
-      }
-
+      const { data, error } = await client.from("posts").insert([{
+        title: title.trim(),
+        content: content.trim(),
+        category: isNotice ? "공지" : category,
+        image_url: imgUrl || null,
+        youtube_url: youtubeUrl.trim() || null,
+        author: profile?.nickname || "Anonymous",
+        author_name: profile?.nickname || "Anonymous",
+        user_id: user.id,
+        author_id: user.id,
+        is_notice: Boolean(isNotice),
+        is_pinned: profile?.role === "admin" ? Boolean(isNotice && isPinned) : false,
+        views: 0,
+      }]).select().single();
+      if (error) { showToast(error.message, "error"); return; }
       if (profile?.role === "admin" && isNotice && isPinned) {
-        await client
-          .from("posts")
-          .update({ is_pinned: false })
-          .neq("id", data.id)
-          .eq("is_notice", true)
-          .eq("is_pinned", true);
+        await client.from("posts").update({ is_pinned: false }).neq("id", data.id).eq("is_notice", true).eq("is_pinned", true);
       }
-
-      if (!isNotice) {
-        await client.rpc("add_points", {
-          p_user_id: user.id,
-          p_points: 5,
-          p_type: "post",
-        });
-      }
-
-      showToast(isNotice ? "공지 작성 완료!" : "게시글 작성 완료! +5 포인트 획득 🎉");
-      await onRefresh();
-      onClose();
-    } catch (err: any) {
-      showToast(err?.message || "게시글 작성 중 오류가 발생했어요.", "error");
-    } finally {
-      setSubmitting(false);
-    }
+      if (!isNotice) await client.rpc("add_points", { p_user_id: user.id, p_points: 5, p_type: "post" });
+      showToast(isNotice ? "공지 작성 완료!" : "게시글 작성 완료! +5P 🎉");
+      await onRefresh(); onClose();
+    } catch (err: any) { showToast(err?.message || "작성 중 오류 발생", "error"); }
+    finally { setSubmitting(false); }
   };
 
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 text-left">
-      <div className="bg-[#111] border border-white/10 p-6 md:p-10 rounded-[3rem] w-full max-w-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto">
-        <button onClick={onClose} className="absolute top-8 right-8 text-white/50 hover:text-white">
-          <X />
-        </button>
-        <h3 className="text-3xl font-semibold uppercase text-amber-400 mb-3">
-          Create New Post
-        </h3>
-        <p className="text-sm text-slate-500 mb-8">일반 글은 작성 시 +5포인트, 댓글도 +5포인트가 지급됩니다.</p>
+  const ytId = extractYoutubeId(youtubeUrl);
 
-        <div className="space-y-5">
-          <div className="grid md:grid-cols-2 gap-4">
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/90 backdrop-blur-xl px-3 py-4 sm:p-6 text-left"
+    >
+      <div className="relative w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[#0e0b08]/97 p-6 shadow-2xl sm:p-10 my-2">
+        <button onClick={onClose} className="absolute top-6 right-6 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-400 hover:text-white transition">
+          <X size={18} />
+        </button>
+        <h3 className="text-2xl font-semibold uppercase text-amber-400 mb-1">새 게시글 작성</h3>
+        <p className="text-sm text-slate-500 mb-7">일반 글 +5P · 댓글 +5P</p>
+
+        <div className="space-y-4">
+          {/* 카테고리 + 관리자 옵션 */}
+          <div className="flex flex-wrap gap-3">
             <select
-              className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               disabled={isNotice}
+              className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm font-semibold text-white outline-none focus:border-amber-200/25 disabled:opacity-50"
             >
-              {["자유", "공략", "수집형 포인트", "스크린샷", "MVP", "커스터마이징 및 의상"].map((tab) => (
-                <option key={tab} value={tab}>
-                  {tab}
-                </option>
+              {POST_CATEGORIES.filter((c) => c.key !== "all" && c.key !== "notice").map((c) => (
+                <option key={c.key} value={c.key}>{c.label}</option>
               ))}
             </select>
-
-            {profile?.role === "admin" ? (
-              <div className="flex flex-wrap gap-3">
-                <label className="flex items-center gap-2 px-4 rounded-2xl border border-white/10 bg-black">
+            {profile?.role === "admin" && (
+              <div className="flex gap-3">
+                <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm">
                   <input type="checkbox" checked={isNotice} onChange={(e) => setIsNotice(e.target.checked)} />
-                  공지글
+                  공지
                 </label>
-                <label className="flex items-center gap-2 px-4 rounded-2xl border border-white/10 bg-black">
-                  <input
-                    type="checkbox"
-                    checked={isPinned}
-                    onChange={(e) => setIsPinned(e.target.checked)}
-                    disabled={!isNotice}
-                  />
-                  상단 고정
+                <label className={cn("flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm", !isNotice && "opacity-40 cursor-not-allowed")}>
+                  <input type="checkbox" checked={isPinned} onChange={(e) => setIsPinned(e.target.checked)} disabled={!isNotice} />
+                  고정
                 </label>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-sm text-slate-400">
-                일반 게시글을 작성할 수 있어요.
               </div>
             )}
           </div>
 
           <input
-            className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold"
-            placeholder="제목"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            placeholder="제목"
+            className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-sm font-semibold text-white outline-none placeholder:text-stone-600 focus:border-amber-200/25"
           />
 
           <textarea
-            className="w-full bg-black border border-white/10 p-4 rounded-2xl text-sm font-bold h-40"
-            placeholder="내용"
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            placeholder="내용을 입력해줘"
+            rows={6}
+            className="w-full resize-none rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-sm text-white outline-none placeholder:text-stone-600 focus:border-amber-200/25"
           />
 
-          <ImageUploader label="게시판 이미지 첨부" onUpload={(url) => setImgUrl(url)} />
+          {/* 유튜브 URL */}
+          <div className="space-y-2">
+            <input
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+              placeholder="YouTube URL (선택) — 붙여넣으면 자동 임베드"
+              className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-3.5 text-sm text-white outline-none placeholder:text-stone-600 focus:border-amber-200/25"
+            />
+            {ytId && (
+              <div className="overflow-hidden rounded-2xl border border-white/10 aspect-video">
+                <iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full h-full" allowFullScreen />
+              </div>
+            )}
+          </div>
 
+          <ImageUploader label="이미지 첨부 (선택)" onUpload={(url: string) => setImgUrl(url)} />
           {imgUrl && (
             <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
-              <div className="text-xs text-slate-400 mb-2">첨부 이미지 미리보기</div>
-              <img src={imgUrl} className="w-full h-56 object-cover rounded-2xl" />
+              <img src={imgUrl} className="w-full max-h-56 object-cover rounded-xl" />
             </div>
           )}
 
           <button
             onClick={handlePost}
             disabled={submitting}
-            className="w-full bg-amber-500 p-6 rounded-2xl font-semibold uppercase tracking-widest hover:bg-amber-400 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full rounded-2xl bg-amber-500 py-4 font-semibold uppercase tracking-widest hover:bg-amber-400 transition disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            <Send size={18} />
-            {submitting ? "등록 중..." : "Publish"}
+            <Send size={16} />
+            {submitting ? "등록 중..." : "게시하기"}
           </button>
         </div>
       </div>
     </motion.div>
   );
 };
+
 
 
 const Auth = ({ mode, setMode }: any) => {
