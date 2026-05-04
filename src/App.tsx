@@ -4394,43 +4394,6 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                         )}
                       </div>
                     )}
-
-
-                    {/* 공대장 스킬 */}
-                    {(() => {
-                      const skills = [1,2,3].map(n => ({
-                        image: ref[`raid_skill_${n}_image`] || "",
-                        name:  ref[`raid_skill_${n}_name`]  || "",
-                        desc:  ref[`raid_skill_${n}_desc`]  || "",
-                      })).filter(s => s.name || s.image || s.desc);
-                      if (skills.length === 0) return null;
-                      return (
-                        <div className="border-t border-white/[0.06] px-5 py-4">
-                          <div className="mb-3 flex items-center gap-2">
-                            <div className="flex h-5 w-5 items-center justify-center rounded-lg bg-violet-400/20">
-                              <Sparkles size={11} className="text-violet-300" />
-                            </div>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300/80">공대장 스킬</span>
-                          </div>
-                          <div className="space-y-3">
-                            {skills.map((sk, si) => (
-                              <div key={si} className="flex gap-3 rounded-2xl border border-violet-400/15 bg-violet-400/5 p-3">
-                                <div className="flex items-start gap-2.5">
-                                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-400/20 text-[10px] font-bold text-violet-300 mt-0.5">{si+1}</div>
-                                  {sk.image && (
-                                    <img src={sk.image} alt={sk.name} className="h-14 w-14 shrink-0 rounded-xl object-cover border border-white/10 bg-black/30" />
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  {sk.name && <div className="text-xs font-bold text-violet-200 mb-1">{sk.name}</div>}
-                                  {sk.desc && <p className="text-[11px] leading-5 text-stone-300 whitespace-pre-wrap">{sk.desc}</p>}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })()}
                     {/* 드랍 아이템 */}
                     {(() => {
                       const drops = buildRewardCards(nd || hd);
@@ -4460,6 +4423,42 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                   </div>
                 );
               })}
+            {/* ── 공대장 스킬 통합 표시 (난이도 무관 관문별) ── */}
+            {gateNums.map(gateNum => {
+              const ref = normalRows.find((d:any) => d.gate_num === gateNum)
+                       || hardRows.find((d:any)   => d.gate_num === gateNum);
+              if (!ref) return null;
+              const skills = [1,2,3].map(n => ({
+                image: ref[`raid_skill_${n}_image`] || "",
+                name:  ref[`raid_skill_${n}_name`]  || "",
+                desc:  ref[`raid_skill_${n}_desc`]  || "",
+              })).filter(s => s.name || s.image || s.desc);
+              if (skills.length === 0) return null;
+              return (
+                <div key={`skill-${gateNum}`} className="overflow-hidden rounded-[1.85rem] border border-violet-400/20 bg-violet-400/[0.04]">
+                  <div className="flex items-center gap-3 border-b border-violet-400/15 px-5 py-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-400/20 text-sm font-bold text-violet-300">{gateNum}관</div>
+                    <Sparkles size={13} className="text-violet-300" />
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-violet-300">공대장 스킬</span>
+                    <span className="ml-auto text-[10px] text-violet-400/50">난이도 공통</span>
+                  </div>
+                  <div className="space-y-3 p-4">
+                    {skills.map((sk, si) => (
+                      <div key={si} className="flex gap-3 rounded-2xl border border-violet-400/15 bg-violet-400/5 p-3">
+                        <div className="flex items-start gap-2.5 shrink-0">
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-400/20 text-[10px] font-bold text-violet-300 mt-0.5">{si+1}</div>
+                          {sk.image && <img src={sk.image} alt={sk.name} className="h-14 w-14 rounded-xl object-cover border border-white/10 bg-black/30" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          {sk.name && <div className="text-xs font-bold text-violet-200 mb-1">{sk.name}</div>}
+                          {sk.desc && <p className="text-[11px] leading-5 text-stone-300 whitespace-pre-wrap">{sk.desc}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
             </>
 
           ) : singleDetail ? (
@@ -6014,43 +6013,48 @@ const RaidDetailModal = ({
                                   )}
                                 </div>
                               )}
-                              {/* 공대장 스킬 */}
-                              {(() => {
-                                const skills = [1,2,3].map(n => ({
-                                  image: refDetail[`raid_skill_${n}_image`] || "",
-                                  name:  refDetail[`raid_skill_${n}_name`]  || "",
-                                  desc:  refDetail[`raid_skill_${n}_desc`]  || "",
-                                })).filter(s => s.name || s.image || s.desc);
-                                if (skills.length === 0) return null;
-                                return (
-                                  <div>
-                                    <div className="mb-2 flex items-center gap-1.5">
-                                      <Sparkles size={11} className="text-violet-300" />
-                                      <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300/80">공대장 스킬</span>
-                                    </div>
-                                    <div className="space-y-2.5">
-                                      {skills.map((sk, si) => (
-                                        <div key={si} className="flex gap-3 rounded-2xl border border-violet-400/15 bg-violet-400/5 p-3">
-                                          <div className="flex items-start gap-2">
-                                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-400/20 text-[10px] font-bold text-violet-300 mt-0.5">{si+1}</div>
-                                            {sk.image && (
-                                              <img src={sk.image} alt={sk.name} className="h-12 w-12 shrink-0 rounded-xl object-cover border border-white/10 bg-black/30" />
-                                            )}
-                                          </div>
-                                          <div className="min-w-0 flex-1">
-                                            {sk.name && <div className="text-xs font-bold text-violet-200 mb-1">{sk.name}</div>}
-                                            {sk.desc && <p className="text-[11px] leading-5 text-stone-300 whitespace-pre-wrap">{sk.desc}</p>}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                );
-                              })()}
 
                             </div>
                           );
                         })}
+
+                        {/* ── 공대장 스킬 통합 표시 (관문별, 난이도 공통) ── */}
+                        {gateNums.map(gateNum => {
+                          const src = normalDetails.find(d => d.gate_num === gateNum)
+                                   || hardDetails.find(d => d.gate_num === gateNum);
+                          if (!src) return null;
+                          const skills = [1,2,3].map(n => ({
+                            image: src[`raid_skill_${n}_image`] || "",
+                            name:  src[`raid_skill_${n}_name`]  || "",
+                            desc:  src[`raid_skill_${n}_desc`]  || "",
+                          })).filter(s => s.name || s.image || s.desc);
+                          if (skills.length === 0) return null;
+                          return (
+                            <div key={`rs-${gateNum}`} className="overflow-hidden rounded-[1.3rem] border border-violet-400/20 bg-violet-400/[0.04]">
+                              <div className="flex items-center gap-2.5 border-b border-violet-400/15 px-4 py-2.5">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-400/20 text-xs font-bold text-violet-300">{gateNum}관</div>
+                                <Sparkles size={12} className="text-violet-300" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300">공대장 스킬</span>
+                                <span className="ml-auto text-[9px] text-violet-400/50">난이도 공통</span>
+                              </div>
+                              <div className="space-y-2.5 p-3">
+                                {skills.map((sk, si) => (
+                                  <div key={si} className="flex gap-3 rounded-2xl border border-violet-400/15 bg-violet-400/5 p-3">
+                                    <div className="flex items-start gap-2 shrink-0">
+                                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-400/20 text-[10px] font-bold text-violet-300 mt-0.5">{si+1}</div>
+                                      {sk.image && <img src={sk.image} alt={sk.name} className="h-12 w-12 rounded-xl object-cover border border-white/10 bg-black/30" />}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      {sk.name && <div className="text-xs font-bold text-violet-200 mb-1">{sk.name}</div>}
+                                      {sk.desc && <p className="text-[11px] leading-5 text-stone-300 whitespace-pre-wrap">{sk.desc}</p>}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+
                       </div>
                     );
                   })()}
