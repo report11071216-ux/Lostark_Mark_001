@@ -4053,434 +4053,339 @@ const buildRewardCards = (details: any) => {
 };
 
 const DetailPopup = ({ item, type, onClose }: any) => {
-  const [gate, setGate] = useState(1);
-  const [diff, setDiff] = useState("노말");
   const [allDetails, setAllDetails] = useState<any[]>([]);
   const [loading, setLoading] = useState(type !== "클래스");
 
+  // 커스텀 배틀아이템 (localStorage)
+  const [customBattleItemDefs] = useState<Array<{name:string;icon:string;image_url:string}>>(() => {
+    try { return JSON.parse(localStorage.getItem("custom_battle_items") || "[]"); } catch { return []; }
+  });
+  const getBattleItemDisplay = (name: string) => {
+    const custom = customBattleItemDefs.find(c => c.name === name);
+    if (custom?.image_url) return { type: "img" as const, src: custom.image_url };
+    const defaultIcons: Record<string,string> = {
+      "홀리 워터":"💊","고급 폭탄":"💣","정밀 폭탄":"🎯","시간의 모래":"⏳",
+      "상급 회복 물약":"🧪","고급 수류탄":"💥","각성 포션":"✨","흑마법 폭탄":"🖤",
+      "화염 수류탄":"🔥","독 폭탄":"☠️","섬광 수류탄":"💡",
+    };
+    return { type: "emoji" as const, src: custom?.icon || defaultIcons[name] || "🎒" };
+  };
+
   useEffect(() => {
     let mounted = true;
-
-    const fetchDetailBundle = async () => {
+    const fetch = async () => {
       if (type === "클래스") return;
-
       setLoading(true);
-
       try {
         const { data, error } = await supabase
-          .from("content_details")
-          .select("*")
+          .from("content_details").select("*")
           .eq("content_id", item.id)
           .order("difficulty", { ascending: true })
-          .order("gate_num", { ascending: true });
-
-        if (error) {
-          console.error("fetchDetailBundle error:", error);
-          if (mounted) setAllDetails([]);
-          return;
-        }
-
-        if (!mounted) return;
-        setAllDetails(data || []);
-      } catch (error) {
-        console.error("fetchDetailBundle unexpected error:", error);
-        if (mounted) setAllDetails([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
+          .order("gate_num",   { ascending: true });
+        if (error) { console.error(error); if (mounted) setAllDetails([]); return; }
+        if (mounted) setAllDetails(data || []);
+      } catch (e) { console.error(e); if (mounted) setAllDetails([]); }
+      finally     { if (mounted) setLoading(false); }
     };
-
-    fetchDetailBundle();
-
-    return () => {
-      mounted = false;
-    };
+    fetch();
+    return () => { mounted = false; };
   }, [item, type]);
 
-  const availableDifficulties = useMemo(() => {
+  // 난이도 목록
+  const difficulties = useMemo(() => {
     if (type !== "레이드") return [];
-    const fromData = Array.from(
-      new Set(
-        allDetails
-          .map((detail: any) => String(detail?.difficulty || "").trim())
-          .filter(Boolean)
-      )
-    );
-    return fromData.length > 0 ? fromData : difficultyOptions;
+    const d = Array.from(new Set(allDetails.map((r:any) => String(r.difficulty||"").trim()).filter(Boolean)));
+    return d.length > 0 ? d : ["노말"];
   }, [allDetails, type]);
 
-  useEffect(() => {
-    if (type !== "레이드") return;
-    if (availableDifficulties.length === 0) return;
-    if (!availableDifficulties.includes(diff)) {
-      setDiff(availableDifficulties[0]);
-    }
-  }, [availableDifficulties, diff, type]);
+  const hasNormal = difficulties.includes("노말");
+  const hasHard   = difficulties.includes("하드");
+  const showComparison = hasNormal && hasHard;
 
-  const gateOptions = useMemo(() => {
-    if (type !== "레이드") return [0];
-    const matching = allDetails.filter((detail: any) => String(detail?.difficulty || "").trim() === diff);
-    const gates = Array.from(
-      new Set(
-        matching
-          .map((detail: any) => Number(detail?.gate_num))
-          .filter((value: number) => Number.isFinite(value) && value > 0)
-      )
-    ).sort((a, b) => a - b);
+  // 관문 번호 목록
+  const gateNums = useMemo(() => {
+    return Array.from(new Set(allDetails.map((d:any) => Number(d.gate_num)).filter(v => v > 0))).sort((a,b)=>a-b);
+  }, [allDetails]);
 
-    return gates.length > 0 ? gates : [1, 2, 3, 4];
-  }, [allDetails, diff, type]);
+  // 난이도별 조회 헬퍼
+  const byDiff = (diff: string) => allDetails.filter((d:any) => String(d.difficulty||"").trim() === diff).sort((a:any,b:any) => a.gate_num - b.gate_num);
+  const normalRows = byDiff("노말");
+  const hardRows   = byDiff("하드");
 
-  useEffect(() => {
-    if (type !== "레이드") return;
-    if (!gateOptions.includes(gate)) {
-      setGate(gateOptions[0] || 1);
-    }
-  }, [gateOptions, gate, type]);
+  // 합계 골드
+  const normalTotalGold = normalRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0),0);
+  const hardTotalGold   = hardRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0),0);
 
-  const details = useMemo(() => {
-    if (type === "클래스") return null;
-    if (type === "레이드") {
-      return (
-        allDetails.find(
-          (detail: any) =>
-            String(detail?.difficulty || "").trim() === diff && Number(detail?.gate_num) === gate
-        ) || null
-      );
-    }
-    return allDetails.find((detail: any) => Number(detail?.gate_num || 0) === 0) || allDetails[0] || null;
-  }, [allDetails, diff, gate, type]);
+  // 가디언 토벌 단일 데이터
+  const singleDetail = type !== "레이드" ? (allDetails.find((d:any)=>Number(d.gate_num||0)===0)||allDetails[0]||null) : null;
+  const narratives   = useMemo(()=>getDetailNarratives(singleDetail),[singleDetail]);
 
-  const narratives = useMemo(() => getDetailNarratives(details), [details]);
-  const tone = getDifficultyTone(diff);
-
-  const rewardCards = useMemo(() => {
-    if (!details) return [];
-    return [
-      {
-        label: "클리어 골드",
-        value: `${formatLargeNumber(details.clear_gold)} G`,
-        hint: "관문 클리어 기준",
-        accent: "text-yellow-300",
-      },
-      {
-        label: "계열",
-        value: details.element_type || "-",
-        hint: "보스 계열 정보",
-        accent: tone.accentText,
-      },
-      {
-        label: "속성",
-        value: details.attribute || "-",
-        hint: "취약 속성 기준",
-        accent: "text-white",
-      },
-      {
-        label: "HP",
-        value: formatLargeNumber(details.hp),
-        hint: "관문 체력 정보",
-        accent: "text-white",
-      },
-    ];
-  }, [details, tone.accentText]);
-
-  const dropItemCards = useMemo(() => buildRewardCards(details), [details]);
+  // 보상 이미지 (노말 or 하드 첫 번째)
+  const rewardImgUrl = (normalRows[0]||hardRows[0])?.reward_image_url || "";
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(2,6,23,0.86)] p-4 text-left backdrop-blur-xl md:p-6"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-[rgba(2,6,23,0.88)] p-4 text-left backdrop-blur-xl md:p-6"
     >
       <motion.div
         initial={{ opacity: 0, y: 22, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 18, scale: 0.98 }}
         transition={{ duration: 0.18 }}
-        className="relative max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-[2.3rem] border border-white/10 bg-slate-950/96 shadow-[0_30px_100px_rgba(2,6,23,0.6)]"
+        className="relative max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-[2.3rem] border border-white/10 bg-[#080808]/97 shadow-[0_30px_100px_rgba(2,6,23,0.7)]"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.14),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_46%)]" />
-        <button
-          onClick={onClose}
-          className="absolute right-5 top-5 z-20 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
-        >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.10),transparent_30%)]" />
+
+        {/* 닫기 */}
+        <button onClick={onClose}
+          className="absolute right-5 top-5 z-20 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white">
           <X size={20} />
         </button>
 
-        <div className="relative border-b border-white/10 px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-7">
-          <div className="grid gap-6 md:grid-cols-[220px,minmax(0,1fr)]">
-            <div className="relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/[0.03]">
-              <img
-                src={item.image_url || "https://images.unsplash.com/photo-1542751371-adc38448a05e"}
-                className="h-full min-h-[180px] w-full object-cover"
-              />
-              {type === "레이드" && (
-                <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
-                  {availableDifficulties.map((difficulty) => {
-                    const difficultyTone = getDifficultyTone(difficulty);
-                    const active = diff === difficulty;
-                    return (
-                      <button
-                        key={difficulty}
-                        onClick={() => setDiff(difficulty)}
-                        className={cn(
-                          "rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] backdrop-blur-xl transition-all",
-                          active
-                            ? difficultyTone.active
-                            : "border-black/20 bg-black/45 text-white/85 hover:bg-black/60"
-                        )}
-                      >
-                        {difficulty}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-transparent" />
-              {type === "레이드" && (
-                <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-3">
-                  <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/65">
-                      Selected
-                    </div>
-                    <div className="mt-1 text-lg font-semibold text-white">{gate}관문</div>
-                  </div>
-                  <div className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] backdrop-blur-md ${tone.chipSoft}`}>
-                    {tone.badge}
-                  </div>
-                </div>
-              )}
+        {/* ── 헤더 ── */}
+        <div className="relative border-b border-white/10 px-6 py-6 md:px-8 md:py-7">
+          <div className="flex gap-5 md:gap-7">
+            {/* 썸네일 */}
+            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-[1.5rem] border border-white/10 md:h-36 md:w-36">
+              <img src={item.image_url || "https://images.unsplash.com/photo-1542751371-adc38448a05e"} className="h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
             </div>
-
-            <div className="min-w-0 self-end">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-300">
-                  {type}
-                </span>
-                {type === "레이드" && (
-                  <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${tone.chip}`}>
-                    {diff}
-                  </span>
+            <div className="min-w-0 flex-1 self-end pb-1">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-300">{type}</span>
+                {type === "레이드" && showComparison && (
+                  <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-[10px] font-semibold text-amber-200">노말 · 하드 비교 모드</span>
                 )}
               </div>
-
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white md:text-5xl">
-                {item.name || item.sub_class}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-400 md:text-base">
-                {type === "레이드"
-                  ? "난이도와 관문을 선택해서 관문별 보상과 핵심 정보를 한 번에 확인할 수 있어."
-                  : type === "가디언 토벌"
-                  ? "토벌 콘텐츠 핵심 정보와 보상을 확인해."
-                  : "클래스 핵심 세팅과 각인을 정리했어."}
-              </p>
-
-              {type === "레이드" && (
-                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <CompactDetailMetric label="현재 난이도" value={diff} accent={tone.accentText} />
-                  <CompactDetailMetric label="선택 관문" value={`${gate}관문`} />
-                  <CompactDetailMetric label="총 관문 수" value={`${gateOptions.length}개`} />
-                  <CompactDetailMetric
-                    label="대표 보상"
-                    value={`${formatLargeNumber(details?.clear_gold)} G`}
-                    accent="text-yellow-300"
-                  />
+              <h2 className="text-2xl font-bold tracking-tight text-white md:text-4xl">{item.name || item.sub_class}</h2>
+              {type === "레이드" && !loading && (
+                <div className="mt-3 flex flex-wrap gap-4 text-sm text-stone-400">
+                  {normalTotalGold > 0 && <span>노말 총 골드 <b className="text-sky-300">{formatLargeNumber(normalTotalGold)} G</b></span>}
+                  {hardTotalGold  > 0 && <span>하드 총 골드 <b className="text-amber-300">{formatLargeNumber(hardTotalGold)} G</b></span>}
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        <div className="relative space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 md:px-8 md:py-7">
-          {type === "레이드" && (
-            <div className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
-              <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  난이도 선택
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {availableDifficulties.map((difficulty) => {
-                    const difficultyTone = getDifficultyTone(difficulty);
-                    const active = diff === difficulty;
-                    return (
-                      <button
-                        key={difficulty}
-                        onClick={() => setDiff(difficulty)}
-                        className={cn(
-                          "rounded-full border px-4 py-2 text-sm font-semibold transition-all",
-                          active
-                            ? difficultyTone.active
-                            : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"
-                        )}
-                      >
-                        {difficulty}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                  관문 선택
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {gateOptions.map((gateNumber) => {
-                    const active = gate === gateNumber;
-                    return (
-                      <button
-                        key={gateNumber}
-                        onClick={() => setGate(gateNumber)}
-                        className={cn(
-                          "relative overflow-hidden rounded-[1.35rem] border p-4 text-left transition-all",
-                          active
-                            ? `border-white/10 bg-white/[0.08] shadow-[0_18px_40px_rgba(2,6,23,0.34)]`
-                            : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.05]"
-                        )}
-                      >
-                        <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${tone.ring} ${active ? "opacity-100" : "opacity-0"}`} />
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                          Gate
-                        </div>
-                        <div className="mt-2 text-lg font-semibold text-white">{gateNumber}관문</div>
-                        <div className="mt-1 text-xs text-slate-400">
-                          {active ? "현재 선택됨" : "상세 보기"}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
+        {/* ── 바디 ── */}
+        <div className="relative px-6 py-6 space-y-4 md:px-8 md:py-7">
           {loading ? (
             <div className="rounded-[1.85rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-16 text-center text-sm text-slate-500">
               상세 데이터를 불러오는 중...
             </div>
+
           ) : type === "클래스" ? (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <DetailInfoCard label="직업 각인" value={item.engraving_job || "-"} />
               <DetailInfoCard label="공용 각인" value={item.engraving_common?.join(", ") || "-"} wide />
               <DetailInfoCard label="아크 패시브" value={item.ark_passive?.join(" / ") || "-"} full />
             </div>
-          ) : details ? (
-            <div className="grid gap-5 xl:grid-cols-[1.05fr,0.95fr]">
-              <div className="space-y-4">
-                <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                        관문별 보상
-                      </div>
-                      <div className="mt-2 text-lg font-semibold text-white">
-                        {diff} · {gate}관문 Reward Board
-                      </div>
-                    </div>
-                    <div className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] ${tone.chip}`}>
-                      {gate} Gate
-                    </div>
+
+          ) : type === "레이드" ? (
+            <>
+              {/* 노말/하드 골드 합계 비교 카드 */}
+              {showComparison && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-sky-400/20 bg-sky-400/8 px-5 py-4 text-center">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-sky-300/70 mb-1">노말 합계</div>
+                    <div className="text-2xl font-bold text-sky-300">{normalTotalGold > 0 ? `${formatLargeNumber(normalTotalGold)} G` : "-"}</div>
                   </div>
-
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {rewardCards.map((reward) => (
-                      <div
-                        key={reward.label}
-                        className="rounded-[1.35rem] border border-white/10 bg-slate-950/35 p-4"
-                      >
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                          {reward.label}
-                        </div>
-                        <div className={cn("mt-2 text-xl font-semibold", reward.accent)}>
-                          {reward.value}
-                        </div>
-                        <div className="mt-1 text-xs text-slate-400">{reward.hint}</div>
-                      </div>
-                    ))}
+                  <div className="rounded-2xl border border-amber-400/20 bg-amber-400/8 px-5 py-4 text-center">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-amber-300/70 mb-1">하드 합계</div>
+                    <div className="text-2xl font-bold text-amber-300">{hardTotalGold > 0 ? `${formatLargeNumber(hardTotalGold)} G` : "-"}</div>
                   </div>
+                </div>
+              )}
 
-                  <div className="mt-5">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                      드랍 아이템 / 재료
+              {/* 클리어 보상 이미지 */}
+              {rewardImgUrl && (
+                <div className="overflow-hidden rounded-2xl border border-white/8">
+                  <div className="px-4 py-2.5 border-b border-white/6 text-[10px] font-bold uppercase tracking-widest text-stone-500">클리어 보상</div>
+                  <img src={rewardImgUrl} alt="클리어 보상" className="w-full object-contain max-h-52 bg-black/20" />
+                </div>
+              )}
+
+              {/* 등록 데이터 없음 */}
+              {gateNums.length === 0 && (
+                <div className="rounded-[1.85rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-12 text-center text-sm text-slate-500">
+                  등록된 관문 데이터가 없습니다.<br/>
+                  <span className="text-xs text-stone-600">관리자 패널 → 콘텐츠 관리에서 등록해주세요.</span>
+                </div>
+              )}
+
+              {/* 관문별 노말/하드 나란히 비교 */}
+              {gateNums.map(gateNum => {
+                const nd = normalRows.find((d:any) => d.gate_num === gateNum);
+                const hd = hardRows.find((d:any)   => d.gate_num === gateNum);
+                const ref = nd || hd;
+                if (!ref) return null;
+
+                const gateAttr  = String(ref.attribute || "").trim();
+                const attrInfo  = ATTRIBUTE_ICON[gateAttr] || null;
+                const battleItems = Array.from(new Set([
+                  ...String(nd?.battle_items||"").split(",").map((s:string)=>s.trim()).filter(Boolean),
+                  ...String(hd?.battle_items||"").split(",").map((s:string)=>s.trim()).filter(Boolean),
+                ]));
+
+                const nGold = Number(nd?.clear_gold) || 0;
+                const hGold = Number(hd?.clear_gold) || 0;
+                const nHp   = Number(String(nd?.hp||"0").replace(/,/g,"")) || 0;
+                const hHp   = Number(String(hd?.hp||"0").replace(/,/g,"")) || 0;
+
+                return (
+                  <div key={gateNum} className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-white/[0.025]">
+                    {/* 관문 헤더 */}
+                    <div className="flex items-center gap-3 border-b border-white/[0.07] px-5 py-3.5">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400/15 text-sm font-bold text-amber-300">
+                        {gateNum}관
+                      </div>
+                      {ref.element_type && (
+                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold text-slate-300">{ref.element_type}</span>
+                      )}
+                      {attrInfo && (
+                        <span className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold", attrInfo.bg, attrInfo.color)}>
+                          {attrInfo.icon} {gateAttr}
+                        </span>
+                      )}
                     </div>
 
-                    {dropItemCards.length > 0 ? (
-                      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        {dropItemCards.map((reward, index) => (
-                          <div
-                            key={`${reward.name}-${index}`}
-                            className="flex items-center gap-3 rounded-[1.35rem] border border-white/10 bg-slate-950/35 p-4"
-                          >
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-200/15 bg-amber-300/10 text-amber-100">
-                              <Gift size={18} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-semibold text-white">
-                                {reward.name}
+                    {/* 노말/하드 수치 나란히 */}
+                    {showComparison ? (
+                      <div className="grid grid-cols-2 divide-x divide-white/[0.07]">
+                        {([{ label:"노말", d:nd, nGold, nHp, goldColor:"text-sky-200", labelColor:"text-sky-300" },
+                           { label:"하드", d:hd, nGold:hGold, nHp:hHp, goldColor:"text-yellow-300", labelColor:"text-amber-300" }
+                        ] as any[]).map(({ label, d, nGold:gold, nHp:hp, goldColor, labelColor }) => (
+                          <div key={label} className="px-5 py-4 space-y-2">
+                            <div className={cn("text-[9px] font-bold uppercase tracking-widest mb-2", labelColor)}>{label}</div>
+                            {hp > 0 && (
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-stone-500">HP</span>
+                                <span className="font-semibold text-white">{formatLargeNumber(hp)}</span>
                               </div>
-                              <div className="mt-1 text-xs text-slate-400">
-                                {reward.type === "material" ? "재료 아이템" : "드랍 아이템"}
+                            )}
+                            {gold > 0 && (
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-stone-500">골드</span>
+                                <span className={cn("font-bold", goldColor)}>{formatLargeNumber(gold)} G</span>
                               </div>
-                            </div>
-                            <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-200">
-                              {reward.quantity ? `x${reward.quantity}` : "획득"}
-                            </div>
+                            )}
+                            {!d && <div className="text-xs text-stone-600">데이터 없음</div>}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="mt-4 rounded-[1.35rem] border border-dashed border-white/10 bg-slate-950/20 px-4 py-6 text-center text-sm text-slate-500">
-                        등록된 드랍 아이템/재료 데이터가 아직 없습니다.
+                      <div className="flex items-center gap-5 px-5 py-4 text-sm">
+                        {(nHp > 0 || (Number(String(hd?.hp||"0").replace(/,/g,""))||0) > 0) && (
+                          <span className="text-stone-400">HP <span className="font-semibold text-white">{formatLargeNumber(nHp || Number(String(hd?.hp||"0").replace(/,/g,"")))}</span></span>
+                        )}
+                        {(nGold > 0 || hGold > 0) && (
+                          <span className="font-bold text-yellow-300">{formatLargeNumber(nGold || hGold)} G</span>
+                        )}
                       </div>
                     )}
-                  </div>
-                </div>
 
-                <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                    관문 요약
-                  </div>
-                  <div className="mt-3 text-base font-semibold text-white">
-                    {type === "레이드" ? `${diff} · ${gate}관문` : item.name || type}
-                  </div>
-                  <div className="mt-2 text-sm leading-6 text-slate-400">
-                    선택한 관문 기준의 핵심 보상과 공략 메모를 오른쪽에서 바로 읽을 수 있게 정리했어.
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {narratives.length > 0 ? (
-                  narratives.map((entry) => (
-                    <div key={entry.label} className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                        {entry.label}
+                    {/* 배틀아이템 */}
+                    {battleItems.length > 0 && (
+                      <div className="flex flex-wrap gap-2 border-t border-white/[0.06] px-5 py-3">
+                        <div className="w-full text-[9px] font-bold uppercase tracking-widest text-stone-500 mb-1">필요 배틀아이템</div>
+                        {battleItems.map((bname:string) => {
+                          const disp = getBattleItemDisplay(bname);
+                          return (
+                            <span key={bname} className="flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/8 px-2.5 py-1 text-[11px] font-semibold text-amber-200">
+                              {disp.type === "img"
+                                ? <img src={disp.src} alt={bname} className="h-4 w-4 rounded object-cover" />
+                                : <span>{disp.src}</span>
+                              }
+                              {bname}
+                            </span>
+                          );
+                        })}
                       </div>
-                      <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-300">
-                        {entry.value}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-[1.85rem] border border-dashed border-white/10 bg-white/[0.03] px-5 py-10 text-center text-sm text-slate-500">
-                    이 관문에 등록된 추가 공략 메모가 아직 없습니다.
-                  </div>
-                )}
+                    )}
 
-                <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-                    난이도 가시성 개선
+                    {/* 공략/기믹/팁 */}
+                    {(ref.guide || ref.mechanics || ref.tip) && (
+                      <div className="space-y-3 border-t border-white/[0.06] px-5 py-4">
+                        {ref.guide && (
+                          <div>
+                            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">공략</div>
+                            <p className="text-sm leading-7 text-stone-300 whitespace-pre-wrap">{ref.guide}</p>
+                          </div>
+                        )}
+                        {ref.mechanics && (
+                          <div>
+                            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">주요 기믹</div>
+                            <p className="text-sm leading-7 text-stone-300 whitespace-pre-wrap">{ref.mechanics}</p>
+                          </div>
+                        )}
+                        {ref.tip && (
+                          <div>
+                            <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">팁</div>
+                            <p className="text-sm leading-7 text-amber-100/80 whitespace-pre-wrap">{ref.tip}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* 드랍 아이템 */}
+                    {(() => {
+                      const drops = buildRewardCards(nd || hd);
+                      if (drops.length === 0) return null;
+                      return (
+                        <div className="border-t border-white/[0.06] px-5 py-4">
+                          <div className="mb-3 text-[10px] font-bold uppercase tracking-widest text-stone-500">드랍 아이템 / 재료</div>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {drops.map((r, i) => (
+                              <div key={i} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/35 px-3 py-2.5">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-200/15 bg-amber-300/10 text-amber-100">
+                                  <Gift size={14} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-xs font-semibold text-white">{r.name}</div>
+                                  <div className="text-[10px] text-slate-500">{r.type === "material" ? "재료" : "드랍"}</div>
+                                </div>
+                                {r.quantity && (
+                                  <div className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs font-semibold text-slate-200">x{r.quantity}</div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
-                  <div className="mt-3 text-sm leading-7 text-slate-300">
-                    난이도는 이미지 좌상단 오버레이와 본문 탭을 같이 두는 방식이 가장 잘 보여. 처음 들어왔을 때도 한눈에 보이고, 스크롤 중에도 본문 탭으로 다시 바꾸기 쉽기 때문이야.
+                );
+              })}
+            </>
+
+          ) : singleDetail ? (
+            /* 가디언 토벌 등 단일 콘텐츠 */
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  { label:"클리어 골드", value:`${formatLargeNumber(singleDetail.clear_gold)} G`, accent:"text-yellow-300" },
+                  { label:"계열",  value:singleDetail.element_type||"-", accent:"text-white" },
+                  { label:"속성",  value:singleDetail.attribute||"-",    accent:"text-white" },
+                  { label:"HP",    value:formatLargeNumber(singleDetail.hp), accent:"text-white" },
+                ].map(r => (
+                  <div key={r.label} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5">
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{r.label}</div>
+                    <div className={cn("mt-2 text-lg font-semibold", r.accent)}>{r.value}</div>
                   </div>
-                </div>
+                ))}
               </div>
+              {narratives.map((n:any) => (
+                <div key={n.label} className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
+                  <div className="text-[11px] font-semibold uppercase tracking-widest text-slate-400 mb-3">{n.label}</div>
+                  <p className="text-sm leading-7 text-slate-300 whitespace-pre-wrap">{n.value}</p>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="rounded-[1.85rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-16 text-center text-sm text-slate-500">
-              선택한 난이도와 관문에 대한 데이터가 아직 없습니다.
+              등록된 데이터가 없습니다.
             </div>
           )}
         </div>
