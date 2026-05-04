@@ -9941,6 +9941,46 @@ type LostarkSibling = {
   ItemMaxLevel: string;
 };
 
+
+// ── 타입 정의 ──────────────────────────────────────────────
+type LostarkProfile = {
+  CharacterName: string; CharacterClassName: string;
+  ItemAvgLevel: string; ItemMaxLevel: string;
+  ServerName: string; CharacterLevel: number;
+  CharacterImage?: string; ExpeditionLevel: number;
+  PvpGradeName?: string; TownLevel: number; TownName?: string;
+  Title?: string; GuildName?: string;
+  Stats?: Array<{ Type: string; Value: string; Tooltip: string[] }>;
+  Tendencies?: Array<{ Type: string; Point: number; MaxPoint: number }>;
+};
+type LostarkEquipment = { Type: string; Name: string; Icon: string; Grade: string; Tooltip?: string; };
+type LostarkEngraving = { Name: string; Icon: string; Description: string; Level: number; };
+type LostarkGem = {
+  Slot: number; Name: string; Icon: string; Level: number; Grade: string;
+  Skill: { Name: string; Icon: string; Description: string; Color: string };
+  Effects?: Array<{ Name: string; Description: string; Debuff: boolean }>;
+};
+type LostarkCard = { Name: string; Icon: string; Grade: string; AwakeCount: number; AwakeTotal: number; Slot: number; };
+type LostarkSibling = { ServerName: string; CharacterName: string; CharacterLevel: number; CharacterClassName: string; ItemAvgLevel: string; ItemMaxLevel: string; };
+type LostarkProfile = {
+  CharacterName: string; CharacterClassName: string;
+  ItemAvgLevel: string; ItemMaxLevel: string;
+  ServerName: string; CharacterLevel: number;
+  CharacterImage?: string; ExpeditionLevel: number;
+  PvpGradeName?: string; TownLevel: number; TownName?: string;
+  Title?: string; GuildName?: string;
+  Stats?: Array<{ Type: string; Value: string; Tooltip: string[] }>;
+  Tendencies?: Array<{ Type: string; Point: number; MaxPoint: number }>;
+};
+type LostarkEquipment = { Type: string; Name: string; Icon: string; Grade: string; Tooltip?: string; };
+type LostarkEngraving  = { Name: string; Icon: string; Description: string; Level: number; };
+type LostarkGem = {
+  Slot: number; Name: string; Icon: string; Level: number; Grade: string;
+  Skill: { Name: string; Icon: string; Description: string; Color: string };
+  Effects?: Array<{ Name: string; Description: string; Debuff: boolean }>;
+};
+type LostarkCard    = { Name: string; Icon: string; Grade: string; AwakeCount: number; AwakeTotal: number; Slot: number; };
+type LostarkSibling = { ServerName: string; CharacterName: string; CharacterLevel: number; CharacterClassName: string; ItemAvgLevel: string; ItemMaxLevel: string; };
 type LostarkAllData = {
   ArmoryProfile?: LostarkProfile;
   ArmoryEquipment?: LostarkEquipment[];
@@ -9949,90 +9989,182 @@ type LostarkAllData = {
   ArmoryCard?: { Cards: LostarkCard[]; Effects?: any[] };
 };
 
-const GRADE_COLOR: Record<string, string> = {
-  "에스더":    "#00CCFF",
-  "고대":      "#E6C97A",
-  "유물":      "#FF8C00",
-  "영웅":      "#B44BE1",
-  "희귀":      "#4A90D9",
-  "고급":      "#66BB6A",
-  "일반":      "#9E9E9E",
+// ── 신규 타입 ──────────────────────────────────────────────
+type LostarkSkillTripod = { Tier: number; Slot: number; Name: string; Icon: string; Description: string; IsSelected: boolean; Level?: number; };
+type LostarkSkillRune   = { Name: string; Icon: string; Grade: string; };
+type LostarkCombatSkill = {
+  Name: string; Icon: string; Level: number; Type: string; IsAwakening: boolean;
+  Tripods: LostarkSkillTripod[];
+  Rune?: LostarkSkillRune | null;
 };
+type LostarkArkPassive = {
+  Points?:  Array<{ Name: string; Value: number; Description?: string }>;
+  Effects?: Array<{ Name: string; Description: string; Icon: string; Level: number }>;
+};
+type LostarkArkGrid = {
+  Name?:    string;
+  Effects?: Array<{ Name: string; Description: string; Icon: string }>;
+};
+type LostarkAvatar = { Type: string; Name: string; Icon: string; Grade: string; IsSet: boolean; IsInner: boolean; };
+// ──────────────────────────────────────────────────────────
 
+const GRADE_COLOR: Record<string, string> = {
+  "에스더": "#00CCFF", "고대": "#E6C97A", "유물": "#FF8C00",
+  "영웅": "#B44BE1",   "희귀": "#4A90D9", "고급": "#66BB6A", "일반": "#9E9E9E",
+};
 const gradeColor = (grade: string) => GRADE_COLOR[grade] || "#9E9E9E";
 
+// ══════════════════════════════════════════════════════════
+//  LostarkProfileModal
+// ══════════════════════════════════════════════════════════
+type ModalTab = "overview" | "skills" | "arkgrid" | "avatars";
+
 const LostarkProfileModal = ({
-  characterName,
-  onClose,
-}: {
-  characterName: string;
-  onClose: () => void;
-}) => {
-  const { theme } = useTheme();
-  const isLight = theme === "light";
+  characterName, onClose,
+}: { characterName: string; onClose: () => void }) => {
+  const [tab, setTab] = useState<ModalTab>("overview");
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
-  const [data, setData]       = useState<LostarkAllData | null>(null);
-  const [siblings, setSiblings] = useState<LostarkSibling[]>([]);
-  const [tab, setTab]         = useState<"profile" | "equipment" | "engravings" | "gems" | "cards" | "siblings">("profile");
+  // overview 데이터
+  const [ovLoading,  setOvLoading]  = useState(true);
+  const [ovError,    setOvError]    = useState<string | null>(null);
+  const [profile,    setProfile]    = useState<LostarkProfile | null>(null);
+  const [equipment,  setEquipment]  = useState<LostarkEquipment[]>([]);
+  const [engravings, setEngravings] = useState<LostarkEngraving[]>([]);
+  const [gems,       setGems]       = useState<LostarkGem[]>([]);
+  const [cards,      setCards]      = useState<LostarkCard[]>([]);
+  const [siblings,   setSiblings]   = useState<LostarkSibling[]>([]);
 
+  // 스킬
+  const [skillLoading,  setSkillLoading]  = useState(false);
+  const [skillError,    setSkillError]    = useState<string | null>(null);
+  const [skills,        setSkills]        = useState<LostarkCombatSkill[]>([]);
+  const [skillsFetched, setSkillsFetched] = useState(false);
+
+  // 아크 패시브 + 그리드
+  const [arkLoading,  setArkLoading]  = useState(false);
+  const [arkError,    setArkError]    = useState<string | null>(null);
+  const [arkPassive,  setArkPassive]  = useState<LostarkArkPassive | null>(null);
+  const [arkGrid,     setArkGrid]     = useState<LostarkArkGrid | null>(null);
+  const [arkFetched,  setArkFetched]  = useState(false);
+
+  // 아바타
+  const [avatarLoading,  setAvatarLoading]  = useState(false);
+  const [avatarError,    setAvatarError]    = useState<string | null>(null);
+  const [avatars,        setAvatars]        = useState<LostarkAvatar[]>([]);
+  const [avatarsFetched, setAvatarsFetched] = useState(false);
+
+  // ── 초기 로드: profile / equipment / engravings / gems / cards / siblings 병렬 ──
   useEffect(() => {
-    const fetchAll = async () => {
-      setLoading(true);
-      setError(null);
+    const load = async () => {
+      setOvLoading(true); setOvError(null);
+      const enc = encodeURIComponent(characterName);
       try {
-        // 메인 정보 (profile+equipment+engravings+gems+cards 한번에)
-        const res = await fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=all`);
-        const json = await res.json();
-        if (!json.ok) {
-          setError(json.error || "데이터를 불러오지 못했습니다.");
-          setLoading(false);
-          return;
-        }
-        setData(json.data as LostarkAllData);
+        const results = await Promise.allSettled([
+          fetch(`/api/lostark?character=${enc}&type=profile`),
+          fetch(`/api/lostark?character=${enc}&type=equipment`),
+          fetch(`/api/lostark?character=${enc}&type=engravings`),
+          fetch(`/api/lostark?character=${enc}&type=gems`),
+          fetch(`/api/lostark?character=${enc}&type=cards`),
+          fetch(`/api/lostark?character=${enc}&type=siblings`),
+        ]);
+        const parse = async (r: PromiseSettledResult<Response>) => {
+          if (r.status !== "fulfilled") return null;
+          try { return await r.value.json(); } catch { return null; }
+        };
+        const [pj, ej, ngj, gj, cj, sj] = await Promise.all(results.map(parse));
 
-        // 원정대 캐릭터 (별도 요청)
-        const sibRes = await fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=siblings`);
-        const sibJson = await sibRes.json();
-        if (sibJson.ok && Array.isArray(sibJson.data)) {
-          setSiblings(sibJson.data as LostarkSibling[]);
-        }
-      } catch (e: any) {
-        setError(e?.message || "알 수 없는 오류가 발생했습니다.");
-      } finally {
-        setLoading(false);
-      }
+        if (pj?.ok)  setProfile(pj.data as LostarkProfile);
+        else setOvError(pj?.error || "프로필 조회 실패");
+        if (ej?.ok  && Array.isArray(ej.data))              setEquipment(ej.data);
+        if (ngj?.ok && Array.isArray(ngj.data?.Engravings)) setEngravings(ngj.data.Engravings);
+        if (gj?.ok  && Array.isArray(gj.data?.Gems))        setGems(gj.data.Gems);
+        if (cj?.ok  && Array.isArray(cj.data?.Cards))       setCards(cj.data.Cards);
+        if (sj?.ok  && Array.isArray(sj.data))              setSiblings(sj.data);
+      } catch (e: any) { setOvError(e?.message || "오류 발생"); }
+      finally { setOvLoading(false); }
     };
-    void fetchAll();
+    load();
   }, [characterName]);
 
-  const profile   = data?.ArmoryProfile;
-  const equipment = data?.ArmoryEquipment || [];
-  const engravings = data?.ArmoryEngraving?.Engravings || [];
-  const gems      = data?.ArmoryGem?.Gems || [];
-  const cards     = data?.ArmoryCard?.Cards || [];
+  // ── 탭 전환 시 지연 로드 ──
+  useEffect(() => {
+    const enc = encodeURIComponent(characterName);
+    if (tab === "skills" && !skillsFetched) {
+      setSkillsFetched(true); setSkillLoading(true); setSkillError(null);
+      fetch(`/api/lostark?character=${enc}&type=combat-skills`)
+        .then(r => r.json())
+        .then(j => {
+          if (j.ok && Array.isArray(j.data)) setSkills(j.data as LostarkCombatSkill[]);
+          else setSkillError(j.error || "스킬 조회 실패");
+        })
+        .catch(e => setSkillError(e?.message || "오류"))
+        .finally(() => setSkillLoading(false));
+    }
+    if (tab === "arkgrid" && !arkFetched) {
+      setArkFetched(true); setArkLoading(true); setArkError(null);
+      Promise.allSettled([
+        fetch(`/api/lostark?character=${enc}&type=arkpassive`),
+        fetch(`/api/lostark?character=${enc}&type=arkgrid`),
+      ]).then(async ([apr, agr]) => {
+        const parse = async (r: PromiseSettledResult<Response>) => {
+          if (r.status !== "fulfilled") return null;
+          try { return await r.value.json(); } catch { return null; }
+        };
+        const [apj, agj] = await Promise.all([apr, agr].map(parse));
+        if (apj?.ok) setArkPassive(apj.data as LostarkArkPassive);
+        if (agj?.ok) setArkGrid(agj.data as LostarkArkGrid);
+        if (!apj?.ok && !agj?.ok) setArkError("아크 패시브/그리드 조회 실패");
+      }).finally(() => setArkLoading(false));
+    }
+    if (tab === "avatars" && !avatarsFetched) {
+      setAvatarsFetched(true); setAvatarLoading(true); setAvatarError(null);
+      fetch(`/api/lostark?character=${enc}&type=avatars`)
+        .then(r => r.json())
+        .then(j => {
+          if (j.ok && Array.isArray(j.data)) setAvatars(j.data as LostarkAvatar[]);
+          else setAvatarError(j.error || "아바타 조회 실패");
+        })
+        .catch(e => setAvatarError(e?.message || "오류"))
+        .finally(() => setAvatarLoading(false));
+    }
+  }, [tab]);
 
-  const panelBg  = isLight ? "bg-[#fdfaf4] text-[#1a1208]"  : "bg-[#0e0b07]/98 text-white";
-  const borderCl = isLight ? "border-amber-200/40"           : "border-amber-100/12";
-  const subText  = isLight ? "text-stone-500"                : "text-stone-400";
-  const cardBg   = isLight ? "bg-white/70 border-amber-200/30" : "bg-white/[0.05] border-white/10";
+  const cardBg = "bg-white/[0.05] border border-white/10";
+  const EQUIP_ORDER = ["무기","투구","어깨","상의","하의","장갑","목걸이","귀걸이","귀걸이","반지","반지","어빌리티 스톤","팔찌","보조장비"];
+  const sortedEquip = [...equipment].sort((a, b) => {
+    const ai = EQUIP_ORDER.indexOf(a.Type);
+    const bi = EQUIP_ORDER.indexOf(b.Type);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
 
-  const TABS = [
-    { id: "profile",    label: "프로필" },
-    { id: "equipment",  label: "장비" },
-    { id: "engravings", label: "각인" },
-    { id: "gems",       label: "보석" },
-    { id: "cards",      label: "카드" },
-    { id: "siblings",   label: `원정대${siblings.length ? ` (${siblings.length})` : ""}` },
-  ] as const;
+  const TABS: { id: ModalTab; label: string }[] = [
+    { id: "overview", label: "📋 장비 · 능력치" },
+    { id: "skills",   label: "⚔️ 스킬 · 트라이포드" },
+    { id: "arkgrid",  label: "🌟 아크 패시브 · 그리드" },
+    { id: "avatars",  label: "👗 아바타" },
+  ];
+
+  const TabLoading = () => (
+    <div className="flex items-center justify-center gap-2 py-16">
+      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        className="h-6 w-6 rounded-full border-2 border-amber-400 border-t-transparent" />
+      <span className="text-sm text-stone-400">불러오는 중...</span>
+    </div>
+  );
+  const TabError = ({ msg }: { msg: string }) => (
+    <div className="rounded-2xl border border-rose-400/20 bg-rose-400/8 p-6 text-center">
+      <div className="text-rose-300 font-semibold mb-1">조회 실패</div>
+      <div className="text-sm text-stone-400">{msg}</div>
+    </div>
+  );
+  const Empty = ({ msg }: { msg: string }) => (
+    <div className="py-10 text-center text-sm text-stone-500">{msg}</div>
+  );
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-3 backdrop-blur-xl"
       onClick={onClose}
     >
       <motion.div
@@ -10040,242 +10172,301 @@ const LostarkProfileModal = ({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.97 }}
         transition={{ duration: 0.22 }}
-        className={cn(
-          "relative w-full max-w-2xl overflow-hidden rounded-[2rem] border shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl",
-          panelBg, borderCl
-        )}
-        style={{ maxHeight: "90vh" }}
-        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#080808] shadow-[0_32px_80px_rgba(0,0,0,0.8)]"
+        style={{ maxHeight: "92vh" }}
+        onClick={e => e.stopPropagation()}
       >
-        {/* 헤더 */}
-        <div className={cn("flex items-center justify-between border-b px-6 py-4", isLight ? "border-amber-200/30 bg-amber-50/60" : "border-white/8 bg-white/[0.03]")}>
-          <div className="flex items-center gap-3">
-            {profile?.CharacterImage && (
-              <img src={profile.CharacterImage} alt={characterName} className="h-12 w-12 rounded-2xl border border-white/10 object-cover bg-black/30" />
-            )}
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold">{characterName}</span>
-                {profile?.GuildName && (
-                  <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold", isLight ? "border-amber-300/40 bg-amber-100 text-amber-700" : "border-amber-300/20 bg-amber-300/10 text-amber-200")}>
-                    {profile.GuildName}
-                  </span>
+        {/* ── 헤더 배경 이미지 ── */}
+        <div className="relative overflow-hidden" style={{ minHeight: 130 }}>
+          {profile?.CharacterImage && (
+            <div className="absolute inset-0">
+              <img src={profile.CharacterImage} alt={characterName}
+                className="w-full h-full object-cover object-top"
+                style={{ filter: "brightness(0.35) saturate(1.1)" }} />
+              <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 10%, #080808 100%)" }} />
+            </div>
+          )}
+          <div className="relative z-10 flex items-end justify-between px-6 py-5" style={{ minHeight: 130 }}>
+            <div className="flex items-end gap-4">
+              {profile?.CharacterImage && (
+                <img src={profile.CharacterImage} alt={characterName}
+                  className="h-16 w-16 rounded-2xl border-2 border-white/20 object-cover bg-black/50 shrink-0"
+                  style={{ objectPosition: "top center" }} />
+              )}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xl font-bold text-white">{characterName}</span>
+                  {profile?.GuildName && (
+                    <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
+                      {profile.GuildName}
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-white/50 mt-0.5">
+                  {profile?.ServerName && <span>{profile.ServerName} · </span>}
+                  <span>{profile?.CharacterClassName || "-"}</span>
+                  {profile?.ItemAvgLevel && <span className="text-amber-300"> · 아이템 {profile.ItemAvgLevel}</span>}
+                  {profile?.Title && <span className="text-white/35"> · {profile.Title}</span>}
+                </div>
+                {profile?.Stats && (
+                  <div className="flex gap-3 mt-1.5 flex-wrap">
+                    {profile.Stats.filter(s => Number(s.Value) > 0 && ["치명","특화","신속","제압","인내","숙련"].includes(s.Type)).map(s => (
+                      <span key={s.Type} className="text-[10px] text-white/35">
+                        {s.Type} <b className="text-amber-200">{Number(s.Value).toLocaleString()}</b>
+                      </span>
+                    ))}
+                  </div>
                 )}
               </div>
-              <div className={cn("text-sm mt-0.5", subText)}>
-                {profile?.ServerName && <span>{profile.ServerName} · </span>}
-                <span>{profile?.CharacterClassName || "-"}</span>
-                {profile?.ItemAvgLevel && <span> · 아이템 Lv.{profile.ItemAvgLevel}</span>}
-              </div>
             </div>
+            <button onClick={onClose}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 text-stone-400 hover:bg-white/10 hover:text-white transition-all mb-1">
+              <X size={16} />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className={cn("flex h-9 w-9 items-center justify-center rounded-xl border transition-all", isLight ? "border-amber-200/40 text-stone-400 hover:bg-amber-100" : "border-white/10 text-stone-400 hover:bg-white/10 hover:text-white")}
-          >
-            <X size={16} />
-          </button>
         </div>
 
-        {/* 탭 */}
-        <div className={cn("flex gap-1 overflow-x-auto border-b px-4 py-2", isLight ? "border-amber-200/30" : "border-white/8")}>
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+        {/* ── 탭 바 ── */}
+        <div className="flex overflow-x-auto border-b border-white/8 bg-black/40 px-2">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
               className={cn(
-                "shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all",
+                "shrink-0 px-4 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap",
                 tab === t.id
-                  ? "bg-amber-500 text-white shadow-md"
-                  : isLight ? "text-stone-500 hover:bg-amber-100" : "text-stone-400 hover:bg-white/8 hover:text-white"
-              )}
-            >
+                  ? "border-amber-400 text-amber-300"
+                  : "border-transparent text-stone-500 hover:text-white hover:bg-white/5"
+              )}>
               {t.label}
             </button>
           ))}
         </div>
 
-        {/* 바디 */}
-        <div className="overflow-y-auto p-5" style={{ maxHeight: "calc(90vh - 180px)" }}>
+        {/* ── 탭 바디 ── */}
+        <div className="overflow-y-auto p-5 space-y-4" style={{ maxHeight: "calc(92vh - 240px)" }}>
 
-          {/* 로딩 */}
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="h-8 w-8 rounded-full border-2 border-amber-400 border-t-transparent"
-              />
-              <p className={cn("text-sm", subText)}>인게임 정보 불러오는 중...</p>
-            </div>
-          )}
-
-          {/* 에러 */}
-          {!loading && error && (
-            <div className="rounded-2xl border border-rose-400/20 bg-rose-400/8 p-6 text-center">
-              <div className="text-2xl mb-2">😥</div>
-              <div className="font-semibold text-rose-300 mb-1">조회 실패</div>
-              <div className={cn("text-sm", subText)}>{error}</div>
-              <div className={cn("mt-3 text-xs", subText)}>
-                로스트아크 게임 내 설정 → 개인정보 → 전투정보실 공개로 변경해주세요.
-              </div>
-            </div>
-          )}
-
-          {!loading && !error && data && (
+          {/* ════ TAB 1: 장비 · 능력치 ════ */}
+          {tab === "overview" && (
             <>
-              {/* ── 프로필 탭 ── */}
-              {tab === "profile" && profile && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {[
-                      { label: "서버",       value: profile.ServerName },
-                      { label: "원정대 레벨", value: `Lv.${profile.ExpeditionLevel}` },
-                      { label: "캐릭터 레벨", value: `Lv.${profile.CharacterLevel}` },
-                      { label: "평균 아이템", value: profile.ItemAvgLevel },
-                      { label: "최고 아이템", value: profile.ItemMaxLevel },
-                      { label: "영지",        value: profile.TownName ? `${profile.TownName} Lv.${profile.TownLevel}` : "-" },
-                      { label: "직업",        value: profile.CharacterClassName },
-                      { label: "칭호",        value: profile.Title || "-" },
-                      { label: "PVP",         value: profile.PvpGradeName || "-" },
-                    ].map(({ label, value }) => (
-                      <div key={label} className={cn("rounded-2xl border p-3", cardBg)}>
-                        <div className={cn("text-[10px] font-semibold uppercase tracking-widest mb-1", subText)}>{label}</div>
-                        <div className="text-sm font-semibold truncate">{value || "-"}</div>
-                      </div>
-                    ))}
-                  </div>
+              {ovLoading && <TabLoading />}
+              {!ovLoading && ovError && !profile && <TabError msg={ovError} />}
+              {!ovLoading && (
+                <div className="space-y-5">
 
-                  {/* 스탯 */}
-                  {profile.Stats && profile.Stats.length > 0 && (
-                    <div className={cn("rounded-2xl border p-4", cardBg)}>
-                      <div className={cn("text-[10px] font-semibold uppercase tracking-widest mb-3", subText)}>전투 스탯</div>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {profile.Stats.filter((s) => Number(s.Value) > 0).map((stat) => (
-                          <div key={stat.Type} className="flex items-center justify-between">
-                            <span className={cn("text-xs", subText)}>{stat.Type}</span>
-                            <span className="text-xs font-bold text-amber-300">{Number(stat.Value).toLocaleString()}</span>
+                  {/* 기본 정보 그리드 */}
+                  {profile && (
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {[
+                        { label: "서버",       value: profile.ServerName },
+                        { label: "원정대",     value: `Lv.${profile.ExpeditionLevel}` },
+                        { label: "캐릭터",     value: `Lv.${profile.CharacterLevel}` },
+                        { label: "평균 아이템", value: profile.ItemAvgLevel },
+                        { label: "최고 아이템", value: profile.ItemMaxLevel },
+                        { label: "영지",       value: profile.TownName ? `${profile.TownName} Lv.${profile.TownLevel}` : "-" },
+                        { label: "칭호",       value: profile.Title || "-" },
+                        { label: "PVP",        value: profile.PvpGradeName || "-" },
+                      ].map(({ label, value }) => (
+                        <div key={label} className={cn("rounded-xl p-2.5", cardBg)}>
+                          <div className="text-[9px] font-semibold uppercase tracking-widest text-stone-500 mb-1">{label}</div>
+                          <div className="text-xs font-semibold truncate">{value || "-"}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 성향 */}
+                  {profile?.Tendencies && profile.Tendencies.length > 0 && (
+                    <div className={cn("rounded-2xl p-4", cardBg)}>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-3">성향</div>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                        {profile.Tendencies.map(t => (
+                          <div key={t.Type} className="flex items-center gap-2">
+                            <span className="text-[10px] text-stone-400 w-10 shrink-0">{t.Type}</span>
+                            <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                              <div className="h-full rounded-full bg-amber-400" style={{ width: `${Math.round((t.Point/t.MaxPoint)*100)}%` }} />
+                            </div>
+                            <span className="text-[10px] text-amber-300 font-bold w-8 text-right">{t.Point}</span>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* ── 장비 탭 ── */}
-              {tab === "equipment" && (
-                <div className="space-y-2">
-                  {equipment.length === 0 && (
-                    <div className={cn("text-center py-10 text-sm", subText)}>장비 정보가 없습니다.</div>
-                  )}
-                  {equipment.map((eq, i) => (
-                    <div key={i} className={cn("flex items-center gap-3 rounded-2xl border p-3", cardBg)}>
-                      <img src={eq.Icon} alt={eq.Name} className="h-12 w-12 rounded-xl border border-white/10 object-cover bg-black/20" style={{ borderColor: gradeColor(eq.Grade) }} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold truncate">{eq.Name}</div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className={cn("text-[10px]", subText)}>{eq.Type}</span>
-                          <span className="text-[10px] font-bold" style={{ color: gradeColor(eq.Grade) }}>{eq.Grade}</span>
+                  {/* 장비 */}
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">장착 장비</div>
+                    {sortedEquip.length === 0
+                      ? <Empty msg="장비 정보가 없습니다." />
+                      : (
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {sortedEquip.map((eq, i) => (
+                            <div key={i} className={cn("flex items-center gap-3 rounded-xl p-2.5", cardBg)}>
+                              <img src={eq.Icon} alt={eq.Name}
+                                className="h-10 w-10 rounded-lg object-cover bg-black/40 shrink-0"
+                                style={{ boxShadow: `0 0 0 1.5px ${gradeColor(eq.Grade)}` }} />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-semibold truncate">{eq.Name}</div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[10px] text-stone-500">{eq.Type}</span>
+                                  <span className="text-[10px] font-bold" style={{ color: gradeColor(eq.Grade) }}>· {eq.Grade}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                      )}
+                  </div>
 
-              {/* ── 각인 탭 ── */}
-              {tab === "engravings" && (
-                <div className="space-y-2">
-                  {engravings.length === 0 && (
-                    <div className={cn("text-center py-10 text-sm", subText)}>각인 정보가 없습니다.</div>
-                  )}
-                  {engravings.map((eng, i) => (
-                    <div key={i} className={cn("flex items-center gap-3 rounded-2xl border p-3", cardBg)}>
-                      <img src={eng.Icon} alt={eng.Name} className="h-10 w-10 rounded-xl border border-white/10 object-cover bg-black/20" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold">{eng.Name}</span>
-                          <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">Lv.{eng.Level}</span>
+                  {/* 각인 + 보석 2단 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">각인</div>
+                      {engravings.length === 0 ? <Empty msg="각인 정보 없음" /> : (
+                        <div className="space-y-1.5">
+                          {engravings.map((eng, i) => (
+                            <div key={i} className={cn("flex items-center gap-2.5 rounded-xl p-2.5", cardBg)}>
+                              <img src={eng.Icon} alt={eng.Name}
+                                className="h-8 w-8 rounded-lg border border-white/10 object-cover bg-black/30 shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-semibold truncate">{eng.Name}</span>
+                                  <span className="shrink-0 rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Lv.{eng.Level}</span>
+                                </div>
+                                <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">{eng.Description}</div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <div className={cn("text-xs mt-0.5 line-clamp-1", subText)}>{eng.Description}</div>
-                      </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {/* ── 보석 탭 ── */}
-              {tab === "gems" && (
-                <div className="grid grid-cols-2 gap-3">
-                  {gems.length === 0 && (
-                    <div className={cn("col-span-2 text-center py-10 text-sm", subText)}>보석 정보가 없습니다.</div>
-                  )}
-                  {gems.sort((a, b) => b.Level - a.Level).map((gem, i) => (
-                    <div key={i} className={cn("flex items-center gap-2.5 rounded-2xl border p-3", cardBg)}>
-                      <div className="relative shrink-0">
-                        <img src={gem.Icon} alt={gem.Name} className="h-11 w-11 rounded-xl border object-cover bg-black/20" style={{ borderColor: gradeColor(gem.Grade) }} />
-                        <span className="absolute -bottom-1 -right-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">
-                          {gem.Level}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold truncate">{gem.Skill?.Name || gem.Name}</div>
-                        <div className={cn("text-[10px] mt-0.5", subText)} style={{ color: gradeColor(gem.Grade) }}>{gem.Grade}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* ── 카드 탭 ── */}
-              {tab === "cards" && (
-                <div className="grid grid-cols-3 gap-3">
-                  {cards.length === 0 && (
-                    <div className={cn("col-span-3 text-center py-10 text-sm", subText)}>카드 정보가 없습니다.</div>
-                  )}
-                  {cards.map((card, i) => (
-                    <div key={i} className={cn("flex flex-col items-center gap-2 rounded-2xl border p-3 text-center", cardBg)}>
-                      <img src={card.Icon} alt={card.Name} className="h-16 w-12 rounded-xl border object-cover bg-black/20" style={{ borderColor: gradeColor(card.Grade) }} />
-                      <div>
-                        <div className="text-xs font-semibold line-clamp-2">{card.Name}</div>
-                        <div className="mt-1 text-[10px]" style={{ color: gradeColor(card.Grade) }}>{card.Grade}</div>
-                        <div className={cn("text-[10px] mt-0.5", subText)}>각성 {card.AwakeCount}/{card.AwakeTotal}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* ── 원정대 탭 ── */}
-              {tab === "siblings" && (
-                <div className="space-y-2">
-                  {siblings.length === 0 && (
-                    <div className={cn("text-center py-10 text-sm", subText)}>원정대 캐릭터 정보가 없습니다.</div>
-                  )}
-                  {[...siblings]
-                    .sort((a, b) => Number(b.ItemAvgLevel?.replace(/,/g, "") || 0) - Number(a.ItemAvgLevel?.replace(/,/g, "") || 0))
-                    .map((sib, i) => (
-                    <div key={i} className={cn("flex items-center justify-between rounded-2xl border p-3", cardBg,
-                      sib.CharacterName === characterName ? (isLight ? "border-amber-300/60 bg-amber-50" : "border-amber-400/30 bg-amber-400/8") : ""
-                    )}>
-                      <div className="flex items-center gap-3">
-                        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold", isLight ? "bg-amber-100 text-amber-700" : "bg-amber-400/15 text-amber-300")}>
-                          {i + 1}
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">보석</div>
+                      {gems.length === 0 ? <Empty msg="보석 정보 없음" /> : (
+                        <div className="grid grid-cols-3 gap-2">
+                          {[...gems].sort((a, b) => b.Level - a.Level).map((gem, i) => (
+                            <div key={i} className={cn("flex flex-col items-center gap-1 rounded-xl p-2 text-center", cardBg)}>
+                              <div className="relative">
+                                <img src={gem.Icon} alt={gem.Name}
+                                  className="h-9 w-9 rounded-lg object-cover bg-black/40"
+                                  style={{ boxShadow: `0 0 0 1.5px ${gradeColor(gem.Grade)}` }} />
+                                <span className="absolute -bottom-1 -right-1 rounded-full bg-black border border-amber-400/50 px-1 text-[8px] font-bold text-amber-300">
+                                  {gem.Level}
+                                </span>
+                              </div>
+                              <div className="text-[9px] text-stone-400 truncate w-full">{gem.Skill?.Name || gem.Name}</div>
+                            </div>
+                          ))}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-semibold">{sib.CharacterName}</span>
-                            {sib.CharacterName === characterName && (
-                              <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">현재</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 카드 */}
+                  {cards.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">카드</div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {cards.map((card, i) => (
+                          <div key={i} className={cn("flex flex-col items-center gap-1.5 rounded-xl p-2 text-center", cardBg)}>
+                            <img src={card.Icon} alt={card.Name}
+                              className="h-14 w-10 rounded-lg object-cover bg-black/20"
+                              style={{ boxShadow: `0 0 0 1.5px ${gradeColor(card.Grade)}` }} />
+                            <div className="text-[9px] font-semibold line-clamp-2 leading-tight">{card.Name}</div>
+                            <div className="text-[9px]" style={{ color: gradeColor(card.Grade) }}>{card.Grade}</div>
+                            <div className="text-[9px] text-stone-500">각성 {card.AwakeCount}/{card.AwakeTotal}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 원정대 */}
+                  {siblings.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">원정대 ({siblings.length}명)</div>
+                      <div className="space-y-1">
+                        {[...siblings]
+                          .sort((a, b) => Number(b.ItemAvgLevel?.replace(/,/g, "") || 0) - Number(a.ItemAvgLevel?.replace(/,/g, "") || 0))
+                          .map((sib, i) => (
+                            <div key={i} className={cn(
+                              "flex items-center justify-between rounded-xl px-3 py-2",
+                              sib.CharacterName === characterName ? "border border-amber-400/30 bg-amber-400/8" : cardBg
+                            )}>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[10px] font-bold text-amber-400/60 w-4 shrink-0">{i + 1}</span>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-semibold truncate">{sib.CharacterName}</span>
+                                    {sib.CharacterName === characterName && (
+                                      <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-bold text-amber-300 shrink-0">현재</span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-stone-500">{sib.ServerName} · {sib.CharacterClassName}</div>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0 ml-2">
+                                <div className="text-xs font-bold text-amber-300">{sib.ItemAvgLevel}</div>
+                                <div className="text-[10px] text-stone-500">Lv.{sib.CharacterLevel}</div>
+                              </div>
+                            </div>
+                          ))
+                        }
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ════ TAB 2: 스킬 · 트라이포드 ════ */}
+          {tab === "skills" && (
+            <>
+              {skillLoading && <TabLoading />}
+              {!skillLoading && skillError && <TabError msg={skillError} />}
+              {!skillLoading && !skillError && skills.length === 0 && <Empty msg="스킬 정보가 없습니다." />}
+              {!skillLoading && !skillError && skills.length > 0 && (
+                <div className="space-y-2">
+                  {skills.filter(sk => sk.Level > 0 || sk.IsAwakening).map((sk, i) => (
+                    <div key={i} className={cn("rounded-2xl p-3.5", cardBg)}>
+                      <div className="flex items-start gap-3">
+                        <div className="relative shrink-0">
+                          <img src={sk.Icon} alt={sk.Name}
+                            className="h-12 w-12 rounded-xl object-cover bg-black/40 border border-white/10" />
+                          {sk.Level > 0 && (
+                            <span className="absolute -bottom-1 -right-1 rounded-full bg-black border border-amber-400/60 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">
+                              {sk.Level}
+                            </span>
+                          )}
+                          {sk.IsAwakening && (
+                            <span className="absolute -top-1 -left-1 rounded-full bg-purple-600 border border-purple-400 px-1 py-0.5 text-[8px] font-bold text-white">각</span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
+                            <span className="text-sm font-bold">{sk.Name}</span>
+                            {sk.Type && <span className="text-[10px] text-stone-500 bg-white/5 px-1.5 py-0.5 rounded">{sk.Type}</span>}
+                            {sk.Rune && (
+                              <span className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded">
+                                <img src={sk.Rune.Icon} alt={sk.Rune.Name} className="h-3.5 w-3.5 rounded object-cover" />
+                                <span className="text-[10px] font-semibold" style={{ color: gradeColor(sk.Rune.Grade) }}>{sk.Rune.Name}</span>
+                              </span>
                             )}
                           </div>
-                          <div className={cn("text-xs mt-0.5", subText)}>{sib.ServerName} · {sib.CharacterClassName}</div>
+                          {/* 선택된 트라이포드 */}
+                          {sk.Tripods && sk.Tripods.filter(t => t.IsSelected).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {sk.Tripods.filter(t => t.IsSelected).map((tp, ti) => (
+                                <div key={ti} className="flex items-center gap-1 rounded-lg bg-amber-400/10 border border-amber-400/20 px-2 py-1">
+                                  <img src={tp.Icon} alt={tp.Name} className="h-4 w-4 rounded object-cover" />
+                                  <span className="text-[10px] font-semibold text-amber-200">{tp.Name}</span>
+                                  {tp.Level !== undefined && (
+                                    <span className="text-[9px] text-amber-400/70">Lv.{tp.Level}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-amber-300">{sib.ItemAvgLevel}</div>
-                        <div className={cn("text-[10px]", subText)}>Lv.{sib.CharacterLevel}</div>
                       </div>
                     </div>
                   ))}
@@ -10283,13 +10474,134 @@ const LostarkProfileModal = ({
               )}
             </>
           )}
+
+          {/* ════ TAB 3: 아크 패시브 · 그리드 ════ */}
+          {tab === "arkgrid" && (
+            <>
+              {arkLoading && <TabLoading />}
+              {!arkLoading && arkError && <TabError msg={arkError} />}
+              {!arkLoading && !arkError && (
+                <div className="space-y-5">
+
+                  {/* 아크 패시브 포인트 */}
+                  {arkPassive?.Points && arkPassive.Points.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">아크 패시브 포인트</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {arkPassive.Points.map((pt, i) => (
+                          <div key={i} className={cn("rounded-xl p-3 text-center", cardBg)}>
+                            <div className="text-[10px] text-stone-400 mb-1">{pt.Name}</div>
+                            <div className="text-2xl font-bold text-amber-300">{pt.Value}</div>
+                            {pt.Description && (
+                              <div className="text-[9px] text-stone-500 mt-1 line-clamp-2">{pt.Description}</div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 아크 패시브 효과 */}
+                  {arkPassive?.Effects && arkPassive.Effects.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">아크 패시브 효과</div>
+                      <div className="space-y-1.5">
+                        {arkPassive.Effects.map((ef, i) => (
+                          <div key={i} className={cn("flex items-center gap-3 rounded-xl p-2.5", cardBg)}>
+                            {ef.Icon && (
+                              <img src={ef.Icon} alt={ef.Name}
+                                className="h-8 w-8 rounded-lg object-cover bg-black/40 shrink-0 border border-white/10" />
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold">{ef.Name}</span>
+                                {ef.Level > 0 && (
+                                  <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Lv.{ef.Level}</span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-2">{ef.Description}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 아크 그리드 */}
+                  {arkGrid && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">아크 그리드</div>
+                      {arkGrid.Name && <div className="text-sm font-bold text-amber-200 mb-2">{arkGrid.Name}</div>}
+                      {arkGrid.Effects && arkGrid.Effects.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {arkGrid.Effects.map((ef, i) => (
+                            <div key={i} className={cn("flex items-center gap-3 rounded-xl p-2.5", cardBg)}>
+                              {ef.Icon && (
+                                <img src={ef.Icon} alt={ef.Name}
+                                  className="h-8 w-8 rounded-lg object-cover bg-black/40 shrink-0 border border-white/10" />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-semibold">{ef.Name}</div>
+                                <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-2">{ef.Description}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <Empty msg="아크 그리드 효과 정보가 없습니다." />
+                      )}
+                    </div>
+                  )}
+
+                  {!arkPassive && !arkGrid && <Empty msg="아크 패시브/그리드 정보가 없습니다." />}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ════ TAB 4: 아바타 ════ */}
+          {tab === "avatars" && (
+            <>
+              {avatarLoading && <TabLoading />}
+              {!avatarLoading && avatarError && <TabError msg={avatarError} />}
+              {!avatarLoading && !avatarError && avatars.length === 0 && <Empty msg="아바타 정보가 없습니다." />}
+              {!avatarLoading && !avatarError && avatars.length > 0 && (
+                <div className="grid grid-cols-1 gap-1.5">
+                  {avatars.map((av, i) => (
+                    <div key={i} className={cn("flex items-center gap-3 rounded-xl p-2.5", cardBg)}>
+                      <img src={av.Icon} alt={av.Name}
+                        className="h-10 w-10 rounded-lg object-cover bg-black/40 shrink-0"
+                        style={{ boxShadow: `0 0 0 1.5px ${gradeColor(av.Grade)}` }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-semibold truncate">{av.Name}</span>
+                          {av.IsSet && (
+                            <span className="rounded-full bg-sky-400/15 border border-sky-400/25 px-1.5 py-0.5 text-[9px] font-bold text-sky-300">세트</span>
+                          )}
+                          {av.IsInner && (
+                            <span className="rounded-full bg-purple-400/15 border border-purple-400/25 px-1.5 py-0.5 text-[9px] font-bold text-purple-300">이너</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-stone-500">{av.Type}</span>
+                          <span className="text-[10px] font-bold" style={{ color: gradeColor(av.Grade) }}>· {av.Grade}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
         </div>
       </motion.div>
     </motion.div>
   );
 };
-
 // ── End LostarkProfileModal ─────────────────────────────────
+
+
 
 
 // ══════════════════════════════════════════════════════════
