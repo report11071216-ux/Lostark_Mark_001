@@ -11060,7 +11060,6 @@ const GuildMembersPage = () => {
   );
 };
 
-};
 
 
 const AdminCharacterManager = () => {
