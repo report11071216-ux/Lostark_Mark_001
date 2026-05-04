@@ -10291,6 +10291,224 @@ const LostarkProfileModal = ({
 
 // ── End LostarkProfileModal ─────────────────────────────────
 
+
+// ══════════════════════════════════════════════════════════
+//  GuildItemLevelDashboard
+// ══════════════════════════════════════════════════════════
+const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
+  const [open, setOpen] = useState(true);
+
+  const mainMembers = members.filter((m: any) => m.is_main);
+  const base = mainMembers.length > 0 ? mainMembers : members;
+
+  const levels = base
+    .map((m: any) => parseFloat(String(m.item_level || "0").replace(/,/g, "")))
+    .filter((v: number) => v > 0);
+
+  if (levels.length === 0) return null;
+
+  const avg     = levels.reduce((a: number, b: number) => a + b, 0) / levels.length;
+  const highest = Math.max(...levels);
+  const lowest  = Math.min(...levels);
+
+  // 구간별 인원
+  const bands = [
+    { label: "1800+", min: 1800, max: Infinity, color: "#00CCFF" },
+    { label: "1700+", min: 1700, max: 1800,     color: "#E6C97A" },
+    { label: "1600+", min: 1600, max: 1700,     color: "#FF8C00" },
+    { label: "1500+", min: 1500, max: 1600,     color: "#B44BE1" },
+    { label: "~1499", min: 0,    max: 1500,     color: "#666" },
+  ];
+
+  const bandCounts = bands.map(b => ({
+    ...b,
+    count: levels.filter((v: number) => v >= b.min && v < b.max).length,
+  }));
+
+  // 직업별 평균 레벨 (상위 6개)
+  const classMap: Record<string, number[]> = {};
+  base.forEach((m: any) => {
+    const cls = String(m.class_name || "").trim();
+    const lv  = parseFloat(String(m.item_level || "0").replace(/,/g, ""));
+    if (cls && lv > 0) {
+      if (!classMap[cls]) classMap[cls] = [];
+      classMap[cls].push(lv);
+    }
+  });
+  const classAvgs = Object.entries(classMap)
+    .map(([cls, lvs]) => ({ cls, avg: lvs.reduce((a, b) => a + b, 0) / lvs.length, count: lvs.length }))
+    .sort((a, b) => b.avg - a.avg)
+    .slice(0, 6);
+
+  const barMax = classAvgs.length > 0 ? Math.max(...classAvgs.map(c => c.avg)) : 1;
+  const totalForBand = bandCounts.reduce((s, b) => s + b.count, 0);
+
+  return (
+    <div className="mb-10 rounded-[2rem] border border-amber-400/15 bg-gradient-to-br from-[#0e0b07]/95 to-[#0a0807]/95 overflow-hidden">
+      {/* 헤더 */}
+      <button
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-all"
+        onClick={() => setOpen(p => !p)}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/15 border border-amber-400/20">
+            <BarChart3 size={15} className="text-amber-300" />
+          </div>
+          <span className="text-sm font-bold text-white">길드 아이템 레벨 대시보드</span>
+          <span className="text-[10px] text-slate-500 font-normal">
+            {mainMembers.length > 0 ? `메인캐 ${mainMembers.length}명 기준` : `전체 ${members.length}명 기준`}
+          </span>
+        </div>
+        <ChevronDown
+          size={16}
+          className={cn("text-slate-400 transition-transform duration-200", open ? "rotate-180" : "")}
+        />
+      </button>
+
+      {open && (
+        <div className="px-6 pb-6 space-y-6 border-t border-white/6">
+
+          {/* ── 핵심 지표 3개 ── */}
+          <div className="grid grid-cols-3 gap-4 pt-6">
+            {[
+              {
+                label: "평균 아이템 레벨",
+                value: avg.toFixed(2),
+                sub: `${base.length}명 평균`,
+                color: "#fbbf24",
+                icon: (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                  </svg>
+                ),
+              },
+              {
+                label: "최고 아이템 레벨",
+                value: highest.toFixed(2),
+                sub: base.find((m: any) => parseFloat(String(m.item_level || "0").replace(/,/g, "")) === highest)?.character_name || "",
+                color: "#00CCFF",
+                icon: (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="18 15 12 9 6 15"/>
+                  </svg>
+                ),
+              },
+              {
+                label: "최저 아이템 레벨",
+                value: lowest.toFixed(2),
+                sub: base.find((m: any) => parseFloat(String(m.item_level || "0").replace(/,/g, "")) === lowest)?.character_name || "",
+                color: "#B44BE1",
+                icon: (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                ),
+              },
+            ].map(({ label, value, sub, color, icon }) => (
+              <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg" style={{ background: `${color}20`, color }}>
+                    {icon}
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium">{label}</span>
+                </div>
+                <div className="text-2xl font-bold" style={{ color }}>{value}</div>
+                <div className="text-[10px] text-slate-500 truncate">{sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── 구간 분포 ── */}
+          <div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-semibold mb-3">레벨 구간 분포</div>
+            <div className="space-y-2">
+              {bandCounts.map(b => {
+                const pct = totalForBand > 0 ? (b.count / totalForBand) * 100 : 0;
+                return (
+                  <div key={b.label} className="flex items-center gap-3">
+                    <div className="w-14 text-right text-[11px] font-bold shrink-0" style={{ color: b.color }}>{b.label}</div>
+                    <div className="flex-1 h-5 rounded-full bg-white/[0.05] overflow-hidden">
+                      <div
+                        className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
+                        style={{
+                          width: `${Math.max(pct, pct > 0 ? 4 : 0)}%`,
+                          background: `linear-gradient(90deg, ${b.color}55, ${b.color}cc)`,
+                        }}
+                      >
+                        {pct >= 8 && (
+                          <span className="text-[9px] font-bold text-white/90">{b.count}명</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="w-12 text-[11px] text-slate-400 shrink-0">
+                      {b.count}명 <span className="text-slate-600">({pct.toFixed(0)}%)</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── 직업별 평균 레벨 ── */}
+          {classAvgs.length > 0 && (
+            <div>
+              <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-semibold mb-3">직업별 평균 레벨 (상위 6)</div>
+              <div className="space-y-2">
+                {classAvgs.map(({ cls, avg: cavg, count }) => {
+                  const pct = barMax > 0 ? (cavg / barMax) * 100 : 0;
+                  return (
+                    <div key={cls} className="flex items-center gap-3">
+                      <div className="w-20 text-[11px] text-slate-300 truncate shrink-0">{cls}</div>
+                      <div className="flex-1 h-5 rounded-full bg-white/[0.05] overflow-hidden">
+                        <div
+                          className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
+                          style={{
+                            width: `${pct}%`,
+                            background: "linear-gradient(90deg, rgba(251,191,36,0.3), rgba(251,191,36,0.7))",
+                          }}
+                        >
+                          {pct >= 20 && (
+                            <span className="text-[9px] font-bold text-amber-100">{cavg.toFixed(0)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="w-20 text-right text-[11px] shrink-0">
+                        <span className="text-amber-300 font-bold">{cavg.toFixed(2)}</span>
+                        <span className="text-slate-600 ml-1">({count}명)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── 하단 요약 칩 ── */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {[
+              { label: "1800+ 달성",  count: bandCounts[0].count, color: "#00CCFF" },
+              { label: "1700+ 달성",  count: bandCounts[0].count + bandCounts[1].count, color: "#E6C97A" },
+              { label: "1600+ 달성",  count: bandCounts[0].count + bandCounts[1].count + bandCounts[2].count, color: "#FF8C00" },
+              { label: "메인캐 등록", count: mainMembers.length, color: "#fbbf24" },
+            ].map(({ label, count, color }) => (
+              <div
+                key={label}
+                className="flex items-center gap-2 rounded-xl border px-3 py-1.5"
+                style={{ borderColor: `${color}30`, background: `${color}10` }}
+              >
+                <span className="text-[10px] text-slate-400">{label}</span>
+                <span className="text-xs font-bold" style={{ color }}>{count}명</span>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+};
+// ══════════════════════════════════════════════════════════
+
 const GuildMembersPage = () => {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -10598,6 +10816,10 @@ const GuildMembersPage = () => {
           ))}
         </div>
       </div>
+
+      {/* ── 아이템 레벨 대시보드 ── */}
+      <GuildItemLevelDashboard members={members} />
+
 
       {/* 검색 & 직업 필터 */}
       <div className="mb-6 flex flex-col sm:flex-row gap-3">
