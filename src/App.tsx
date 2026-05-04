@@ -9876,12 +9876,428 @@ const RankingPage = ({ user, profile }: any) => {
 
 
 
+// ═══════════════════════════════════════════════════════════
+// ── 로스트아크 전투정보실 인게임 프로필 모달 ──────────────────
+// ═══════════════════════════════════════════════════════════
+
+type LostarkProfile = {
+  CharacterName: string;
+  CharacterClassName: string;
+  ItemAvgLevel: string;
+  ItemMaxLevel: string;
+  ServerName: string;
+  CharacterLevel: number;
+  CharacterImage?: string;
+  ExpeditionLevel: number;
+  PvpGradeName?: string;
+  TownLevel: number;
+  TownName?: string;
+  Title?: string;
+  GuildName?: string;
+  Stats?: Array<{ Type: string; Value: string; Tooltip: string[] }>;
+  Tendencies?: Array<{ Type: string; Point: number; MaxPoint: number }>;
+};
+
+type LostarkEquipment = {
+  Type: string;
+  Name: string;
+  Icon: string;
+  Grade: string;
+  Tooltip?: string;
+};
+
+type LostarkEngraving = {
+  Name: string;
+  Icon: string;
+  Description: string;
+  Level: number;
+};
+
+type LostarkGem = {
+  Slot: number;
+  Name: string;
+  Icon: string;
+  Level: number;
+  Grade: string;
+  Skill: { Name: string; Icon: string; Description: string; Color: string };
+  Effects?: Array<{ Name: string; Description: string; Debuff: boolean }>;
+};
+
+type LostarkCard = {
+  Name: string;
+  Icon: string;
+  Grade: string;
+  AwakeCount: number;
+  AwakeTotal: number;
+  Slot: number;
+};
+
+type LostarkSibling = {
+  ServerName: string;
+  CharacterName: string;
+  CharacterLevel: number;
+  CharacterClassName: string;
+  ItemAvgLevel: string;
+  ItemMaxLevel: string;
+};
+
+type LostarkAllData = {
+  ArmoryProfile?: LostarkProfile;
+  ArmoryEquipment?: LostarkEquipment[];
+  ArmoryEngraving?: { Engravings: LostarkEngraving[]; Effects?: any[] };
+  ArmoryGem?: { Gems: LostarkGem[]; Effects?: any[] };
+  ArmoryCard?: { Cards: LostarkCard[]; Effects?: any[] };
+};
+
+const GRADE_COLOR: Record<string, string> = {
+  "에스더":    "#00CCFF",
+  "고대":      "#E6C97A",
+  "유물":      "#FF8C00",
+  "영웅":      "#B44BE1",
+  "희귀":      "#4A90D9",
+  "고급":      "#66BB6A",
+  "일반":      "#9E9E9E",
+};
+
+const gradeColor = (grade: string) => GRADE_COLOR[grade] || "#9E9E9E";
+
+const LostarkProfileModal = ({
+  characterName,
+  onClose,
+}: {
+  characterName: string;
+  onClose: () => void;
+}) => {
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
+  const [data, setData]       = useState<LostarkAllData | null>(null);
+  const [siblings, setSiblings] = useState<LostarkSibling[]>([]);
+  const [tab, setTab]         = useState<"profile" | "equipment" | "engravings" | "gems" | "cards" | "siblings">("profile");
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // 메인 정보 (profile+equipment+engravings+gems+cards 한번에)
+        const res = await fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=all`);
+        const json = await res.json();
+        if (!json.ok) {
+          setError(json.error || "데이터를 불러오지 못했습니다.");
+          setLoading(false);
+          return;
+        }
+        setData(json.data as LostarkAllData);
+
+        // 원정대 캐릭터 (별도 요청)
+        const sibRes = await fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=siblings`);
+        const sibJson = await sibRes.json();
+        if (sibJson.ok && Array.isArray(sibJson.data)) {
+          setSiblings(sibJson.data as LostarkSibling[]);
+        }
+      } catch (e: any) {
+        setError(e?.message || "알 수 없는 오류가 발생했습니다.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    void fetchAll();
+  }, [characterName]);
+
+  const profile   = data?.ArmoryProfile;
+  const equipment = data?.ArmoryEquipment || [];
+  const engravings = data?.ArmoryEngraving?.Engravings || [];
+  const gems      = data?.ArmoryGem?.Gems || [];
+  const cards     = data?.ArmoryCard?.Cards || [];
+
+  const panelBg  = isLight ? "bg-[#fdfaf4] text-[#1a1208]"  : "bg-[#0e0b07]/98 text-white";
+  const borderCl = isLight ? "border-amber-200/40"           : "border-amber-100/12";
+  const subText  = isLight ? "text-stone-500"                : "text-stone-400";
+  const cardBg   = isLight ? "bg-white/70 border-amber-200/30" : "bg-white/[0.05] border-white/10";
+
+  const TABS = [
+    { id: "profile",    label: "프로필" },
+    { id: "equipment",  label: "장비" },
+    { id: "engravings", label: "각인" },
+    { id: "gems",       label: "보석" },
+    { id: "cards",      label: "카드" },
+    { id: "siblings",   label: `원정대${siblings.length ? ` (${siblings.length})` : ""}` },
+  ] as const;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 12, scale: 0.97 }}
+        transition={{ duration: 0.22 }}
+        className={cn(
+          "relative w-full max-w-2xl overflow-hidden rounded-[2rem] border shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl",
+          panelBg, borderCl
+        )}
+        style={{ maxHeight: "90vh" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 헤더 */}
+        <div className={cn("flex items-center justify-between border-b px-6 py-4", isLight ? "border-amber-200/30 bg-amber-50/60" : "border-white/8 bg-white/[0.03]")}>
+          <div className="flex items-center gap-3">
+            {profile?.CharacterImage && (
+              <img src={profile.CharacterImage} alt={characterName} className="h-12 w-12 rounded-2xl border border-white/10 object-cover bg-black/30" />
+            )}
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold">{characterName}</span>
+                {profile?.GuildName && (
+                  <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold", isLight ? "border-amber-300/40 bg-amber-100 text-amber-700" : "border-amber-300/20 bg-amber-300/10 text-amber-200")}>
+                    {profile.GuildName}
+                  </span>
+                )}
+              </div>
+              <div className={cn("text-sm mt-0.5", subText)}>
+                {profile?.ServerName && <span>{profile.ServerName} · </span>}
+                <span>{profile?.CharacterClassName || "-"}</span>
+                {profile?.ItemAvgLevel && <span> · 아이템 Lv.{profile.ItemAvgLevel}</span>}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className={cn("flex h-9 w-9 items-center justify-center rounded-xl border transition-all", isLight ? "border-amber-200/40 text-stone-400 hover:bg-amber-100" : "border-white/10 text-stone-400 hover:bg-white/10 hover:text-white")}
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* 탭 */}
+        <div className={cn("flex gap-1 overflow-x-auto border-b px-4 py-2", isLight ? "border-amber-200/30" : "border-white/8")}>
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all",
+                tab === t.id
+                  ? "bg-amber-500 text-white shadow-md"
+                  : isLight ? "text-stone-500 hover:bg-amber-100" : "text-stone-400 hover:bg-white/8 hover:text-white"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 바디 */}
+        <div className="overflow-y-auto p-5" style={{ maxHeight: "calc(90vh - 180px)" }}>
+
+          {/* 로딩 */}
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="h-8 w-8 rounded-full border-2 border-amber-400 border-t-transparent"
+              />
+              <p className={cn("text-sm", subText)}>인게임 정보 불러오는 중...</p>
+            </div>
+          )}
+
+          {/* 에러 */}
+          {!loading && error && (
+            <div className="rounded-2xl border border-rose-400/20 bg-rose-400/8 p-6 text-center">
+              <div className="text-2xl mb-2">😥</div>
+              <div className="font-semibold text-rose-300 mb-1">조회 실패</div>
+              <div className={cn("text-sm", subText)}>{error}</div>
+              <div className={cn("mt-3 text-xs", subText)}>
+                로스트아크 게임 내 설정 → 개인정보 → 전투정보실 공개로 변경해주세요.
+              </div>
+            </div>
+          )}
+
+          {!loading && !error && data && (
+            <>
+              {/* ── 프로필 탭 ── */}
+              {tab === "profile" && profile && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {[
+                      { label: "서버",       value: profile.ServerName },
+                      { label: "원정대 레벨", value: `Lv.${profile.ExpeditionLevel}` },
+                      { label: "캐릭터 레벨", value: `Lv.${profile.CharacterLevel}` },
+                      { label: "평균 아이템", value: profile.ItemAvgLevel },
+                      { label: "최고 아이템", value: profile.ItemMaxLevel },
+                      { label: "영지",        value: profile.TownName ? `${profile.TownName} Lv.${profile.TownLevel}` : "-" },
+                      { label: "직업",        value: profile.CharacterClassName },
+                      { label: "칭호",        value: profile.Title || "-" },
+                      { label: "PVP",         value: profile.PvpGradeName || "-" },
+                    ].map(({ label, value }) => (
+                      <div key={label} className={cn("rounded-2xl border p-3", cardBg)}>
+                        <div className={cn("text-[10px] font-semibold uppercase tracking-widest mb-1", subText)}>{label}</div>
+                        <div className="text-sm font-semibold truncate">{value || "-"}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 스탯 */}
+                  {profile.Stats && profile.Stats.length > 0 && (
+                    <div className={cn("rounded-2xl border p-4", cardBg)}>
+                      <div className={cn("text-[10px] font-semibold uppercase tracking-widest mb-3", subText)}>전투 스탯</div>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {profile.Stats.filter((s) => Number(s.Value) > 0).map((stat) => (
+                          <div key={stat.Type} className="flex items-center justify-between">
+                            <span className={cn("text-xs", subText)}>{stat.Type}</span>
+                            <span className="text-xs font-bold text-amber-300">{Number(stat.Value).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── 장비 탭 ── */}
+              {tab === "equipment" && (
+                <div className="space-y-2">
+                  {equipment.length === 0 && (
+                    <div className={cn("text-center py-10 text-sm", subText)}>장비 정보가 없습니다.</div>
+                  )}
+                  {equipment.map((eq, i) => (
+                    <div key={i} className={cn("flex items-center gap-3 rounded-2xl border p-3", cardBg)}>
+                      <img src={eq.Icon} alt={eq.Name} className="h-12 w-12 rounded-xl border border-white/10 object-cover bg-black/20" style={{ borderColor: gradeColor(eq.Grade) }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold truncate">{eq.Name}</div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={cn("text-[10px]", subText)}>{eq.Type}</span>
+                          <span className="text-[10px] font-bold" style={{ color: gradeColor(eq.Grade) }}>{eq.Grade}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── 각인 탭 ── */}
+              {tab === "engravings" && (
+                <div className="space-y-2">
+                  {engravings.length === 0 && (
+                    <div className={cn("text-center py-10 text-sm", subText)}>각인 정보가 없습니다.</div>
+                  )}
+                  {engravings.map((eng, i) => (
+                    <div key={i} className={cn("flex items-center gap-3 rounded-2xl border p-3", cardBg)}>
+                      <img src={eng.Icon} alt={eng.Name} className="h-10 w-10 rounded-xl border border-white/10 object-cover bg-black/20" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold">{eng.Name}</span>
+                          <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">Lv.{eng.Level}</span>
+                        </div>
+                        <div className={cn("text-xs mt-0.5 line-clamp-1", subText)}>{eng.Description}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── 보석 탭 ── */}
+              {tab === "gems" && (
+                <div className="grid grid-cols-2 gap-3">
+                  {gems.length === 0 && (
+                    <div className={cn("col-span-2 text-center py-10 text-sm", subText)}>보석 정보가 없습니다.</div>
+                  )}
+                  {gems.sort((a, b) => b.Level - a.Level).map((gem, i) => (
+                    <div key={i} className={cn("flex items-center gap-2.5 rounded-2xl border p-3", cardBg)}>
+                      <div className="relative shrink-0">
+                        <img src={gem.Icon} alt={gem.Name} className="h-11 w-11 rounded-xl border object-cover bg-black/20" style={{ borderColor: gradeColor(gem.Grade) }} />
+                        <span className="absolute -bottom-1 -right-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">
+                          {gem.Level}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold truncate">{gem.Skill?.Name || gem.Name}</div>
+                        <div className={cn("text-[10px] mt-0.5", subText)} style={{ color: gradeColor(gem.Grade) }}>{gem.Grade}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── 카드 탭 ── */}
+              {tab === "cards" && (
+                <div className="grid grid-cols-3 gap-3">
+                  {cards.length === 0 && (
+                    <div className={cn("col-span-3 text-center py-10 text-sm", subText)}>카드 정보가 없습니다.</div>
+                  )}
+                  {cards.map((card, i) => (
+                    <div key={i} className={cn("flex flex-col items-center gap-2 rounded-2xl border p-3 text-center", cardBg)}>
+                      <img src={card.Icon} alt={card.Name} className="h-16 w-12 rounded-xl border object-cover bg-black/20" style={{ borderColor: gradeColor(card.Grade) }} />
+                      <div>
+                        <div className="text-xs font-semibold line-clamp-2">{card.Name}</div>
+                        <div className="mt-1 text-[10px]" style={{ color: gradeColor(card.Grade) }}>{card.Grade}</div>
+                        <div className={cn("text-[10px] mt-0.5", subText)}>각성 {card.AwakeCount}/{card.AwakeTotal}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── 원정대 탭 ── */}
+              {tab === "siblings" && (
+                <div className="space-y-2">
+                  {siblings.length === 0 && (
+                    <div className={cn("text-center py-10 text-sm", subText)}>원정대 캐릭터 정보가 없습니다.</div>
+                  )}
+                  {[...siblings]
+                    .sort((a, b) => Number(b.ItemAvgLevel?.replace(/,/g, "") || 0) - Number(a.ItemAvgLevel?.replace(/,/g, "") || 0))
+                    .map((sib, i) => (
+                    <div key={i} className={cn("flex items-center justify-between rounded-2xl border p-3", cardBg,
+                      sib.CharacterName === characterName ? (isLight ? "border-amber-300/60 bg-amber-50" : "border-amber-400/30 bg-amber-400/8") : ""
+                    )}>
+                      <div className="flex items-center gap-3">
+                        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold", isLight ? "bg-amber-100 text-amber-700" : "bg-amber-400/15 text-amber-300")}>
+                          {i + 1}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-semibold">{sib.CharacterName}</span>
+                            {sib.CharacterName === characterName && (
+                              <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">현재</span>
+                            )}
+                          </div>
+                          <div className={cn("text-xs mt-0.5", subText)}>{sib.ServerName} · {sib.CharacterClassName}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-amber-300">{sib.ItemAvgLevel}</div>
+                        <div className={cn("text-[10px]", subText)}>Lv.{sib.CharacterLevel}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ── End LostarkProfileModal ─────────────────────────────────
+
 const GuildMembersPage = () => {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [classFilter, setClassFilter] = useState("all");
+  const [lostarkTarget, setLostarkTarget] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMembers();
@@ -10207,12 +10623,33 @@ const GuildMembersPage = () => {
                       {member.character_intro}
                     </div>
                   )}
+
+                  {/* 인게임 정보 버튼 */}
+                  <button
+                    onClick={() => setLostarkTarget(member.character_name)}
+                    className="mt-4 w-full flex items-center justify-center gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-2.5 text-xs font-semibold text-amber-300 transition-all hover:border-amber-400/40 hover:bg-amber-400/14 hover:text-amber-200 active:scale-[0.98]"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                    </svg>
+                    인게임 정보 조회
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* 로스트아크 전투정보실 모달 */}
+      <AnimatePresence>
+        {lostarkTarget && (
+          <LostarkProfileModal
+            characterName={lostarkTarget}
+            onClose={() => setLostarkTarget(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
