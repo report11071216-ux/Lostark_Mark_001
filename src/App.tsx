@@ -2012,13 +2012,61 @@ const GuildChat = ({ user, profile }: { user: any; profile: any }) => {
     setSending(true);
     const client = supabase;
     if (!client) { setSending(false); return; }
+
+    const messageContent = input.trim();
+    const isAdmin = profile?.role === "admin";
+
     const { error } = await client.from("guild_chat").insert({
       user_id: user.id,
       character_name: charName,
-      content: input.trim(),
+      content: messageContent,
     });
-    if (!error) setInput("");
-    else showToast("메시지 전송 실패", "error");
+
+    if (!error) {
+      setInput("");
+
+      // ── Discord 미러링 (fire-and-forget) ──────────────
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("ko-KR", {
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+      const dateStr = now.toLocaleDateString("ko-KR", {
+        year: "numeric", month: "long", day: "numeric", weekday: "short",
+      });
+
+      // 관리자: 황금(0xFFCC00), 일반 멤버: 앰버(0xF59E0B)
+      const embedColor = isAdmin ? 0xFFCC00 : 0xF59E0B;
+      const authorPrefix = isAdmin ? "👑 [관리자] " : "⚔️ ";
+
+      void fetch("/api/discord", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          embeds: [
+            {
+              author: {
+                name: `${authorPrefix}${charName}`,
+              },
+              description: messageContent,
+              color: embedColor,
+              footer: {
+                text: `길드 채팅 · ${dateStr} ${timeStr}`,
+              },
+              ...(isAdmin && {
+                thumbnail: { url: "https://cdn.discordapp.com/emojis/crown.png" },
+              }),
+            },
+          ],
+        }),
+      }).catch(() => {
+        // Discord 전송 실패해도 채팅 자체에는 영향 없음
+      });
+      // ─────────────────────────────────────────────────
+
+    } else {
+      showToast("메시지 전송 실패", "error");
+    }
+
     setSending(false);
     inputRef.current?.focus();
   };
