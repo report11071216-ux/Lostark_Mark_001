@@ -4393,6 +4393,42 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                       </div>
                     )}
 
+
+                    {/* 공대장 스킬 */}
+                    {(() => {
+                      const skills = [1,2,3].map(n => ({
+                        image: ref[`raid_skill_${n}_image`] || "",
+                        name:  ref[`raid_skill_${n}_name`]  || "",
+                        desc:  ref[`raid_skill_${n}_desc`]  || "",
+                      })).filter(s => s.name || s.image || s.desc);
+                      if (skills.length === 0) return null;
+                      return (
+                        <div className="border-t border-white/[0.06] px-5 py-4">
+                          <div className="mb-3 flex items-center gap-2">
+                            <div className="flex h-5 w-5 items-center justify-center rounded-lg bg-violet-400/20">
+                              <Sparkles size={11} className="text-violet-300" />
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300/80">공대장 스킬</span>
+                          </div>
+                          <div className="space-y-3">
+                            {skills.map((sk, si) => (
+                              <div key={si} className="flex gap-3 rounded-2xl border border-violet-400/15 bg-violet-400/5 p-3">
+                                <div className="flex items-start gap-2.5">
+                                  <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-400/20 text-[10px] font-bold text-violet-300 mt-0.5">{si+1}</div>
+                                  {sk.image && (
+                                    <img src={sk.image} alt={sk.name} className="h-14 w-14 shrink-0 rounded-xl object-cover border border-white/10 bg-black/30" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  {sk.name && <div className="text-xs font-bold text-violet-200 mb-1">{sk.name}</div>}
+                                  {sk.desc && <p className="text-[11px] leading-5 text-stone-300 whitespace-pre-wrap">{sk.desc}</p>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     {/* 드랍 아이템 */}
                     {(() => {
                       const drops = buildRewardCards(nd || hd);
@@ -5973,6 +6009,40 @@ const RaidDetailModal = ({
                                   )}
                                 </div>
                               )}
+                              {/* 공대장 스킬 */}
+                              {(() => {
+                                const skills = [1,2,3].map(n => ({
+                                  image: refDetail[`raid_skill_${n}_image`] || "",
+                                  name:  refDetail[`raid_skill_${n}_name`]  || "",
+                                  desc:  refDetail[`raid_skill_${n}_desc`]  || "",
+                                })).filter(s => s.name || s.image || s.desc);
+                                if (skills.length === 0) return null;
+                                return (
+                                  <div>
+                                    <div className="mb-2 flex items-center gap-1.5">
+                                      <Sparkles size={11} className="text-violet-300" />
+                                      <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300/80">공대장 스킬</span>
+                                    </div>
+                                    <div className="space-y-2.5">
+                                      {skills.map((sk, si) => (
+                                        <div key={si} className="flex gap-3 rounded-2xl border border-violet-400/15 bg-violet-400/5 p-3">
+                                          <div className="flex items-start gap-2">
+                                            <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-400/20 text-[10px] font-bold text-violet-300 mt-0.5">{si+1}</div>
+                                            {sk.image && (
+                                              <img src={sk.image} alt={sk.name} className="h-12 w-12 shrink-0 rounded-xl object-cover border border-white/10 bg-black/30" />
+                                            )}
+                                          </div>
+                                          <div className="min-w-0 flex-1">
+                                            {sk.name && <div className="text-xs font-bold text-violet-200 mb-1">{sk.name}</div>}
+                                            {sk.desc && <p className="text-[11px] leading-5 text-stone-300 whitespace-pre-wrap">{sk.desc}</p>}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
                             </div>
                           );
                         })}
@@ -7031,6 +7101,15 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     mechanics: "",
     tip: "",
     reward_image_url: "",
+    raid_skill_1_image: "",
+    raid_skill_1_name: "",
+    raid_skill_1_desc: "",
+    raid_skill_2_image: "",
+    raid_skill_2_name: "",
+    raid_skill_2_desc: "",
+    raid_skill_3_image: "",
+    raid_skill_3_name: "",
+    raid_skill_3_desc: "",
   });
 
   const elementOptions = ["악마형", "야수형", "인간형", "정령형", "기계형", "고대", "불사", "신"];
@@ -7085,6 +7164,19 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     setUploadingRewardImg(false);
   };
 
+  const uploadRaidSkillImage = async (file: File, skillNum: 1 | 2 | 3) => {
+    try {
+      const client = getSupabaseOrThrow();
+      const ext = file.name.split(".").pop();
+      const path = `raid_skills/${Date.now()}_${skillNum}.${ext}`;
+      const { error } = await client.storage.from("images").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = client.storage.from("images").getPublicUrl(path);
+      setForm((p: any) => ({ ...p, [`raid_skill_${skillNum}_image`]: publicUrl }));
+      showToast(`스킬 ${skillNum} 이미지 업로드 완료!`, "success");
+    } catch (e: any) { showToast("이미지 업로드 실패: " + e.message, "error"); }
+  };
+
   useEffect(() => {
     fetchList();
   }, [isRaid]);
@@ -7126,6 +7218,15 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     mechanics: "",
     tip: "",
     reward_image_url: "",
+    raid_skill_1_image: "",
+    raid_skill_1_name: "",
+    raid_skill_1_desc: "",
+    raid_skill_2_image: "",
+    raid_skill_2_name: "",
+    raid_skill_2_desc: "",
+    raid_skill_3_image: "",
+    raid_skill_3_name: "",
+    raid_skill_3_desc: "",
   });
 
   const normalizeRewardText = (value: any) => {
@@ -7176,6 +7277,15 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       mechanics: data?.mechanics || data?.pattern || data?.patterns || data?.mechanic || "",
       tip: data?.tip || data?.tips || data?.recommendation || data?.recommend || data?.comment || "",
       reward_image_url: data?.reward_image_url || "",
+      raid_skill_1_image: data?.raid_skill_1_image || "",
+      raid_skill_1_name:  data?.raid_skill_1_name  || "",
+      raid_skill_1_desc:  data?.raid_skill_1_desc  || "",
+      raid_skill_2_image: data?.raid_skill_2_image || "",
+      raid_skill_2_name:  data?.raid_skill_2_name  || "",
+      raid_skill_2_desc:  data?.raid_skill_2_desc  || "",
+      raid_skill_3_image: data?.raid_skill_3_image || "",
+      raid_skill_3_name:  data?.raid_skill_3_name  || "",
+      raid_skill_3_desc:  data?.raid_skill_3_desc  || "",
     });
   };
 
@@ -7238,7 +7348,16 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       guide:            form.guide || null,
       mechanics:        form.mechanics || null,
       tip:              form.tip || null,
-      reward_image_url: form.reward_image_url || null,
+      reward_image_url:   form.reward_image_url || null,
+      raid_skill_1_image: form.raid_skill_1_image || null,
+      raid_skill_1_name:  form.raid_skill_1_name  || null,
+      raid_skill_1_desc:  form.raid_skill_1_desc  || null,
+      raid_skill_2_image: form.raid_skill_2_image || null,
+      raid_skill_2_name:  form.raid_skill_2_name  || null,
+      raid_skill_2_desc:  form.raid_skill_2_desc  || null,
+      raid_skill_3_image: form.raid_skill_3_image || null,
+      raid_skill_3_name:  form.raid_skill_3_name  || null,
+      raid_skill_3_desc:  form.raid_skill_3_desc  || null,
     };
 
     let dErr: any = null;
@@ -7628,6 +7747,73 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
             </div>
           </AdminSectionCard>
         </div>
+
+
+        {isRaid && (
+          <AdminSectionCard
+            title="공대장 스킬"
+            description="관문별 공대장이 사용하는 스킬을 최대 3개 등록할 수 있어. 이미지 + 이름 + 설명을 입력해."
+          >
+            <div className="space-y-4">
+              {([1, 2, 3] as const).map((num) => {
+                const imgKey  = `raid_skill_${num}_image`;
+                const nameKey = `raid_skill_${num}_name`;
+                const descKey = `raid_skill_${num}_desc`;
+                return (
+                  <div key={num} className="rounded-2xl border border-white/8 bg-white/[0.025] p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-400/20 text-[11px] font-bold text-amber-300">{num}</div>
+                      <span className="text-[11px] font-semibold uppercase tracking-widest text-stone-400">스킬 {num}</span>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-[120px,1fr]">
+                      {/* 이미지 */}
+                      <div className="flex flex-col gap-2">
+                        {form[imgKey] ? (
+                          <div className="relative group">
+                            <img src={form[imgKey]} alt={`스킬 ${num}`} className="h-24 w-full rounded-xl object-cover border border-white/10" />
+                            <button
+                              type="button"
+                              onClick={() => setForm((p: any) => ({ ...p, [imgKey]: "" }))}
+                              className="absolute -top-2 -right-2 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] shadow"
+                            >✕</button>
+                          </div>
+                        ) : (
+                          <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-white/15 bg-black/20 text-xs text-stone-600">
+                            이미지 없음
+                          </div>
+                        )}
+                        <label className="flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/15 bg-black/10 py-2 text-[11px] text-stone-500 hover:border-amber-400/30 hover:text-amber-300 transition-all">
+                          <ImageIcon size={11} />
+                          {form[imgKey] ? "변경" : "업로드"}
+                          <input
+                            type="file" accept="image/*" className="hidden"
+                            onChange={e => { if (e.target.files?.[0]) uploadRaidSkillImage(e.target.files[0], num); }}
+                          />
+                        </label>
+                      </div>
+                      {/* 이름 + 설명 */}
+                      <div className="flex flex-col gap-2">
+                        <input
+                          value={form[nameKey]}
+                          onChange={e => setForm((p: any) => ({ ...p, [nameKey]: e.target.value }))}
+                          placeholder={`스킬 ${num} 이름 (예: 연합군 스킬 · 광선 다발)`}
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-amber-400/30 transition-all"
+                        />
+                        <textarea
+                          value={form[descKey]}
+                          onChange={e => setForm((p: any) => ({ ...p, [descKey]: e.target.value }))}
+                          placeholder={`스킬 ${num} 설명을 입력해.`}
+                          rows={4}
+                          className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs leading-6 text-white outline-none focus:border-amber-400/30 transition-all resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </AdminSectionCard>
+        )}
 
         <div className="grid gap-5 xl:grid-cols-3">
           <AdminSectionCard
