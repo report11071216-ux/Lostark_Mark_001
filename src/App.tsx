@@ -10299,6 +10299,49 @@ const GuildMembersPage = () => {
   const [classFilter, setClassFilter] = useState("all");
   const [lostarkTarget, setLostarkTarget] = useState<string | null>(null);
 
+  // ── 인라인 전투정보실 캐시 & 탭 상태 ──────────────────────
+  const [armoryCache, setArmoryCache] = useState<Record<string, {
+    loading: boolean;
+    error: string | null;
+    data: LostarkAllData | null;
+    siblings: LostarkSibling[];
+  }>>({});
+  const [cardTabs, setCardTabs] = useState<Record<string, string>>({});
+
+  const fetchArmoryForCard = async (characterName: string) => {
+    if (armoryCache[characterName]) return;
+    setArmoryCache(prev => ({
+      ...prev,
+      [characterName]: { loading: true, error: null, data: null, siblings: [] },
+    }));
+    try {
+      const [res, sibRes] = await Promise.all([
+        fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=all`),
+        fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=siblings`),
+      ]);
+      const json    = await res.json();
+      const sibJson = await sibRes.json();
+      setArmoryCache(prev => ({
+        ...prev,
+        [characterName]: {
+          loading: false,
+          error:    json.ok ? null : (json.error || "조회 실패"),
+          data:     json.ok ? (json.data as LostarkAllData) : null,
+          siblings: sibJson.ok && Array.isArray(sibJson.data) ? (sibJson.data as LostarkSibling[]) : [],
+        },
+      }));
+    } catch (e: any) {
+      setArmoryCache(prev => ({
+        ...prev,
+        [characterName]: { loading: false, error: e?.message || "오류 발생", data: null, siblings: [] },
+      }));
+    }
+  };
+
+  const setCardTab = (characterName: string, tab: string) =>
+    setCardTabs(prev => ({ ...prev, [characterName]: tab }));
+  // ─────────────────────────────────────────────────────────
+
   useEffect(() => {
     fetchMembers();
   }, []);
@@ -10513,10 +10556,30 @@ const GuildMembersPage = () => {
           {filteredMembers.map((member: any) => {
             const { theme } = getPrimaryBadgeTheme(member);
             const weaponTheme = getWeaponTheme({ rarity: member.equipped_weapon_rarity });
+
+            // ── 인라인 전투정보실 데이터 ──
+            const armory         = armoryCache[member.character_name];
+            const activeTab      = cardTabs[member.character_name] || "profile";
+            const armoryProfile  = armory?.data?.ArmoryProfile;
+            const armoryEquip    = armory?.data?.ArmoryEquipment || [];
+            const armoryEngrav   = armory?.data?.ArmoryEngraving?.Engravings || [];
+            const armoryGems     = armory?.data?.ArmoryGem?.Gems || [];
+            const armoryCards    = armory?.data?.ArmoryCard?.Cards || [];
+            const armorySiblings = armory?.siblings || [];
+
+            const CARD_TABS = [
+              { id: "profile",    label: "프로필" },
+              { id: "equipment",  label: "장비" },
+              { id: "engravings", label: "각인" },
+              { id: "gems",       label: "보석" },
+              { id: "cards",      label: "카드" },
+              { id: "siblings",   label: `원정대${armorySiblings.length ? ` (${armorySiblings.length})` : ""}` },
+            ] as const;
+
             return (
               <div
                 key={member.id}
-                className="rounded-[2rem] border p-5 overflow-hidden relative"
+                className="rounded-[2rem] border overflow-hidden relative flex flex-col"
                 style={{
                   background: theme.cardBackground,
                   borderColor: theme.cardBorder,
@@ -10524,13 +10587,15 @@ const GuildMembersPage = () => {
                 }}
               >
                 <div className="absolute inset-0 pointer-events-none" style={{ background: theme.aura }} />
-                <div className="relative z-10">
+                <div className="relative z-10 flex flex-col h-full p-5">
+
+                  {/* ── 캐릭터 헤더 ── */}
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex gap-4 min-w-0">
                       {member.avatar_url || member.image_url ? (
                         <img
                           src={member.avatar_url || member.image_url}
-                          className="h-20 w-20 rounded-2xl object-cover border border-white/10"
+                          className="h-20 w-20 rounded-2xl object-cover border border-white/10 shrink-0"
                         />
                       ) : (
                         <div className="h-20 w-20 shrink-0 rounded-2xl border border-amber-300/20 bg-gradient-to-br from-amber-400/20 via-slate-950 to-purple-500/10 flex items-center justify-center text-sm font-semibold text-amber-100">
@@ -10541,8 +10606,7 @@ const GuildMembersPage = () => {
                         <div className="flex flex-wrap gap-2 mb-2">
                           {member.is_main && (
                             <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 inline-flex items-center gap-1">
-                              <Crown size={11} />
-                              MAIN
+                              <Crown size={11} />MAIN
                             </span>
                           )}
                           {member.role_hint === "서포터" && (
@@ -10573,7 +10637,6 @@ const GuildMembersPage = () => {
                         <div className="mt-1 text-amber-100 font-semibold">아이템 Lv. {member.item_level}</div>
                       </div>
                     </div>
-
                     <div className="text-right shrink-0">
                       <div className="text-[10px] text-white/50 uppercase tracking-widest">Owner</div>
                       <div
@@ -10590,6 +10653,7 @@ const GuildMembersPage = () => {
                     </div>
                   </div>
 
+                  {/* ── 장비 파츠 [무기] ── */}
                   <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
                     <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-semibold">장비 파츠 [무기]</div>
                     {member.equipped_weapon_name ? (
@@ -10607,6 +10671,7 @@ const GuildMembersPage = () => {
                     )}
                   </div>
 
+                  {/* ── 기본 스탯 그리드 ── */}
                   <div className="grid grid-cols-2 gap-3 mt-5">
                     <InfoMiniCard title="캐릭터 레벨" value={member.character_level || "-"} />
                     <InfoMiniCard title="전투력" value={member.combat_power || "-"} />
@@ -10624,16 +10689,287 @@ const GuildMembersPage = () => {
                     </div>
                   )}
 
-                  {/* 인게임 정보 버튼 */}
-                  <button
-                    onClick={() => setLostarkTarget(member.character_name)}
-                    className="mt-4 w-full flex items-center justify-center gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-2.5 text-xs font-semibold text-amber-300 transition-all hover:border-amber-400/40 hover:bg-amber-400/14 hover:text-amber-200 active:scale-[0.98]"
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                    </svg>
-                    인게임 정보 조회
-                  </button>
+                  {/* ══════════════════════════════════════════════
+                      인라인 전투정보실 패널
+                      ══════════════════════════════════════════════ */}
+                  {!armory ? (
+                    /* 미조회 상태: 펼치기 버튼 + 모달 버튼 */
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        onClick={() => fetchArmoryForCard(member.character_name)}
+                        className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-2.5 text-xs font-semibold text-amber-300 transition-all hover:border-amber-400/40 hover:bg-amber-400/14 hover:text-amber-200 active:scale-[0.98]"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                        </svg>
+                        전투정보실 펼치기
+                      </button>
+                      <button
+                        onClick={() => setLostarkTarget(member.character_name)}
+                        className="px-3 py-2.5 rounded-2xl border border-white/10 bg-white/5 text-xs font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all active:scale-[0.98]"
+                        title="전체화면 모달로 보기"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                          <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                        </svg>
+                      </button>
+                    </div>
+                  ) : armory.loading ? (
+                    /* 로딩 중 */
+                    <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/20 py-6">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="h-5 w-5 rounded-full border-2 border-amber-400 border-t-transparent"
+                      />
+                      <span className="text-xs text-slate-400">인게임 정보 불러오는 중...</span>
+                    </div>
+                  ) : armory.error ? (
+                    /* 오류 */
+                    <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/8 p-4 text-center">
+                      <div className="text-xs text-rose-300 font-semibold mb-1">조회 실패</div>
+                      <div className="text-[11px] text-slate-400">{armory.error}</div>
+                      <div className="mt-2 flex gap-2 justify-center">
+                        <button
+                          onClick={() => {
+                            setArmoryCache(prev => { const n = { ...prev }; delete n[member.character_name]; return n; });
+                            fetchArmoryForCard(member.character_name);
+                          }}
+                          className="text-[11px] text-amber-400 underline underline-offset-2"
+                        >
+                          재시도
+                        </button>
+                        <button
+                          onClick={() => setLostarkTarget(member.character_name)}
+                          className="text-[11px] text-slate-400 underline underline-offset-2"
+                        >
+                          모달로 보기
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── 전투정보실 데이터 표시 ── */
+                    <div className="mt-4 rounded-[1.5rem] border border-amber-400/15 bg-black/30 overflow-hidden">
+
+                      {/* 탭 바 */}
+                      <div className="flex gap-1 px-3 py-2 border-b border-white/8 overflow-x-auto">
+                        {CARD_TABS.map(t => (
+                          <button
+                            key={t.id}
+                            onClick={() => setCardTab(member.character_name, t.id)}
+                            className={cn(
+                              "shrink-0 rounded-xl px-3 py-1 text-[11px] font-semibold transition-all whitespace-nowrap",
+                              activeTab === t.id
+                                ? "bg-amber-500 text-white shadow"
+                                : "text-slate-400 hover:bg-white/8 hover:text-white"
+                            )}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                        {/* 전체화면 모달 버튼 */}
+                        <button
+                          onClick={() => setLostarkTarget(member.character_name)}
+                          className="ml-auto shrink-0 rounded-xl px-2 py-1 text-slate-500 hover:text-amber-300 hover:bg-white/8 transition-all"
+                          title="전체화면으로 보기"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                            <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                          </svg>
+                        </button>
+                      </div>
+
+                      {/* 탭 컨텐츠 */}
+                      <div className="p-4 space-y-2 max-h-[380px] overflow-y-auto">
+
+                        {/* ── 프로필 탭 ── */}
+                        {activeTab === "profile" && (
+                          armoryProfile ? (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                {[
+                                  { label: "서버",        value: armoryProfile.ServerName },
+                                  { label: "원정대 레벨", value: `Lv.${armoryProfile.ExpeditionLevel}` },
+                                  { label: "캐릭터 레벨", value: `Lv.${armoryProfile.CharacterLevel}` },
+                                  { label: "평균 아이템", value: armoryProfile.ItemAvgLevel },
+                                  { label: "직업",        value: armoryProfile.CharacterClassName },
+                                  { label: "영지",        value: armoryProfile.TownName ? `${armoryProfile.TownName} Lv.${armoryProfile.TownLevel}` : "-" },
+                                  { label: "칭호",        value: armoryProfile.Title || "-" },
+                                  { label: "PVP",         value: armoryProfile.PvpGradeName || "-" },
+                                ].map(({ label, value }) => (
+                                  <div key={label} className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                                    <div className="text-[9px] font-semibold uppercase tracking-widest text-slate-500 mb-1">{label}</div>
+                                    <div className="text-xs font-semibold text-white truncate">{value || "-"}</div>
+                                  </div>
+                                ))}
+                              </div>
+                              {armoryProfile.Stats && armoryProfile.Stats.filter((s: any) => Number(s.Value) > 0).length > 0 && (
+                                <div className="rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                                  <div className="text-[9px] font-semibold uppercase tracking-widest text-slate-500 mb-2">전투 스탯</div>
+                                  <div className="grid grid-cols-3 gap-1">
+                                    {armoryProfile.Stats.filter((s: any) => Number(s.Value) > 0).map((stat: any) => (
+                                      <div key={stat.Type} className="flex items-center justify-between">
+                                        <span className="text-[11px] text-slate-400">{stat.Type}</span>
+                                        <span className="text-[11px] font-bold text-amber-300">{Number(stat.Value).toLocaleString()}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-center py-6 text-xs text-slate-500">프로필 정보가 없습니다.</div>
+                          )
+                        )}
+
+                        {/* ── 장비 탭 ── */}
+                        {activeTab === "equipment" && (
+                          armoryEquip.length === 0 ? (
+                            <div className="text-center py-6 text-xs text-slate-500">장비 정보가 없습니다.</div>
+                          ) : (
+                            armoryEquip.map((eq: LostarkEquipment, i: number) => (
+                              <div key={i} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-2.5">
+                                <img
+                                  src={eq.Icon}
+                                  alt={eq.Name}
+                                  className="h-10 w-10 rounded-lg object-cover bg-black/20 shrink-0"
+                                  style={{ borderWidth: 1, borderStyle: "solid", borderColor: gradeColor(eq.Grade) }}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs font-semibold truncate">{eq.Name}</div>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <span className="text-[10px] text-slate-400">{eq.Type}</span>
+                                    <span className="text-[10px] font-bold" style={{ color: gradeColor(eq.Grade) }}>{eq.Grade}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          )
+                        )}
+
+                        {/* ── 각인 탭 ── */}
+                        {activeTab === "engravings" && (
+                          armoryEngrav.length === 0 ? (
+                            <div className="text-center py-6 text-xs text-slate-500">각인 정보가 없습니다.</div>
+                          ) : (
+                            armoryEngrav.map((eng: LostarkEngraving, i: number) => (
+                              <div key={i} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-2.5">
+                                <img src={eng.Icon} alt={eng.Name} className="h-9 w-9 rounded-lg border border-white/10 object-cover bg-black/20 shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold">{eng.Name}</span>
+                                    <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">Lv.{eng.Level}</span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{eng.Description}</div>
+                                </div>
+                              </div>
+                            ))
+                          )
+                        )}
+
+                        {/* ── 보석 탭 ── */}
+                        {activeTab === "gems" && (
+                          armoryGems.length === 0 ? (
+                            <div className="text-center py-6 text-xs text-slate-500">보석 정보가 없습니다.</div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                              {[...armoryGems].sort((a: LostarkGem, b: LostarkGem) => b.Level - a.Level).map((gem: LostarkGem, i: number) => (
+                                <div key={i} className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] p-2">
+                                  <div className="relative shrink-0">
+                                    <img
+                                      src={gem.Icon}
+                                      alt={gem.Name}
+                                      className="h-9 w-9 rounded-lg object-cover bg-black/20"
+                                      style={{ borderWidth: 1, borderStyle: "solid", borderColor: gradeColor(gem.Grade) }}
+                                    />
+                                    <span className="absolute -bottom-1 -right-1 rounded-full bg-amber-500 px-1 py-0.5 text-[8px] font-bold text-white shadow">
+                                      {gem.Level}
+                                    </span>
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="text-[11px] font-semibold truncate">{gem.Skill?.Name || gem.Name}</div>
+                                    <div className="text-[10px] mt-0.5" style={{ color: gradeColor(gem.Grade) }}>{gem.Grade}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        )}
+
+                        {/* ── 카드 탭 ── */}
+                        {activeTab === "cards" && (
+                          armoryCards.length === 0 ? (
+                            <div className="text-center py-6 text-xs text-slate-500">카드 정보가 없습니다.</div>
+                          ) : (
+                            <div className="grid grid-cols-3 gap-2">
+                              {armoryCards.map((card: LostarkCard, i: number) => (
+                                <div key={i} className="flex flex-col items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.03] p-2 text-center">
+                                  <img
+                                    src={card.Icon}
+                                    alt={card.Name}
+                                    className="h-14 w-10 rounded-lg object-cover bg-black/20"
+                                    style={{ borderWidth: 1, borderStyle: "solid", borderColor: gradeColor(card.Grade) }}
+                                  />
+                                  <div>
+                                    <div className="text-[10px] font-semibold line-clamp-2 leading-tight">{card.Name}</div>
+                                    <div className="mt-0.5 text-[9px]" style={{ color: gradeColor(card.Grade) }}>{card.Grade}</div>
+                                    <div className="text-[9px] text-slate-500 mt-0.5">각성 {card.AwakeCount}/{card.AwakeTotal}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        )}
+
+                        {/* ── 원정대 탭 ── */}
+                        {activeTab === "siblings" && (
+                          armorySiblings.length === 0 ? (
+                            <div className="text-center py-6 text-xs text-slate-500">원정대 정보가 없습니다.</div>
+                          ) : (
+                            [...armorySiblings]
+                              .sort((a: LostarkSibling, b: LostarkSibling) =>
+                                Number(b.ItemAvgLevel?.replace(/,/g, "") || 0) - Number(a.ItemAvgLevel?.replace(/,/g, "") || 0)
+                              )
+                              .map((sib: LostarkSibling, i: number) => (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "flex items-center justify-between rounded-xl border p-2.5",
+                                    sib.CharacterName === member.character_name
+                                      ? "border-amber-400/30 bg-amber-400/8"
+                                      : "border-white/8 bg-white/[0.03]"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-[10px] font-bold text-amber-300">
+                                      {i + 1}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-xs font-semibold truncate">{sib.CharacterName}</span>
+                                        {sib.CharacterName === member.character_name && (
+                                          <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300 shrink-0">현재</span>
+                                        )}
+                                      </div>
+                                      <div className="text-[10px] text-slate-400 truncate">{sib.ServerName} · {sib.CharacterClassName}</div>
+                                    </div>
+                                  </div>
+                                  <div className="text-right shrink-0 ml-2">
+                                    <div className="text-xs font-bold text-amber-300">{sib.ItemAvgLevel}</div>
+                                    <div className="text-[10px] text-slate-500">Lv.{sib.CharacterLevel}</div>
+                                  </div>
+                                </div>
+                              ))
+                          )
+                        )}
+
+                      </div>{/* /tab body */}
+                    </div>
+                  )}
+                  {/* ═══════════════════════════════════════════ */}
+
                 </div>
               </div>
             );
@@ -10641,7 +10977,7 @@ const GuildMembersPage = () => {
         </div>
       )}
 
-      {/* 로스트아크 전투정보실 모달 */}
+      {/* 전체화면 전투정보실 모달 (기존 유지) */}
       <AnimatePresence>
         {lostarkTarget && (
           <LostarkProfileModal
