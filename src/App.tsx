@@ -8941,7 +8941,12 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       selectedBadgeIds.includes(String(x.badge_item_id))
     );
 
-    let avatarUrl = character.draft.avatar_url || character.avatar_url || null;
+    // draft.avatar_url이 명시적으로 ""이면 이미지 제거 의도 → null 저장
+    // draft.avatar_url에 값이 있으면 그대로 사용
+    // new_image_file이 있으면 업로드 후 덮어씀
+    const draftAvatarUrl = character.draft.avatar_url;
+    const isRemoved = draftAvatarUrl === "" || draftAvatarUrl === null;
+    let avatarUrl: string | null = isRemoved ? null : (draftAvatarUrl || character.avatar_url || null);
 
     try {
       if (character.draft.new_image_file) {
@@ -9661,7 +9666,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                       }}
                       className="w-full text-sm text-slate-400"
                     />
-                    {(character.draft.image_preview_url || character.draft.avatar_url || character.avatar_url) && (
+                    {(character.draft.image_preview_url || (character.draft.avatar_url !== "" && (character.draft.avatar_url || character.avatar_url))) && (
                       <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-3">
                         <div className="text-xs text-slate-400 mb-2">현재/새 미리보기</div>
                         <img
@@ -9678,7 +9683,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                           updateDraft(character.id, "avatar_url", "");
                           updateDraft(character.id, "image_preview_url", "");
                         }}
-                        className="px-3 py-2 rounded-xl bg-slate-800 text-xs font-semibold"
+                        className="px-3 py-2 rounded-xl border border-rose-400/20 bg-rose-400/10 text-xs font-semibold text-rose-300 hover:bg-rose-400/20 transition"
                       >
                         이미지 제거
                       </button>
@@ -9689,6 +9694,11 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                           updateDraft(character.id, "avatar_url", character.avatar_url || "");
                           updateDraft(character.id, "image_preview_url", character.avatar_url || "");
                         }}
+                        className="px-3 py-2 rounded-xl border border-white/10 bg-white/[0.05] text-xs font-semibold text-slate-300 hover:bg-white/[0.08] transition"
+                      >
+                        원래 이미지로 복원
+                      </button>
+                    </div>
                         className="px-3 py-2 rounded-xl bg-slate-700 text-xs font-semibold"
                       >
                         원래 이미지로 복원
