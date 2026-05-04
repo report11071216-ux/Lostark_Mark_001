@@ -2670,6 +2670,248 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
 };
 
 
+
+// ══════════════════════════════════════════════════════════
+//  ProkyonWidget — 오늘의 프로키온의 나침반 콘텐츠 위젯
+// ══════════════════════════════════════════════════════════
+type ProkyonItem = {
+  CategoryName: string;
+  Title: string;
+  StartTimes: string[];
+  RewardItems: Array<{ Name: string; Icon: string; Grade: string }>;
+};
+
+// 카테고리별 설정
+const PROKYON_CONFIG: Record<string, { emoji: string; color: string; glow: string; bg: string; border: string }> = {
+  "카오스게이트":  { emoji: "⚡", color: "#a78bfa", glow: "rgba(167,139,250,0.35)", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.25)" },
+  "모험 섬":       { emoji: "🏝️", color: "#34d399", glow: "rgba(52,211,153,0.35)",  bg: "rgba(52,211,153,0.08)",  border: "rgba(52,211,153,0.25)"  },
+  "필드 보스":     { emoji: "🔥", color: "#fb923c", glow: "rgba(251,146,60,0.35)",  bg: "rgba(251,146,60,0.08)",  border: "rgba(251,146,60,0.25)"  },
+  "태초의 섬":     { emoji: "🌊", color: "#38bdf8", glow: "rgba(56,189,248,0.35)",  bg: "rgba(56,189,248,0.08)",  border: "rgba(56,189,248,0.25)"  },
+};
+const DEFAULT_CONFIG = { emoji: "🗓️", color: "#fbbf24", glow: "rgba(251,191,36,0.3)", bg: "rgba(251,191,36,0.07)", border: "rgba(251,191,36,0.2)" };
+const getConfig = (cat: string) => PROKYON_CONFIG[cat] || DEFAULT_CONFIG;
+
+// 다음 시작 시간 파싱
+const getNextTime = (times: string[]): { label: string; isNow: boolean; minutesLeft: number } => {
+  if (!times || times.length === 0) return { label: "-", isNow: false, minutesLeft: 999 };
+  const now = new Date();
+  const upcoming = times
+    .map(t => new Date(t))
+    .filter(t => t > new Date(now.getTime() - 30 * 60 * 1000))
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  if (upcoming.length === 0) return { label: "종료", isNow: false, minutesLeft: 999 };
+  const next = upcoming[0];
+  const diffMs = next.getTime() - now.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+
+  if (diffMin < 0 && diffMin > -30) return {
+    label: "진행 중",
+    isNow: true,
+    minutesLeft: 0,
+  };
+  if (diffMin < 60) return { label: `${diffMin}분 후`, isNow: false, minutesLeft: diffMin };
+  const h = Math.floor(diffMin / 60);
+  const m = diffMin % 60;
+  return { label: m > 0 ? `${h}시간 ${m}분 후` : `${h}시간 후`, isNow: false, minutesLeft: diffMin };
+};
+
+const GRADE_COLORS_WIDGET: Record<string, string> = {
+  "에스더": "#00CCFF", "고대": "#E6C97A", "유물": "#FF8C00",
+  "영웅": "#B44BE1", "희귀": "#4A90D9", "고급": "#66BB6A", "일반": "#9E9E9E",
+};
+
+const ProkyonWidget = () => {
+  const [items, setItems]     = useState<ProkyonItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
+  const [now, setNow]         = useState(new Date());
+
+  // 1분마다 시간 갱신
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true); setError(null);
+      try {
+        const res  = await fetch("/api/lostark?type=calendar");
+        const json = await res.json();
+        if (json.ok && Array.isArray(json.data)) {
+          // 카오스게이트, 모험 섬, 필드 보스, 태초의 섬만 필터
+          const TARGET = ["카오스게이트", "모험 섬", "필드 보스", "태초의 섬"];
+          const filtered = (json.data as ProkyonItem[]).filter(
+            item => TARGET.includes(item.CategoryName)
+          );
+          // 카테고리별 중복 제거 (첫 번째만)
+          const seen = new Set<string>();
+          const deduped = filtered.filter(item => {
+            if (seen.has(item.CategoryName)) return false;
+            seen.add(item.CategoryName);
+            return true;
+          });
+          setItems(deduped);
+        } else {
+          setError(json.error || "캘린더 조회 실패");
+        }
+      } catch (e: any) { setError(e?.message || "오류"); }
+      finally { setLoading(false); }
+    };
+    load();
+  }, []);
+
+  // 다음 시작 시간 기준 정렬
+  const sorted = [...items].sort((a, b) => {
+    const at = getNextTime(a.StartTimes).minutesLeft;
+    const bt = getNextTime(b.StartTimes).minutesLeft;
+    return at - bt;
+  });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.18 }}
+      className="mx-auto w-full max-w-7xl px-6 pb-4"
+    >
+      <div className="relative overflow-hidden rounded-[1.85rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.038),rgba(255,255,255,0.016))] shadow-[0_22px_52px_rgba(0,0,0,0.22)] backdrop-blur-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,194,105,0.07),transparent_60%)]" />
+
+        {/* 헤더 */}
+        <div className="relative flex items-center justify-between px-5 py-3.5 border-b border-white/6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-400/12 border border-amber-400/20">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.26em] text-amber-200/80">Procyon's Compass</span>
+            <span className="text-[10px] text-stone-500">프로키온의 나침반</span>
+          </div>
+          <div className="text-[10px] text-stone-500">
+            {now.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 기준
+          </div>
+        </div>
+
+        {/* 바디 */}
+        <div className="relative px-4 py-4">
+          {loading && (
+            <div className="flex items-center justify-center gap-2 py-6">
+              <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="h-4 w-4 rounded-full border-2 border-amber-400 border-t-transparent" />
+              <span className="text-xs text-stone-500">콘텐츠 일정 불러오는 중...</span>
+            </div>
+          )}
+          {!loading && error && (
+            <div className="py-4 text-center text-xs text-stone-500">{error}</div>
+          )}
+          {!loading && !error && sorted.length === 0 && (
+            <div className="py-4 text-center text-xs text-stone-500">오늘 예정된 콘텐츠가 없습니다.</div>
+          )}
+          {!loading && !error && sorted.length > 0 && (
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+              {sorted.map((item, i) => {
+                const cfg  = getConfig(item.CategoryName);
+                const next = getNextTime(item.StartTimes);
+                const todayTimes = item.StartTimes
+                  .map(t => new Date(t))
+                  .filter(t => {
+                    const d = new Date();
+                    return t.getFullYear() === d.getFullYear() &&
+                           t.getMonth() === d.getMonth() &&
+                           t.getDate() === d.getDate();
+                  })
+                  .sort((a, b) => a.getTime() - b.getTime());
+
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: i * 0.07 }}
+                    className="relative overflow-hidden rounded-[1.3rem] border p-4 flex flex-col gap-3"
+                    style={{ borderColor: cfg.border, background: cfg.bg,
+                      boxShadow: next.isNow ? `0 0 24px ${cfg.glow}` : "none" }}
+                  >
+                    {/* 진행중 표시 */}
+                    {next.isNow && (
+                      <div className="absolute top-3 right-3 flex items-center gap-1">
+                        <motion.div animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
+                          className="h-1.5 w-1.5 rounded-full" style={{ background: cfg.color }} />
+                        <span className="text-[9px] font-bold" style={{ color: cfg.color }}>LIVE</span>
+                      </div>
+                    )}
+
+                    {/* 상단: 카테고리 + 제목 */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span className="text-base leading-none">{cfg.emoji}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: cfg.color }}>
+                          {item.CategoryName}
+                        </span>
+                      </div>
+                      <div className="text-sm font-bold text-white leading-snug line-clamp-1">{item.Title}</div>
+                    </div>
+
+                    {/* 다음 시작 시간 */}
+                    <div className="flex items-center justify-between">
+                      <div className="rounded-lg px-2.5 py-1.5" style={{ background: "rgba(0,0,0,0.25)" }}>
+                        <div className="text-[9px] text-stone-500 uppercase tracking-widest mb-0.5">다음 시작</div>
+                        <div className="text-xs font-bold" style={{ color: next.isNow ? cfg.color : "#fff" }}>
+                          {next.label}
+                        </div>
+                      </div>
+                      {/* 오늘 시간 목록 (최대 3개) */}
+                      <div className="flex flex-col items-end gap-0.5">
+                        {todayTimes.slice(0, 3).map((t, ti) => (
+                          <span key={ti} className="text-[10px] font-medium text-stone-400">
+                            {t.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        ))}
+                        {todayTimes.length > 3 && (
+                          <span className="text-[9px] text-stone-600">+{todayTimes.length - 3}회 더</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 보상 아이템 */}
+                    {item.RewardItems && item.RewardItems.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {item.RewardItems.slice(0, 5).map((reward, ri) => (
+                          <div key={ri} className="relative group">
+                            <img
+                              src={reward.Icon}
+                              alt={reward.Name}
+                              className="h-7 w-7 rounded-lg object-cover bg-black/40"
+                              style={{ boxShadow: `0 0 0 1.5px ${GRADE_COLORS_WIDGET[reward.Grade] || "#666"}` }}
+                            />
+                            {/* 툴팁 */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-50 pointer-events-none">
+                              <div className="whitespace-nowrap rounded-lg bg-black/90 border border-white/10 px-2 py-1 text-[10px] text-white shadow-xl">
+                                {reward.Name}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {item.RewardItems.length > 5 && (
+                          <span className="text-[10px] text-stone-500">+{item.RewardItems.length - 5}</span>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+// ── End ProkyonWidget ────────────────────────────────────────
+
 const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices }: any) => {
   const [heroStats, setHeroStats] = useState({
     memberCount: 0,
@@ -3037,6 +3279,9 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices }: any)
         </motion.div>
       </div>
     </div>
+
+      {/* ── 프로키온의 나침반 위젯 ── */}
+      <ProkyonWidget />
   );
 };
 
