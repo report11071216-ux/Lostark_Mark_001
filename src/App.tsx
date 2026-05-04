@@ -4951,6 +4951,40 @@ const JoinForm = ({
       });
 
       if (!error) {
+        // 디스코드 참여 알림 (실패해도 참여 자체는 성공으로 처리)
+        try {
+          const raidTime = raid.raid_datetime
+            ? new Date(raid.raid_datetime).toLocaleString("ko-KR")
+            : "시간 미정";
+          const totalAfter = parts.length + 1;
+
+          await fetch("/api/discord", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: "",
+              embeds: [
+                {
+                  title: `📥 레이드 참여 신청`,
+                  color: 0xf5c542,
+                  fields: [
+                    { name: "🗺️ 레이드", value: raid.raid_name ?? "이름 없음", inline: true },
+                    { name: "🕐 시작 시간", value: raidTime, inline: true },
+                    { name: "⚔️ 캐릭터", value: `${nickname.trim()} (${playerClass.trim()})`, inline: true },
+                    { name: "🎯 포지션", value: raid.type === "anime" ? "참가" : role, inline: true },
+                    { name: "📊 아이템 레벨", value: level, inline: true },
+                    { name: "👥 현재 참가자", value: `${totalAfter}명`, inline: true },
+                  ],
+                  footer: { text: "레이드 참여 알림" },
+                  timestamp: new Date().toISOString(),
+                },
+              ],
+            }),
+          });
+        } catch (discordError) {
+          console.error("Discord 참여 알림 전송 실패:", discordError);
+        }
+
         onSuccess();
       } else {
         showToast(error.message || "참여 실패", "error");
