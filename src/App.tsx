@@ -3278,10 +3278,10 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices }: any)
           </div>
         </motion.div>
       </div>
-    </div>
 
       {/* ── 프로키온의 나침반 위젯 ── */}
       <ProkyonWidget />
+    </div>
   );
 };
 
