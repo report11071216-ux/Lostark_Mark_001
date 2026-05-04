@@ -7764,6 +7764,9 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   const [enhancingCharacterId, setEnhancingCharacterId] = useState<string | null>(null);
   const [expandedWeaponPanels, setExpandedWeaponPanels] = useState<Record<string, boolean>>({});
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [lostarkLoading, setLostarkLoading] = useState(false);
+  const [lostarkFetched, setLostarkFetched] = useState(false);
+  const [lostarkImageUrl, setLostarkImageUrl] = useState<string | null>(null);
 
   const toggleWeaponPanel = (characterId: string) => {
     setExpandedWeaponPanels((prev) => ({
@@ -8776,17 +8779,55 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     showToast(deletedCount > 0 ? "뱃지를 삭제했어." : "이미 DB에서 삭제된 뱃지라 화면 목록만 정리했어.", "success");
   };
 
+  // ── 전투정보실 자동 불러오기 ──────────────────────────────
+  const fetchLostarkInfo = async () => {
+    const name = characterName.trim();
+    if (!name) {
+      showToast("캐릭터명을 먼저 입력해줘.", "error");
+      return;
+    }
+    setLostarkLoading(true);
+    setLostarkFetched(false);
+    try {
+      const enc = encodeURIComponent(name);
+      const res = await fetch(`/api/lostark?character=${enc}&type=profile`);
+      const json = await res.json();
+      if (!json?.ok || !json?.data) {
+        showToast(json?.error || "캐릭터를 찾을 수 없어. 닉네임을 확인해줘.", "error");
+        return;
+      }
+      const data = json.data;
+      if (data.CharacterClassName) setClassName(data.CharacterClassName);
+      if (data.ItemAvgLevel) {
+        // "1,640.00" → "1640.00" 형태 정리
+        setItemLevel(String(data.ItemAvgLevel).replace(/,/g, ""));
+      }
+      if (data.CharacterLevel) setCharacterLevel(String(data.CharacterLevel));
+      if (data.CharacterImage) setLostarkImageUrl(data.CharacterImage);
+      setLostarkFetched(true);
+      showToast("전투정보실 정보를 불러왔어!", "success");
+    } catch (e: any) {
+      showToast(e?.message || "API 호출 실패", "error");
+    } finally {
+      setLostarkLoading(false);
+    }
+  };
+  // ────────────────────────────────────────────────────────
+
   const saveCharacter = async () => {
     if (!characterName.trim() || !className.trim()) {
       showToast("캐릭터명과 직업을 입력해줘.");
       return;
     }
 
-    let imageUrl = null;
+    let imageUrl: string | null = null;
 
     try {
       if (imageFile) {
         imageUrl = await uploadGuildImage(imageFile, user.id);
+      } else if (lostarkImageUrl) {
+        // 직접 업로드 없으면 전투정보실 이미지 URL 사용
+        imageUrl = lostarkImageUrl;
       }
     } catch (error: any) {
       console.error("image upload error:", error);
@@ -8825,6 +8866,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       setBirthday("");
       setMbti("");
       setImageFile(null);
+      setLostarkFetched(false);
+      setLostarkImageUrl(null);
       fetchCharacters();
       setShowRegister(false);
     } else {
@@ -9727,9 +9770,71 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
               </div>
 
               <div className="relative space-y-5 px-6 py-6">
+
+                {/* 전투정보실 자동 입력 영역 */}
+                <div className="rounded-[1.5rem] border border-amber-200/15 bg-amber-300/[0.06] p-4 space-y-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200/80">
+                    전투정보실 자동 불러오기
+                  </div>
+                  <p className="text-xs text-stone-400 leading-relaxed">
+                    캐릭터명을 입력하고 아래 버튼을 누르면 직업 · 아이템레벨 · 캐릭터레벨 · 이미지를 자동으로 채워줘.
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      value={characterName}
+                      onChange={(e) => {
+                        setCharacterName(e.target.value);
+                        setLostarkFetched(false);
+                        setLostarkImageUrl(null);
+                      }}
+                      placeholder="캐릭터명 입력"
+                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30 placeholder:text-slate-600"
+                    />
+                    <button
+                      onClick={fetchLostarkInfo}
+                      disabled={lostarkLoading || !characterName.trim()}
+                      className="shrink-0 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-xs font-semibold text-amber-200 transition-all hover:bg-amber-400/25 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {lostarkLoading ? "조회중..." : "불러오기"}
+                    </button>
+                  </div>
+
+                  {/* 성공 배너 */}
+                  {lostarkFetched && (
+                    <div className="flex items-center gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3">
+                      {lostarkImageUrl && (
+                        <img
+                          src={lostarkImageUrl}
+                          alt="캐릭터"
+                          className="h-12 w-10 rounded-lg object-cover object-top border border-white/10"
+                        />
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-emerald-300">정보 불러오기 완료 ✓</div>
+                        <div className="mt-0.5 text-[11px] text-stone-400 truncate">
+                          {className} · Lv.{characterLevel} · {itemLevel}
+                        </div>
+                        <div className="mt-0.5 text-[10px] text-stone-500">
+                          이미지는 직접 업로드하지 않으면 전투정보실 이미지가 사용돼.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid md:grid-cols-2 gap-3">
-                  <AdminInput label="캐릭터명" value={characterName} onChange={setCharacterName} />
                   <AdminInput label="직업" value={className} onChange={setClassName} />
+                  <div className="space-y-1.5">
+                    <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">역할</label>
+                    <select
+                      value={roleHint}
+                      onChange={(e) => setRoleHint(e.target.value)}
+                      className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
+                    >
+                      <option value="딜러">딜러</option>
+                      <option value="서포터">서포터</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="grid md:grid-cols-3 gap-3">
                   <AdminInput label="아이템레벨" value={itemLevel} onChange={setItemLevel} />
@@ -9740,19 +9845,9 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                   <AdminInput label="생일" type="date" value={birthday} onChange={setBirthday} />
                   <AdminInput label="MBTI" value={mbti} onChange={(value: string) => setMbti(String(value || "").toUpperCase().slice(0, 4))} placeholder="예: INFP" />
                 </div>
-                <div className="space-y-3">
-                  <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">역할</label>
-                  <select
-                    value={roleHint}
-                    onChange={(e) => setRoleHint(e.target.value)}
-                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
-                  >
-                    <option value="딜러">딜러</option>
-                    <option value="서포터">서포터</option>
-                  </select>
-                </div>
                 <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">캐릭터 이미지</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">캐릭터 이미지 직접 업로드 (선택)</div>
+                  <p className="mt-1 text-[11px] text-stone-500">직접 업로드하면 전투정보실 이미지 대신 이 이미지가 사용돼.</p>
                   <input
                     type="file"
                     accept="image/*"
