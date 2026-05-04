@@ -1782,13 +1782,11 @@ const fetchInitialData = async () => {
                   onOpenRaidCalendar={() => setIsRaidCalendarModalOpen(true)}
                   onNavigateToNotices={() => { setPostInitialTab("notice"); setActiveTab("posts"); }}
                   onRaidSearch={(raid: any) => {
-                    // 검색 결과 레이드 클릭 시 RaidCalendar의 모달을 열기
-                    // RaidCalendar에 직접 접근 불가이므로 activeTab을 raid로 전환 후 이벤트 발행
-                    setActiveTab("raid");
-                    // 커스텀 이벤트로 RaidCalendar에 전달
+                    // MonthlyRaidCalendarModal을 먼저 열고, 마운트 후 이벤트 발행
+                    setIsRaidCalendarModalOpen(true);
                     setTimeout(() => {
                       window.dispatchEvent(new CustomEvent("openRaidById", { detail: { raidId: raid.id } }));
-                    }, 150);
+                    }, 350);
                   }}
                 />
                 <HomeFeaturePortal contentView={contentView} setContentView={setContentView} />
@@ -5561,26 +5559,47 @@ const RaidDetailModal = ({
     void fetchMyNames();
   }, [user]);
 
-  // content_details에서 관문 정보 로드
+  // content_details에서 노말/하드 모두 로드 (비교 레이아웃용)
+  const [normalDetails, setNormalDetails] = useState<any[]>([]);
+  const [hardDetails,   setHardDetails]   = useState<any[]>([]);
+  const [contentId, setContentId] = useState<string | null>(null);
+  const [customBattleItemDefs] = useState<Array<{name:string;icon:string;image_url:string}>>(() => {
+    try { return JSON.parse(localStorage.getItem("custom_battle_items") || "[]"); } catch { return []; }
+  });
+
+  const getBattleItemDisplay = (name: string) => {
+    const custom = customBattleItemDefs.find(c => c.name === name);
+    if (custom?.image_url) return { type: "img" as const, src: custom.image_url };
+    const defaultIcons: Record<string,string> = {
+      "홀리 워터":"💊","고급 폭탄":"💣","정밀 폭탄":"🎯","시간의 모래":"⏳",
+      "상급 회복 물약":"🧪","고급 수류탄":"💥","각성 포션":"✨","흑마법 폭탄":"🖤",
+      "화염 수류탄":"🔥","독 폭탄":"☠️","섬광 수류탄":"💡",
+    };
+    return { type: "emoji" as const, src: custom?.icon || defaultIcons[name] || "🎒" };
+  };
+
   useEffect(() => {
     if (raid.type === "anime") return;
     const fetchDetails = async () => {
       setLoadingDetails(true);
       try {
-        // contents 테이블에서 raid_name 매칭
         const { data: contents } = await supabase
           .from("contents").select("id, name").eq("category", "레이드");
         const matched = (contents || []).find((c: any) =>
           String(c.name || "").trim().toLowerCase() === String(raid.raid_name || "").trim().toLowerCase()
         );
-        if (!matched) { setAllDetails([]); setLoadingDetails(false); return; }
-        const { data: details } = await supabase
-          .from("content_details").select("*")
-          .eq("content_id", matched.id)
-          .eq("difficulty", raid.difficulty || "노말")
-          .order("gate_num", { ascending: true });
-        setAllDetails(details || []);
-      } catch { setAllDetails([]); }
+        if (!matched) { setNormalDetails([]); setHardDetails([]); setLoadingDetails(false); return; }
+        setContentId(matched.id);
+        // 노말 + 하드 동시 로드
+        const [{ data: nd }, { data: hd }] = await Promise.all([
+          supabase.from("content_details").select("*").eq("content_id", matched.id).eq("difficulty", "노말").order("gate_num", { ascending: true }),
+          supabase.from("content_details").select("*").eq("content_id", matched.id).eq("difficulty", "하드").order("gate_num", { ascending: true }),
+        ]);
+        setNormalDetails(nd || []);
+        setHardDetails(hd || []);
+        // 기존 allDetails는 현재 난이도
+        setAllDetails(raid.difficulty === "하드" ? (hd || []) : (nd || []));
+      } catch { setNormalDetails([]); setHardDetails([]); setAllDetails([]); }
       setLoadingDetails(false);
     };
     void fetchDetails();
@@ -5592,8 +5611,14 @@ const RaidDetailModal = ({
   const isAnime = raid.type === "anime";
   const isFull = parts.length >= capacity.maxParticipants;
 
-  const totalGold = allDetails.reduce((sum, d) => sum + (Number(d.clear_gold) || 0), 0);
-  const totalHp   = allDetails.reduce((sum, d) => sum + (Number(String(d.hp || "0").replace(/,/g, "")) || 0), 0);
+  const hasHard = hardDetails.length > 0;
+  const hasNormal = normalDetails.length > 0;
+  const showComparison = hasNormal && hasHard;
+
+  const normalGold = normalDetails.reduce((s, d) => s + (Number(d.clear_gold) || 0), 0);
+  const hardGold   = hardDetails.reduce((s, d) => s + (Number(d.clear_gold) || 0), 0);
+  const totalGold  = allDetails.reduce((sum, d) => sum + (Number(d.clear_gold) || 0), 0);
+  const totalHp    = allDetails.reduce((sum, d) => sum + (Number(String(d.hp || "0").replace(/,/g, "")) || 0), 0);
 
   // 모든 관문에서 속성/배틀아이템 수집 (중복 제거)
   const allAttributes = Array.from(new Set(
@@ -5602,6 +5627,8 @@ const RaidDetailModal = ({
   const allBattleItems = Array.from(new Set(
     allDetails.flatMap((d) => String(d.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean))
   ));
+  // 전체 난이도 통합 보상 이미지 (노말 우선)
+  const rewardImageUrl = (normalDetails[0] || hardDetails[0])?.reward_image_url || "";
 
   const handleDelete = async () => {
     if (profile?.role !== "admin") { showToast("관리자만 삭제할 수 있어.", "error"); return; }
@@ -5769,82 +5796,166 @@ const RaidDetailModal = ({
                     )}
                   </div>
 
-                  {!loadingDetails && allDetails.length === 0 && (
+                  {!loadingDetails && !hasNormal && !hasHard && (
                     <div className="rounded-[1.3rem] border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-center text-sm text-stone-500">
                       등록된 관문 정보가 없습니다.<br />
                       <span className="text-xs text-stone-600">관리자가 콘텐츠 관리에서 레이드명과 동일하게 등록하면 여기에 표시됩니다.</span>
                     </div>
                   )}
 
-                  {allDetails.map((detail, idx) => {
-                    const gateGold = Number(detail.clear_gold) || 0;
-                    const gateHp   = Number(String(detail.hp || "0").replace(/,/g, "")) || 0;
-                    const gateAttr = String(detail.attribute || "").trim();
-                    const attrInfo = ATTRIBUTE_ICON[gateAttr] || null;
-                    const gateBattleItems = String(detail.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+                  {/* ── 노말/하드 나란히 비교 레이아웃 ── */}
+                  {!loadingDetails && (hasNormal || hasHard) && (() => {
+                    // 관문 수 최대값 기준
+                    const gateNums = Array.from(new Set([
+                      ...normalDetails.map(d => d.gate_num),
+                      ...hardDetails.map(d => d.gate_num),
+                    ])).sort((a, b) => a - b);
 
                     return (
-                      <div key={idx} className="overflow-hidden rounded-[1.3rem] border border-white/8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
-                        {/* 관문 헤더 */}
-                        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/15 text-sm font-bold text-amber-300">
-                              {detail.gate_num}관
+                      <div className="space-y-3">
+                        {/* 노말/하드 골드 합계 비교 헤더 */}
+                        {showComparison && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="rounded-2xl border border-sky-400/20 bg-sky-400/8 px-4 py-3 text-center">
+                              <div className="text-[9px] font-bold uppercase tracking-widest text-sky-300/70 mb-1">노말 총 골드</div>
+                              <div className="text-lg font-bold text-sky-300">{normalGold > 0 ? `${formatLargeNumber(normalGold)} G` : "-"}</div>
                             </div>
-                            {detail.element_type && (
-                              <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold text-slate-300">{detail.element_type}</span>
-                            )}
-                            {attrInfo && (
-                              <span className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold", attrInfo.bg, attrInfo.color)}>
-                                {attrInfo.icon} {gateAttr}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 text-sm">
-                            {gateHp > 0 && (
-                              <span className="text-stone-400">HP <span className="font-semibold text-white">{formatLargeNumber(gateHp)}</span></span>
-                            )}
-                            {gateGold > 0 && (
-                              <span className="font-bold text-yellow-300">{formatLargeNumber(gateGold)} G</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 관문 세부 */}
-                        {(detail.guide || detail.mechanics || detail.tip || gateBattleItems.length > 0) && (
-                          <div className="space-y-2.5 px-4 py-3">
-                            {gateBattleItems.length > 0 && (
-                              <div className="flex flex-wrap gap-1.5">
-                                {gateBattleItems.map((item: string) => (
-                                  <span key={item} className="flex items-center gap-1 rounded-full border border-amber-400/15 bg-amber-400/6 px-2.5 py-1 text-[10px] font-semibold text-amber-200">
-                                    {BATTLE_ITEM_ICON[item] || "🎒"} {item}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {detail.guide && (
-                              <div>
-                                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">공략</div>
-                                <p className="text-xs leading-6 text-stone-300 whitespace-pre-wrap">{detail.guide}</p>
-                              </div>
-                            )}
-                            {detail.mechanics && (
-                              <div>
-                                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">주요 기믹</div>
-                                <p className="text-xs leading-6 text-stone-300 whitespace-pre-wrap">{detail.mechanics}</p>
-                              </div>
-                            )}
-                            {detail.tip && (
-                              <div>
-                                <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">팁</div>
-                                <p className="text-xs leading-6 text-amber-100/80 whitespace-pre-wrap">{detail.tip}</p>
-                              </div>
-                            )}
+                            <div className="rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3 text-center">
+                              <div className="text-[9px] font-bold uppercase tracking-widest text-amber-300/70 mb-1">하드 총 골드</div>
+                              <div className="text-lg font-bold text-amber-300">{hardGold > 0 ? `${formatLargeNumber(hardGold)} G` : "-"}</div>
+                            </div>
                           </div>
                         )}
+
+                        {/* 보상 이미지 */}
+                        {rewardImageUrl && (
+                          <div className="overflow-hidden rounded-2xl border border-white/8">
+                            <div className="px-3 py-2 border-b border-white/6 text-[10px] font-bold uppercase tracking-widest text-stone-500">클리어 보상</div>
+                            <img src={rewardImageUrl} alt="클리어 보상" className="w-full object-contain max-h-40 bg-black/20" />
+                          </div>
+                        )}
+
+                        {/* 관문별 노말/하드 나란히 */}
+                        {gateNums.map(gateNum => {
+                          const nd = normalDetails.find(d => d.gate_num === gateNum);
+                          const hd = hardDetails.find(d => d.gate_num === gateNum);
+                          const refDetail = nd || hd;
+                          if (!refDetail) return null;
+
+                          const gateAttr = String(refDetail.attribute || "").trim();
+                          const attrInfo = ATTRIBUTE_ICON[gateAttr] || null;
+                          // 배틀아이템 (노말/하드 통합 중복제거)
+                          const gateBattleItems = Array.from(new Set([
+                            ...String(nd?.battle_items || "").split(",").map((s:string) => s.trim()).filter(Boolean),
+                            ...String(hd?.battle_items || "").split(",").map((s:string) => s.trim()).filter(Boolean),
+                          ]));
+
+                          return (
+                            <div key={gateNum} className="overflow-hidden rounded-[1.3rem] border border-white/8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
+                              {/* 관문 헤더 */}
+                              <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/15 text-sm font-bold text-amber-300">
+                                    {gateNum}관
+                                  </div>
+                                  {refDetail.element_type && (
+                                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold text-slate-300">{refDetail.element_type}</span>
+                                  )}
+                                  {attrInfo && (
+                                    <span className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold", attrInfo.bg, attrInfo.color)}>
+                                      {attrInfo.icon} {gateAttr}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* 노말/하드 나란히 수치 비교 */}
+                              {showComparison ? (
+                                <div className="grid grid-cols-2 divide-x divide-white/[0.06]">
+                                  {[{ label:"노말", d:nd, color:"text-sky-300", goldColor:"text-sky-200" },
+                                    { label:"하드", d:hd, color:"text-amber-300", goldColor:"text-yellow-300" }].map(({ label, d, color, goldColor }) => {
+                                    const gold = Number(d?.clear_gold) || 0;
+                                    const hp = Number(String(d?.hp || "0").replace(/,/g,"")) || 0;
+                                    return (
+                                      <div key={label} className="px-3 py-3 space-y-1.5">
+                                        <div className={cn("text-[9px] font-bold uppercase tracking-widest mb-2", color)}>{label}</div>
+                                        {hp > 0 && (
+                                          <div className="flex items-center justify-between text-xs">
+                                            <span className="text-stone-500">HP</span>
+                                            <span className="font-semibold text-white">{formatLargeNumber(hp)}</span>
+                                          </div>
+                                        )}
+                                        {gold > 0 && (
+                                          <div className="flex items-center justify-between text-xs">
+                                            <span className="text-stone-500">골드</span>
+                                            <span className={cn("font-bold", goldColor)}>{formatLargeNumber(gold)} G</span>
+                                          </div>
+                                        )}
+                                        {!d && <div className="text-[10px] text-stone-600">-</div>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                // 단일 난이도 표시
+                                <div className="flex items-center gap-4 px-4 py-3 text-sm">
+                                  {(nd || hd) && (() => {
+                                    const d = nd || hd;
+                                    const gold = Number(d?.clear_gold) || 0;
+                                    const hp = Number(String(d?.hp || "0").replace(/,/g,"")) || 0;
+                                    return <>
+                                      {hp > 0 && <span className="text-stone-400">HP <span className="font-semibold text-white">{formatLargeNumber(hp)}</span></span>}
+                                      {gold > 0 && <span className="font-bold text-yellow-300">{formatLargeNumber(gold)} G</span>}
+                                    </>;
+                                  })()}
+                                </div>
+                              )}
+
+                              {/* 배틀아이템 + 공략/기믹/팁 (노말 기준, 없으면 하드) */}
+                              {(gateBattleItems.length > 0 || refDetail.guide || refDetail.mechanics || refDetail.tip) && (
+                                <div className="space-y-2.5 border-t border-white/[0.06] px-4 py-3">
+                                  {gateBattleItems.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {gateBattleItems.map((item: string) => {
+                                        const disp = getBattleItemDisplay(item);
+                                        return (
+                                          <span key={item} className="flex items-center gap-1 rounded-full border border-amber-400/15 bg-amber-400/6 px-2.5 py-1 text-[10px] font-semibold text-amber-200">
+                                            {disp.type === "img"
+                                              ? <img src={disp.src} alt={item} className="h-3.5 w-3.5 rounded object-cover" />
+                                              : <span>{disp.src}</span>
+                                            }
+                                            {item}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                  {refDetail.guide && (
+                                    <div>
+                                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">공략</div>
+                                      <p className="text-xs leading-6 text-stone-300 whitespace-pre-wrap">{refDetail.guide}</p>
+                                    </div>
+                                  )}
+                                  {refDetail.mechanics && (
+                                    <div>
+                                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">주요 기믹</div>
+                                      <p className="text-xs leading-6 text-stone-300 whitespace-pre-wrap">{refDetail.mechanics}</p>
+                                    </div>
+                                  )}
+                                  {refDetail.tip && (
+                                    <div>
+                                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">팁</div>
+                                      <p className="text-xs leading-6 text-amber-100/80 whitespace-pre-wrap">{refDetail.tip}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
-                  })}
+                  })()}
                 </div>
               )}
             </>
@@ -6876,6 +6987,14 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const [selectedGate, setSelectedGate] = useState(1);
   const [difficulty, setDifficulty] = useState("노말");
   const [editingId, setEditingId] = useState<string | null>(null);
+  // 커스텀 배틀아이템 관리
+  const [customBattleItems, setCustomBattleItems] = useState<Array<{name:string;icon:string;image_url:string}>>(() => {
+    try { return JSON.parse(localStorage.getItem("custom_battle_items") || "[]"); } catch { return []; }
+  });
+  const [newBattleItem, setNewBattleItem] = useState({ name:"", icon:"🎒", image_url:"" });
+  const [showAddBattleItem, setShowAddBattleItem] = useState(false);
+  const [uploadingBattleIcon, setUploadingBattleIcon] = useState(false);
+  const [uploadingRewardImg, setUploadingRewardImg] = useState(false);
   const [form, setForm] = useState<any>({
     name: "",
     image_url: "",
@@ -6883,19 +7002,66 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     element: "",
     attribute: "",
     gold: 0,
+    battle_items: "",
     guide: "",
     mechanics: "",
     tip: "",
     reward_items: "",
     reward_materials: "",
+    reward_image_url: "",
   });
 
   const elementOptions = ["악마형", "야수형", "인간형", "정령형", "기계형", "고대", "불사", "신"];
   const attributeOptions = ["화속성 취약", "수속성 취약", "암속성 취약", "빛속성 취약", "토속성 취약", "뇌속성 취약"];
-  const battleItemOptions = [
-    "홀리 워터", "고급 폭탄", "정밀 폭탄", "시간의 모래", "상급 회복 물약",
-    "고급 수류탄", "각성 포션", "흑마법 폭탄", "화염 수류탄", "독 폭탄", "섬광 수류탄",
+
+  // 기본 배틀아이템 + 커스텀 합산
+  const defaultBattleItems = [
+    { name:"홀리 워터", icon:"💊", image_url:"" },
+    { name:"고급 폭탄", icon:"💣", image_url:"" },
+    { name:"정밀 폭탄", icon:"🎯", image_url:"" },
+    { name:"시간의 모래", icon:"⏳", image_url:"" },
+    { name:"상급 회복 물약", icon:"🧪", image_url:"" },
+    { name:"고급 수류탄", icon:"💥", image_url:"" },
+    { name:"각성 포션", icon:"✨", image_url:"" },
+    { name:"흑마법 폭탄", icon:"🖤", image_url:"" },
+    { name:"화염 수류탄", icon:"🔥", image_url:"" },
+    { name:"독 폭탄", icon:"☠️", image_url:"" },
+    { name:"섬광 수류탄", icon:"💡", image_url:"" },
   ];
+  const allBattleItemDefs = [...defaultBattleItems, ...customBattleItems];
+
+  const saveCustomBattleItems = (items: typeof customBattleItems) => {
+    setCustomBattleItems(items);
+    try { localStorage.setItem("custom_battle_items", JSON.stringify(items)); } catch {}
+  };
+
+  const uploadBattleIcon = async (file: File) => {
+    setUploadingBattleIcon(true);
+    try {
+      const client = getSupabaseOrThrow();
+      const ext = file.name.split(".").pop();
+      const path = `battle_items/${Date.now()}.${ext}`;
+      const { error } = await client.storage.from("images").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = client.storage.from("images").getPublicUrl(path);
+      setNewBattleItem(p => ({ ...p, image_url: publicUrl }));
+    } catch (e: any) { showToast("아이콘 업로드 실패: " + e.message, "error"); }
+    setUploadingBattleIcon(false);
+  };
+
+  const uploadRewardImage = async (file: File) => {
+    setUploadingRewardImg(true);
+    try {
+      const client = getSupabaseOrThrow();
+      const ext = file.name.split(".").pop();
+      const path = `reward_images/${Date.now()}.${ext}`;
+      const { error } = await client.storage.from("images").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = client.storage.from("images").getPublicUrl(path);
+      setForm((p: any) => ({ ...p, reward_image_url: publicUrl }));
+    } catch (e: any) { showToast("이미지 업로드 실패: " + e.message, "error"); }
+    setUploadingRewardImg(false);
+  };
 
   useEffect(() => {
     fetchList();
@@ -6938,6 +7104,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     tip: "",
     reward_items: "",
     reward_materials: "",
+    reward_image_url: "",
   });
 
   const normalizeRewardText = (value: any) => {
@@ -6988,6 +7155,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       tip: data?.tip || data?.tips || data?.recommendation || data?.recommend || data?.comment || "",
       reward_items: normalizeRewardText(data?.reward_items || data?.rewards || data?.drop_items || data?.drops),
       reward_materials: normalizeRewardText(data?.reward_materials || data?.material_rewards || data?.drop_materials || data?.reward_summary),
+      reward_image_url: data?.reward_image_url || "",
     });
   };
 
@@ -7031,6 +7199,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       tip: form.tip || null,
       reward_items: form.reward_items || null,
       reward_materials: form.reward_materials || null,
+      reward_image_url: form.reward_image_url || null,
     };
 
     let dErr: any = null;
@@ -7041,7 +7210,8 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
     dErr = firstTry.error;
 
-    if (dErr && String(dErr.message || "").includes("column")) {
+    if (dErr && (String(dErr.message || "").includes("column") || String(dErr.message || "").includes("does not exist"))) {
+      // battle_items / reward_image_url 등 신규 컬럼이 없을 수 있음 → 핵심 필드만 저장
       const fallback = await supabase.from("content_details").upsert(
         {
           content_id: data.id,
@@ -7051,14 +7221,38 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
           element_type: form.element,
           attribute: form.attribute,
           clear_gold: Number(form.gold) || 0,
+          battle_items: form.battle_items || null,
+          guide: form.guide || null,
+          mechanics: form.mechanics || null,
+          tip: form.tip || null,
+          reward_items: form.reward_items || null,
+          reward_materials: form.reward_materials || null,
         },
         { onConflict: "content_id,difficulty,gate_num" },
       );
 
       dErr = fallback.error;
 
-      if (!dErr) {
-        showToast("기본 데이터는 저장됐지만, 상세 메모/보상 컬럼이 아직 DB에 없어. SQL 마이그레이션이 필요해.", "info");
+      if (dErr && String(dErr.message || "").includes("column")) {
+        // reward_image_url 컬럼이 없는 경우 최소한의 필드만
+        const minimal = await supabase.from("content_details").upsert(
+          {
+            content_id: data.id,
+            difficulty: isRaid ? difficulty : null,
+            gate_num: isRaid ? Number(selectedGate) : 0,
+            hp: form.hp,
+            element_type: form.element,
+            attribute: form.attribute,
+            clear_gold: Number(form.gold) || 0,
+          },
+          { onConflict: "content_id,difficulty,gate_num" },
+        );
+        dErr = minimal.error;
+        if (!dErr) {
+          showToast("기본 데이터 저장 완료. reward_image_url/battle_items 컬럼 추가가 필요합니다. (Supabase SQL 에디터에서 마이그레이션 실행)", "info");
+        }
+      } else if (!dErr) {
+        showToast("데이터 저장 완료! (reward_image_url 컬럼 추가 시 이미지도 저장됩니다)", "info");
       }
     }
 
@@ -7244,28 +7438,96 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
               />
             </div>
             <div className="mt-4">
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">필요 배틀아이템</div>
-              <div className="flex flex-wrap gap-2">
-                {battleItemOptions.map((item) => {
-                  const selected = (form.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean).includes(item);
-                  return (
+              <div className="mb-2 flex items-center justify-between">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">필요 배틀아이템</div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddBattleItem(p => !p)}
+                  className="flex items-center gap-1 rounded-full border border-dashed border-amber-400/30 bg-amber-400/8 px-2.5 py-1 text-[10px] font-semibold text-amber-300 hover:border-amber-400/50 transition-all"
+                >
+                  <Plus size={10} /> 직접 추가
+                </button>
+              </div>
+
+              {/* 커스텀 배틀아이템 추가 폼 */}
+              {showAddBattleItem && (
+                <div className="mb-3 rounded-2xl border border-amber-400/15 bg-amber-400/5 p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      value={newBattleItem.name}
+                      onChange={e => setNewBattleItem(p => ({ ...p, name: e.target.value }))}
+                      placeholder="아이템 이름"
+                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white outline-none focus:border-amber-400/30"
+                    />
+                    <input
+                      value={newBattleItem.icon}
+                      onChange={e => setNewBattleItem(p => ({ ...p, icon: e.target.value }))}
+                      placeholder="이모지"
+                      className="w-16 rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white outline-none text-center focus:border-amber-400/30"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-slate-400 hover:border-white/20 transition-all">
+                      <ImageIcon size={12} />
+                      {uploadingBattleIcon ? "업로드 중..." : newBattleItem.image_url ? "이미지 변경" : "이미지 업로드"}
+                      <input type="file" accept="image/*" className="hidden" onChange={e => { if (e.target.files?.[0]) uploadBattleIcon(e.target.files[0]); }} />
+                    </label>
+                    {newBattleItem.image_url && (
+                      <img src={newBattleItem.image_url} alt="" className="h-8 w-8 rounded-lg object-cover border border-white/10" />
+                    )}
+                  </div>
+                  <div className="flex gap-2">
                     <button
-                      key={item}
                       type="button"
                       onClick={() => {
-                        const current = (form.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean);
-                        const next = selected ? current.filter((v: string) => v !== item) : [...current, item];
-                        setForm({ ...form, battle_items: next.join(", ") });
+                        if (!newBattleItem.name.trim()) return;
+                        saveCustomBattleItems([...customBattleItems, { ...newBattleItem, name: newBattleItem.name.trim() }]);
+                        setNewBattleItem({ name:"", icon:"🎒", image_url:"" });
+                        setShowAddBattleItem(false);
+                        showToast("배틀아이템 추가 완료!", "success");
                       }}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
-                        selected
-                          ? "border-amber-400/50 bg-amber-400/20 text-amber-200"
-                          : "border-white/10 bg-black/20 text-slate-400 hover:border-white/20 hover:text-white"
+                      className="flex-1 rounded-xl border border-amber-400/30 bg-amber-400/15 py-1.5 text-xs font-semibold text-amber-200 hover:bg-amber-400/25 transition-all"
+                    >추가</button>
+                    <button type="button" onClick={() => setShowAddBattleItem(false)}
+                      className="rounded-xl border border-white/10 bg-black/20 px-3 py-1.5 text-xs text-slate-400 hover:text-white transition-all">취소</button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                {allBattleItemDefs.map((itemDef) => {
+                  const selected = (form.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean).includes(itemDef.name);
+                  return (
+                    <div key={itemDef.name} className="relative group">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = (form.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean);
+                          const next = selected ? current.filter((v: string) => v !== itemDef.name) : [...current, itemDef.name];
+                          setForm({ ...form, battle_items: next.join(", ") });
+                        }}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all",
+                          selected
+                            ? "border-amber-400/50 bg-amber-400/20 text-amber-200"
+                            : "border-white/10 bg-black/20 text-slate-400 hover:border-white/20 hover:text-white"
+                        )}
+                      >
+                        {itemDef.image_url
+                          ? <img src={itemDef.image_url} alt="" className="h-4 w-4 rounded object-cover" />
+                          : <span>{itemDef.icon}</span>
+                        }
+                        {itemDef.name}
+                      </button>
+                      {/* 커스텀 아이템 삭제 버튼 */}
+                      {customBattleItems.some(c => c.name === itemDef.name) && (
+                        <button
+                          type="button"
+                          onClick={() => saveCustomBattleItems(customBattleItems.filter(c => c.name !== itemDef.name))}
+                          className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-white text-[9px] shadow"
+                        >✕</button>
                       )}
-                    >
-                      {item}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -7294,6 +7556,53 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
                 placeholder={"예시\n정제된 파괴강석 x24\n정제된 수호강석 x36"}
                 rows={5}
               />
+              {/* 보상 대표 이미지 */}
+              <div className="space-y-2">
+                <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">보상 대표 이미지</label>
+                <div className="flex items-center gap-3">
+                  <label className={cn(
+                    "flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-white/15 bg-black/20 px-4 py-3 text-xs text-slate-400 hover:border-amber-400/30 hover:text-amber-200 transition-all",
+                    uploadingRewardImg && "opacity-50 pointer-events-none"
+                  )}>
+                    <ImageIcon size={13} />
+                    {uploadingRewardImg ? "업로드 중..." : form.reward_image_url ? "이미지 변경" : "이미지 업로드"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={e => { if (e.target.files?.[0]) uploadRewardImage(e.target.files[0]); }}
+                    />
+                  </label>
+                  {form.reward_image_url && (
+                    <div className="relative group">
+                      <img src={form.reward_image_url} alt="보상 이미지" className="h-16 w-16 rounded-2xl object-cover border border-white/10" />
+                      <button
+                        type="button"
+                        onClick={() => setForm((p: any) => ({ ...p, reward_image_url: "" }))}
+                        className="absolute -top-2 -right-2 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] shadow"
+                      >✕</button>
+                    </div>
+                  )}
+                </div>
+                {form.reward_image_url && (
+                  <div className="flex gap-2 items-center">
+                    <input
+                      value={form.reward_image_url}
+                      onChange={e => setForm((p: any) => ({ ...p, reward_image_url: e.target.value }))}
+                      placeholder="또는 URL 직접 입력"
+                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white outline-none focus:border-amber-400/30"
+                    />
+                  </div>
+                )}
+                {!form.reward_image_url && (
+                  <input
+                    value={form.reward_image_url}
+                    onChange={e => setForm((p: any) => ({ ...p, reward_image_url: e.target.value }))}
+                    placeholder="또는 URL 직접 입력"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white outline-none focus:border-amber-400/30"
+                  />
+                )}
+              </div>
             </div>
           </AdminSectionCard>
         </div>
