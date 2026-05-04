@@ -6903,7 +6903,6 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const [form, setForm] = useState<any>({
     name: "",
     image_url: "",
-    hp: "",
     element: "",
     attribute: "",
     gold: 0,
@@ -6911,8 +6910,6 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     guide: "",
     mechanics: "",
     tip: "",
-    reward_items: "",
-    reward_materials: "",
     reward_image_url: "",
   });
 
@@ -6999,7 +6996,6 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const createBaseForm = (item?: any) => ({
     name: item?.name || "",
     image_url: item?.image_url || "",
-    hp: "",
     element: "",
     attribute: "",
     gold: 0,
@@ -7007,8 +7003,6 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     guide: "",
     mechanics: "",
     tip: "",
-    reward_items: "",
-    reward_materials: "",
     reward_image_url: "",
   });
 
@@ -7050,7 +7044,6 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
     setForm({
       ...baseForm,
-      hp: data?.hp || "",
       element: data?.element_type || "",
       attribute: data?.attribute || "",
       gold: data?.clear_gold || 0,
@@ -7058,8 +7051,6 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
       guide: data?.guide || data?.description || data?.desc || data?.memo || data?.note || "",
       mechanics: data?.mechanics || data?.pattern || data?.patterns || data?.mechanic || "",
       tip: data?.tip || data?.tips || data?.recommendation || data?.recommend || data?.comment || "",
-      reward_items: normalizeRewardText(data?.reward_items || data?.rewards || data?.drop_items || data?.drops),
-      reward_materials: normalizeRewardText(data?.reward_materials || data?.material_rewards || data?.drop_materials || data?.reward_summary),
       reward_image_url: data?.reward_image_url || "",
     });
   };
@@ -7109,20 +7100,18 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     const { data: existRow } = await existQuery.maybeSingle();
 
     // 전체 필드 payload
+    // DB 실제 컬럼 기준 payload (reward_items/reward_materials/hp 컬럼 없음)
     const detailPayload: Record<string, any> = {
-      content_id:      data.id,
-      difficulty:      diffVal,
-      gate_num:        gateVal,
-      hp:              form.hp || null,
-      element_type:    form.element || null,
-      attribute:       form.attribute || null,
-      clear_gold:      Number(form.gold) || 0,
-      battle_items:    form.battle_items || null,
-      guide:           form.guide || null,
-      mechanics:       form.mechanics || null,
-      tip:             form.tip || null,
-      reward_items:    form.reward_items || null,
-      reward_materials: form.reward_materials || null,
+      content_id:       data.id,
+      difficulty:       diffVal,
+      gate_num:         gateVal,
+      element_type:     form.element || null,
+      attribute:        form.attribute || null,
+      clear_gold:       Number(form.gold) || 0,
+      battle_items:     form.battle_items || null,
+      guide:            form.guide || null,
+      mechanics:        form.mechanics || null,
+      tip:              form.tip || null,
       reward_image_url: form.reward_image_url || null,
     };
 
@@ -7145,6 +7134,7 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
     // 컬럼 없음 오류 → reward_image_url 제외하고 재시도
     if (dErr && (String(dErr.message || "").includes("column") || String(dErr.message || "").includes("does not exist"))) {
+      // reward_image_url 없는 경우를 위한 fallback
       const { reward_image_url, ...payloadWithout } = detailPayload;
       let retryErr: any = null;
       if (existRow?.id) {
@@ -7320,13 +7310,17 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
             description="관문별 핵심 스펙과 숫자형 보상을 입력해."
           >
             <div className="grid gap-4 md:grid-cols-2">
-              <AdminInput label="HP" value={form.hp} onChange={(v: any) => setForm({ ...form, hp: v })} />
               <AdminInput
-                label="Gold"
+                label="Gold (클리어 골드)"
                 type="number"
                 value={form.gold}
                 onChange={(v: any) => setForm({ ...form, gold: v })}
               />
+              <div className="rounded-[1.35rem] border border-white/5 bg-white/[0.02] p-3 text-[11px] text-slate-500">
+                <div className="font-semibold text-slate-400 mb-1">💡 DB 컬럼 안내</div>
+                HP 컬럼은 DB에 없습니다.<br/>필요 시 Supabase에서 추가하세요.<br/>
+                <code className="text-amber-400/70">ALTER TABLE content_details ADD COLUMN hp text;</code>
+              </div>
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <AdminSelect
@@ -7446,23 +7440,9 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
           <AdminSectionCard
             title="보상 데이터"
-            description="한 줄에 하나씩 입력해. 예: 찬란한 명예의 돌파석 x8"
+            description="클리어 보상 이미지를 업로드하거나 URL을 입력하세요."
           >
             <div className="space-y-4">
-              <AdminTextarea
-                label="드랍 아이템"
-                value={form.reward_items}
-                onChange={(value) => setForm({ ...form, reward_items: value })}
-                placeholder={"예시\n비밀의 보물 상자 x1\n빛나는 명예의 돌파석 x12"}
-                rows={5}
-              />
-              <AdminTextarea
-                label="드랍 재료"
-                value={form.reward_materials}
-                onChange={(value) => setForm({ ...form, reward_materials: value })}
-                placeholder={"예시\n정제된 파괴강석 x24\n정제된 수호강석 x36"}
-                rows={5}
-              />
               {/* 보상 대표 이미지 */}
               <div className="space-y-2">
                 <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">보상 대표 이미지</label>
