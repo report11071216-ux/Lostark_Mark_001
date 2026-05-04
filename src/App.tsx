@@ -10924,26 +10924,41 @@ const GuildMembersPage = () => {
                     {/* 캐릭터 이미지 영역 */}
                     <div
                       className="relative shrink-0 w-[140px] flex items-end justify-center overflow-hidden"
-                      style={{ background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%)" }}
+                      style={{ background: theme.cardBackground }}
                     >
                       {armoryProfile?.CharacterImage ? (
                         <img
                           src={armoryProfile.CharacterImage}
                           alt={member.character_name}
                           className="w-full object-cover object-top"
-                          style={{ height: 180, objectPosition: "top center" }}
+                          style={{ height: 180, objectPosition: "top center", mixBlendMode: "luminosity" }}
                         />
                       ) : member.avatar_url || member.image_url ? (
                         <img
                           src={member.avatar_url || member.image_url}
                           alt={member.character_name}
                           className="w-full h-[180px] object-cover"
+                          style={{ mixBlendMode: "luminosity" }}
                         />
                       ) : (
                         <div className="w-full h-[180px] flex items-center justify-center text-xs text-white/30 bg-white/5">
                           이미지 없음
                         </div>
                       )}
+                      {/* 우측 페이드 — 카드 배경으로 자연스럽게 녹아들기 */}
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background: `linear-gradient(to right, transparent 35%, ${theme.cardBorder}99 100%)`,
+                        }}
+                      />
+                      {/* 하단 페이드 */}
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 55%)",
+                        }}
+                      />
                       {/* 서버 뱃지 */}
                       {(armoryProfile?.ServerName || member.server_name) && (
                         <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 text-[10px] font-semibold text-white/80">
