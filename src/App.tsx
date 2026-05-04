@@ -10300,46 +10300,139 @@ const GuildMembersPage = () => {
   const [lostarkTarget, setLostarkTarget] = useState<string | null>(null);
 
   // ── 인라인 전투정보실 캐시 & 탭 상태 ──────────────────────
-  const [armoryCache, setArmoryCache] = useState<Record<string, {
-    loading: boolean;
-    error: string | null;
-    data: LostarkAllData | null;
-    siblings: LostarkSibling[];
-  }>>({});
+  // 탭별 개별 API 호출 방식: type=all 대신 profile/equipment/engravings/gems/cards/siblings 각각 호출
+  type ArmoryTabData = {
+    profile:    { loading: boolean; error: string | null; data: LostarkProfile | null };
+    equipment:  { loading: boolean; error: string | null; data: LostarkEquipment[] };
+    engravings: { loading: boolean; error: string | null; data: LostarkEngraving[] };
+    gems:       { loading: boolean; error: string | null; data: LostarkGem[] };
+    cards:      { loading: boolean; error: string | null; data: LostarkCard[] };
+    siblings:   { loading: boolean; error: string | null; data: LostarkSibling[] };
+    opened: boolean;
+  };
+  const [armoryCache, setArmoryCache] = useState<Record<string, ArmoryTabData>>({});
   const [cardTabs, setCardTabs] = useState<Record<string, string>>({});
 
-  const fetchArmoryForCard = async (characterName: string) => {
-    if (armoryCache[characterName]) return;
+  const initArmoryEntry = (): ArmoryTabData => ({
+    profile:    { loading: false, error: null, data: null },
+    equipment:  { loading: false, error: null, data: [] },
+    engravings: { loading: false, error: null, data: [] },
+    gems:       { loading: false, error: null, data: [] },
+    cards:      { loading: false, error: null, data: [] },
+    siblings:   { loading: false, error: null, data: [] },
+    opened: true,
+  });
+
+  // 카드 열기: profile + siblings 먼저 호출, 나머지는 탭 전환 시 지연 로드
+  const openArmoryCard = async (characterName: string) => {
+    if (armoryCache[characterName]?.opened) return;
     setArmoryCache(prev => ({
       ...prev,
-      [characterName]: { loading: true, error: null, data: null, siblings: [] },
+      [characterName]: {
+        ...initArmoryEntry(),
+        profile:  { loading: true, error: null, data: null },
+        siblings: { loading: true, error: null, data: [] },
+      },
+    }));
+    // profile + siblings 동시 호출
+    const [profRes, sibRes] = await Promise.allSettled([
+      fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=profile`),
+      fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=siblings`),
+    ]);
+    let profData: LostarkProfile | null = null;
+    let profErr: string | null = null;
+    let sibData: LostarkSibling[] = [];
+    let sibErr: string | null = null;
+
+    if (profRes.status === "fulfilled") {
+      try {
+        const j = await profRes.value.json();
+        if (j.ok) profData = j.data as LostarkProfile;
+        else profErr = j.error || "프로필 조회 실패";
+      } catch { profErr = "응답 파싱 오류"; }
+    } else { profErr = "네트워크 오류"; }
+
+    if (sibRes.status === "fulfilled") {
+      try {
+        const j = await sibRes.value.json();
+        if (j.ok && Array.isArray(j.data)) sibData = j.data as LostarkSibling[];
+        else sibErr = j.error || "원정대 조회 실패";
+      } catch { sibErr = "응답 파싱 오류"; }
+    } else { sibErr = "네트워크 오류"; }
+
+    setArmoryCache(prev => ({
+      ...prev,
+      [characterName]: {
+        ...prev[characterName],
+        profile:  { loading: false, error: profErr, data: profData },
+        siblings: { loading: false, error: sibErr,  data: sibData },
+      },
+    }));
+  };
+
+  // 탭 전환 시 해당 탭 데이터 지연 로드
+  const fetchTabData = async (characterName: string, tab: string) => {
+    const entry = armoryCache[characterName];
+    if (!entry) return;
+
+    type TabKey = "equipment" | "engravings" | "gems" | "cards";
+    const tabTypeMap: Record<TabKey, string> = {
+      equipment:  "equipment",
+      engravings: "engravings",
+      gems:       "gems",
+      cards:      "cards",
+    };
+    const typeKey = tabTypeMap[tab as TabKey];
+    if (!typeKey) return; // profile / siblings 는 openArmoryCard 에서 처리
+
+    const current = entry[tab as TabKey] as { loading: boolean; error: string | null; data: any[] };
+    // 이미 로드됐거나 로딩 중이면 스킵
+    if (current.loading || current.data.length > 0 || current.error) return;
+
+    setArmoryCache(prev => ({
+      ...prev,
+      [characterName]: {
+        ...prev[characterName],
+        [tab]: { loading: true, error: null, data: [] },
+      },
     }));
     try {
-      const [res, sibRes] = await Promise.all([
-        fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=all`),
-        fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=siblings`),
-      ]);
-      const json    = await res.json();
-      const sibJson = await sibRes.json();
+      const res  = await fetch(`/api/lostark?character=${encodeURIComponent(characterName)}&type=${typeKey}`);
+      const json = await res.json();
+      let parsed: any[] = [];
+      if (json.ok) {
+        if (tab === "equipment")  parsed = Array.isArray(json.data) ? json.data : [];
+        if (tab === "engravings") parsed = Array.isArray(json.data?.Engravings) ? json.data.Engravings : [];
+        if (tab === "gems")       parsed = Array.isArray(json.data?.Gems) ? json.data.Gems : [];
+        if (tab === "cards")      parsed = Array.isArray(json.data?.Cards) ? json.data.Cards : [];
+      }
       setArmoryCache(prev => ({
         ...prev,
         [characterName]: {
-          loading: false,
-          error:    json.ok ? null : (json.error || "조회 실패"),
-          data:     json.ok ? (json.data as LostarkAllData) : null,
-          siblings: sibJson.ok && Array.isArray(sibJson.data) ? (sibJson.data as LostarkSibling[]) : [],
+          ...prev[characterName],
+          [tab]: { loading: false, error: json.ok ? null : (json.error || "조회 실패"), data: parsed },
         },
       }));
     } catch (e: any) {
       setArmoryCache(prev => ({
         ...prev,
-        [characterName]: { loading: false, error: e?.message || "오류 발생", data: null, siblings: [] },
+        [characterName]: {
+          ...prev[characterName],
+          [tab]: { loading: false, error: e?.message || "오류", data: [] },
+        },
       }));
     }
   };
 
-  const setCardTab = (characterName: string, tab: string) =>
+  const setCardTab = (characterName: string, tab: string) => {
     setCardTabs(prev => ({ ...prev, [characterName]: tab }));
+    fetchTabData(characterName, tab);
+  };
+
+  const retryArmory = (characterName: string) => {
+    setArmoryCache(prev => { const n = { ...prev }; delete n[characterName]; return n; });
+    openArmoryCard(characterName);
+  };
   // ─────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -10555,17 +10648,23 @@ const GuildMembersPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filteredMembers.map((member: any) => {
             const { theme } = getPrimaryBadgeTheme(member);
-            const weaponTheme = getWeaponTheme({ rarity: member.equipped_weapon_rarity });
 
             // ── 인라인 전투정보실 데이터 ──
-            const armory         = armoryCache[member.character_name];
-            const activeTab      = cardTabs[member.character_name] || "profile";
-            const armoryProfile  = armory?.data?.ArmoryProfile;
-            const armoryEquip    = armory?.data?.ArmoryEquipment || [];
-            const armoryEngrav   = armory?.data?.ArmoryEngraving?.Engravings || [];
-            const armoryGems     = armory?.data?.ArmoryGem?.Gems || [];
-            const armoryCards    = armory?.data?.ArmoryCard?.Cards || [];
-            const armorySiblings = armory?.siblings || [];
+            const armory     = armoryCache[member.character_name];
+            const activeTab  = cardTabs[member.character_name] || "profile";
+            const profState  = armory?.profile;
+            const equipState = armory?.equipment;
+            const engState   = armory?.engravings;
+            const gemState   = armory?.gems;
+            const cardState  = armory?.cards;
+            const sibState   = armory?.siblings;
+
+            const armoryProfile  = profState?.data;
+            const armoryEquip    = equipState?.data || [];
+            const armoryEngrav   = engState?.data   || [];
+            const armoryGems     = gemState?.data   || [];
+            const armoryCards    = cardState?.data  || [];
+            const armorySiblings = sibState?.data   || [];
 
             const CARD_TABS = [
               { id: "profile",    label: "프로필" },
@@ -10575,6 +10674,16 @@ const GuildMembersPage = () => {
               { id: "cards",      label: "카드" },
               { id: "siblings",   label: `원정대${armorySiblings.length ? ` (${armorySiblings.length})` : ""}` },
             ] as const;
+
+            const tabStateMap: Record<string, { loading: boolean; error: string | null } | undefined> = {
+              profile:    profState,
+              equipment:  equipState,
+              engravings: engState,
+              gems:       gemState,
+              cards:      cardState,
+              siblings:   sibState,
+            };
+            const curTabState = tabStateMap[activeTab];
 
             return (
               <div
@@ -10653,50 +10762,23 @@ const GuildMembersPage = () => {
                     </div>
                   </div>
 
-                  {/* ── 장비 파츠 [무기] ── */}
-                  <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-                    <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-semibold">장비 파츠 [무기]</div>
-                    {member.equipped_weapon_name ? (
-                      <div className="mt-3 flex items-center gap-3">
-                        <WeaponImage weapon={{ image_url: member.equipped_weapon_image_url, rarity: member.equipped_weapon_rarity }} className="h-14 w-14 rounded-2xl" />
-                        <div className="min-w-0">
-                          <div className="font-semibold truncate">{getEnhancedWeaponName(member.equipped_weapon_name, member.equipped_weapon_level)}</div>
-                          <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-semibold border" style={{ color: weaponTheme.text, borderColor: weaponTheme.border, background: weaponTheme.background }}>
-                            {weaponTheme.label}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-3 text-sm text-slate-500">장착한 무기가 없습니다.</div>
-                    )}
-                  </div>
-
-                  {/* ── 기본 스탯 그리드 ── */}
-                  <div className="grid grid-cols-2 gap-3 mt-5">
-                    <InfoMiniCard title="캐릭터 레벨" value={member.character_level || "-"} />
-                    <InfoMiniCard title="전투력" value={member.combat_power || "-"} />
+                  {/* ── 생일 & MBTI (DB 데이터, 항상 표시) ── */}
+                  <div className="grid grid-cols-2 gap-3 mt-4">
                     <InfoMiniCard title="생일" value={member.birthday ? formatShortDate(member.birthday) : "-"} />
                     <InfoMiniCard title="MBTI" value={member.mbti || "-"} />
-                    <InfoMiniCard title="최근 참여" value={member.last_raid_name || "기록 없음"} />
-                    <InfoMiniCard title="최근 날짜" value={member.last_raid_date ? formatShortDate(member.last_raid_date) : "-"} />
-                    <InfoMiniCard title="주간 참여" value={`${member.weekly_join_count || 0}회`} />
-                    <InfoMiniCard title="참여율" value={`${member.participation_rate || 0}%`} />
                   </div>
 
                   {member.character_intro && (
-                    <div className="mt-4 text-sm text-slate-300 whitespace-pre-wrap border-t border-white/5 pt-4">
+                    <div className="mt-3 text-sm text-slate-300 whitespace-pre-wrap border-t border-white/5 pt-3">
                       {member.character_intro}
                     </div>
                   )}
 
-                  {/* ══════════════════════════════════════════════
-                      인라인 전투정보실 패널
-                      ══════════════════════════════════════════════ */}
-                  {!armory ? (
-                    /* 미조회 상태: 펼치기 버튼 + 모달 버튼 */
+                  {/* ── 전투정보실 패널 ── */}
+                  {!armory?.opened ? (
                     <div className="mt-4 flex gap-2">
                       <button
-                        onClick={() => fetchArmoryForCard(member.character_name)}
+                        onClick={() => openArmoryCard(member.character_name)}
                         className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-2.5 text-xs font-semibold text-amber-300 transition-all hover:border-amber-400/40 hover:bg-amber-400/14 hover:text-amber-200 active:scale-[0.98]"
                       >
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -10706,7 +10788,7 @@ const GuildMembersPage = () => {
                       </button>
                       <button
                         onClick={() => setLostarkTarget(member.character_name)}
-                        className="px-3 py-2.5 rounded-2xl border border-white/10 bg-white/5 text-xs font-semibold text-slate-400 hover:bg-white/10 hover:text-white transition-all active:scale-[0.98]"
+                        className="px-3 py-2.5 rounded-2xl border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-all"
                         title="전체화면 모달로 보기"
                       >
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -10715,41 +10797,7 @@ const GuildMembersPage = () => {
                         </svg>
                       </button>
                     </div>
-                  ) : armory.loading ? (
-                    /* 로딩 중 */
-                    <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-black/20 py-6">
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="h-5 w-5 rounded-full border-2 border-amber-400 border-t-transparent"
-                      />
-                      <span className="text-xs text-slate-400">인게임 정보 불러오는 중...</span>
-                    </div>
-                  ) : armory.error ? (
-                    /* 오류 */
-                    <div className="mt-4 rounded-2xl border border-rose-400/20 bg-rose-400/8 p-4 text-center">
-                      <div className="text-xs text-rose-300 font-semibold mb-1">조회 실패</div>
-                      <div className="text-[11px] text-slate-400">{armory.error}</div>
-                      <div className="mt-2 flex gap-2 justify-center">
-                        <button
-                          onClick={() => {
-                            setArmoryCache(prev => { const n = { ...prev }; delete n[member.character_name]; return n; });
-                            fetchArmoryForCard(member.character_name);
-                          }}
-                          className="text-[11px] text-amber-400 underline underline-offset-2"
-                        >
-                          재시도
-                        </button>
-                        <button
-                          onClick={() => setLostarkTarget(member.character_name)}
-                          className="text-[11px] text-slate-400 underline underline-offset-2"
-                        >
-                          모달로 보기
-                        </button>
-                      </div>
-                    </div>
                   ) : (
-                    /* ── 전투정보실 데이터 표시 ── */
                     <div className="mt-4 rounded-[1.5rem] border border-amber-400/15 bg-black/30 overflow-hidden">
 
                       {/* 탭 바 */}
@@ -10768,7 +10816,6 @@ const GuildMembersPage = () => {
                             {t.label}
                           </button>
                         ))}
-                        {/* 전체화면 모달 버튼 */}
                         <button
                           onClick={() => setLostarkTarget(member.character_name)}
                           className="ml-auto shrink-0 rounded-xl px-2 py-1 text-slate-500 hover:text-amber-300 hover:bg-white/8 transition-all"
@@ -10782,10 +10829,34 @@ const GuildMembersPage = () => {
                       </div>
 
                       {/* 탭 컨텐츠 */}
-                      <div className="p-4 space-y-2 max-h-[380px] overflow-y-auto">
+                      <div className="p-4 space-y-2 max-h-[400px] overflow-y-auto">
+
+                        {/* 공통: 탭 로딩 */}
+                        {curTabState?.loading && (
+                          <div className="flex items-center justify-center gap-2 py-8">
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                              className="h-5 w-5 rounded-full border-2 border-amber-400 border-t-transparent"
+                            />
+                            <span className="text-xs text-slate-400">불러오는 중...</span>
+                          </div>
+                        )}
+
+                        {/* 공통: 탭 에러 */}
+                        {!curTabState?.loading && curTabState?.error && (
+                          <div className="rounded-xl border border-rose-400/20 bg-rose-400/8 p-4 text-center">
+                            <div className="text-xs text-rose-300 font-semibold mb-1">조회 실패</div>
+                            <div className="text-[11px] text-slate-400 mb-2">{curTabState.error}</div>
+                            <button
+                              onClick={() => retryArmory(member.character_name)}
+                              className="text-[11px] text-amber-400 underline underline-offset-2"
+                            >재시도</button>
+                          </div>
+                        )}
 
                         {/* ── 프로필 탭 ── */}
-                        {activeTab === "profile" && (
+                        {activeTab === "profile" && !curTabState?.loading && !curTabState?.error && (
                           armoryProfile ? (
                             <div className="space-y-2">
                               <div className="grid grid-cols-2 gap-2">
@@ -10820,20 +10891,22 @@ const GuildMembersPage = () => {
                               )}
                             </div>
                           ) : (
-                            <div className="text-center py-6 text-xs text-slate-500">프로필 정보가 없습니다.</div>
+                            <div className="text-center py-8 text-xs text-slate-500">
+                              프로필 정보가 없습니다.<br/>
+                              <span className="text-[10px]">전투정보실이 비공개 상태일 수 있어요.</span>
+                            </div>
                           )
                         )}
 
                         {/* ── 장비 탭 ── */}
-                        {activeTab === "equipment" && (
+                        {activeTab === "equipment" && !curTabState?.loading && !curTabState?.error && (
                           armoryEquip.length === 0 ? (
-                            <div className="text-center py-6 text-xs text-slate-500">장비 정보가 없습니다.</div>
+                            <div className="text-center py-8 text-xs text-slate-500">장비 정보가 없습니다.</div>
                           ) : (
                             armoryEquip.map((eq: LostarkEquipment, i: number) => (
                               <div key={i} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-2.5">
                                 <img
-                                  src={eq.Icon}
-                                  alt={eq.Name}
+                                  src={eq.Icon} alt={eq.Name}
                                   className="h-10 w-10 rounded-lg object-cover bg-black/20 shrink-0"
                                   style={{ borderWidth: 1, borderStyle: "solid", borderColor: gradeColor(eq.Grade) }}
                                 />
@@ -10850,9 +10923,9 @@ const GuildMembersPage = () => {
                         )}
 
                         {/* ── 각인 탭 ── */}
-                        {activeTab === "engravings" && (
+                        {activeTab === "engravings" && !curTabState?.loading && !curTabState?.error && (
                           armoryEngrav.length === 0 ? (
-                            <div className="text-center py-6 text-xs text-slate-500">각인 정보가 없습니다.</div>
+                            <div className="text-center py-8 text-xs text-slate-500">각인 정보가 없습니다.</div>
                           ) : (
                             armoryEngrav.map((eng: LostarkEngraving, i: number) => (
                               <div key={i} className="flex items-center gap-3 rounded-xl border border-white/8 bg-white/[0.03] p-2.5">
@@ -10870,17 +10943,16 @@ const GuildMembersPage = () => {
                         )}
 
                         {/* ── 보석 탭 ── */}
-                        {activeTab === "gems" && (
+                        {activeTab === "gems" && !curTabState?.loading && !curTabState?.error && (
                           armoryGems.length === 0 ? (
-                            <div className="text-center py-6 text-xs text-slate-500">보석 정보가 없습니다.</div>
+                            <div className="text-center py-8 text-xs text-slate-500">보석 정보가 없습니다.</div>
                           ) : (
                             <div className="grid grid-cols-2 gap-2">
                               {[...armoryGems].sort((a: LostarkGem, b: LostarkGem) => b.Level - a.Level).map((gem: LostarkGem, i: number) => (
                                 <div key={i} className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] p-2">
                                   <div className="relative shrink-0">
                                     <img
-                                      src={gem.Icon}
-                                      alt={gem.Name}
+                                      src={gem.Icon} alt={gem.Name}
                                       className="h-9 w-9 rounded-lg object-cover bg-black/20"
                                       style={{ borderWidth: 1, borderStyle: "solid", borderColor: gradeColor(gem.Grade) }}
                                     />
@@ -10899,16 +10971,15 @@ const GuildMembersPage = () => {
                         )}
 
                         {/* ── 카드 탭 ── */}
-                        {activeTab === "cards" && (
+                        {activeTab === "cards" && !curTabState?.loading && !curTabState?.error && (
                           armoryCards.length === 0 ? (
-                            <div className="text-center py-6 text-xs text-slate-500">카드 정보가 없습니다.</div>
+                            <div className="text-center py-8 text-xs text-slate-500">카드 정보가 없습니다.</div>
                           ) : (
                             <div className="grid grid-cols-3 gap-2">
                               {armoryCards.map((card: LostarkCard, i: number) => (
                                 <div key={i} className="flex flex-col items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.03] p-2 text-center">
                                   <img
-                                    src={card.Icon}
-                                    alt={card.Name}
+                                    src={card.Icon} alt={card.Name}
                                     className="h-14 w-10 rounded-lg object-cover bg-black/20"
                                     style={{ borderWidth: 1, borderStyle: "solid", borderColor: gradeColor(card.Grade) }}
                                   />
@@ -10924,9 +10995,9 @@ const GuildMembersPage = () => {
                         )}
 
                         {/* ── 원정대 탭 ── */}
-                        {activeTab === "siblings" && (
+                        {activeTab === "siblings" && !curTabState?.loading && !curTabState?.error && (
                           armorySiblings.length === 0 ? (
-                            <div className="text-center py-6 text-xs text-slate-500">원정대 정보가 없습니다.</div>
+                            <div className="text-center py-8 text-xs text-slate-500">원정대 정보가 없습니다.</div>
                           ) : (
                             [...armorySiblings]
                               .sort((a: LostarkSibling, b: LostarkSibling) =>
@@ -10968,7 +11039,6 @@ const GuildMembersPage = () => {
                       </div>{/* /tab body */}
                     </div>
                   )}
-                  {/* ═══════════════════════════════════════════ */}
 
                 </div>
               </div>
@@ -10977,7 +11047,7 @@ const GuildMembersPage = () => {
         </div>
       )}
 
-      {/* 전체화면 전투정보실 모달 (기존 유지) */}
+      {/* 전체화면 전투정보실 모달 */}
       <AnimatePresence>
         {lostarkTarget && (
           <LostarkProfileModal
@@ -10988,6 +11058,8 @@ const GuildMembersPage = () => {
       </AnimatePresence>
     </div>
   );
+};
+
 };
 
 
