@@ -4161,8 +4161,12 @@ const DetailPopup = ({ item, type, onClose }: any) => {
               <h2 className="text-2xl font-bold tracking-tight text-white md:text-4xl">{item.name || item.sub_class}</h2>
               {type === "레이드" && !loading && (
                 <div className="mt-3 flex flex-wrap gap-4 text-sm text-stone-400">
-                  {normalTotalGold > 0 && <span>노말 총 골드 <b className="text-sky-300">{formatLargeNumber(normalTotalGold)} G</b></span>}
-                  {hardTotalGold  > 0 && <span>하드 총 골드 <b className="text-amber-300">{formatLargeNumber(hardTotalGold)} G</b></span>}
+                  {normalRows.length > 0 && (
+                    <span>노말 <b className="text-sky-300">{formatLargeNumber(normalRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)+Number(d.more_gold||0),0))} G</b></span>
+                  )}
+                  {hardRows.length > 0 && (
+                    <span>하드 <b className="text-amber-300">{formatLargeNumber(hardRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)+Number(d.more_gold||0),0))} G</b></span>
+                  )}
                 </div>
               )}
             </div>
@@ -4188,13 +4192,41 @@ const DetailPopup = ({ item, type, onClose }: any) => {
               {/* 노말/하드 골드 합계 비교 카드 */}
               {showComparison && (
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-sky-400/20 bg-sky-400/8 px-5 py-4 text-center">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-sky-300/70 mb-1">노말 합계</div>
-                    <div className="text-2xl font-bold text-sky-300">{normalTotalGold > 0 ? `${formatLargeNumber(normalTotalGold)} G` : "-"}</div>
+                  {/* 노말 합계 */}
+                  <div className="overflow-hidden rounded-2xl border border-sky-400/20 bg-sky-400/5">
+                    <div className="border-b border-sky-400/15 px-4 py-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300">노말 합계</span>
+                    </div>
+                    <div className="grid grid-cols-3 divide-x divide-white/[0.06] px-0">
+                      {[
+                        { label:"클리어", value: normalRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0),0), color:"text-yellow-300" },
+                        { label:"더보기", value: normalRows.reduce((s:number,d:any)=>s+Number(d.more_gold||0),0),  color:"text-stone-300" },
+                        { label:"합계",   value: normalRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)+Number(d.more_gold||0),0), color:"text-sky-300" },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="px-3 py-2.5 text-center">
+                          <div className="text-[9px] text-stone-500 mb-1">{label}</div>
+                          <div className={cn("text-sm font-bold tabular-nums", color)}>{value > 0 ? `${formatLargeNumber(value)} G` : "-"}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="rounded-2xl border border-amber-400/20 bg-amber-400/8 px-5 py-4 text-center">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-amber-300/70 mb-1">하드 합계</div>
-                    <div className="text-2xl font-bold text-amber-300">{hardTotalGold > 0 ? `${formatLargeNumber(hardTotalGold)} G` : "-"}</div>
+                  {/* 하드 합계 */}
+                  <div className="overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-400/5">
+                    <div className="border-b border-amber-400/15 px-4 py-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">하드 합계</span>
+                    </div>
+                    <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
+                      {[
+                        { label:"클리어", value: hardRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0),0), color:"text-yellow-300" },
+                        { label:"더보기", value: hardRows.reduce((s:number,d:any)=>s+Number(d.more_gold||0),0),  color:"text-stone-300" },
+                        { label:"합계",   value: hardRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)+Number(d.more_gold||0),0), color:"text-amber-300" },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="px-3 py-2.5 text-center">
+                          <div className="text-[9px] text-stone-500 mb-1">{label}</div>
+                          <div className={cn("text-sm font-bold tabular-nums", color)}>{value > 0 ? `${formatLargeNumber(value)} G` : "-"}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -4253,37 +4285,69 @@ const DetailPopup = ({ item, type, onClose }: any) => {
 
                     {/* 노말/하드 수치 나란히 */}
                     {showComparison ? (
+                      /* ── 노말/하드 나란히 비교 ── */
                       <div className="grid grid-cols-2 divide-x divide-white/[0.07]">
-                        {([{ label:"노말", d:nd, nGold, nHp, goldColor:"text-sky-200", labelColor:"text-sky-300" },
-                           { label:"하드", d:hd, nGold:hGold, nHp:hHp, goldColor:"text-yellow-300", labelColor:"text-amber-300" }
-                        ] as any[]).map(({ label, d, nGold:gold, nHp:hp, goldColor, labelColor }) => (
-                          <div key={label} className="px-5 py-4 space-y-2">
-                            <div className={cn("text-[9px] font-bold uppercase tracking-widest mb-2", labelColor)}>{label}</div>
-                            {hp > 0 && (
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-stone-500">HP</span>
-                                <span className="font-semibold text-white">{formatLargeNumber(hp)}</span>
+                        {([
+                          { label:"노말", d:nd, labelColor:"text-sky-300", borderColor:"border-sky-400/30", bgColor:"bg-sky-400/5" },
+                          { label:"하드", d:hd, labelColor:"text-amber-300", borderColor:"border-amber-400/30", bgColor:"bg-amber-400/5" },
+                        ] as any[]).map(({ label, d, labelColor, borderColor, bgColor }) => {
+                          const clearGold = Number(d?.clear_gold) || 0;
+                          const moreGold  = Number(d?.more_gold)  || 0;
+                          const hp        = String(d?.hp || "").trim();
+                          return (
+                            <div key={label} className={cn("px-4 py-3 space-y-2.5", !d && "opacity-40")}>
+                              <div className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold", borderColor, bgColor, labelColor)}>
+                                {label}
+                                {!d && <span className="text-[9px] opacity-60">데이터 없음</span>}
                               </div>
-                            )}
-                            {gold > 0 && (
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-stone-500">골드</span>
-                                <span className={cn("font-bold", goldColor)}>{formatLargeNumber(gold)} G</span>
-                              </div>
-                            )}
-                            {!d && <div className="text-xs text-stone-600">데이터 없음</div>}
-                          </div>
-                        ))}
+                              {hp && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] text-stone-500 shrink-0">체력</span>
+                                  <span className="text-xs font-semibold text-rose-300 tabular-nums">{hp}</span>
+                                </div>
+                              )}
+                              {clearGold > 0 && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] text-stone-500 shrink-0">클리어</span>
+                                  <span className="flex items-center gap-1 text-sm font-bold text-yellow-300 tabular-nums">
+                                    <span className="text-[10px]">💰</span>{formatLargeNumber(clearGold)} G
+                                  </span>
+                                </div>
+                              )}
+                              {moreGold > 0 && (
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] text-stone-500 shrink-0">더보기</span>
+                                  <span className="flex items-center gap-1 text-xs font-semibold text-stone-300 tabular-nums">
+                                    <span className="text-[10px]">🪙</span>{formatLargeNumber(moreGold)} G
+                                  </span>
+                                </div>
+                              )}
+                              {(clearGold > 0 || moreGold > 0) && (
+                                <div className="border-t border-white/[0.06] pt-2 flex items-center justify-between gap-2">
+                                  <span className="text-[10px] text-stone-500 shrink-0">합계</span>
+                                  <span className={cn("text-sm font-bold tabular-nums", labelColor)}>{formatLargeNumber(clearGold + moreGold)} G</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-5 px-5 py-4 text-sm">
-                        {(nHp > 0 || (Number(String(hd?.hp||"0").replace(/,/g,""))||0) > 0) && (
-                          <span className="text-stone-400">HP <span className="font-semibold text-white">{formatLargeNumber(nHp || Number(String(hd?.hp||"0").replace(/,/g,"")))}</span></span>
-                        )}
-                        {(nGold > 0 || hGold > 0) && (
-                          <span className="font-bold text-yellow-300">{formatLargeNumber(nGold || hGold)} G</span>
-                        )}
-                      </div>
+                      /* ── 단일 난이도 ── */
+                      (() => {
+                        const d = nd || hd;
+                        const clearGold = Number(d?.clear_gold) || 0;
+                        const moreGold  = Number(d?.more_gold)  || 0;
+                        const hp        = String(d?.hp || "").trim();
+                        return (
+                          <div className="flex flex-wrap items-center gap-4 px-5 py-3.5 text-sm">
+                            {hp && <span className="text-stone-400">체력 <span className="font-semibold text-rose-300">{hp}</span></span>}
+                            {clearGold > 0 && <span className="text-stone-400">클리어 <span className="font-bold text-yellow-300">💰 {formatLargeNumber(clearGold)} G</span></span>}
+                            {moreGold  > 0 && <span className="text-stone-400">더보기 <span className="font-semibold text-stone-300">🪙 {formatLargeNumber(moreGold)} G</span></span>}
+                            {(clearGold + moreGold) > 0 && <span className="ml-auto font-bold text-amber-300">합계 {formatLargeNumber(clearGold + moreGold)} G</span>}
+                          </div>
+                        );
+                      })()
                     )}
 
                     {/* 배틀아이템 */}
@@ -5520,10 +5584,15 @@ const RaidDetailModal = ({
   const hasNormal = normalDetails.length > 0;
   const showComparison = hasNormal && hasHard;
 
-  const normalGold = normalDetails.reduce((s, d) => s + (Number(d.clear_gold) || 0), 0);
-  const hardGold   = hardDetails.reduce((s, d) => s + (Number(d.clear_gold) || 0), 0);
-  const totalGold  = allDetails.reduce((sum, d) => sum + (Number(d.clear_gold) || 0), 0);
-  const totalHp    = allDetails.reduce((sum, d) => sum + (Number(String(d.hp || "0").replace(/,/g, "")) || 0), 0);
+  const normalClearGold = normalDetails.reduce((s, d) => s + (Number(d.clear_gold) || 0), 0);
+  const normalMoreGold  = normalDetails.reduce((s, d) => s + (Number(d.more_gold)  || 0), 0);
+  const hardClearGold   = hardDetails.reduce((s, d)   => s + (Number(d.clear_gold) || 0), 0);
+  const hardMoreGold    = hardDetails.reduce((s, d)   => s + (Number(d.more_gold)  || 0), 0);
+  // 하위 호환
+  const normalGold = normalClearGold + normalMoreGold;
+  const hardGold   = hardClearGold   + hardMoreGold;
+  const totalGold  = allDetails.reduce((sum, d) => sum + (Number(d.clear_gold) || 0) + (Number(d.more_gold) || 0), 0);
+  const totalHp    = 0; // HP는 텍스트 컬럼이므로 합산 불필요
 
   // 모든 관문에서 속성/배틀아이템 수집 (중복 제거)
   const allAttributes = Array.from(new Set(
@@ -5721,13 +5790,41 @@ const RaidDetailModal = ({
                         {/* 노말/하드 골드 합계 비교 헤더 */}
                         {showComparison && (
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="rounded-2xl border border-sky-400/20 bg-sky-400/8 px-4 py-3 text-center">
-                              <div className="text-[9px] font-bold uppercase tracking-widest text-sky-300/70 mb-1">노말 총 골드</div>
-                              <div className="text-lg font-bold text-sky-300">{normalGold > 0 ? `${formatLargeNumber(normalGold)} G` : "-"}</div>
+                            {/* 노말 합계 */}
+                            <div className="overflow-hidden rounded-2xl border border-sky-400/20 bg-sky-400/5">
+                              <div className="border-b border-sky-400/15 px-3 py-1.5">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300">노말</span>
+                              </div>
+                              <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
+                                {([
+                                  { label:"클리어", value:normalClearGold, color:"text-yellow-300" },
+                                  { label:"더보기", value:normalMoreGold,  color:"text-stone-300" },
+                                  { label:"합계",   value:normalGold,      color:"text-sky-300" },
+                                ] as any[]).map(({ label, value, color }) => (
+                                  <div key={label} className="px-2 py-2 text-center">
+                                    <div className="text-[8px] text-stone-500 mb-0.5">{label}</div>
+                                    <div className={cn("text-xs font-bold tabular-nums", color)}>{value > 0 ? `${formatLargeNumber(value)} G` : "-"}</div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
-                            <div className="rounded-2xl border border-amber-400/20 bg-amber-400/8 px-4 py-3 text-center">
-                              <div className="text-[9px] font-bold uppercase tracking-widest text-amber-300/70 mb-1">하드 총 골드</div>
-                              <div className="text-lg font-bold text-amber-300">{hardGold > 0 ? `${formatLargeNumber(hardGold)} G` : "-"}</div>
+                            {/* 하드 합계 */}
+                            <div className="overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-400/5">
+                              <div className="border-b border-amber-400/15 px-3 py-1.5">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">하드</span>
+                              </div>
+                              <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
+                                {([
+                                  { label:"클리어", value:hardClearGold, color:"text-yellow-300" },
+                                  { label:"더보기", value:hardMoreGold,  color:"text-stone-300" },
+                                  { label:"합계",   value:hardGold,      color:"text-amber-300" },
+                                ] as any[]).map(({ label, value, color }) => (
+                                  <div key={label} className="px-2 py-2 text-center">
+                                    <div className="text-[8px] text-stone-500 mb-0.5">{label}</div>
+                                    <div className={cn("text-xs font-bold tabular-nums", color)}>{value > 0 ? `${formatLargeNumber(value)} G` : "-"}</div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           </div>
                         )}
@@ -5777,43 +5874,64 @@ const RaidDetailModal = ({
                               {/* 노말/하드 나란히 수치 비교 */}
                               {showComparison ? (
                                 <div className="grid grid-cols-2 divide-x divide-white/[0.06]">
-                                  {[{ label:"노말", d:nd, color:"text-sky-300", goldColor:"text-sky-200" },
-                                    { label:"하드", d:hd, color:"text-amber-300", goldColor:"text-yellow-300" }].map(({ label, d, color, goldColor }) => {
-                                    const gold = Number(d?.clear_gold) || 0;
-                                    const hp = Number(String(d?.hp || "0").replace(/,/g,"")) || 0;
+                                  {([
+                                    { label:"노말", d:nd, labelColor:"text-sky-300", borderColor:"border-sky-400/30", bgColor:"bg-sky-400/5" },
+                                    { label:"하드", d:hd, labelColor:"text-amber-300", borderColor:"border-amber-400/30", bgColor:"bg-amber-400/5" },
+                                  ] as any[]).map(({ label, d, labelColor, borderColor, bgColor }) => {
+                                    const clearGold = Number(d?.clear_gold) || 0;
+                                    const moreGold  = Number(d?.more_gold)  || 0;
+                                    const hp        = String(d?.hp || "").trim();
                                     return (
-                                      <div key={label} className="px-3 py-3 space-y-1.5">
-                                        <div className={cn("text-[9px] font-bold uppercase tracking-widest mb-2", color)}>{label}</div>
-                                        {hp > 0 && (
+                                      <div key={label} className={cn("px-3 py-3 space-y-2", !d && "opacity-40")}>
+                                        <div className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold", borderColor, bgColor, labelColor)}>
+                                          {label}{!d && " · 없음"}
+                                        </div>
+                                        {hp && (
                                           <div className="flex items-center justify-between text-xs">
-                                            <span className="text-stone-500">HP</span>
-                                            <span className="font-semibold text-white">{formatLargeNumber(hp)}</span>
+                                            <span className="text-stone-500">체력</span>
+                                            <span className="font-semibold text-rose-300 tabular-nums">{hp}</span>
                                           </div>
                                         )}
-                                        {gold > 0 && (
+                                        {clearGold > 0 && (
                                           <div className="flex items-center justify-between text-xs">
-                                            <span className="text-stone-500">골드</span>
-                                            <span className={cn("font-bold", goldColor)}>{formatLargeNumber(gold)} G</span>
+                                            <span className="text-stone-500">💰 클리어</span>
+                                            <span className="font-bold text-yellow-300 tabular-nums">{formatLargeNumber(clearGold)} G</span>
                                           </div>
                                         )}
-                                        {!d && <div className="text-[10px] text-stone-600">-</div>}
+                                        {moreGold > 0 && (
+                                          <div className="flex items-center justify-between text-xs">
+                                            <span className="text-stone-500">🪙 더보기</span>
+                                            <span className="font-semibold text-stone-300 tabular-nums">{formatLargeNumber(moreGold)} G</span>
+                                          </div>
+                                        )}
+                                        {(clearGold > 0 || moreGold > 0) && (
+                                          <div className="border-t border-white/[0.06] pt-1.5 flex items-center justify-between text-xs">
+                                            <span className="text-stone-500">합계</span>
+                                            <span className={cn("font-bold tabular-nums", labelColor)}>{formatLargeNumber(clearGold + moreGold)} G</span>
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}
                                 </div>
                               ) : (
-                                // 단일 난이도 표시
-                                <div className="flex items-center gap-4 px-4 py-3 text-sm">
-                                  {(nd || hd) && (() => {
-                                    const d = nd || hd;
-                                    const gold = Number(d?.clear_gold) || 0;
-                                    const hp = Number(String(d?.hp || "0").replace(/,/g,"")) || 0;
-                                    return <>
-                                      {hp > 0 && <span className="text-stone-400">HP <span className="font-semibold text-white">{formatLargeNumber(hp)}</span></span>}
-                                      {gold > 0 && <span className="font-bold text-yellow-300">{formatLargeNumber(gold)} G</span>}
-                                    </>;
-                                  })()}
-                                </div>
+                                // 단일 난이도
+                                (() => {
+                                  const d = nd || hd;
+                                  const clearGold = Number(d?.clear_gold) || 0;
+                                  const moreGold  = Number(d?.more_gold)  || 0;
+                                  const hp        = String(d?.hp || "").trim();
+                                  return (
+                                    <div className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+                                      {hp && <span className="text-stone-400">체력 <span className="font-semibold text-rose-300">{hp}</span></span>}
+                                      {clearGold > 0 && <span className="text-stone-400">💰 <span className="font-bold text-yellow-300">{formatLargeNumber(clearGold)} G</span></span>}
+                                      {moreGold  > 0 && <span className="text-stone-400">🪙 <span className="font-semibold text-stone-300">{formatLargeNumber(moreGold)} G</span></span>}
+                                      {(clearGold + moreGold) > 0 && (
+                                        <span className="ml-auto font-bold text-amber-300">합계 {formatLargeNumber(clearGold + moreGold)} G</span>
+                                      )}
+                                    </div>
+                                  );
+                                })()
                               )}
 
                               {/* 배틀아이템 + 공략/기믹/팁 (노말 기준, 없으면 하드) */}
@@ -6903,9 +7021,11 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const [form, setForm] = useState<any>({
     name: "",
     image_url: "",
+    hp: "",
     element: "",
     attribute: "",
     gold: 0,
+    more_gold: 0,
     battle_items: "",
     guide: "",
     mechanics: "",
@@ -6996,9 +7116,11 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
   const createBaseForm = (item?: any) => ({
     name: item?.name || "",
     image_url: item?.image_url || "",
+    hp: "",
     element: "",
     attribute: "",
     gold: 0,
+    more_gold: 0,
     battle_items: "",
     guide: "",
     mechanics: "",
@@ -7044,9 +7166,11 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
 
     setForm({
       ...baseForm,
+      hp: data?.hp || "",
       element: data?.element_type || "",
       attribute: data?.attribute || "",
       gold: data?.clear_gold || 0,
+      more_gold: data?.more_gold || 0,
       battle_items: data?.battle_items || "",
       guide: data?.guide || data?.description || data?.desc || data?.memo || data?.note || "",
       mechanics: data?.mechanics || data?.pattern || data?.patterns || data?.mechanic || "",
@@ -7100,14 +7224,16 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
     const { data: existRow } = await existQuery.maybeSingle();
 
     // 전체 필드 payload
-    // DB 실제 컬럼 기준 payload (reward_items/reward_materials/hp 컬럼 없음)
+    // DB 컬럼 기준 payload
     const detailPayload: Record<string, any> = {
       content_id:       data.id,
       difficulty:       diffVal,
       gate_num:         gateVal,
+      hp:               form.hp || null,
       element_type:     form.element || null,
       attribute:        form.attribute || null,
       clear_gold:       Number(form.gold) || 0,
+      more_gold:        Number(form.more_gold) || 0,
       battle_items:     form.battle_items || null,
       guide:            form.guide || null,
       mechanics:        form.mechanics || null,
@@ -7309,18 +7435,27 @@ const RaidContentEditor = ({ isRaid }: { isRaid: boolean }) => {
             title="전투 수치"
             description="관문별 핵심 스펙과 숫자형 보상을 입력해."
           >
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <AdminInput
-                label="Gold (클리어 골드)"
+                label="HP (체력)"
+                value={form.hp}
+                onChange={(v: any) => setForm({ ...form, hp: v })}
+                placeholder="예: 12,500,000"
+              />
+              <AdminInput
+                label="클리어 골드"
                 type="number"
                 value={form.gold}
                 onChange={(v: any) => setForm({ ...form, gold: v })}
+                placeholder="예: 2750"
               />
-              <div className="rounded-[1.35rem] border border-white/5 bg-white/[0.02] p-3 text-[11px] text-slate-500">
-                <div className="font-semibold text-slate-400 mb-1">💡 DB 컬럼 안내</div>
-                HP 컬럼은 DB에 없습니다.<br/>필요 시 Supabase에서 추가하세요.<br/>
-                <code className="text-amber-400/70">ALTER TABLE content_details ADD COLUMN hp text;</code>
-              </div>
+              <AdminInput
+                label="더보기 골드"
+                type="number"
+                value={form.more_gold}
+                onChange={(v: any) => setForm({ ...form, more_gold: v })}
+                placeholder="예: 1820"
+              />
             </div>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <AdminSelect
