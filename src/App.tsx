@@ -4162,10 +4162,10 @@ const DetailPopup = ({ item, type, onClose }: any) => {
               {type === "레이드" && !loading && (
                 <div className="mt-3 flex flex-wrap gap-4 text-sm text-stone-400">
                   {normalRows.length > 0 && (
-                    <span>노말 <b className="text-sky-300">{formatLargeNumber(normalRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)+Number(d.more_gold||0),0))} G</b></span>
+                    <span>노말 <b className="text-sky-300">{formatLargeNumber(normalRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)-Number(d.more_gold||0),0))} G</b></span>
                   )}
                   {hardRows.length > 0 && (
-                    <span>하드 <b className="text-amber-300">{formatLargeNumber(hardRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)+Number(d.more_gold||0),0))} G</b></span>
+                    <span>하드 <b className="text-amber-300">{formatLargeNumber(hardRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)-Number(d.more_gold||0),0))} G</b></span>
                   )}
                 </div>
               )}
@@ -4201,7 +4201,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                       {[
                         { label:"클리어", value: normalRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0),0), color:"text-yellow-300" },
                         { label:"더보기", value: normalRows.reduce((s:number,d:any)=>s+Number(d.more_gold||0),0),  color:"text-stone-300" },
-                        { label:"합계",   value: normalRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)+Number(d.more_gold||0),0), color:"text-sky-300" },
+                        { label:"실수령", value: normalRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)-Number(d.more_gold||0),0), color:"text-sky-300" },
                       ].map(({ label, value, color }) => (
                         <div key={label} className="px-3 py-2.5 text-center">
                           <div className="text-[9px] text-stone-500 mb-1">{label}</div>
@@ -4219,7 +4219,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                       {[
                         { label:"클리어", value: hardRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0),0), color:"text-yellow-300" },
                         { label:"더보기", value: hardRows.reduce((s:number,d:any)=>s+Number(d.more_gold||0),0),  color:"text-stone-300" },
-                        { label:"합계",   value: hardRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)+Number(d.more_gold||0),0), color:"text-amber-300" },
+                        { label:"실수령", value: hardRows.reduce((s:number,d:any)=>s+Number(d.clear_gold||0)-Number(d.more_gold||0),0), color:"text-amber-300" },
                       ].map(({ label, value, color }) => (
                         <div key={label} className="px-3 py-2.5 text-center">
                           <div className="text-[9px] text-stone-500 mb-1">{label}</div>
@@ -4316,16 +4316,16 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                               )}
                               {moreGold > 0 && (
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="text-[10px] text-stone-500 shrink-0">더보기</span>
+                                  <span className="text-[10px] text-rose-400/70 shrink-0">🪙 더보기 지출</span>
                                   <span className="flex items-center gap-1 text-xs font-semibold text-stone-300 tabular-nums">
-                                    <span className="text-[10px]">🪙</span>{formatLargeNumber(moreGold)} G
+                                    <span className="text-xs font-semibold text-rose-300/80 tabular-nums">-{formatLargeNumber(moreGold)} G</span>
                                   </span>
                                 </div>
                               )}
-                              {(clearGold > 0 || moreGold > 0) && (
+                              {clearGold > 0 && (
                                 <div className="border-t border-white/[0.06] pt-2 flex items-center justify-between gap-2">
-                                  <span className="text-[10px] text-stone-500 shrink-0">합계</span>
-                                  <span className={cn("text-sm font-bold tabular-nums", labelColor)}>{formatLargeNumber(clearGold + moreGold)} G</span>
+                                  <span className="text-[10px] text-stone-500 shrink-0">실수령</span>
+                                  <span className={cn("text-sm font-bold tabular-nums", labelColor)}>{formatLargeNumber(clearGold - moreGold)} G</span>
                                 </div>
                               )}
                             </div>
@@ -4343,8 +4343,8 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                           <div className="flex flex-wrap items-center gap-4 px-5 py-3.5 text-sm">
                             {hp && <span className="text-stone-400">체력 <span className="font-semibold text-rose-300">{hp}</span></span>}
                             {clearGold > 0 && <span className="text-stone-400">클리어 <span className="font-bold text-yellow-300">💰 {formatLargeNumber(clearGold)} G</span></span>}
-                            {moreGold  > 0 && <span className="text-stone-400">더보기 <span className="font-semibold text-stone-300">🪙 {formatLargeNumber(moreGold)} G</span></span>}
-                            {(clearGold + moreGold) > 0 && <span className="ml-auto font-bold text-amber-300">합계 {formatLargeNumber(clearGold + moreGold)} G</span>}
+                            {moreGold  > 0 && <span className="text-rose-400/70">🪙 더보기 지출 <span className="font-semibold text-rose-300/80">-{formatLargeNumber(moreGold)} G</span></span>}
+                            {clearGold > 0 && <span className="ml-auto font-bold text-amber-300">실수령 {formatLargeNumber(clearGold - moreGold)} G</span>}
                           </div>
                         );
                       })()
@@ -5589,9 +5589,9 @@ const RaidDetailModal = ({
   const hardClearGold   = hardDetails.reduce((s, d)   => s + (Number(d.clear_gold) || 0), 0);
   const hardMoreGold    = hardDetails.reduce((s, d)   => s + (Number(d.more_gold)  || 0), 0);
   // 하위 호환
-  const normalGold = normalClearGold + normalMoreGold;
-  const hardGold   = hardClearGold   + hardMoreGold;
-  const totalGold  = allDetails.reduce((sum, d) => sum + (Number(d.clear_gold) || 0) + (Number(d.more_gold) || 0), 0);
+  const normalGold = normalClearGold - normalMoreGold;
+  const hardGold   = hardClearGold   - hardMoreGold;
+  const totalGold  = allDetails.reduce((sum, d) => sum + (Number(d.clear_gold) || 0) - (Number(d.more_gold) || 0), 0);
   const totalHp    = 0; // HP는 텍스트 컬럼이므로 합산 불필요
 
   // 모든 관문에서 속성/배틀아이템 수집 (중복 제거)
@@ -5798,8 +5798,8 @@ const RaidDetailModal = ({
                               <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
                                 {([
                                   { label:"클리어", value:normalClearGold, color:"text-yellow-300" },
-                                  { label:"더보기", value:normalMoreGold,  color:"text-stone-300" },
-                                  { label:"합계",   value:normalGold,      color:"text-sky-300" },
+                                  { label:"더보기 지출", value:normalMoreGold,  color:"text-rose-300" },
+                                  { label:"실수령", value:normalGold,      color:"text-sky-300" },
                                 ] as any[]).map(({ label, value, color }) => (
                                   <div key={label} className="px-2 py-2 text-center">
                                     <div className="text-[8px] text-stone-500 mb-0.5">{label}</div>
@@ -5816,8 +5816,8 @@ const RaidDetailModal = ({
                               <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
                                 {([
                                   { label:"클리어", value:hardClearGold, color:"text-yellow-300" },
-                                  { label:"더보기", value:hardMoreGold,  color:"text-stone-300" },
-                                  { label:"합계",   value:hardGold,      color:"text-amber-300" },
+                                  { label:"더보기 지출", value:hardMoreGold,  color:"text-rose-300" },
+                                  { label:"실수령", value:hardGold,      color:"text-amber-300" },
                                 ] as any[]).map(({ label, value, color }) => (
                                   <div key={label} className="px-2 py-2 text-center">
                                     <div className="text-[8px] text-stone-500 mb-0.5">{label}</div>
@@ -5900,14 +5900,14 @@ const RaidDetailModal = ({
                                         )}
                                         {moreGold > 0 && (
                                           <div className="flex items-center justify-between text-xs">
-                                            <span className="text-stone-500">🪙 더보기</span>
-                                            <span className="font-semibold text-stone-300 tabular-nums">{formatLargeNumber(moreGold)} G</span>
+                                            <span className="text-rose-400/70">🪙 더보기 지출</span>
+                                            <span className="font-semibold text-rose-300/80 tabular-nums">-{formatLargeNumber(moreGold)} G</span>
                                           </div>
                                         )}
-                                        {(clearGold > 0 || moreGold > 0) && (
+                                        {clearGold > 0 && (
                                           <div className="border-t border-white/[0.06] pt-1.5 flex items-center justify-between text-xs">
-                                            <span className="text-stone-500">합계</span>
-                                            <span className={cn("font-bold tabular-nums", labelColor)}>{formatLargeNumber(clearGold + moreGold)} G</span>
+                                            <span className="text-stone-500">실수령</span>
+                                            <span className={cn("font-bold tabular-nums", labelColor)}>{formatLargeNumber(clearGold - moreGold)} G</span>
                                           </div>
                                         )}
                                       </div>
@@ -5926,8 +5926,8 @@ const RaidDetailModal = ({
                                       {hp && <span className="text-stone-400">체력 <span className="font-semibold text-rose-300">{hp}</span></span>}
                                       {clearGold > 0 && <span className="text-stone-400">💰 <span className="font-bold text-yellow-300">{formatLargeNumber(clearGold)} G</span></span>}
                                       {moreGold  > 0 && <span className="text-stone-400">🪙 <span className="font-semibold text-stone-300">{formatLargeNumber(moreGold)} G</span></span>}
-                                      {(clearGold + moreGold) > 0 && (
-                                        <span className="ml-auto font-bold text-amber-300">합계 {formatLargeNumber(clearGold + moreGold)} G</span>
+                                      {(clearGold - moreGold) > 0 && (
+                                        <span className="ml-auto font-bold text-amber-300">합계 {formatLargeNumber(clearGold - moreGold)} G</span>
                                       )}
                                     </div>
                                   );
