@@ -26,6 +26,9 @@ import {
   ShoppingBag,
   Sun,
   Moon,
+  MessageCircle,
+  Smile,
+  ChevronDown,
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -1870,10 +1873,432 @@ const fetchInitialData = async () => {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* 🗨️ 길드 실시간 채팅 플로팅 */}
+      <GuildChat user={user} profile={profile} />
+
     </PageShell>
   );
 }
 
+
+// ═══════════════════════════════════════════════════════════
+// ── Guild Realtime Chat ─────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+
+const CHAT_EMOJIS = [
+  "😀","😂","😍","🥰","😎","🤔","😅","🤣","😭","😤",
+  "👍","👎","❤️","🔥","✨","🎉","🎊","💯","🙏","👏",
+  "⚔️","🛡️","🏹","🗡️","💎","👑","🌟","💪","🤝","🎯",
+];
+
+type ChatMessage = {
+  id: string;
+  user_id: string;
+  character_name: string;
+  content: string;
+  created_at: string;
+};
+
+const GuildChat = ({ user, profile }: { user: any; profile: any }) => {
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const [charName, setCharName] = useState<string>("");
+  const [loadingChar, setLoadingChar] = useState(false);
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const emojiRef = useRef<HTMLDivElement>(null);
+
+  // 대표 캐릭터명 가져오기 (guild_members에서 is_main=true 우선, 없으면 첫번째)
+  useEffect(() => {
+    if (!user?.id) { setCharName(""); return; }
+    setLoadingChar(true);
+    const client = supabase;
+    if (!client) { setLoadingChar(false); return; }
+    client
+      .from("guild_members")
+      .select("character_name, is_main")
+      .or(`user_id.eq.${user.id},owner_id.eq.${user.id}`)
+      .order("is_main", { ascending: false })
+      .limit(10)
+      .then(({ data }) => {
+        const rows = data || [];
+        const main = rows.find((r: any) => r.is_main);
+        const chosen = main || rows[0];
+        setCharName(chosen ? String(chosen.character_name || "").trim() : (profile?.nickname || profile?.character_name || "멤버"));
+        setLoadingChar(false);
+      })
+      .catch(() => {
+        setCharName(profile?.nickname || profile?.character_name || "멤버");
+        setLoadingChar(false);
+      });
+  }, [user?.id, profile]);
+
+  // 최근 메시지 50개 로드
+  const loadMessages = async () => {
+    const client = supabase;
+    if (!client) return;
+    const { data } = await client
+      .from("guild_chat")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (data) setMessages((data as ChatMessage[]).reverse());
+  };
+
+  // Realtime 구독
+  useEffect(() => {
+    const client = supabase;
+    if (!client) return;
+    loadMessages();
+
+    const channel = client
+      .channel("guild_chat_realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "guild_chat" },
+        (payload) => {
+          const msg = payload.new as ChatMessage;
+          setMessages((prev) => {
+            if (prev.find((m) => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+          setUnread((n) => {
+            if (open) return n; // 열려있으면 카운트 안함
+            return n + 1;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => { void client.removeChannel(channel); };
+  }, [open]);
+
+  // 채팅창 열릴 때 스크롤 + 읽음 처리
+  useEffect(() => {
+    if (open) {
+      setUnread(0);
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 80);
+      inputRef.current?.focus();
+    }
+  }, [open]);
+
+  // 새 메시지 오면 스크롤
+  useEffect(() => {
+    if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, open]);
+
+  // 이모지 패널 바깥 클릭 닫기
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) {
+        setShowEmoji(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const sendMessage = async () => {
+    if (!input.trim() || sending || !user || !charName) return;
+    setSending(true);
+    const client = supabase;
+    if (!client) { setSending(false); return; }
+    const { error } = await client.from("guild_chat").insert({
+      user_id: user.id,
+      character_name: charName,
+      content: input.trim(),
+    });
+    if (!error) setInput("");
+    else showToast("메시지 전송 실패", "error");
+    setSending(false);
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void sendMessage();
+    }
+  };
+
+  // 시간 포맷 (HH:MM)
+  const formatTime = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+  };
+
+  // 날짜 구분선
+  const formatDateLabel = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+  };
+
+  const bgPanel = isLight
+    ? "bg-[#fdfaf4] border-amber-200/40"
+    : "bg-[#0e0b07]/95 border-amber-100/12";
+  const bgHeader = isLight
+    ? "bg-[#f5efe3] border-amber-200/30"
+    : "bg-[#160f08]/90 border-white/8";
+  const bgMsg = (isMine: boolean) =>
+    isMine
+      ? "bg-amber-500 text-white"
+      : isLight
+      ? "bg-white border border-amber-200/30 text-[#1a1208]"
+      : "bg-white/[0.08] border border-white/10 text-white";
+  const bgInput = isLight
+    ? "bg-white border-amber-200/40 text-[#1a1208] placeholder-stone-400"
+    : "bg-white/[0.06] border-white/10 text-white placeholder-stone-500";
+
+  return (
+    <>
+      {/* 플로팅 버튼 */}
+      <div className="fixed bottom-6 right-6 z-[200]">
+        <AnimatePresence>
+          {!open && (
+            <motion.button
+              key="fab"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 360, damping: 28 }}
+              onClick={() => setOpen(true)}
+              className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-[0_8px_32px_rgba(245,158,11,0.45)] hover:shadow-[0_12px_40px_rgba(245,158,11,0.55)] transition-all hover:scale-105 active:scale-95"
+              title="길드 채팅"
+            >
+              <MessageCircle size={24} />
+              {unread > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-md">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* 채팅 패널 */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            key="chat-panel"
+            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.97 }}
+            transition={{ duration: 0.2 }}
+            className={cn(
+              "fixed bottom-6 right-6 z-[200] flex w-[340px] flex-col overflow-hidden rounded-[1.75rem] border shadow-[0_24px_70px_rgba(0,0,0,0.48)] backdrop-blur-2xl",
+              bgPanel
+            )}
+            style={{ height: "520px" }}
+          >
+            {/* 헤더 */}
+            <div className={cn("flex items-center justify-between border-b px-4 py-3.5", bgHeader)}>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md">
+                  <MessageCircle size={16} />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-amber-100" style={{ color: isLight ? "#78480a" : undefined }}>
+                    길드 채팅
+                  </div>
+                  <div className="flex items-center gap-1 text-[10px]" style={{ color: isLight ? "#9a7a54" : undefined }}>
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className={isLight ? "text-stone-500" : "text-stone-400"}>실시간</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-xl border transition-all",
+                  isLight
+                    ? "border-amber-200/40 text-stone-500 hover:bg-amber-100 hover:text-stone-700"
+                    : "border-white/10 text-stone-400 hover:bg-white/10 hover:text-white"
+                )}
+              >
+                <ChevronDown size={16} />
+              </button>
+            </div>
+
+            {/* 메시지 목록 */}
+            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1" style={{ overscrollBehavior: "contain" }}>
+              {messages.length === 0 && (
+                <div className="flex h-full items-center justify-center">
+                  <div className={cn("text-center text-sm", isLight ? "text-stone-400" : "text-stone-500")}>
+                    <MessageCircle size={32} className="mx-auto mb-2 opacity-30" />
+                    <p>첫 메시지를 남겨보세요!</p>
+                  </div>
+                </div>
+              )}
+
+              {messages.map((msg, idx) => {
+                const isMine = msg.user_id === user?.id;
+                const prev = messages[idx - 1];
+                const showDate =
+                  !prev || formatDateLabel(prev.created_at) !== formatDateLabel(msg.created_at);
+                const showName = !isMine && (!prev || prev.user_id !== msg.user_id || showDate);
+
+                return (
+                  <div key={msg.id}>
+                    {/* 날짜 구분선 */}
+                    {showDate && (
+                      <div className="my-3 flex items-center gap-2">
+                        <div className={cn("h-px flex-1", isLight ? "bg-amber-200/40" : "bg-white/8")} />
+                        <span className={cn("text-[10px] font-medium", isLight ? "text-stone-400" : "text-stone-500")}>
+                          {formatDateLabel(msg.created_at)}
+                        </span>
+                        <div className={cn("h-px flex-1", isLight ? "bg-amber-200/40" : "bg-white/8")} />
+                      </div>
+                    )}
+
+                    <div className={cn("flex", isMine ? "justify-end" : "justify-start")}>
+                      <div className={cn("max-w-[78%]", isMine ? "items-end" : "items-start", "flex flex-col gap-0.5")}>
+                        {/* 캐릭터명 */}
+                        {showName && (
+                          <div className={cn("ml-1 text-[10px] font-semibold", isLight ? "text-amber-700" : "text-amber-300")}>
+                            {msg.character_name}
+                          </div>
+                        )}
+                        <div className="flex items-end gap-1.5">
+                          {isMine && (
+                            <span className={cn("mb-0.5 shrink-0 text-[10px]", isLight ? "text-stone-400" : "text-stone-500")}>
+                              {formatTime(msg.created_at)}
+                            </span>
+                          )}
+                          <div className={cn("rounded-2xl px-3.5 py-2 text-sm leading-relaxed break-words", bgMsg(isMine),
+                            isMine ? "rounded-tr-sm" : "rounded-tl-sm"
+                          )}>
+                            {msg.content}
+                          </div>
+                          {!isMine && (
+                            <span className={cn("mb-0.5 shrink-0 text-[10px]", isLight ? "text-stone-400" : "text-stone-500")}>
+                              {formatTime(msg.created_at)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* 입력창 */}
+            <div className={cn("border-t px-3 py-3", isLight ? "border-amber-200/30" : "border-white/8")}>
+              {!user ? (
+                <div className={cn("text-center text-xs py-2", isLight ? "text-stone-400" : "text-stone-500")}>
+                  로그인 후 채팅에 참여할 수 있어요.
+                </div>
+              ) : loadingChar ? (
+                <div className={cn("text-center text-xs py-2", isLight ? "text-stone-400" : "text-stone-500")}>
+                  캐릭터 정보 불러오는 중...
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {/* 이모지 패널 */}
+                  <AnimatePresence>
+                    {showEmoji && (
+                      <motion.div
+                        ref={emojiRef}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 8 }}
+                        transition={{ duration: 0.15 }}
+                        className={cn(
+                          "grid grid-cols-10 gap-1 rounded-2xl border p-2",
+                          isLight ? "bg-white border-amber-200/40 shadow-md" : "bg-[#1a1108] border-white/10"
+                        )}
+                      >
+                        {CHAT_EMOJIS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => {
+                              setInput((prev) => prev + emoji);
+                              inputRef.current?.focus();
+                            }}
+                            className="flex items-center justify-center rounded-lg p-1 text-lg transition-all hover:scale-125 hover:bg-amber-400/15"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="flex items-center gap-2">
+                    {/* 이모지 버튼 */}
+                    <button
+                      onClick={() => setShowEmoji((v) => !v)}
+                      className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all",
+                        showEmoji
+                          ? "border-amber-400/40 bg-amber-400/15 text-amber-300"
+                          : isLight
+                          ? "border-amber-200/40 text-stone-400 hover:bg-amber-100 hover:text-amber-600"
+                          : "border-white/10 text-stone-400 hover:bg-white/10 hover:text-amber-300"
+                      )}
+                      title="이모지"
+                    >
+                      <Smile size={16} />
+                    </button>
+
+                    {/* 텍스트 입력 */}
+                    <input
+                      ref={inputRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      maxLength={300}
+                      placeholder={`${charName} 으로 전송...`}
+                      className={cn(
+                        "flex-1 rounded-2xl border px-3.5 py-2 text-sm outline-none transition-all focus:border-amber-400/40 focus:ring-1 focus:ring-amber-400/20",
+                        bgInput
+                      )}
+                    />
+
+                    {/* 전송 버튼 */}
+                    <button
+                      onClick={() => void sendMessage()}
+                      disabled={!input.trim() || sending}
+                      className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all",
+                        input.trim() && !sending
+                          ? "bg-amber-500 text-white shadow-[0_4px_14px_rgba(245,158,11,0.4)] hover:bg-amber-400 hover:shadow-[0_4px_18px_rgba(245,158,11,0.5)] active:scale-95"
+                          : isLight
+                          ? "bg-amber-100 text-amber-300 cursor-not-allowed"
+                          : "bg-white/5 text-stone-500 cursor-not-allowed"
+                      )}
+                      title="전송 (Enter)"
+                    >
+                      <Send size={15} />
+                    </button>
+                  </div>
+
+                  {/* 캐릭터명 표시 */}
+                  <div className={cn("text-right text-[10px]", isLight ? "text-stone-400" : "text-stone-600")}>
+                    {charName} 으로 전송 · {input.length}/300
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
+// ── End GuildChat ───────────────────────────────────────────
 
 const ToastViewport = () => {
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: ToastType }>>([]);
