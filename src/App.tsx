@@ -10918,72 +10918,50 @@ const GuildMembersPage = () => {
                 <div className="absolute inset-0 pointer-events-none" style={{ background: theme.aura }} />
                 <div className="relative z-10">
 
-                  {/* ══ 상단 헤더: 캐릭터 이미지 + 기본정보 ══ */}
-                  <div className="flex items-stretch gap-0 border-b border-white/8">
+                  {/* ══ 상단 헤더: 캐릭터 이미지 전체 배경 ══ */}
+                  <div className="relative overflow-hidden" style={{ minHeight: 200 }}>
 
-                    {/* 캐릭터 이미지 영역 */}
-                    <div
-                      className="relative shrink-0 w-[140px] flex items-end justify-center overflow-hidden"
-                      style={{ background: theme.cardBackground }}
-                    >
-                      {armoryProfile?.CharacterImage ? (
+                    {/* 전체 배경 이미지 */}
+                    {(armoryProfile?.CharacterImage || member.avatar_url || member.image_url) && (
+                      <div className="absolute inset-0">
                         <img
-                          src={armoryProfile.CharacterImage}
+                          src={armoryProfile?.CharacterImage || member.avatar_url || member.image_url}
                           alt={member.character_name}
-                          className="w-full object-cover object-top"
-                          style={{ height: 180, objectPosition: "top center", mixBlendMode: "luminosity" }}
+                          className="w-full h-full object-cover"
+                          style={{ objectPosition: "top center", filter: "brightness(0.55) saturate(1.1)" }}
                         />
-                      ) : member.avatar_url || member.image_url ? (
-                        <img
-                          src={member.avatar_url || member.image_url}
-                          alt={member.character_name}
-                          className="w-full h-[180px] object-cover"
-                          style={{ mixBlendMode: "luminosity" }}
+                        {/* 카드 배경색과 블렌딩 */}
+                        <div className="absolute inset-0" style={{ background: theme.aura, opacity: 0.7 }} />
+                        {/* 하단 페이드 — 탭 영역으로 자연스럽게 */}
+                        <div
+                          className="absolute inset-0"
+                          style={{ background: `linear-gradient(to bottom, transparent 30%, ${theme.cardBackground.split(",")[0].replace("linear-gradient(135deg","").replace("(","").trim()} 100%)` }}
                         />
-                      ) : (
-                        <div className="w-full h-[180px] flex items-center justify-center text-xs text-white/30 bg-white/5">
-                          이미지 없음
-                        </div>
-                      )}
-                      {/* 우측 페이드 — 카드 배경으로 자연스럽게 녹아들기 */}
-                      <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          background: `linear-gradient(to right, transparent 35%, ${theme.cardBorder}99 100%)`,
-                        }}
-                      />
-                      {/* 하단 페이드 */}
-                      <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                          background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 55%)",
-                        }}
-                      />
-                      {/* 서버 뱃지 */}
-                      {(armoryProfile?.ServerName || member.server_name) && (
-                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 text-[10px] font-semibold text-white/80">
-                          {armoryProfile?.ServerName || member.server_name}
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
-                    {/* 캐릭터 기본 정보 */}
-                    <div className="flex-1 min-w-0 p-4 flex flex-col justify-between">
+                    {/* 텍스트 오버레이 */}
+                    <div className="relative z-10 p-5 flex flex-col justify-between" style={{ minHeight: 200 }}>
                       <div>
-                        {/* 배지 행 */}
-                        <div className="flex flex-wrap gap-1.5 mb-2">
+                        {/* 서버 + 배지 행 */}
+                        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                          {(armoryProfile?.ServerName || member.server_name) && (
+                            <span className="px-2 py-0.5 rounded-md bg-black/50 text-[10px] font-semibold text-white/70 backdrop-blur-sm">
+                              {armoryProfile?.ServerName || member.server_name}
+                            </span>
+                          )}
                           {member.is_main && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-yellow-500/15 text-yellow-300 border border-yellow-500/20 inline-flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 inline-flex items-center gap-1 backdrop-blur-sm">
                               <Crown size={9} />MAIN
                             </span>
                           )}
                           {member.role_hint === "서포터" && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-400/15 text-sky-300 border border-sky-400/20">서폿</span>
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-400/20 text-sky-300 border border-sky-400/30 backdrop-blur-sm">서폿</span>
                           )}
                           {getCharacterBadges(member).map((badge: any, idx: number) => {
                             const bt = getBadgeVisualTheme(badge);
                             return (
-                              <span key={idx} className="px-2 py-0.5 rounded-md text-[10px] font-bold border"
+                              <span key={idx} className="px-2 py-0.5 rounded-md text-[10px] font-bold border backdrop-blur-sm"
                                 style={{ color: bt.chipText, borderColor: bt.chipBorder, background: bt.chipBackground }}>
                                 {badge.badge_name}
                               </span>
@@ -10991,66 +10969,67 @@ const GuildMembersPage = () => {
                           })}
                         </div>
 
-                        {/* 캐릭터명 + 직업 */}
-                        <div className="text-xl font-bold truncate">{member.character_name}</div>
-                        <div className="text-xs text-slate-400 mt-0.5 truncate">
+                        {/* 캐릭터명 + 직업 + 칭호 */}
+                        <div className="text-2xl font-bold drop-shadow-lg">{member.character_name}</div>
+                        <div className="text-xs text-white/60 mt-0.5">
                           {armoryProfile?.CharacterClassName || member.class_name}
-                          {armoryProfile?.Title && (
-                            <span className="ml-1.5 text-amber-400/80">· {armoryProfile.Title}</span>
-                          )}
+                          {armoryProfile?.Title && <span className="ml-1.5 text-amber-300/80">· {armoryProfile.Title}</span>}
                         </div>
+                      </div>
 
+                      {/* 하단: 아이템 레벨 + 전투/원정대 + Owner + 생일MBTI */}
+                      <div className="mt-4">
                         {/* 아이템 레벨 */}
-                        <div className="mt-2 flex items-baseline gap-1.5">
-                          <span className="text-[10px] text-slate-500 uppercase tracking-widest">아이템</span>
-                          <span className="text-lg font-bold text-amber-300">
+                        <div className="flex items-baseline gap-1.5 mb-1">
+                          <span className="text-[10px] text-white/40 uppercase tracking-widest">아이템</span>
+                          <span className="text-xl font-bold text-amber-300 drop-shadow-lg">
                             {armoryProfile?.ItemAvgLevel || member.item_level}
                           </span>
                         </div>
 
                         {/* 전투/원정대 레벨 */}
-                        <div className="mt-1 flex gap-3 text-[11px] text-slate-400">
+                        <div className="flex gap-3 text-[11px] text-white/50 mb-3">
                           {armoryProfile ? (
                             <>
-                              <span>전투 <b className="text-white">{armoryProfile.CharacterLevel}</b></span>
-                              <span>원정대 <b className="text-white">{armoryProfile.ExpeditionLevel}</b></span>
+                              <span>전투 <b className="text-white/80">{armoryProfile.CharacterLevel}</b></span>
+                              <span>원정대 <b className="text-white/80">{armoryProfile.ExpeditionLevel}</b></span>
                             </>
                           ) : (
                             <>
-                              <span>캐릭터 <b className="text-white">{member.character_level || "-"}</b></span>
-                              <span>전투력 <b className="text-amber-300">{member.combat_power || "-"}</b></span>
+                              <span>캐릭터 <b className="text-white/80">{member.character_level || "-"}</b></span>
+                              <span>전투력 <b className="text-amber-300/80">{member.combat_power || "-"}</b></span>
                             </>
                           )}
                         </div>
-                      </div>
 
-                      {/* Owner + 생일/MBTI */}
-                      <div className="mt-3 flex items-end justify-between">
-                        <div className="flex gap-3 text-[11px]">
-                          <span className="text-slate-500">생일 <b className="text-white">{member.birthday ? formatShortDate(member.birthday) : "-"}</b></span>
-                          <span className="text-slate-500">MBTI <b className="text-white">{member.mbti || "-"}</b></span>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-[9px] text-white/30 uppercase tracking-widest">Owner</div>
-                          <div className="text-xs font-bold" style={getNicknameEffectStyle({
-                            active_nickname_effect: member.owner_active_nickname_effect,
-                            nickname_gradient_from: member.owner_nickname_gradient_from,
-                            nickname_gradient_to:   member.owner_nickname_gradient_to,
-                            nickname_glow_color:    member.owner_nickname_glow_color,
-                          })}>
-                            {member.owner_profile_nickname || member.owner_nickname || "-"}
+                        {/* 생일 / MBTI / Owner */}
+                        <div className="flex items-end justify-between">
+                          <div className="flex gap-3 text-[11px] text-white/50">
+                            {member.birthday && <span>생일 <b className="text-white/80">{formatShortDate(member.birthday)}</b></span>}
+                            {member.mbti && <span>MBTI <b className="text-white/80">{member.mbti}</b></span>}
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[9px] text-white/25 uppercase tracking-widest">Owner</div>
+                            <div className="text-xs font-bold drop-shadow" style={getNicknameEffectStyle({
+                              active_nickname_effect: member.owner_active_nickname_effect,
+                              nickname_gradient_from: member.owner_nickname_gradient_from,
+                              nickname_gradient_to:   member.owner_nickname_gradient_to,
+                              nickname_glow_color:    member.owner_nickname_glow_color,
+                            })}>
+                              {member.owner_profile_nickname || member.owner_nickname || "-"}
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* ══ 전투 스탯 바 (프로필 로드 시) ══ */}
+                  {/* ══ 전투 스탯 바 ══ */}
                   {armoryProfile?.Stats && (
-                    <div className="flex gap-0 border-b border-white/8">
+                    <div className="flex">
                       {armoryProfile.Stats.filter((s: any) => Number(s.Value) > 0 && ["치명","특화","신속","제압","인내","숙련"].includes(s.Type)).map((s: any) => (
-                        <div key={s.Type} className="flex-1 text-center py-2 border-r border-white/6 last:border-r-0">
-                          <div className="text-[9px] text-slate-500 uppercase">{s.Type}</div>
+                        <div key={s.Type} className="flex-1 text-center py-2.5 bg-black/20 border-r border-white/5 last:border-r-0">
+                          <div className="text-[9px] text-white/30 uppercase">{s.Type}</div>
                           <div className="text-xs font-bold text-amber-200">{Number(s.Value).toLocaleString()}</div>
                         </div>
                       ))}
@@ -11085,8 +11064,8 @@ const GuildMembersPage = () => {
                   {/* ══ 탭 패널 (로드 후) ══ */}
                   {armory?.opened && (
                     <div>
-                      {/* 탭 바 */}
-                      <div className="flex border-b border-white/8 overflow-x-auto">
+                      {/* 탭 바 — 구분선 없음 */}
+                      <div className="flex overflow-x-auto bg-black/20">
                         {CARD_TABS.map(t => (
                           <button
                             key={t.id}
@@ -11094,8 +11073,8 @@ const GuildMembersPage = () => {
                             className={cn(
                               "shrink-0 px-4 py-2.5 text-[11px] font-semibold border-b-2 transition-all whitespace-nowrap",
                               activeTab === t.id
-                                ? "border-amber-400 text-amber-300 bg-amber-400/5"
-                                : "border-transparent text-slate-400 hover:text-white hover:bg-white/5"
+                                ? "border-amber-400 text-amber-300 bg-amber-400/10"
+                                : "border-transparent text-white/40 hover:text-white hover:bg-white/5"
                             )}
                           >
                             {t.label}
@@ -11104,7 +11083,7 @@ const GuildMembersPage = () => {
                         <div className="ml-auto flex items-center pr-2">
                           <button
                             onClick={() => setLostarkTarget(member.character_name)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-amber-300 hover:bg-white/8 transition-all"
+                            className="p-1.5 rounded-lg text-white/25 hover:text-amber-300 hover:bg-white/8 transition-all"
                             title="전체화면"
                           >
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -11301,7 +11280,7 @@ const GuildMembersPage = () => {
 
                   {/* 자기소개 */}
                   {member.character_intro && (
-                    <div className="px-4 pb-4 text-xs text-slate-400 border-t border-white/5 pt-3 whitespace-pre-wrap">
+                    <div className="px-4 pb-4 text-xs text-white/40 pt-3 whitespace-pre-wrap">
                       {member.character_intro}
                     </div>
                   )}
