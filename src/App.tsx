@@ -7171,47 +7171,60 @@ const PostDetailModal = ({ post, comments, user, profile, onClose, onDelete, onT
 
   const youtubeId = post.youtube_url ? extractYoutubeId(post.youtube_url) : extractYoutubeId(post.content || "");
 
-  // 조회수 증가
+  // 조회수 증가 — 세션당 1회만
   useEffect(() => {
+    const key = `viewed_post_${post.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
     const client = getSupabaseOrThrow();
-    client.from("posts").update({ views: (post.views || 0) + 1 }).eq("id", post.id).then(() => {});
+    client.rpc("increment_post_views", { p_post_id: post.id }).then(() => {});
   }, [post.id]);
 
-  // 반응 불러오기
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const client = getSupabaseOrThrow();
-        const { data } = await client.from("post_reactions").select("emoji, user_id").eq("post_id", post.id);
-        if (!data) return;
-        const counts: Record<string, number> = {};
-        const mine: Record<string, boolean> = {};
-        data.forEach((r: any) => {
-          counts[r.emoji] = (counts[r.emoji] || 0) + 1;
-          if (user && r.user_id === user.id) mine[r.emoji] = true;
-        });
-        setReactions(counts);
-        setMyReactions(mine);
-        setReactionsLoaded(true);
-      } catch { setReactionsLoaded(true); }
-    };
-    load();
-  }, [post.id, user]);
+  // 반응 불러오기 — 항상 DB에서 최신 값 fetch
+  const loadReactions = async () => {
+    try {
+      const client = getSupabaseOrThrow();
+      const { data } = await client
+        .from("post_reactions")
+        .select("emoji, user_id")
+        .eq("post_id", post.id);
+      if (!data) return;
+      const counts: Record<string, number> = {};
+      const mine: Record<string, boolean> = {};
+      data.forEach((r: any) => {
+        counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+        if (user && r.user_id === user.id) mine[r.emoji] = true;
+      });
+      setReactions(counts);
+      setMyReactions(mine);
+      setReactionsLoaded(true);
+    } catch { setReactionsLoaded(true); }
+  };
+
+  useEffect(() => { void loadReactions(); }, [post.id, user]);
 
   const toggleReaction = async (emoji: string) => {
     if (!user) return showToast("로그인 후 반응을 남길 수 있어요.", "error");
+    // 낙관적 업데이트
+    const wasOn = myReactions[emoji];
+    setReactions((p) => ({ ...p, [emoji]: Math.max(0, (p[emoji] || 0) + (wasOn ? -1 : 1)) }));
+    setMyReactions((p) => ({ ...p, [emoji]: !wasOn }));
     try {
       const client = getSupabaseOrThrow();
-      if (myReactions[emoji]) {
-        await client.from("post_reactions").delete().eq("post_id", post.id).eq("user_id", user.id).eq("emoji", emoji);
-        setReactions((p) => ({ ...p, [emoji]: Math.max(0, (p[emoji] || 1) - 1) }));
-        setMyReactions((p) => ({ ...p, [emoji]: false }));
+      if (wasOn) {
+        await client.from("post_reactions").delete()
+          .eq("post_id", post.id).eq("user_id", user.id).eq("emoji", emoji);
       } else {
         await client.from("post_reactions").insert({ post_id: post.id, user_id: user.id, emoji });
-        setReactions((p) => ({ ...p, [emoji]: (p[emoji] || 0) + 1 }));
-        setMyReactions((p) => ({ ...p, [emoji]: true }));
       }
-    } catch { showToast("반응 처리 중 오류가 발생했어요.", "error"); }
+      // DB 확정 후 정확한 값으로 재동기화
+      await loadReactions();
+    } catch {
+      // 실패 시 롤백
+      setReactions((p) => ({ ...p, [emoji]: Math.max(0, (p[emoji] || 0) + (wasOn ? 1 : -1)) }));
+      setMyReactions((p) => ({ ...p, [emoji]: wasOn }));
+      showToast("반응 처리 중 오류가 발생했어요.", "error");
+    }
   };
 
   const handleSubmitComment = async () => {
