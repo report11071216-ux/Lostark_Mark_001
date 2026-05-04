@@ -9699,11 +9699,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                         원래 이미지로 복원
                       </button>
                     </div>
-                        className="px-3 py-2 rounded-xl bg-slate-700 text-xs font-semibold"
-                      >
-                        원래 이미지로 복원
-                      </button>
-                    </div>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-3">
