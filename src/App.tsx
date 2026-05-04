@@ -1,6 +1,6 @@
 
 
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState, createContext } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shield,
@@ -26,28 +26,6 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
-
-// ── Theme System ───────────────────────────────────────────
-type Theme = "dark" | "light";
-const ThemeContext = createContext<{ theme: Theme; toggleTheme: () => void }>({
-  theme: "dark",
-  toggleTheme: () => {},
-});
-const useTheme = () => useContext(ThemeContext);
-
-const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [theme, setTheme] = React.useState<Theme>(() => {
-    try { return (localStorage.getItem("guild_theme") as Theme) || "dark"; } catch { return "dark"; }
-  });
-  React.useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("light-mode", theme === "light");
-    try { localStorage.setItem("guild_theme", theme); } catch {}
-  }, [theme]);
-  const toggleTheme = () => setTheme((p) => (p === "dark" ? "light" : "dark"));
-  return <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>;
-};
-// ───────────────────────────────────────────────────────────
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
 const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
@@ -252,24 +230,6 @@ const toNumber = (value: any) => {
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
-
-const ThemeToggleButton = () => {
-  const { theme, toggleTheme } = useTheme();
-  return (
-    <button
-      onClick={toggleTheme}
-      title={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
-      className={cn(
-        "flex h-9 w-9 items-center justify-center rounded-xl border transition-all",
-        theme === "dark"
-          ? "border-white/10 bg-white/[0.04] text-slate-300 hover:border-amber-200/20 hover:bg-amber-300/10 hover:text-amber-100"
-          : "border-amber-300/40 bg-amber-100/80 text-amber-700 hover:bg-amber-200"
-      )}
-    >
-      {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-    </button>
-  );
-};
 
 type ToastType = "info" | "success" | "error";
 
@@ -900,7 +860,7 @@ const HomeFeaturePortal = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-3">
         {cards.map((card) => {
           const active = contentView === card.key;
           return (
@@ -1516,7 +1476,7 @@ const PassivePointBackgroundSync = ({
   return null;
 };
 
-function AppInner() {
+export default function App() {
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<UserLike>(null);
   const [profile, setProfile] = useState<ProfileLike>(null);
@@ -2001,94 +1961,7 @@ const SplineBackground = ({ sceneUrl }: { sceneUrl: string }) => {
   );
 };
 
-const LIGHT_MODE_STYLES = `
-  .light-mode {
-    --color-bg: #f5f0e8;
-    --color-surface: rgba(255,255,255,0.85);
-    --color-border: rgba(0,0,0,0.08);
-    --color-text: #1a1208;
-    --color-subtext: #6b5e4a;
-    color-scheme: light;
-  }
-  .light-mode body { background: #f5f0e8; }
-
-  /* 네비게이션 */
-  .light-mode nav {
-    background: linear-gradient(180deg, rgba(245,240,232,0.96), rgba(240,234,224,0.9)) !important;
-    border-bottom-color: rgba(180,150,100,0.15) !important;
-  }
-  .light-mode nav .text-white { color: #1a1208 !important; }
-  .light-mode nav .text-stone-400 { color: #7a6a54 !important; }
-  .light-mode nav .text-amber-200 { color: #92620a !important; }
-  .light-mode nav .text-slate-300 { color: #5a4a34 !important; }
-  .light-mode nav .bg-white\\/\\[0\\.03\\] { background: rgba(255,255,255,0.7) !important; }
-  .light-mode nav button:hover { background: rgba(180,140,60,0.12) !important; }
-
-  /* 카드/패널 */
-  .light-mode .bg-slate-950\\/94,
-  .light-mode .bg-slate-950\\/50,
-  .light-mode .bg-\\[\\#120d08\\]\\/95,
-  .light-mode .bg-\\[\\#120d08\\]\\/96 {
-    background: rgba(255,252,245,0.97) !important;
-  }
-  .light-mode .bg-white\\/\\[0\\.03\\],
-  .light-mode .bg-white\\/\\[0\\.04\\],
-  .light-mode .bg-white\\/\\[0\\.05\\] {
-    background: rgba(255,255,255,0.6) !important;
-  }
-  .light-mode .bg-black\\/20,
-  .light-mode .bg-black\\/30 {
-    background: rgba(200,185,160,0.15) !important;
-  }
-
-  /* 텍스트 */
-  .light-mode .text-white { color: #1a1208 !important; }
-  .light-mode .text-slate-300,
-  .light-mode .text-slate-200 { color: #3d2e1a !important; }
-  .light-mode .text-slate-400,
-  .light-mode .text-slate-500 { color: #6b5740 !important; }
-  .light-mode .text-stone-300,
-  .light-mode .text-stone-400,
-  .light-mode .text-stone-500 { color: #7a6248 !important; }
-
-  /* 보더 */
-  .light-mode .border-white\\/10,
-  .light-mode .border-white\\/8,
-  .light-mode .border-white\\/5 {
-    border-color: rgba(160,130,90,0.18) !important;
-  }
-
-  /* 모달 오버레이 */
-  .light-mode .bg-\\[rgba\\(2\\,6\\,23\\,0\\.76\\)\\],
-  .light-mode .bg-slate-950\\/70,
-  .light-mode .bg-slate-950\\/75 {
-    background: rgba(80,60,30,0.55) !important;
-  }
-  .light-mode .bg-black\\/70 {
-    background: rgba(80,60,30,0.6) !important;
-  }
-
-  /* 입력창 */
-  .light-mode input,
-  .light-mode textarea,
-  .light-mode select {
-    background: rgba(255,255,255,0.8) !important;
-    border-color: rgba(160,130,90,0.25) !important;
-    color: #1a1208 !important;
-  }
-  .light-mode input::placeholder,
-  .light-mode textarea::placeholder { color: #9a8060 !important; }
-
-  /* 앰버 강조색은 그대로 유지 */
-  .light-mode .text-amber-100 { color: #78480a !important; }
-  .light-mode .text-amber-200 { color: #8a5410 !important; }
-  .light-mode .bg-amber-300\\/10 { background: rgba(180,130,20,0.12) !important; }
-  .light-mode .bg-amber-500 { background: #d97706 !important; }
-  .light-mode .bg-amber-400 { background: #f59e0b !important; }
-`;
-
 const PageShell = ({ children, settings: settingsProp }: { children: React.ReactNode; settings?: any }) => {
-  const { theme } = useTheme();
   const shellSettings = normalizeAppSettings(settingsProp || readCache(CACHE_KEYS.settings, defaultSettings));
   const uiImages = shellSettings?.point_rate_settings?.ui_images || {};
 
@@ -2103,28 +1976,20 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
   const showLeft = sideLeftEnabled && !!sideLeftImageUrl;
   const showRight = sideRightEnabled && !!sideRightImageUrl;
 
-  const isLight = theme === "light";
-
   return (
-    <>
-      <style>{LIGHT_MODE_STYLES}</style>
-      <div
-        className="relative min-h-screen overflow-hidden text-white selection:bg-amber-300/25"
-        style={{
-          background: isLight
-            ? "#f5f0e8"
-            : splineEnabled
-            ? "transparent"
-            : "#090705",
-        }}
-      >
-      {/* ── Spline 3D 배경 (다크 모드 전용) ── */}
-      {splineEnabled && !isLight && (
+    // 최상위: bg 제거 — Spline ON 시 배경색이 Spline 캔버스로 대체됨
+    <div
+      className="relative min-h-screen overflow-hidden text-white selection:bg-amber-300/25"
+      style={{ background: splineEnabled ? "transparent" : "#090705" }}
+    >
+      {/* ── Spline 3D 배경 (z-index: -1, 완전히 뒤) ── */}
+      {splineEnabled && (
         <div
           style={{
             position: "fixed",
             inset: 0,
             zIndex: -1,
+            // Spline 캔버스가 마우스 이벤트 직접 수신
             pointerEvents: "auto",
             background: "#090705",
           }}
@@ -2133,10 +1998,10 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
         </div>
       )}
 
-      {/* ── 이미지 배경 ── */}
-      {(!splineEnabled || isLight) && (
+      {/* ── 기존 이미지 배경 (Spline OFF 시) ── */}
+      {!splineEnabled && (
         <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-          {!isLight && backgroundImageUrl ? (
+          {backgroundImageUrl ? (
             <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat"
               style={{
@@ -2144,14 +2009,11 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
               }}
             />
           ) : (
-            <div
-              className="absolute inset-0"
-              style={{ background: isLight ? "#f5f0e8" : "#090705" }}
-            />
+            <div className="absolute inset-0 bg-black" />
           )}
 
           {/* 좌측 사이드 이미지 */}
-          {showLeft && !isLight && (
+          {showLeft && (
             <div className="absolute left-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
               <div
                 className="absolute inset-y-[9%] left-0 w-full rounded-r-[3rem] bg-contain bg-left bg-no-repeat opacity-70"
@@ -2163,7 +2025,7 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
           )}
 
           {/* 우측 사이드 이미지 */}
-          {showRight && !isLight && (
+          {showRight && (
             <div className="absolute right-[-40px] top-0 hidden h-full w-[420px] 2xl:block">
               <div
                 className="absolute inset-y-[9%] right-0 w-full rounded-l-[3rem] bg-contain bg-right bg-no-repeat opacity-70"
@@ -2175,22 +2037,20 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
           )}
 
           {/* ambient glow */}
-          {!isLight && (
-            <motion.div
-              className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-amber-200/12 blur-[148px]"
-              animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
-              transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
-            />
-          )}
+          <motion.div
+            className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-amber-200/12 blur-[148px]"
+            animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
+            transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+          />
         </div>
       )}
 
-      {/* ── 페이지 콘텐츠 ── */}
+      {/* ── 페이지 콘텐츠 (z-index: auto, Spline 위에 올라가되 배경은 투명) ── */}
+      {/* pointer-events: none인 영역(빈 공간)은 클릭이 Spline까지 투과됨 */}
       <div style={{ position: "relative", zIndex: 1 }}>
         {children}
       </div>
     </div>
-    </>
   );
 };
 
@@ -2581,7 +2441,7 @@ const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 px-2 py-2 sm:px-4 sm:py-5 backdrop-blur-lg"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/70 px-4 py-5 backdrop-blur-lg"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -2709,7 +2569,6 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
         </div>
 
         <div className="flex items-center gap-3">
-          <ThemeToggleButton />
           {user ? (
             <>
               <button
@@ -3345,7 +3204,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
           <X size={20} />
         </button>
 
-        <div className="relative border-b border-white/10 px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-7">
+        <div className="relative border-b border-white/10 px-6 py-6 md:px-8 md:py-7">
           <div className="grid gap-6 md:grid-cols-[220px,minmax(0,1fr)]">
             <div className="relative overflow-hidden rounded-[1.9rem] border border-white/10 bg-white/[0.03]">
               <img
@@ -3429,7 +3288,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
           </div>
         </div>
 
-        <div className="relative space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 md:px-8 md:py-7">
+        <div className="relative space-y-6 px-6 py-6 md:px-8 md:py-7">
           {type === "레이드" && (
             <div className="grid gap-4 xl:grid-cols-[0.9fr,1.1fr]">
               <div className="rounded-[1.85rem] border border-white/10 bg-white/[0.03] p-5">
@@ -4010,7 +3869,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
 
       <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-6">
         <div className="overflow-hidden rounded-[2rem] md:rounded-[2.5rem] border border-white/10 bg-slate-950/50 backdrop-blur-xl shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
-          <div className="grid grid-cols-7 border-b border-white/5 bg-white/[0.03] text-center text-[8px] sm:text-[10px] md:text-xs uppercase tracking-[0.1em] sm:tracking-[0.22em] text-slate-400">
+          <div className="grid grid-cols-7 border-b border-white/5 bg-white/[0.03] text-center text-[10px] md:text-xs uppercase tracking-[0.22em] text-slate-400">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
               <div key={dayLabel} className="px-2 py-4">
                 {dayLabel}
@@ -4022,7 +3881,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
             {Array.from({ length: firstDayOffset }).map((_, i) => (
               <div
                 key={`empty-${i}`}
-                className="min-h-[80px] sm:min-h-[110px] md:min-h-[156px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]"
+                className="min-h-[132px] md:min-h-[156px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]"
               />
             ))}
 
@@ -4039,7 +3898,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                 <div
                   key={day}
                   className={cn(
-                    "group relative min-h-[80px] sm:min-h-[110px] md:min-h-[156px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-1.5 sm:p-3 transition-all duration-200 hover:z-[1] hover:bg-amber-300/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(233,196,106,0.16)]",
+                    "group relative min-h-[132px] md:min-h-[156px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-3 transition-all duration-200 hover:z-[1] hover:bg-amber-300/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(233,196,106,0.16)]",
                     isToday && "bg-amber-400/[0.08] shadow-[inset_0_0_0_1px_rgba(245,197,92,0.28),0_0_0_1px_rgba(245,197,92,0.1)]"
                   )}
                 >
@@ -4050,7 +3909,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                     <div className="min-w-0">
                       <div
                         className={cn(
-                          "inline-flex h-7 min-w-[28px] items-center justify-center rounded-lg px-1 text-xs font-semibold transition-all sm:h-9 sm:min-w-[36px] sm:rounded-xl sm:px-2 sm:text-sm",
+                          "inline-flex h-9 min-w-[36px] items-center justify-center rounded-xl px-2 text-sm font-semibold transition-all",
                           isToday
                             ? "border border-amber-200/25 bg-amber-300/10 text-amber-100 shadow-[0_8px_24px_rgba(214,164,78,0.18)]"
                             : "border border-transparent bg-white/[0.03] text-slate-300 group-hover:border-white/10"
@@ -4293,7 +4152,7 @@ const RaidCard = ({
       onClick={onOpen}
       className={cn(
         "relative w-full overflow-hidden rounded-[1.1rem] border text-left transition-all",
-        compact ? "p-1.5 sm:p-2.5" : "p-2.5 sm:p-3",
+        compact ? "p-2.5" : "p-3",
         isFull
           ? "border-rose-400/25 bg-[linear-gradient(135deg,rgba(214,164,78,0.12),rgba(15,23,42,0.88))]"
           : "border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] hover:border-amber-200/18 hover:bg-[linear-gradient(135deg,rgba(214,164,78,0.12),rgba(255,255,255,0.03))]"
@@ -4312,7 +4171,7 @@ const RaidCard = ({
             </span>
           </div>
 
-          <div className="mt-1 sm:mt-2 truncate text-[11px] sm:text-[13px] font-semibold leading-tight text-white">
+          <div className="mt-2 truncate text-[13px] font-semibold leading-tight text-white">
             {raid.raid_name}
           </div>
 
@@ -4705,7 +4564,7 @@ const RaidDetailModal = ({
       <div className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.16),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_48%)]" />
 
-        <div className="relative border-b border-white/10 px-4 py-4 sm:px-6 sm:py-6 md:px-8 md:py-7">
+        <div className="relative border-b border-white/10 px-6 py-6 md:px-8 md:py-7">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className={`mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] ${colors.badge}`}>
@@ -4747,8 +4606,8 @@ const RaidDetailModal = ({
           </div>
         </div>
 
-        <div className="relative space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-6 md:px-8 md:py-7">
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
+        <div className="relative space-y-6 px-6 py-6 md:px-8 md:py-7">
+          <div className="grid gap-3 md:grid-cols-4">
             <SummaryChip icon={<Users size={14} />} label="총 인원" value={`${parts.length}/${capacity.maxParticipants}`} />
             <SummaryChip icon={<Swords size={14} />} label="딜러" value={isAnime ? "-" : `${dealers}/${capacity.dealerLimit}`} />
             <SummaryChip icon={<Shield size={14} />} label="서포터" value={isAnime ? "-" : `${supports}/${capacity.supportLimit}`} />
@@ -4813,7 +4672,7 @@ const RaidDetailModal = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
             {user && !isFull && (
               <button
                 onClick={() => setShowJoin(true)}
@@ -5139,8 +4998,8 @@ const JoinForm = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[220] flex items-start justify-center overflow-y-auto bg-black/70 p-0 sm:items-center sm:p-4 backdrop-blur-md">
-      <div className="relative w-full max-w-lg overflow-hidden rounded-none sm:rounded-[2rem] border-0 sm:border border-white/10 bg-slate-950/94 shadow-none sm:shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl min-h-screen sm:min-h-0 sm:my-4">
+    <div className="fixed inset-0 z-[220] flex items-center justify-center bg-black/70 p-4 backdrop-blur-md">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
 
         <div className="relative border-b border-white/10 px-6 py-5">
@@ -5269,7 +5128,7 @@ const ModalFrame = ({
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-[rgba(2,6,23,0.76)] px-3 py-4 backdrop-blur-xl sm:items-center sm:p-4"
+    className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-[rgba(2,6,23,0.76)] p-4 backdrop-blur-xl"
     onClick={onClose}
   >
     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,197,92,0.12),transparent_28%),radial-gradient(circle_at_bottom,rgba(214,164,78,0.08),transparent_24%)]" />
@@ -5279,7 +5138,7 @@ const ModalFrame = ({
       exit={{ opacity: 0, y: 20, scale: 0.96 }}
       transition={{ duration: 0.18 }}
       onClick={(e) => e.stopPropagation()}
-      className="relative flex w-full items-center justify-center py-2 sm:py-6 min-h-full sm:min-h-0"
+      className="relative flex w-full items-center justify-center py-6"
     >
       {children}
     </motion.div>
@@ -11411,12 +11270,4 @@ const AdminPointShopManager = () => {
     </div>
 
   );
-}
-
-export default function App() {
-  return (
-    <ThemeProvider>
-      <AppInner />
-    </ThemeProvider>
-  );
-}
+};
