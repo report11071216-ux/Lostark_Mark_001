@@ -6680,20 +6680,32 @@ const AdminDashboard = () => {
       setLoading(true);
       const today = new Date().toISOString().split("T")[0];
       const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-      const [usersR, charsR, raidsR, partsR] = await Promise.allSettled([
+      const weekAgoDate = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
+
+      const [usersR, charsR, raidsR, weekRaidIdsR] = await Promise.allSettled([
         supabase.from("profiles").select("id, nickname, points, last_attendance, created_at, rank_name").order("created_at", { ascending: false }),
         supabase.from("guild_members").select("id", { count: "exact", head: true }),
         supabase.from("raid_schedules").select("id", { count: "exact", head: true }).gte("created_at", weekAgo),
-        // raid_schedules와 조인해서 이번 주 레이드 참여자만 가져오기
-        supabase
-          .from("raid_participants")
-          .select("character_name, user_id, raid_schedules!inner(raid_date)")
-          .gte("raid_schedules.raid_date", new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0]),
+        // 1단계: 이번 주 레이드 일정 id 목록 가져오기
+        supabase.from("raid_schedules").select("id").gte("raid_date", weekAgoDate),
       ]);
-      const users     = usersR.status === "fulfilled" ? (usersR.value.data || []) : [];
-      const charCount = charsR.status === "fulfilled" ? (charsR.value.count || 0) : 0;
-      const raidCount = raidsR.status === "fulfilled" ? (raidsR.value.count || 0) : 0;
-      const parts     = partsR.status === "fulfilled" ? (partsR.value.data || []) : [];
+
+      const users       = usersR.status === "fulfilled" ? (usersR.value.data || []) : [];
+      const charCount   = charsR.status === "fulfilled" ? (charsR.value.count || 0) : 0;
+      const raidCount   = raidsR.status === "fulfilled" ? (raidsR.value.count || 0) : 0;
+      const weekRaidIds = weekRaidIdsR.status === "fulfilled"
+        ? (weekRaidIdsR.value.data || []).map((r: any) => r.id)
+        : [];
+
+      // 2단계: 해당 일정의 참여자 가져오기
+      let parts: any[] = [];
+      if (weekRaidIds.length > 0) {
+        const { data: partsData } = await supabase
+          .from("raid_participants")
+          .select("character_name, user_id")
+          .in("schedule_id", weekRaidIds);
+        parts = partsData || [];
+      }
 
       // 캐릭터별 참여 횟수 집계
       const nameCountMap: Record<string, number> = {};
