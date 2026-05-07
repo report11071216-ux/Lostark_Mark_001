@@ -9028,57 +9028,39 @@ type ArmoryTab = "equipment" | "skills" | "arkgrid" | "gems" | "avatars" | "expe
 
 
 // ══════════════════════════════════════════════════════════
-//  RaidMemoPanel — 마이룸 레이드 메모
+//  RaidMemoPanel — 마이룸 레이드 메모 (갤러리 + 모달)
 // ══════════════════════════════════════════════════════════
 type MemoItem = { id: string; hp_line: string; pattern: string };
+type RaidMemo = { raid_name: string; image_url: string; memo_items: MemoItem[]; updated_at?: string };
 
-const RaidMemoPanel = ({ user }: { user: any }) => {
-  const [raids,        setRaids]        = useState<any[]>([]);
-  const [selectedRaid, setSelectedRaid] = useState<string>("");
-  const [raidImage,    setRaidImage]    = useState<string>("");
-  const [memoItems,    setMemoItems]    = useState<MemoItem[]>([]);
-  const [saving,       setSaving]       = useState(false);
+// ── 메모 편집 모달 ─────────────────────────────────────────
+const RaidMemoEditModal = ({
+  memo,
+  raids,
+  user,
+  onClose,
+  onSaved,
+}: {
+  memo: RaidMemo | null; // null = 신규
+  raids: any[];
+  user: any;
+  onClose: () => void;
+  onSaved: () => void;
+}) => {
+  const { theme } = useTheme();
+  const isLight = theme === "light";
 
-  // 레이드 목록 로드 (image_url 포함)
-  useEffect(() => {
-    supabase.from("contents")
-      .select("id, name, image_url")
-      .eq("category", "레이드")
-      .order("name")
-      .then(({ data }) => setRaids(data || []));
-  }, []);
+  const [selectedRaid, setSelectedRaid] = useState(memo?.raid_name || "");
+  const [memoItems, setMemoItems] = useState<MemoItem[]>(memo?.memo_items || []);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // 선택 레이드 변경 시 이미지 + 메모 로드
-  useEffect(() => {
-    if (!selectedRaid) { setRaidImage(""); setMemoItems([]); return; }
-    // 레이드 이미지
-    const found = raids.find((r: any) => r.name === selectedRaid);
-    setRaidImage(found?.image_url || "");
-    // 메모 로드
-    if (!user?.id) return;
-    supabase.from("raid_memos")
-      .select("*").eq("user_id", user.id).eq("raid_name", selectedRaid).maybeSingle()
-      .then(({ data }) => {
-        if (data?.memo_items) {
-          // 구버전 image_url 필드 제거하며 마이그레이션
-          const items = (Array.isArray(data.memo_items) ? data.memo_items : [])
-            .map((item: any) => ({ id: item.id, hp_line: item.hp_line || "", pattern: item.pattern || "" }));
-          setMemoItems(items);
-        } else {
-          setMemoItems([]);
-        }
-      });
-  }, [selectedRaid, user?.id, raids]);
+  const raidImage = raids.find((r: any) => r.name === selectedRaid)?.image_url || "";
 
-  const newItem = (): MemoItem => ({
-    id: crypto.randomUUID(), hp_line: "", pattern: "",
-  });
-
+  const newItem = (): MemoItem => ({ id: crypto.randomUUID(), hp_line: "", pattern: "" });
   const addItem = () => setMemoItems(p => [...p, newItem()]);
-
   const updateItem = (id: string, field: keyof MemoItem, value: string) =>
     setMemoItems(p => p.map(item => item.id === id ? { ...item, [field]: value } : item));
-
   const removeItem = (id: string) =>
     setMemoItems(p => p.filter(item => item.id !== id));
 
@@ -9090,95 +9072,483 @@ const RaidMemoPanel = ({ user }: { user: any }) => {
       { onConflict: "user_id,raid_name" }
     );
     setSaving(false);
-    if (error) showToast("저장 실패: " + error.message, "error");
-    else showToast("메모 저장 완료!", "success");
+    if (error) { showToast("저장 실패: " + error.message, "error"); return; }
+    showToast("메모 저장 완료!", "success");
+    onSaved();
+    onClose();
   };
 
+  const deleteMemo = async () => {
+    if (!memo?.raid_name || !user?.id) return;
+    if (!confirm("이 레이드 메모를 삭제하시겠습니까?")) return;
+    setDeleting(true);
+    const { error } = await supabase.from("raid_memos")
+      .delete().eq("user_id", user.id).eq("raid_name", memo.raid_name);
+    setDeleting(false);
+    if (error) { showToast("삭제 실패", "error"); return; }
+    showToast("메모 삭제 완료", "success");
+    onSaved();
+    onClose();
+  };
+
+  const panelBg = isLight ? "bg-[#fdfaf4] border-amber-200/40" : "bg-[#0e0b07]/97 border-white/10";
+  const inputCl = isLight
+    ? "border-amber-200/40 bg-white/80 text-[#1a1208] placeholder-stone-400 focus:border-amber-400/50"
+    : "border-white/10 bg-black/40 text-white placeholder-stone-600 focus:border-amber-400/30";
+
   return (
-    <div className="space-y-6">
-      {/* 레이드 선택 + 헤더 */}
-      <div className="flex items-center gap-3">
-        {/* 레이드 이미지 썸네일 */}
-        <div className={cn(
-          "shrink-0 h-12 w-12 rounded-xl border overflow-hidden bg-black/40 flex items-center justify-center transition-all",
-          raidImage ? "border-white/15" : "border-dashed border-white/10"
-        )}>
-          {raidImage
-            ? <img src={raidImage} alt="" className="h-full w-full object-cover" />
-            : <Swords size={18} className="text-stone-600" />
-          }
-        </div>
-        <select
-          value={selectedRaid}
-          onChange={e => setSelectedRaid(e.target.value)}
-          className="flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-amber-400/30 transition-all"
-        >
-          <option value="">레이드 선택</option>
-          {raids.map((r: any) => (
-            <option key={r.id} value={r.name}>{r.name}</option>
-          ))}
-        </select>
-        {selectedRaid && (
-          <button onClick={saveMemo} disabled={saving}
-            className="shrink-0 rounded-2xl border border-amber-400/30 bg-amber-400/15 px-5 py-3 text-sm font-bold text-amber-200 hover:bg-amber-400/25 disabled:opacity-50 transition-all">
-            {saving ? "저장 중..." : "💾 저장"}
-          </button>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[350] flex items-center justify-center bg-black/75 p-4 backdrop-blur-xl"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 12, scale: 0.97 }}
+        transition={{ duration: 0.2 }}
+        className={cn(
+          "relative w-full max-w-2xl overflow-hidden rounded-[2rem] border shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl",
+          panelBg
         )}
-      </div>
-
-      {!selectedRaid && (
-        <div className="rounded-[2rem] border border-dashed border-white/10 py-16 text-center text-stone-500 text-sm">
-          위에서 레이드를 선택해줘
+        style={{ maxHeight: "90vh" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* 헤더 */}
+        <div className={cn(
+          "flex items-center justify-between border-b px-6 py-5",
+          isLight ? "border-amber-200/30 bg-amber-50/40" : "border-white/8 bg-white/[0.02]"
+        )}>
+          <div className="flex items-center gap-3">
+            {raidImage ? (
+              <img src={raidImage} alt="" className="h-11 w-11 rounded-2xl border border-white/10 object-cover" />
+            ) : (
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10">
+                <Sparkles size={16} className="text-violet-300" />
+              </div>
+            )}
+            <div>
+              <div className={cn("text-lg font-bold", isLight ? "text-[#1a1208]" : "text-white")}>
+                {memo ? "메모 수정" : "레이드 메모 추가"}
+              </div>
+              <div className={cn("text-[11px]", isLight ? "text-stone-500" : "text-stone-400")}>
+                HP 구간별 기믹 / 패턴을 기록해봐
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-xl border transition-all",
+              isLight ? "border-amber-200/40 text-stone-400 hover:bg-amber-100" : "border-white/10 text-stone-400 hover:bg-white/10 hover:text-white"
+            )}
+          >
+            <X size={16} />
+          </button>
         </div>
-      )}
 
-      {selectedRaid && (
-        <>
-          {/* 기믹 메모 목록 */}
-          <div className="space-y-2">
+        {/* 바디 */}
+        <div className="overflow-y-auto px-6 py-5 space-y-4" style={{ maxHeight: "calc(90vh - 200px)" }}>
+          {/* 레이드 선택 (신규 시에만) */}
+          {!memo && (
+            <div className="space-y-2">
+              <label className={cn("text-[10px] font-bold uppercase tracking-widest", isLight ? "text-stone-500" : "text-stone-500")}>레이드 선택</label>
+              <select
+                value={selectedRaid}
+                onChange={e => setSelectedRaid(e.target.value)}
+                className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-all appearance-none cursor-pointer", inputCl)}
+              >
+                <option value="">레이드를 선택하세요</option>
+                {raids.map((r: any) => (
+                  <option key={r.id} value={r.name}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* 메모 항목 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className={cn("text-[10px] font-bold uppercase tracking-widest", isLight ? "text-stone-500" : "text-stone-500")}>기믹 메모</label>
+              <span className={cn("text-[10px]", isLight ? "text-stone-400" : "text-stone-600")}>{memoItems.length}개</span>
+            </div>
+
             {memoItems.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/8 py-10 text-center text-stone-600 text-sm">
+              <div className={cn(
+                "rounded-2xl border border-dashed py-8 text-center text-sm",
+                isLight ? "border-amber-200/30 text-stone-400" : "border-white/8 text-stone-500"
+              )}>
                 아래 버튼으로 기믹 메모를 추가해봐
               </div>
             )}
+
             {memoItems.map((item, idx) => (
-              <div key={item.id} className="flex items-start gap-2 rounded-2xl border border-white/8 bg-white/[0.025] px-4 py-3">
-                {/* 번호 */}
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-[11px] font-bold text-amber-300 mt-1.5">
+              <div
+                key={item.id}
+                className={cn(
+                  "flex items-start gap-3 rounded-2xl border px-4 py-3.5 transition-all",
+                  isLight ? "border-amber-200/25 bg-white/60" : "border-white/8 bg-white/[0.025]"
+                )}
+              >
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-[11px] font-bold text-amber-300 mt-2">
                   {idx + 1}
                 </div>
-                {/* HP 구간 */}
                 <input
                   value={item.hp_line}
                   onChange={e => updateItem(item.id, "hp_line", e.target.value)}
-                  placeholder="HP 구간"
-                  className="w-28 shrink-0 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold text-amber-200 placeholder:text-stone-600 outline-none focus:border-amber-400/30 transition-all"
+                  placeholder="HP 구간 (예: 30%)"
+                  className={cn("w-28 shrink-0 rounded-xl border px-3 py-2 text-xs font-bold outline-none transition-all", inputCl)}
                 />
-                {/* 패턴 설명 */}
                 <textarea
                   value={item.pattern}
                   onChange={e => updateItem(item.id, "pattern", e.target.value)}
-                  placeholder="기믹 / 패턴 설명 (예: 협동카운터, 저스트가드)"
+                  placeholder="기믹 / 패턴 설명 (예: 협동 카운터, 저스트가드)"
                   rows={2}
-                  className="flex-1 resize-none rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white placeholder:text-stone-600 outline-none focus:border-amber-400/30 transition-all leading-5"
+                  className={cn("flex-1 resize-none rounded-xl border px-3 py-2 text-xs outline-none transition-all leading-5", inputCl)}
                 />
-                {/* 삭제 */}
-                <button onClick={() => removeItem(item.id)}
-                  className="shrink-0 flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 text-stone-500 hover:border-rose-400/30 hover:text-rose-300 hover:bg-rose-400/[0.08] transition-all mt-0.5">
+                <button
+                  onClick={() => removeItem(item.id)}
+                  className={cn(
+                    "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all",
+                    isLight
+                      ? "border-rose-200/40 text-rose-400 hover:bg-rose-50"
+                      : "border-white/10 text-stone-500 hover:border-rose-400/30 hover:bg-rose-400/[0.08] hover:text-rose-300"
+                  )}
+                >
                   <X size={13} />
                 </button>
               </div>
             ))}
-          </div>
 
-          {/* 추가 버튼 */}
-          <button onClick={addItem}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-white/12 py-3 text-sm font-semibold text-stone-500 hover:border-amber-400/25 hover:text-amber-300 hover:bg-amber-400/[0.04] transition-all">
-            <Plus size={15} /> 기믹 항목 추가
+            <button
+              onClick={addItem}
+              className={cn(
+                "w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed py-3 text-sm font-semibold transition-all",
+                isLight
+                  ? "border-amber-300/40 text-amber-600 hover:bg-amber-50"
+                  : "border-white/12 text-stone-500 hover:border-amber-400/25 hover:text-amber-300 hover:bg-amber-400/[0.04]"
+              )}
+            >
+              <Plus size={15} /> 기믹 항목 추가
+            </button>
+          </div>
+        </div>
+
+        {/* 푸터 */}
+        <div className={cn("flex gap-2 border-t px-6 py-4", isLight ? "border-amber-200/30" : "border-white/8")}>
+          <button
+            onClick={saveMemo}
+            disabled={saving || !selectedRaid}
+            className="flex-1 rounded-[1.2rem] bg-gradient-to-r from-amber-500 to-amber-400 px-4 py-3 text-sm font-bold text-slate-950 shadow-[0_4px_16px_rgba(245,158,11,0.3)] transition-all hover:brightness-110 disabled:opacity-50"
+          >
+            {saving ? "저장 중..." : "💾 저장"}
           </button>
-        </>
+          {memo && (
+            <button
+              onClick={deleteMemo}
+              disabled={deleting}
+              className="rounded-[1.2rem] border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm font-semibold text-rose-300 transition-all hover:bg-rose-400/16 disabled:opacity-50"
+            >
+              {deleting ? "삭제 중..." : "삭제"}
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className={cn(
+              "rounded-[1.2rem] border px-4 py-3 text-sm font-semibold transition-all",
+              isLight ? "border-amber-200/40 text-stone-500 hover:bg-amber-50" : "border-white/10 text-slate-300 hover:bg-white/[0.06]"
+            )}
+          >
+            닫기
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ── 메모 뷰어 모달 (읽기 전용 + 수정 버튼) ─────────────────
+const RaidMemoViewModal = ({
+  memo,
+  onClose,
+  onEdit,
+}: {
+  memo: RaidMemo;
+  onClose: () => void;
+  onEdit: () => void;
+}) => {
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+  const panelBg = isLight ? "bg-[#fdfaf4] border-amber-200/40" : "bg-[#0e0b07]/97 border-white/10";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[350] flex items-center justify-center bg-black/75 p-4 backdrop-blur-xl"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 12, scale: 0.97 }}
+        transition={{ duration: 0.2 }}
+        className={cn(
+          "relative w-full max-w-xl overflow-hidden rounded-[2rem] border shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl",
+          panelBg
+        )}
+        style={{ maxHeight: "88vh" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* 헤더 */}
+        <div className={cn(
+          "relative overflow-hidden border-b",
+          isLight ? "border-amber-200/30" : "border-white/8"
+        )}>
+          {memo.image_url && (
+            <div className="absolute inset-0">
+              <img src={memo.image_url} alt="" className="h-full w-full object-cover opacity-20" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/80" />
+            </div>
+          )}
+          <div className="relative flex items-center justify-between px-6 py-5">
+            <div className="flex items-center gap-3">
+              {memo.image_url ? (
+                <img src={memo.image_url} alt="" className="h-12 w-12 rounded-2xl border border-white/15 object-cover shadow-lg" />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10">
+                  <Sparkles size={18} className="text-violet-300" />
+                </div>
+              )}
+              <div>
+                <div className="text-xl font-bold text-white">{memo.raid_name}</div>
+                {memo.updated_at && (
+                  <div className="text-[11px] text-stone-400 mt-0.5">
+                    마지막 수정: {new Date(memo.updated_at).toLocaleDateString("ko-KR")}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onEdit}
+                className="flex items-center gap-1.5 rounded-xl border border-amber-400/30 bg-amber-400/15 px-3 py-2 text-xs font-bold text-amber-200 transition-all hover:bg-amber-400/25"
+              >
+                <Edit3 size={12} /> 수정
+              </button>
+              <button
+                onClick={onClose}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-stone-400 transition-all hover:bg-white/10 hover:text-white"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 메모 목록 */}
+        <div className="overflow-y-auto px-6 py-5 space-y-3" style={{ maxHeight: "calc(88vh - 140px)" }}>
+          {memo.memo_items.length === 0 && (
+            <div className={cn("rounded-2xl border border-dashed py-10 text-center text-sm", isLight ? "border-amber-200/30 text-stone-400" : "border-white/8 text-stone-500")}>
+              등록된 메모가 없습니다.
+            </div>
+          )}
+          {memo.memo_items.map((item, idx) => (
+            <div
+              key={item.id}
+              className={cn(
+                "flex items-start gap-3 rounded-2xl border px-4 py-4",
+                isLight ? "border-amber-200/25 bg-white/70" : "border-white/8 bg-white/[0.03]"
+              )}
+            >
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-[11px] font-bold text-amber-300 mt-0.5">
+                {idx + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                {item.hp_line && (
+                  <div className="mb-1.5 inline-flex items-center rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-0.5 text-[11px] font-bold text-amber-300">
+                    ❤️ {item.hp_line}
+                  </div>
+                )}
+                <p className={cn("text-sm leading-6 whitespace-pre-wrap", isLight ? "text-[#1a1208]" : "text-stone-200")}>
+                  {item.pattern || <span className="text-stone-500 italic">내용 없음</span>}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ── 메인 패널 — 갤러리 + 모달 진입 ───────────────────────────
+const RaidMemoPanel = ({ user }: { user: any }) => {
+  const { theme } = useTheme();
+  const isLight = theme === "light";
+
+  const [raids, setRaids] = useState<any[]>([]);
+  const [memos, setMemos] = useState<RaidMemo[]>([]);
+  const [editTarget, setEditTarget] = useState<RaidMemo | null | "new">(null); // null=닫힘, "new"=신규, RaidMemo=수정
+  const [viewTarget, setViewTarget] = useState<RaidMemo | null>(null);
+
+  // 레이드 목록 로드
+  useEffect(() => {
+    supabase.from("contents").select("id, name, image_url").eq("category", "레이드").order("name")
+      .then(({ data }) => setRaids(data || []));
+  }, []);
+
+  // 내 메모 전체 로드
+  const fetchMemos = async () => {
+    if (!user?.id) return;
+    const { data } = await supabase.from("raid_memos")
+      .select("*").eq("user_id", user.id).order("updated_at", { ascending: false });
+    if (!data) return;
+    // image_url 매핑
+    setMemos(data.map((d: any) => ({
+      raid_name: d.raid_name,
+      image_url: raids.find((r: any) => r.name === d.raid_name)?.image_url || "",
+      memo_items: Array.isArray(d.memo_items) ? d.memo_items : [],
+      updated_at: d.updated_at,
+    })));
+  };
+
+  useEffect(() => {
+    void fetchMemos();
+  }, [user?.id, raids]);
+
+  const cardBg = isLight
+    ? "bg-white/80 border-amber-200/30 hover:border-amber-300/60 hover:shadow-amber-100/40"
+    : "bg-white/[0.04] border-white/8 hover:border-amber-400/25 hover:shadow-amber-900/20";
+
+  return (
+    <>
+      {/* 갤러리 헤더 */}
+      <div className="flex items-center justify-between mb-4">
+        <div className={cn("text-sm", isLight ? "text-stone-500" : "text-stone-400")}>
+          {memos.length > 0 ? `${memos.length}개의 레이드 메모` : "아직 메모가 없어요"}
+        </div>
+        <button
+          onClick={() => setEditTarget("new")}
+          className="flex items-center gap-1.5 rounded-2xl border border-amber-400/25 bg-amber-400/10 px-4 py-2 text-xs font-bold text-amber-300 transition-all hover:bg-amber-400/18 hover:border-amber-400/40"
+        >
+          <Plus size={13} /> 레이드 메모 +
+        </button>
+      </div>
+
+      {/* 메모 카드 갤러리 */}
+      {memos.length === 0 ? (
+        <div
+          onClick={() => setEditTarget("new")}
+          className={cn(
+            "flex flex-col items-center justify-center gap-3 rounded-[1.75rem] border border-dashed py-14 text-center cursor-pointer transition-all",
+            isLight ? "border-amber-200/40 hover:bg-amber-50/50" : "border-white/10 hover:border-amber-400/20 hover:bg-amber-400/[0.03]"
+          )}
+        >
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-400/20 bg-violet-400/10">
+            <Sparkles size={20} className="text-violet-300" />
+          </div>
+          <div>
+            <div className={cn("text-sm font-semibold", isLight ? "text-stone-500" : "text-stone-400")}>첫 레이드 메모를 작성해봐</div>
+            <div className={cn("text-xs mt-0.5", isLight ? "text-stone-400" : "text-stone-600")}>+ 버튼 또는 여기를 클릭</div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {/* 추가 버튼 카드 */}
+          <button
+            onClick={() => setEditTarget("new")}
+            className={cn(
+              "group flex aspect-square flex-col items-center justify-center gap-2 rounded-[1.5rem] border border-dashed text-center transition-all",
+              isLight ? "border-amber-300/40 hover:bg-amber-50 hover:border-amber-400/60" : "border-white/10 hover:border-amber-400/30 hover:bg-amber-400/[0.05]"
+            )}
+          >
+            <div className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-2xl border transition-all group-hover:scale-110",
+              isLight ? "border-amber-300/40 bg-amber-100 text-amber-600" : "border-amber-400/20 bg-amber-400/10 text-amber-300"
+            )}>
+              <Plus size={18} />
+            </div>
+            <span className={cn("text-xs font-semibold", isLight ? "text-amber-600" : "text-amber-300/70")}>메모 추가</span>
+          </button>
+
+          {/* 메모 카드들 */}
+          {memos.map((memo) => (
+            <button
+              key={memo.raid_name}
+              onClick={() => setViewTarget(memo)}
+              className={cn(
+                "group relative aspect-square overflow-hidden rounded-[1.5rem] border text-left shadow-md transition-all hover:-translate-y-1 hover:shadow-xl",
+                cardBg
+              )}
+            >
+              {/* 배경 이미지 */}
+              {memo.image_url ? (
+                <>
+                  <img src={memo.image_url} alt={memo.raid_name} className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                </>
+              ) : (
+                <div className={cn("absolute inset-0 flex items-center justify-center", isLight ? "bg-amber-50" : "bg-white/[0.03]")}>
+                  <Swords size={28} className="text-stone-600/40" />
+                </div>
+              )}
+
+              {/* 메모 개수 뱃지 */}
+              <div className="absolute top-2.5 right-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-black/60 px-1.5 text-[10px] font-bold text-white backdrop-blur-sm">
+                {memo.memo_items.length}
+              </div>
+
+              {/* 하단 텍스트 */}
+              <div className="absolute bottom-0 left-0 right-0 p-3">
+                <div className="text-sm font-bold text-white leading-tight line-clamp-2">{memo.raid_name}</div>
+                {memo.updated_at && (
+                  <div className="mt-0.5 text-[10px] text-white/50">
+                    {new Date(memo.updated_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                  </div>
+                )}
+              </div>
+
+              {/* hover 수정 버튼 */}
+              <button
+                onClick={e => { e.stopPropagation(); setEditTarget(memo); }}
+                className="absolute top-2.5 left-2.5 flex h-7 w-7 items-center justify-center rounded-xl border border-white/20 bg-black/50 text-white/60 opacity-0 transition-all group-hover:opacity-100 hover:bg-amber-400/30 hover:text-amber-200 backdrop-blur-sm"
+                title="수정"
+              >
+                <Edit3 size={11} />
+              </button>
+            </button>
+          ))}
+        </div>
       )}
-    </div>
+
+      {/* 뷰어 모달 */}
+      <AnimatePresence>
+        {viewTarget && !editTarget && (
+          <RaidMemoViewModal
+            memo={viewTarget}
+            onClose={() => setViewTarget(null)}
+            onEdit={() => { setEditTarget(viewTarget); setViewTarget(null); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* 편집 모달 */}
+      <AnimatePresence>
+        {editTarget && (
+          <RaidMemoEditModal
+            memo={editTarget === "new" ? null : editTarget}
+            raids={raids}
+            user={user}
+            onClose={() => setEditTarget(null)}
+            onSaved={() => { void fetchMemos(); }}
+          />
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 // ── End RaidMemoPanel ─────────────────────────────────────────
@@ -11035,7 +11405,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
             </div>
             <div>
               <div className="text-base font-bold text-white">레이드 메모</div>
-              <div className="text-[11px] text-stone-500">레이드별 기믹/패턴을 HP 구간과 함께 개인 메모로 저장해봐.</div>
+              <div className="text-[11px] text-stone-500">레이드 이미지 카드를 클릭하면 기믹/패턴 메모를 볼 수 있어.</div>
             </div>
           </div>
           <RaidMemoPanel user={user} />
