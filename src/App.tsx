@@ -1746,16 +1746,6 @@ const fetchInitialData = async () => {
     <PageShell settings={settings}>
       <ToastViewport />
       <div className="relative z-10">
-        {profile?.role === "admin" && (
-          <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-[#0a1632] via-[#0d1525] to-[#0a1228] text-[10px] font-semibold py-1.5 px-4 flex items-center justify-between tracking-[0.24em] uppercase">
-            <div className="opacity-0 w-32 pointer-events-none hidden md:block">spacer</div>
-            <span>👑 Administrator Session Active</span>
-            <div className="w-32 flex justify-end">
-              <ThemeSwatchPicker />
-            </div>
-          </div>
-        )}
-
         <Navbar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -1773,7 +1763,7 @@ const fetchInitialData = async () => {
           }}
         />
 
-        <main className={profile?.role === "admin" ? "pt-20" : "pt-16"}>
+        <main className="pt-16">
           <AnimatePresence mode="wait">
             {activeTab === "home" && (
               <motion.div
@@ -3728,7 +3718,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
             </div>
             <div className="hidden text-left sm:block">
               <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/80">
-                Guild Service
+                {profile?.role === "admin" ? "👑 Admin Console" : "Guild Service"}
               </div>
               <div className="text-sm font-semibold tracking-[0.02em] text-white">
                 {profile?.role === "admin" ? "Control Center" : "Guild Workspace"}
@@ -3760,6 +3750,15 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* 관리자 전용: 테마 선택기 */}
+          {profile?.role === "admin" && (
+            <div className="hidden items-center gap-2 rounded-[1.1rem] border border-amber-200/10 bg-white/[0.03] px-3 py-2 md:flex">
+              <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-amber-300/70">
+                👑 Theme
+              </span>
+              <ThemeSwatchPicker />
+            </div>
+          )}
           <ThemeToggleButton />
           {user ? (
             <>
