@@ -9502,6 +9502,103 @@ type ArmoryTab = "equipment" | "skills" | "arkgrid" | "gems" | "avatars" | "expe
 type MemoItem = { id: string; hp_line: string; pattern: string };
 type RaidMemo = { raid_name: string; image_url: string; memo_items: MemoItem[]; updated_at?: string };
 
+
+// ═══════════════════════════════════════════════════════════
+// ── 레이드 메모 태그 시스템 ────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+type MemoTagDef = {
+  label: string;
+  icon: string;
+  bg: string;
+  text: string;
+  border: string;
+  hoverBg: string;
+};
+
+const MEMO_TAGS: MemoTagDef[] = [
+  {
+    label: "카운터",
+    icon: "🛡️",
+    bg: "bg-blue-400/15",
+    text: "text-blue-300",
+    border: "border-blue-400/25",
+    hoverBg: "hover:bg-blue-400/25",
+  },
+  {
+    label: "저스트가드",
+    icon: "⚡",
+    bg: "bg-yellow-400/15",
+    text: "text-yellow-300",
+    border: "border-yellow-400/25",
+    hoverBg: "hover:bg-yellow-400/25",
+  },
+  {
+    label: "협동카운터",
+    icon: "🤝",
+    bg: "bg-violet-400/15",
+    text: "text-violet-300",
+    border: "border-violet-400/25",
+    hoverBg: "hover:bg-violet-400/25",
+  },
+  {
+    label: "무력",
+    icon: "💥",
+    bg: "bg-orange-400/15",
+    text: "text-orange-300",
+    border: "border-orange-400/25",
+    hoverBg: "hover:bg-orange-400/25",
+  },
+];
+
+// [태그] 문법을 파싱해서 색상 뱃지로 렌더링
+const renderMemoPattern = (text: string): React.ReactNode => {
+  if (!text) return <span className="text-stone-500 italic">내용 없음</span>;
+
+  const tagRegex = /\[([^\]]+)\]/g;
+  const segments: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let key = 0;
+
+  while ((match = tagRegex.exec(text)) !== null) {
+    // 태그 앞 일반 텍스트
+    if (match.index > lastIndex) {
+      const plain = text.slice(lastIndex, match.index);
+      segments.push(<React.Fragment key={key++}>{plain}</React.Fragment>);
+    }
+
+    const tagLabel = match[1];
+    const tagDef = MEMO_TAGS.find(t => t.label === tagLabel);
+
+    if (tagDef) {
+      segments.push(
+        <span
+          key={key++}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold mx-0.5 align-middle",
+            tagDef.bg, tagDef.text, tagDef.border
+          )}
+        >
+          {tagDef.icon} {tagLabel}
+        </span>
+      );
+    } else {
+      // 알 수 없는 태그는 그냥 텍스트로
+      segments.push(<React.Fragment key={key++}>{match[0]}</React.Fragment>);
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // 남은 텍스트
+  if (lastIndex < text.length) {
+    segments.push(<React.Fragment key={key++}>{text.slice(lastIndex)}</React.Fragment>);
+  }
+
+  return segments;
+};
+// ── End Memo Tag System ──────────────────────────────────────
+
 // ── 메모 편집 모달 ─────────────────────────────────────────
 const RaidMemoEditModal = ({
   memo,
@@ -9523,6 +9620,7 @@ const RaidMemoEditModal = ({
   const [memoItems, setMemoItems] = useState<MemoItem[]>(memo?.memo_items || []);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const textareaRefs = useRef<Map<string, HTMLTextAreaElement>>(new Map());
 
   const raidImage = raids.find((r: any) => r.name === selectedRaid)?.image_url || "";
 
@@ -9532,6 +9630,28 @@ const RaidMemoEditModal = ({
     setMemoItems(p => p.map(item => item.id === id ? { ...item, [field]: value } : item));
   const removeItem = (id: string) =>
     setMemoItems(p => p.filter(item => item.id !== id));
+
+  // 태그를 textarea 커서 위치에 삽입
+  const insertTag = (itemId: string, tagLabel: string) => {
+    const el = textareaRefs.current.get(itemId);
+    const insertText = `[${tagLabel}]`;
+    if (!el) {
+      // ref 없으면 끝에 붙임
+      updateItem(itemId, "pattern", (memoItems.find(i => i.id === itemId)?.pattern || "") + insertText);
+      return;
+    }
+    const start = el.selectionStart ?? el.value.length;
+    const end   = el.selectionEnd   ?? el.value.length;
+    const before = el.value.slice(0, start);
+    const after  = el.value.slice(end);
+    const next = before + insertText + after;
+    updateItem(itemId, "pattern", next);
+    // 커서를 삽입 텍스트 뒤로
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + insertText.length, start + insertText.length);
+    });
+  };
 
   const saveMemo = async () => {
     if (!selectedRaid || !user?.id) return;
@@ -9657,37 +9777,65 @@ const RaidMemoEditModal = ({
               <div
                 key={item.id}
                 className={cn(
-                  "flex items-start gap-3 rounded-2xl border px-4 py-3.5 transition-all",
+                  "rounded-2xl border px-4 py-3.5 transition-all",
                   isLight ? "border-amber-200/25 bg-white/60" : "border-white/8 bg-white/[0.025]"
                 )}
               >
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-[11px] font-bold text-amber-300 mt-2">
-                  {idx + 1}
+                {/* 입력 행 */}
+                <div className="flex items-start gap-3">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-[11px] font-bold text-amber-300 mt-2">
+                    {idx + 1}
+                  </div>
+                  <input
+                    value={item.hp_line}
+                    onChange={e => updateItem(item.id, "hp_line", e.target.value)}
+                    placeholder="HP 구간 (예: 30%)"
+                    className={cn("w-28 shrink-0 rounded-xl border px-3 py-2 text-xs font-bold outline-none transition-all", inputCl)}
+                  />
+                  <textarea
+                    ref={el => {
+                      if (el) textareaRefs.current.set(item.id, el);
+                      else textareaRefs.current.delete(item.id);
+                    }}
+                    value={item.pattern}
+                    onChange={e => updateItem(item.id, "pattern", e.target.value)}
+                    placeholder="기믹 / 패턴 설명 (예: [카운터] 후 [무력])"
+                    rows={2}
+                    className={cn("flex-1 resize-none rounded-xl border px-3 py-2 text-xs outline-none transition-all leading-5", inputCl)}
+                  />
+                  <button
+                    onClick={() => removeItem(item.id)}
+                    className={cn(
+                      "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all",
+                      isLight
+                        ? "border-rose-200/40 text-rose-400 hover:bg-rose-50"
+                        : "border-white/10 text-stone-500 hover:border-rose-400/30 hover:bg-rose-400/[0.08] hover:text-rose-300"
+                    )}
+                  >
+                    <X size={13} />
+                  </button>
                 </div>
-                <input
-                  value={item.hp_line}
-                  onChange={e => updateItem(item.id, "hp_line", e.target.value)}
-                  placeholder="HP 구간 (예: 30%)"
-                  className={cn("w-28 shrink-0 rounded-xl border px-3 py-2 text-xs font-bold outline-none transition-all", inputCl)}
-                />
-                <textarea
-                  value={item.pattern}
-                  onChange={e => updateItem(item.id, "pattern", e.target.value)}
-                  placeholder="기믹 / 패턴 설명 (예: 협동 카운터, 저스트가드)"
-                  rows={2}
-                  className={cn("flex-1 resize-none rounded-xl border px-3 py-2 text-xs outline-none transition-all leading-5", inputCl)}
-                />
-                <button
-                  onClick={() => removeItem(item.id)}
-                  className={cn(
-                    "mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all",
-                    isLight
-                      ? "border-rose-200/40 text-rose-400 hover:bg-rose-50"
-                      : "border-white/10 text-stone-500 hover:border-rose-400/30 hover:bg-rose-400/[0.08] hover:text-rose-300"
-                  )}
-                >
-                  <X size={13} />
-                </button>
+
+                {/* 태그 빠른 삽입 버튼 */}
+                <div className="mt-2 ml-9 flex flex-wrap gap-1.5">
+                  <span className={cn("text-[9px] font-semibold uppercase tracking-widest self-center mr-1", isLight ? "text-stone-400" : "text-stone-600")}>
+                    태그 삽입
+                  </span>
+                  {MEMO_TAGS.map(tag => (
+                    <button
+                      key={tag.label}
+                      type="button"
+                      onClick={() => insertTag(item.id, tag.label)}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all",
+                        tag.bg, tag.text, tag.border, tag.hoverBg
+                      )}
+                      title={`[${tag.label}] 삽입`}
+                    >
+                      {tag.icon} {tag.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             ))}
 
@@ -9843,7 +9991,7 @@ const RaidMemoViewModal = ({
                   </div>
                 )}
                 <p className={cn("text-sm leading-6 whitespace-pre-wrap", isLight ? "text-[#1a1208]" : "text-stone-200")}>
-                  {item.pattern || <span className="text-stone-500 italic">내용 없음</span>}
+                  {renderMemoPattern(item.pattern)}
                 </p>
               </div>
             </div>
