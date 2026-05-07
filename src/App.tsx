@@ -890,7 +890,7 @@ const HomeFeaturePortal = ({
   ];
 
   return (
-    <section className="relative z-10 mx-auto max-w-7xl px-6 pb-3 md:pb-4">
+    <section className="relative z-10 mx-auto max-w-7xl px-3 sm:px-6 pb-3 md:pb-4">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
           <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-amber-300/90">Feature Gateway</div>
@@ -991,7 +991,7 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
   };
 
   return (
-    <section className="mx-auto max-w-7xl px-6 pb-4 pt-2 md:pt-3">
+    <section className="mx-auto max-w-7xl px-3 sm:px-6 pb-4 pt-2 md:pt-3">
       <div className="overflow-hidden rounded-[1.85rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.032),rgba(255,255,255,0.018))] shadow-[0_28px_70px_rgba(0,0,0,0.26)]">
         <div className="border-b border-white/8 px-5 py-4 md:px-6">
           <div className="flex items-start justify-between gap-4">
@@ -1525,6 +1525,7 @@ const PassivePointBackgroundSync = ({
 
 function AppInner() {
   const [activeTab, setActiveTab] = useState("home");
+  const pendingTabRef = useRef<string | null>(null);
   const [user, setUser] = useState<UserLike>(null);
   const [profile, setProfile] = useState<ProfileLike>(null);
   const [loading, setLoading] = useState(true);
@@ -1627,7 +1628,14 @@ useEffect(() => {
         setProfile(null);
       }
 
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
+      if (event === "SIGNED_IN") {
+        void fetchInitialData();
+        if (pendingTabRef.current) {
+          setActiveTab(pendingTabRef.current);
+          pendingTabRef.current = null;
+        }
+      }
+      if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
         void fetchInitialData();
       }
     } catch (error) {
@@ -1729,7 +1737,7 @@ const fetchInitialData = async () => {
             <div className="text-[11px] font-semibold tracking-[0.3em] uppercase text-red-300">
               Boot Error
             </div>
-            <h1 className="mt-3 text-3xl font-semibold">홈페이지 초기화 실패</h1>
+            <h1 className="mt-3 text-2xl sm:text-3xl font-semibold">홈페이지 초기화 실패</h1>
             <p className="mt-4 text-sm leading-6 text-slate-300">
               {bootError}
             </p>
@@ -1738,6 +1746,19 @@ const fetchInitialData = async () => {
             </div>
           </div>
         </div>
+      </PageShell>
+    );
+  }
+
+  if (!user) {
+    return (
+      <PageShell settings={settings}>
+        <ToastViewport />
+        <LandingPage
+          onNavigate={(tab) => {
+            pendingTabRef.current = tab;
+          }}
+        />
       </PageShell>
     );
   }
@@ -1860,6 +1881,17 @@ const fetchInitialData = async () => {
                 exit={{ opacity: 0 }}
               >
                 <AdminPanel settings={settings} setSettings={setSettings} user={user} profile={profile} />
+              </motion.div>
+            )}
+
+            {activeTab === "note" && (
+              <motion.div
+                key="note"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <PersonalNoteRoom user={user} profile={profile} />
               </motion.div>
             )}
 
@@ -2146,7 +2178,7 @@ const GuildChat = ({ user, profile }: { user: any; profile: any }) => {
             exit={{ opacity: 0, y: 16, scale: 0.97 }}
             transition={{ duration: 0.2 }}
             className={cn(
-              "fixed bottom-6 right-6 z-[200] flex w-[340px] flex-col overflow-hidden rounded-[1.75rem] border shadow-[0_24px_70px_rgba(0,0,0,0.48)] backdrop-blur-2xl",
+              "fixed bottom-4 right-3 sm:bottom-6 sm:right-6 z-[200] flex w-[calc(100vw-24px)] sm:w-[340px] flex-col overflow-hidden rounded-[1.75rem] border shadow-[0_24px_70px_rgba(0,0,0,0.48)] backdrop-blur-2xl",
               bgPanel
             )}
             style={{ height: "520px" }}
@@ -2946,7 +2978,7 @@ const ProkyonWidget = () => {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.18 }}
-      className="mx-auto w-full max-w-7xl px-6 pb-4"
+      className="mx-auto w-full max-w-7xl px-3 sm:px-6 pb-4"
     >
       <div className="relative overflow-hidden rounded-[1.85rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.038),rgba(255,255,255,0.016))] shadow-[0_22px_52px_rgba(0,0,0,0.22)] backdrop-blur-2xl">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(245,194,105,0.07),transparent_60%)]" />
@@ -3300,7 +3332,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
       {/* 배경 */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.07),transparent_40%),radial-gradient(ellipse_at_top_right,rgba(245,194,105,0.08),transparent_36%)]" />
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-4 pt-6">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-3 sm:px-6 pb-4 pt-6">
 
         {/* ─── TOP ROW: 길드 헤더 + 빠른 검색 ─── */}
         <motion.div
@@ -3333,7 +3365,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
           </div>
 
           {/* 레이드 검색 */}
-          <div ref={searchRef} className="relative w-full max-w-sm">
+          <div ref={searchRef} className="relative w-full sm:max-w-sm">
             <div className="relative flex items-center">
               <div className="pointer-events-none absolute left-3.5 text-slate-500">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3422,23 +3454,23 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
               </div>
 
               {/* 요일 선택 바 */}
-              <div className="grid grid-cols-7 gap-1.5 p-3">
+              <div className="grid grid-cols-7 gap-1 sm:gap-1.5 p-2 sm:p-3">
                 {currentWeekDays.map((day) => {
                   const hasSchedule = (weeklySchedules[day.key]?.length || 0) > 0;
                   const isSelected = selectedDay?.key === day.key;
                   return (
                     <button key={day.key} onClick={() => setSelectedWeekDate(day.key)}
                       className={[
-                        "relative flex h-12 flex-col items-center justify-center rounded-xl border transition-all",
+                        "relative flex h-10 sm:h-12 flex-col items-center justify-center rounded-xl border transition-all",
                         isSelected
                           ? "border-amber-200/35 bg-amber-300/[0.16] text-white shadow-[0_0_0_1px_rgba(245,197,92,0.12)_inset]"
                           : hasSchedule
                           ? "border-amber-200/18 bg-amber-300/[0.08] text-amber-50 hover:border-amber-100/26"
                           : "border-white/7 bg-white/[0.03] text-slate-300 hover:border-white/10",
                       ].join(" ")}>
-                      {hasSchedule && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-200 shadow-[0_0_6px_rgba(251,191,36,0.5)]" />}
-                      <span className="text-[9px] font-semibold">{day.label}</span>
-                      <span className="mt-0.5 text-sm font-semibold leading-none">{day.day}</span>
+                      {hasSchedule && <span className="absolute right-1 top-1 h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-amber-200 shadow-[0_0_6px_rgba(251,191,36,0.5)]" />}
+                      <span className="text-[8px] sm:text-[9px] font-semibold">{day.label}</span>
+                      <span className="mt-0.5 text-xs sm:text-sm font-semibold leading-none">{day.day}</span>
                     </button>
                   );
                 })}
@@ -3740,7 +3772,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
     { id: "posts", label: "게시판" },
     { id: "ranking", label: "랭킹" },
     { id: "guild", label: "길드" },
-    ...(user ? [{ id: "shop", label: "포인트샵" }, { id: "myroom", label: "마이룸" }] : []),
+    ...(user ? [{ id: "shop", label: "포인트샵" }, { id: "myroom", label: "마이룸" }, { id: "note", label: "개인노트" }] : []),
     ...(profile?.role === "admin" ? [{ id: "admin", label: "관리자" }] : []),
     ...(user ? [] : [{ id: "login", label: "로그인" }, { id: "signup", label: "회원가입" }]),
   ];
@@ -3774,7 +3806,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
 
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 border-b border-amber-100/10 bg-[linear-gradient(180deg,rgba(7,13,26,0.9),rgba(10,14,24,0.78))] backdrop-blur-2xl shadow-[0_18px_50px_rgba(0,0,0,0.34)]">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
+      <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => handleMove("home")}
@@ -3867,7 +3899,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.98 }}
                       transition={{ duration: 0.16 }}
-                      className="absolute right-0 top-[calc(100%+12px)] z-[80] w-64 overflow-hidden rounded-[1.5rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(7,13,26,0.96),rgba(10,8,6,0.94))] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
+                      className="absolute right-0 top-[calc(100%+8px)] sm:top-[calc(100%+12px)] z-[80] w-56 sm:w-64 overflow-hidden rounded-[1.5rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(7,13,26,0.96),rgba(10,8,6,0.94))] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
                     >
                       <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] p-3">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
@@ -3883,6 +3915,14 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                           className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
                         >
                           <span>마이룸 이동</span>
+                          <ChevronRight size={15} />
+                        </button>
+
+                        <button
+                          onClick={() => handleMove("note")}
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
+                        >
+                          <span>📝 개인노트</span>
                           <ChevronRight size={15} />
                         </button>
 
@@ -3920,16 +3960,16 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 onClick={() => handleMove("login")}
-                className="rounded-[1.1rem] border border-amber-100/10 bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-stone-300 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
+                className="rounded-[1.1rem] border border-amber-100/10 bg-white/[0.03] px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium text-stone-300 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
               >
                 로그인
               </button>
               <button
                 onClick={() => handleMove("signup")}
-                className="rounded-[1.1rem] border border-amber-200/14 bg-[linear-gradient(180deg,rgba(245,194,105,0.18),rgba(245,194,105,0.1))] px-4 py-2.5 text-sm font-semibold text-amber-100 transition-all hover:bg-[linear-gradient(180deg,rgba(245,194,105,0.24),rgba(245,194,105,0.12))]"
+                className="rounded-[1.1rem] border border-amber-200/14 bg-[linear-gradient(180deg,rgba(245,194,105,0.18),rgba(245,194,105,0.1))] px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-semibold text-amber-100 transition-all hover:bg-[linear-gradient(180deg,rgba(245,194,105,0.24),rgba(245,194,105,0.12))]"
               >
                 회원가입
               </button>
@@ -4104,7 +4144,7 @@ const MainContentViewer = ({ type }: { type: string }) => {
   }, [type]);
 
   return (
-    <section className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 pb-8">
+    <section className="max-w-7xl mx-auto px-3 sm:px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 pb-8">
       {items.length === 0 && (
         <div className="col-span-full text-center text-slate-600 font-semibold py-10 uppercase">
           No Contents Registered.
@@ -4400,7 +4440,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
         </button>
 
         {/* ── 헤더 ── */}
-        <div className="relative border-b border-white/10 px-6 py-6 md:px-8 md:py-7">
+        <div className="relative border-b border-white/10 px-4 py-5 sm:px-6 sm:py-6 md:px-8 md:py-7">
           <div className="flex gap-5 md:gap-7">
             {/* 썸네일 */}
             <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-[1.5rem] border border-white/10 md:h-36 md:w-36">
@@ -4414,7 +4454,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
                   <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-[10px] font-semibold text-amber-200">노말 · 하드 비교 모드</span>
                 )}
               </div>
-              <h2 className="text-2xl font-bold tracking-tight text-white md:text-4xl">{item.name || item.sub_class}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white md:text-4xl">{item.name || item.sub_class}</h2>
               {type === "레이드" && !loading && (
                 <div className="mt-3 flex flex-wrap gap-4 text-sm text-stone-400">
                   {normalRows.length > 0 && (
@@ -4430,7 +4470,7 @@ const DetailPopup = ({ item, type, onClose }: any) => {
         </div>
 
         {/* ── 바디 ── */}
-        <div className="relative px-6 py-6 space-y-4 md:px-8 md:py-7">
+        <div className="relative px-4 py-5 sm:px-6 sm:py-6 space-y-4 md:px-8 md:py-7">
           {loading ? (
             <div className="rounded-[1.85rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-16 text-center text-sm text-slate-500">
               상세 데이터를 불러오는 중...
@@ -5021,9 +5061,9 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
   }, [visibleParticipants, visibleRaids]);
 
   return (
-    <section className={cn("max-w-7xl mx-auto px-6", embedded ? "py-6 md:py-7 border-t-0" : "py-16 md:py-24 border-t border-white/5")}>
+    <section className={cn("max-w-7xl mx-auto px-3 sm:px-6", embedded ? "py-4 sm:py-6 md:py-7 border-t-0" : "py-10 md:py-16 lg:py-24 border-t border-white/5")}>
 
-      <div className={cn("grid gap-6 mb-8", hideRanking ? "lg:grid-cols-1" : "lg:grid-cols-[1.2fr,0.8fr]")}>
+      <div className={cn("grid gap-4 sm:gap-6 mb-6 sm:mb-8", hideRanking ? "lg:grid-cols-1" : "lg:grid-cols-[1.2fr,0.8fr]")}>
         <SectionPanel
           title="Raid Calendar"
           description={scheduleView === "mine" ? "내 캐릭터가 참여한 일정만 확인." : "월별 레이드 일정."}
@@ -5076,7 +5116,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
               <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200">
                 {scheduleView === "mine" ? "My Schedule View" : "Monthly View"}
               </div>
-              <h2 className="text-4xl font-semibold tracking-tight">{formatMonthLabel(year, month)}</h2>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight">{formatMonthLabel(year, month)}</h2>
               {!user && (
                 <div className="mt-2 text-sm text-slate-500">
                   로그인하면 내 캐릭터가 참가한 일정만 따로 볼 수 있어.
@@ -5084,7 +5124,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
               )}
             </div>
 
-            <div className="grid grid-cols-3 gap-3 w-full md:w-auto">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full md:w-auto">
               <SummaryChip icon={<CalendarDays size={14} />} label={scheduleView === "mine" ? "내 일정" : "일정"} value={monthStats.totalRaids} />
               <SummaryChip icon={<Users size={14} />} label={scheduleView === "mine" ? "내 참가" : "참여"} value={scheduleView === "mine" ? mineStats.joinedCharacters : monthStats.totalParticipants} />
               <SummaryChip icon={<Trophy size={14} />} label="마감" value={monthStats.fullCount} />
@@ -5150,11 +5190,11 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
         )}
       </div>
 
-      <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-6">
+      <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-4 sm:gap-6">
         <div className="overflow-hidden rounded-[2rem] md:rounded-[2.5rem] border border-white/10 bg-slate-950/50 backdrop-blur-xl shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
-          <div className="grid grid-cols-7 border-b border-white/5 bg-white/[0.03] text-center text-[8px] sm:text-[10px] md:text-xs uppercase tracking-[0.1em] sm:tracking-[0.22em] text-slate-400">
+          <div className="grid grid-cols-7 border-b border-white/5 bg-white/[0.03] text-center uppercase tracking-[0.1em] sm:tracking-[0.22em] text-slate-400">
             {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
-              <div key={dayLabel} className="px-2 py-4">
+              <div key={dayLabel} className="px-1 py-2 sm:px-2 sm:py-4 text-[8px] sm:text-[10px] md:text-xs">
                 {dayLabel}
               </div>
             ))}
@@ -5164,7 +5204,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
             {Array.from({ length: firstDayOffset }).map((_, i) => (
               <div
                 key={`empty-${i}`}
-                className="min-h-[80px] sm:min-h-[110px] md:min-h-[156px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]"
+                className="min-h-[70px] sm:min-h-[110px] md:min-h-[156px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]"
               />
             ))}
 
@@ -5181,7 +5221,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                 <div
                   key={day}
                   className={cn(
-                    "group relative min-h-[80px] sm:min-h-[110px] md:min-h-[156px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-1.5 sm:p-3 transition-all duration-200 hover:z-[1] hover:bg-amber-300/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(233,196,106,0.16)]",
+                    "group relative min-h-[70px] sm:min-h-[110px] md:min-h-[156px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-1 sm:p-3 transition-all duration-200 hover:z-[1] hover:bg-amber-300/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(233,196,106,0.16)]",
                     isToday && "bg-amber-400/[0.08] shadow-[inset_0_0_0_1px_rgba(245,197,92,0.28),0_0_0_1px_rgba(245,197,92,0.1)]"
                   )}
                 >
@@ -5192,7 +5232,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                     <div className="min-w-0">
                       <div
                         className={cn(
-                          "inline-flex h-7 min-w-[28px] items-center justify-center rounded-lg px-1 text-xs font-semibold transition-all sm:h-9 sm:min-w-[36px] sm:rounded-xl sm:px-2 sm:text-sm",
+                          "inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-0.5 text-[10px] font-semibold transition-all sm:h-9 sm:min-w-[36px] sm:rounded-xl sm:px-2 sm:text-sm",
                           isToday
                             ? "border border-amber-200/25 bg-amber-300/10 text-amber-100 shadow-[0_8px_24px_rgba(214,164,78,0.18)]"
                             : "border border-transparent bg-white/[0.03] text-slate-300 group-hover:border-white/10"
@@ -5200,15 +5240,15 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                       >
                         {day}
                       </div>
-                      <div className="mt-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                      <div className="hidden sm:block mt-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
                         {DAY_LABELS[new Date(year, month, day).getDay()]}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2">
                       {dayRaids.length > 0 && (
-                        <div className="inline-flex items-center gap-1 rounded-full border border-amber-200/15 bg-amber-300/10 px-2 py-1 text-[10px] font-semibold text-amber-50">
-                          <span className="h-1.5 w-1.5 rounded-full bg-amber-200" />
+                        <div className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full border border-amber-200/15 bg-amber-300/10 px-1 sm:px-2 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-semibold text-amber-50">
+                          <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-amber-200" />
                           {dayRaids.length}
                         </div>
                       )}
@@ -5219,7 +5259,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                             setSelectedDate(dateStr);
                             setIsCreateOpen(true);
                           }}
-                          className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-amber-200 transition-all hover:-translate-y-0.5 hover:border-amber-200/25 hover:bg-amber-300/10 hover:text-white"
+                          className="hidden sm:flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-amber-200 transition-all hover:-translate-y-0.5 hover:border-amber-200/25 hover:bg-amber-300/10 hover:text-white"
                           title="레이드 생성"
                         >
                           <Plus size={15} />
@@ -5228,7 +5268,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                     </div>
                   </div>
 
-                  <div className="mb-3 flex items-center gap-2 text-[11px] text-slate-500">
+                  <div className="hidden sm:flex mb-3 items-center gap-2 text-[11px] text-slate-500">
                     <span>{dayRaids.length}개 일정</span>
                     {dayParticipantCount > 0 && (
                       <>
@@ -5238,13 +5278,31 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                     )}
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1 sm:space-y-1.5">
                     {dayRaids.length === 0 && (
-                      <div className="rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-3 py-3 text-center text-[11px] font-medium text-slate-500">
+                      <div className="hidden sm:block rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-3 py-3 text-center text-[11px] font-medium text-slate-500">
                         {scheduleView === "mine" ? "내 일정 없음" : "일정 없음"}
                       </div>
                     )}
 
+                    {/* Mobile: just show dot indicators */}
+                    {dayRaids.length > 0 && (
+                      <div className="flex sm:hidden flex-wrap gap-0.5 mt-0.5">
+                        {dayRaids.slice(0, 3).map((raid) => (
+                          <button
+                            key={raid.id}
+                            onClick={() => setSelectedRaid(raid)}
+                            className="h-1.5 w-1.5 rounded-full bg-amber-300/70"
+                          />
+                        ))}
+                        {dayRaids.length > 3 && (
+                          <div className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                        )}
+                      </div>
+                    )}
+
+                    {/* Desktop: show raid cards */}
+                    <div className="hidden sm:block space-y-1.5">
                     {dayRaids.slice(0, 2).map((raid) => (
                       <RaidCard
                         key={raid.id}
@@ -5264,6 +5322,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                         +{dayRaids.length - 2}개 일정 더 보기
                       </button>
                     )}
+                    </div>
                   </div>
                 </div>
               );
@@ -6010,7 +6069,7 @@ const RaidDetailModal = ({
         </div>
 
         {/* ── 헤더 ── */}
-        <div className="relative border-b border-white/[0.07] px-6 py-5">
+        <div className="relative border-b border-white/[0.07] px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               {/* 배지 */}
@@ -6028,7 +6087,7 @@ const RaidDetailModal = ({
                   </>
                 )}
               </div>
-              <h3 className="text-2xl font-bold tracking-tight text-white md:text-3xl">{raid.raid_name}</h3>
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-white md:text-3xl">{raid.raid_name}</h3>
               <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-stone-400">
                 <span className="flex items-center gap-1.5"><CalendarDays size={13} />{formatShortDate(raid.raid_date)}</span>
                 <span className="flex items-center gap-1.5"><Clock size={13} />{raid.raid_time}</span>
@@ -6074,7 +6133,7 @@ const RaidDetailModal = ({
 
         {/* ── 탭 ── */}
         {!isAnime && (
-          <div className="relative flex gap-1 border-b border-white/[0.07] px-6 pt-3 pb-0">
+          <div className="relative flex gap-1 border-b border-white/[0.07] px-4 sm:px-6 pt-3 pb-0">
             {([["info", "레이드 정보"], ["participants", "참가자 목록"]] as const).map(([id, label]) => (
               <button
                 key={id}
@@ -6094,7 +6153,7 @@ const RaidDetailModal = ({
         )}
 
         {/* ── 바디 ── */}
-        <div className="relative max-h-[58vh] overflow-y-auto px-6 py-5 space-y-4">
+        <div className="relative max-h-[58vh] overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4">
 
           {/* ── INFO 탭 ── */}
           {(isAnime || activeTab === "info") && (
@@ -6512,7 +6571,7 @@ const RaidDetailModal = ({
         </div>
 
         {/* ── 푸터 버튼 ── */}
-        <div className="relative border-t border-white/[0.07] px-6 py-4">
+        <div className="relative border-t border-white/[0.07] px-4 sm:px-6 py-4">
           <div className="flex flex-wrap gap-2">
             {user && !isFull && (
               <button
@@ -6847,7 +6906,7 @@ const JoinForm = ({
       <div className="relative w-full max-w-lg overflow-hidden rounded-none sm:rounded-[2rem] border-0 sm:border border-white/10 bg-slate-950/94 shadow-none sm:shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl min-h-screen sm:min-h-0 sm:my-4">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
 
-        <div className="relative border-b border-white/10 px-6 py-5">
+        <div className="relative border-b border-white/10 px-4 sm:px-6 py-4 sm:py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200">
@@ -6867,7 +6926,7 @@ const JoinForm = ({
           </div>
         </div>
 
-        <div className="relative space-y-5 px-6 py-6">
+        <div className="relative space-y-5 px-4 sm:px-6 py-5 sm:py-6">
           <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-4 py-4">
             <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
               대상 일정
@@ -9129,7 +9188,7 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
   if (!user) return (
     <div className="max-w-2xl mx-auto py-32 text-center space-y-6">
       <Shield size={64} className="mx-auto text-slate-800" />
-      <h2 className="text-3xl font-semibold uppercase tracking-tight">Access Denied</h2>
+      <h2 className="text-2xl sm:text-3xl font-semibold uppercase tracking-tight">Access Denied</h2>
       <p className="text-slate-500 font-bold">게시판은 로그인한 회원만 이용 가능합니다.</p>
     </div>
   );
@@ -9139,7 +9198,7 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
       {/* 헤더 */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-3xl font-semibold uppercase tracking-tight sm:text-4xl">Bulletin Board</h2>
+          <h2 className="text-2xl sm:text-3xl font-semibold uppercase tracking-tight md:text-4xl">Bulletin Board</h2>
           <p className="text-slate-500 text-sm mt-2">게시글 +5P · 댓글 +5P</p>
         </div>
         <button
@@ -11926,28 +11985,28 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   if (!user || !profile) return null;
 
   return (
-    <div className="max-w-6xl mx-auto py-24 px-6">
+    <div className="max-w-6xl mx-auto py-12 sm:py-24 px-3 sm:px-6">
 
       {/* ── 헤더 ── */}
-      <div className="mb-10 flex items-end justify-between">
+      <div className="mb-6 sm:mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-300/70 mb-2">My Room</div>
-          <h2 className="text-4xl font-bold text-white" style={getNicknameEffectStyle(profile)}>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white" style={getNicknameEffectStyle(profile)}>
             {profile.nickname || "-"}
           </h2>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-center">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 sm:px-5 py-2 sm:py-3 text-center">
             <div className="text-[9px] uppercase tracking-widest text-stone-500">포인트</div>
-            <div className="text-lg font-bold text-amber-300">{myPoint || profile.points || 0}</div>
+            <div className="text-base sm:text-lg font-bold text-amber-300">{myPoint || profile.points || 0}</div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-center">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 sm:px-5 py-2 sm:py-3 text-center">
             <div className="text-[9px] uppercase tracking-widest text-stone-500">보유 뱃지</div>
-            <div className="text-lg font-bold text-white">{ownedBadges.length}</div>
+            <div className="text-base sm:text-lg font-bold text-white">{ownedBadges.length}</div>
           </div>
           <button
             onClick={handleAttendance}
-            className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/20 transition-all"
+            className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-semibold text-emerald-300 hover:bg-emerald-400/20 transition-all"
           >
             출석 체크 +10P
           </button>
@@ -12112,7 +12171,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
             <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#080808] shadow-[0_30px_100px_rgba(0,0,0,0.8)]">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.10),transparent_40%)]" />
               {/* 헤더 */}
-              <div className="relative flex items-center justify-between border-b border-white/8 px-6 py-5">
+              <div className="relative flex items-center justify-between border-b border-white/8 px-4 sm:px-6 py-4 sm:py-5">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-300/70">Character Register</div>
                   <div className="mt-1 text-xl font-bold text-white">캐릭터 등록</div>
@@ -12123,7 +12182,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                 </button>
               </div>
 
-              <div className="relative space-y-4 px-6 py-6">
+              <div className="relative space-y-4 px-4 sm:px-6 py-4 sm:py-6">
                 {/* 전투정보실 조회 */}
                 <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-4 space-y-3">
                   <div className="text-[11px] font-bold uppercase tracking-widest text-amber-300/80">전투정보실 자동 조회</div>
@@ -12209,7 +12268,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
           >
             <div className="relative w-full max-w-4xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
-              <div className="relative border-b border-white/10 px-6 py-5">
+              <div className="relative border-b border-white/10 px-4 sm:px-6 py-4 sm:py-5">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200">Character Edit</div>
@@ -12228,7 +12287,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                 </div>
               </div>
 
-              <div className="relative space-y-5 px-6 py-6">
+              <div className="relative space-y-5 px-4 sm:px-6 py-4 sm:py-6">
                 <div className="grid md:grid-cols-2 gap-3">
                   <AdminInput label="캐릭터명" value={editingCharacter.draft.character_name} onChange={(v: any) => updateDraft(editingCharacter.id, "character_name", v)} />
                   <AdminInput label="직업" value={editingCharacter.draft.class_name} onChange={(v: any) => updateDraft(editingCharacter.id, "class_name", v)} />
@@ -12427,10 +12486,10 @@ const RankingPage = ({ user, profile }: any) => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-24 px-6 text-left">
+    <div className="max-w-5xl mx-auto py-12 sm:py-24 px-3 sm:px-6 text-left">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
-          <h2 className="text-4xl font-semibold uppercase tracking-tight">Guild Ranking</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold uppercase tracking-tight">Guild Ranking</h2>
           <p className="text-slate-500 font-bold mt-2">포인트, 주간 활동, 서폿 기여도, 참여율 랭킹을 볼 수 있습니다.</p>
         </div>
 
@@ -12462,9 +12521,9 @@ const RankingPage = ({ user, profile }: any) => {
         const isInList = myRank <= 30;
         if (isInList) return null;
         return (
-          <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-5 flex justify-between items-center">
-            <div className="flex items-center gap-5">
-              <div className="text-xl font-semibold w-12 text-center text-amber-300">#{myRank}</div>
+          <div className="mb-6 rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 sm:p-5 flex justify-between items-center">
+            <div className="flex items-center gap-3 sm:gap-5">
+              <div className="text-lg sm:text-xl font-semibold w-10 sm:w-12 text-center text-amber-300">#{myRank}</div>
               <div>
                 <div className="text-base font-semibold text-amber-100">
                   {myRow?.nickname || myRow?.owner_nickname || "나"}{" "}
@@ -12484,7 +12543,7 @@ const RankingPage = ({ user, profile }: any) => {
         {rows.slice(0, 30).map((member: any, index: number) => (
           <div
             key={member.id || member.profile_id || `${member.nickname}-${index}`}
-            className={`flex justify-between items-center p-6 rounded-2xl border transition-all ${
+            className={`flex justify-between items-center p-4 sm:p-6 rounded-2xl border transition-all ${
               user?.id === (member.id || member.profile_id)
                 ? "bg-amber-500/10 border-amber-400"
                 : "bg-white/5 border-white/10"
@@ -13360,7 +13419,7 @@ const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
     <div className="mb-10 rounded-[2rem] border border-amber-400/15 bg-gradient-to-br from-[#070d1a]/95 to-[#0a0807]/95 overflow-hidden">
       {/* 헤더 */}
       <button
-        className="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-all"
+        className="w-full flex items-center justify-between px-4 sm:px-6 py-4 hover:bg-white/[0.02] transition-all"
         onClick={() => setOpen(p => !p)}
       >
         <div className="flex items-center gap-3">
@@ -13379,10 +13438,10 @@ const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
       </button>
 
       {open && (
-        <div className="px-6 pb-6 space-y-6 border-t border-white/6">
+        <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-6 border-t border-white/6">
 
           {/* ── 핵심 지표 3개 ── */}
-          <div className="grid grid-cols-3 gap-4 pt-6">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-6">
             {[
               {
                 label: "평균 아이템 레벨",
@@ -13418,15 +13477,15 @@ const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
                 ),
               },
             ].map(({ label, value, sub, color, icon }) => (
-              <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg" style={{ background: `${color}20`, color }}>
+              <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] p-2 sm:p-4 flex flex-col gap-1 sm:gap-2">
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <div className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-lg" style={{ background: `${color}20`, color }}>
                     {icon}
                   </div>
-                  <span className="text-[10px] text-slate-400 font-medium">{label}</span>
+                  <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium leading-tight">{label}</span>
                 </div>
-                <div className="text-2xl font-bold" style={{ color }}>{value}</div>
-                <div className="text-[10px] text-slate-500 truncate">{sub}</div>
+                <div className="text-base sm:text-2xl font-bold" style={{ color }}>{value}</div>
+                <div className="text-[9px] sm:text-[10px] text-slate-500 truncate">{sub}</div>
               </div>
             ))}
           </div>
@@ -13803,10 +13862,10 @@ const GuildMembersPage = () => {
   }, [members, filter, classFilter, searchQuery]);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-20">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-10 sm:py-20">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
         <div>
-          <h1 className="text-3xl md:text-4xl font-semibold">길드 캐릭터</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold">길드 캐릭터</h1>
           <p className="text-slate-400 mt-2">메인캐, 템렙, 캐릭터 레벨, 전투력, 생일, MBTI, 장착 뱃지와 장비 파츠 [무기]까지 한 번에 볼 수 있습니다.</p>
         </div>
 
@@ -14828,16 +14887,16 @@ const PointShopPage = ({ user, profile }: any) => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto py-24 px-6 text-left">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+    <div className="max-w-7xl mx-auto py-12 sm:py-24 px-3 sm:px-6 text-left">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 sm:gap-6 mb-6 sm:mb-10">
         <div>
-          <h2 className="text-4xl font-semibold uppercase tracking-tight">Point Shop</h2>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold uppercase tracking-tight">Point Shop</h2>
           <p className="text-slate-500 font-bold mt-2">뱃지, 닉네임 효과, 강화석, 무기 가챠 상품.</p>
         </div>
 
-        <div className="rounded-[2rem] border border-amber-400/20 bg-amber-400/10 px-5 py-4">
+        <div className="rounded-[2rem] border border-amber-400/20 bg-amber-400/10 px-4 sm:px-5 py-3 sm:py-4 self-start sm:self-auto">
           <div className="text-[10px] uppercase tracking-widest text-amber-200 font-semibold">My Point</div>
-          <div className="text-2xl font-semibold">{myPoint} P</div>
+          <div className="text-xl sm:text-2xl font-semibold">{myPoint} P</div>
         </div>
       </div>
 
@@ -15966,6 +16025,904 @@ const AdminPointShopManager = () => {
 
   );
 }
+
+
+// ═══════════════════════════════════════════════════════════
+// ── LandingPage — 비로그인 진입 화면 ────────────────────────
+// ═══════════════════════════════════════════════════════════
+const LandingPage = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [pendingTab, setPendingTab] = useState<string | null>(null);
+  const loginFormRef = useRef<HTMLDivElement>(null);
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase) { showToast("Supabase 설정을 확인하세요.", "error"); return; }
+    setAuthLoading(true);
+    try {
+      if (authMode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { nickname } },
+        });
+        if (error) throw error;
+        await supabase.from("profiles").insert([{ id: data.user?.id, nickname, grade: "신입" }]);
+        showToast("회원가입 성공! 이메일을 확인하세요.", "success");
+        setAuthMode("login");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        if (pendingTab) onNavigate(pendingTab);
+        showToast("로그인 성공!", "success");
+      }
+    } catch (err: any) {
+      showToast(err.message, "error");
+    }
+    setAuthLoading(false);
+  };
+
+  const handleCardClick = (tab: string) => {
+    setPendingTab(tab);
+    loginFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    onNavigate(tab);
+    setTimeout(() => {
+      loginFormRef.current?.querySelector("input")?.focus();
+    }, 400);
+  };
+
+  const cards = [
+    {
+      key: "home",
+      title: "쁘밍 입장",
+      subtitle: "Guild Main",
+      desc: "길드 메인 페이지로 이동. 레이드 일정, 공지, 길드원 정보를 확인하세요.",
+      emoji: "⚔️",
+      gradient: "from-amber-500/18 via-amber-900/8 to-transparent",
+      border: "border-amber-300/20 hover:border-amber-200/40",
+      badgeCls: "bg-amber-400/15 text-amber-200 border-amber-400/25",
+      iconBg: "bg-amber-300/10 border-amber-300/20",
+      glow: "hover:shadow-[0_8px_32px_rgba(251,191,36,0.15)]",
+    },
+    {
+      key: "myroom",
+      title: "마이룸",
+      subtitle: "My Room",
+      desc: "나의 캐릭터, 레이드 기록, 개인 설정을 관리합니다.",
+      emoji: "👑",
+      gradient: "from-violet-500/18 via-violet-900/8 to-transparent",
+      border: "border-violet-300/20 hover:border-violet-200/40",
+      badgeCls: "bg-violet-400/15 text-violet-200 border-violet-400/25",
+      iconBg: "bg-violet-300/10 border-violet-300/20",
+      glow: "hover:shadow-[0_8px_32px_rgba(139,92,246,0.15)]",
+    },
+    {
+      key: "note",
+      title: "개인 노트",
+      subtitle: "Personal Note",
+      desc: "이벤트, 아이디어, 보스 패턴 등 다양한 메모를 자유롭게 기록하세요.",
+      emoji: "📝",
+      gradient: "from-emerald-500/18 via-emerald-900/8 to-transparent",
+      border: "border-emerald-300/20 hover:border-emerald-200/40",
+      badgeCls: "bg-emerald-400/15 text-emerald-200 border-emerald-400/25",
+      iconBg: "bg-emerald-300/10 border-emerald-300/20",
+      glow: "hover:shadow-[0_8px_32px_rgba(52,211,153,0.15)]",
+    },
+  ];
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
+      {/* Background glow */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(245,194,105,0.07),transparent),radial-gradient(ellipse_50%_40%_at_80%_80%,rgba(139,92,246,0.05),transparent),radial-gradient(ellipse_40%_30%_at_20%_70%,rgba(52,211,153,0.04),transparent)]" />
+
+      <div className="relative z-10 w-full max-w-5xl mx-auto">
+        {/* Guild Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center justify-center h-20 w-20 rounded-[1.75rem] border border-amber-200/20 bg-[linear-gradient(180deg,rgba(251,191,36,0.16),rgba(120,53,15,0.06))] shadow-[0_20px_48px_rgba(214,164,78,0.2)] mb-6">
+            <Shield size={34} className="text-amber-200" />
+          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.5em] text-amber-200/50 mb-3">Guild Residence</div>
+          <h1 className="text-5xl sm:text-6xl font-semibold bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent tracking-tight">
+            쁘밍
+          </h1>
+          <p className="mt-4 text-slate-500 text-sm max-w-xs mx-auto">
+            로스트아크 길드 홈페이지에 오신 것을 환영합니다.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-6 items-start">
+          {/* ── Login Card ── */}
+          <motion.div
+            ref={loginFormRef}
+            initial={{ opacity: 0, x: -24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.65, delay: 0.15 }}
+            className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-8 backdrop-blur-xl shadow-[0_24px_60px_rgba(0,0,0,0.32)]"
+          >
+            {/* Card top line accent */}
+            <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent rounded-full" />
+
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-amber-200/50">
+              Authentication
+            </div>
+            <h2 className="text-2xl font-semibold text-white mb-1">
+              {authMode === "login" ? "로그인" : "회원가입"}
+            </h2>
+            <p className="text-slate-500 text-sm mb-8">
+              {authMode === "login"
+                ? "길드 홈페이지에 로그인하여 모든 기능을 이용하세요."
+                : "새 계정을 만들어 길드에 합류하세요."}
+            </p>
+
+            <form onSubmit={handleAuth} className="space-y-3.5">
+              <input
+                type="email"
+                placeholder="이메일"
+                required
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm font-semibold tracking-wider focus:outline-none focus:border-amber-400/60 transition-colors placeholder:text-slate-600 placeholder:font-normal placeholder:tracking-normal"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                type="password"
+                placeholder="비밀번호"
+                required
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm font-semibold tracking-wider focus:outline-none focus:border-amber-400/60 transition-colors placeholder:text-slate-600 placeholder:font-normal placeholder:tracking-normal"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {authMode === "signup" && (
+                <input
+                  type="text"
+                  placeholder="닉네임"
+                  required
+                  className="w-full bg-black/40 border border-white/10 rounded-2xl px-5 py-4 text-white text-sm font-semibold tracking-wider focus:outline-none focus:border-amber-400/60 transition-colors placeholder:text-slate-600 placeholder:font-normal placeholder:tracking-normal"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                />
+              )}
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full bg-amber-500 py-4 rounded-2xl font-semibold text-white uppercase tracking-[0.2em] hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 active:scale-[0.98] disabled:opacity-60 mt-2"
+              >
+                {authLoading ? "처리 중..." : authMode === "login" ? "로그인" : "가입하기"}
+              </button>
+            </form>
+
+            <button
+              onClick={() => setAuthMode((p) => (p === "login" ? "signup" : "login"))}
+              className="mt-6 w-full text-[11px] font-semibold text-slate-600 hover:text-slate-300 uppercase tracking-widest transition-all"
+            >
+              {authMode === "login"
+                ? "계정이 없으신가요? 회원가입 →"
+                : "이미 계정이 있으신가요? 로그인 →"}
+            </button>
+
+            {pendingTab && (
+              <div className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/8 px-3 py-2.5 text-xs text-amber-200/80 text-center">
+                로그인 후{" "}
+                <span className="font-semibold">
+                  {pendingTab === "home" ? "쁘밍 입장" : pendingTab === "myroom" ? "마이룸" : "개인 노트"}
+                </span>
+                으로 이동합니다.
+              </div>
+            )}
+          </motion.div>
+
+          {/* ── Navigation Cards ── */}
+          <div className="flex flex-col gap-4">
+            {cards.map((card, idx) => (
+              <motion.button
+                key={card.key}
+                initial={{ opacity: 0, x: 24 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.55, delay: 0.2 + idx * 0.1 }}
+                onClick={() => handleCardClick(card.key)}
+                className={cn(
+                  "group relative flex items-center gap-4 rounded-2xl border bg-gradient-to-br p-5 text-left transition-all overflow-hidden",
+                  card.gradient,
+                  card.border,
+                  card.glow
+                )}
+              >
+                {/* Shimmer on hover */}
+                <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),transparent_50%,rgba(255,255,255,0.01))]" />
+
+                <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-2xl", card.iconBg)}>
+                  {card.emoji}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="font-semibold text-white text-base">{card.title}</span>
+                    <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-semibold border", card.badgeCls)}>
+                      {card.subtitle}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 leading-relaxed">{card.desc}</p>
+                </div>
+                <ChevronRight
+                  size={18}
+                  className="text-slate-600 group-hover:text-white/50 group-hover:translate-x-1 transition-all shrink-0"
+                />
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
+// ── PersonalNoteRoom — 개인 노트 공간 ────────────────────────
+// ═══════════════════════════════════════════════════════════
+type PersonalNote = {
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  images: string[];
+  font_size: number;
+  font_color: string;
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+const FONT_SIZE_OPTIONS = [10, 12, 13, 14, 15, 16, 18, 20, 24, 28, 32];
+const FONT_COLOR_PRESETS = [
+  "#ffffff", "#f1f5f9", "#fde68a", "#86efac", "#93c5fd",
+  "#f9a8d4", "#c4b5fd", "#fb923c", "#f87171", "#a3e635",
+];
+
+const NOTE_CATEGORY_OPTIONS = [
+  { label: "📅 이벤트", value: "event", color: "bg-blue-400/15 text-blue-200 border-blue-400/25" },
+  { label: "💡 아이디어", value: "idea", color: "bg-amber-400/15 text-amber-200 border-amber-400/25" },
+  { label: "⚔️ 보스패턴", value: "boss", color: "bg-red-400/15 text-red-200 border-red-400/25" },
+  { label: "🗒️ 메모", value: "memo", color: "bg-slate-400/15 text-slate-200 border-slate-400/25" },
+  { label: "🎯 목표", value: "goal", color: "bg-emerald-400/15 text-emerald-200 border-emerald-400/25" },
+];
+
+const PersonalNoteRoom = ({ user, profile }: { user: any; profile: any }) => {
+  const [notes, setNotes] = useState<PersonalNote[]>([]);
+  const [loadingNotes, setLoadingNotes] = useState(true);
+  const [editNote, setEditNote] = useState<PersonalNote | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Form state
+  const [noteTitle, setNoteTitle] = useState("");
+  const [noteFontSize, setNoteFontSize] = useState(14);
+  const [noteFontColor, setNoteFontColor] = useState("#ffffff");
+  const [noteImages, setNoteImages] = useState<string[]>([]);
+  const [imageInputUrl, setImageInputUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [noteCategory, setNoteCategory] = useState("memo");
+
+  const contentEditableRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (user?.id) fetchNotes();
+  }, [user?.id]);
+
+  const fetchNotes = async () => {
+    if (!supabase || !user?.id) return;
+    setLoadingNotes(true);
+    try {
+      const { data } = await supabase
+        .from("personal_notes")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("pinned", { ascending: false })
+        .order("updated_at", { ascending: false });
+      setNotes(data || []);
+    } catch { /* ignore */ }
+    setLoadingNotes(false);
+  };
+
+  const openNewNote = () => {
+    setEditNote(null);
+    setNoteTitle("");
+    setNoteFontSize(14);
+    setNoteFontColor("#ffffff");
+    setNoteImages([]);
+    setNoteCategory("memo");
+    setImageInputUrl("");
+    setIsModalOpen(true);
+    setTimeout(() => {
+      if (contentEditableRef.current) contentEditableRef.current.innerHTML = "";
+    }, 60);
+  };
+
+  const openEditNote = (note: PersonalNote) => {
+    setEditNote(note);
+    setNoteTitle(note.title);
+    setNoteFontSize(note.font_size || 14);
+    setNoteFontColor(note.font_color || "#ffffff");
+    setNoteImages(note.images || []);
+    setNoteCategory((note as any).category || "memo");
+    setIsModalOpen(true);
+    setTimeout(() => {
+      if (contentEditableRef.current) {
+        contentEditableRef.current.innerHTML = note.content || "";
+      }
+    }, 60);
+  };
+
+  const handleSave = async () => {
+    if (!supabase || !user?.id) return;
+    const content = contentEditableRef.current?.innerHTML || "";
+    setSaving(true);
+    try {
+      const payload = {
+        title: noteTitle,
+        content,
+        font_size: noteFontSize,
+        font_color: noteFontColor,
+        images: noteImages,
+        category: noteCategory,
+        updated_at: new Date().toISOString(),
+      };
+      if (editNote) {
+        await supabase.from("personal_notes").update(payload).eq("id", editNote.id).eq("user_id", user.id);
+      } else {
+        await supabase.from("personal_notes").insert({ ...payload, user_id: user.id, pinned: false });
+      }
+      showToast("노트가 저장되었습니다.", "success");
+      setIsModalOpen(false);
+      fetchNotes();
+    } catch {
+      showToast("저장 실패. 잠시 후 다시 시도해주세요.", "error");
+    }
+    setSaving(false);
+  };
+
+  const handleDelete = async (noteId: string) => {
+    if (!supabase || !user?.id) return;
+    if (!window.confirm("이 노트를 삭제하시겠습니까?")) return;
+    await supabase.from("personal_notes").delete().eq("id", noteId).eq("user_id", user.id);
+    showToast("삭제되었습니다.", "info");
+    fetchNotes();
+  };
+
+  const handleTogglePin = async (e: React.MouseEvent, note: PersonalNote) => {
+    e.stopPropagation();
+    if (!supabase || !user?.id) return;
+    await supabase
+      .from("personal_notes")
+      .update({ pinned: !note.pinned })
+      .eq("id", note.id)
+      .eq("user_id", user.id);
+    fetchNotes();
+  };
+
+  const applyFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    contentEditableRef.current?.focus();
+  };
+
+  const handleImageFile = async (file: File) => {
+    if (!user?.id) return;
+    setUploadingImage(true);
+    try {
+      const url = await uploadGuildImage(file, user.id);
+      setNoteImages((prev) => [...prev, url]);
+    } catch {
+      showToast("이미지 업로드 실패", "error");
+    }
+    setUploadingImage(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleImageUrlAdd = () => {
+    const trimmed = imageInputUrl.trim();
+    if (!trimmed) return;
+    setNoteImages((prev) => [...prev, trimmed]);
+    setImageInputUrl("");
+  };
+
+  const stripHtml = (html: string) =>
+    html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+
+  const getCategoryInfo = (cat?: string) =>
+    NOTE_CATEGORY_OPTIONS.find((c) => c.value === cat) || NOTE_CATEGORY_OPTIONS[3];
+
+  const filteredNotes = notes.filter((note) => {
+    const matchCat = filterCategory === "all" || (note as any).category === filterCategory;
+    const matchSearch =
+      !searchQuery.trim() ||
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      stripHtml(note.content).toLowerCase().includes(searchQuery.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
+  const pinnedNotes = filteredNotes.filter((n) => n.pinned);
+  const unpinnedNotes = filteredNotes.filter((n) => !n.pinned);
+
+  const NoteCard = ({ note }: { note: PersonalNote }) => {
+    const catInfo = getCategoryInfo((note as any).category);
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="group relative rounded-[1.6rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-5 hover:border-amber-200/20 transition-all cursor-pointer hover:shadow-[0_8px_32px_rgba(0,0,0,0.24)]"
+        onClick={() => openEditNote(note)}
+      >
+        {note.pinned && (
+          <div className="absolute top-4 right-4">
+            <Pin size={13} className="text-amber-300/80" />
+          </div>
+        )}
+
+        {/* Image preview */}
+        {note.images?.[0] && (
+          <div className="mb-3.5 h-32 w-full overflow-hidden rounded-2xl bg-black/20">
+            <img
+              src={note.images[0]}
+              alt=""
+              className="h-full w-full object-cover opacity-75 group-hover:opacity-85 transition-opacity"
+            />
+          </div>
+        )}
+
+        {/* Category badge */}
+        <div className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold mb-2.5", catInfo.color)}>
+          {catInfo.label}
+        </div>
+
+        <h3 className="font-semibold text-white truncate text-sm leading-snug">
+          {note.title || "제목 없음"}
+        </h3>
+        <p
+          className="mt-1.5 text-xs text-slate-500 leading-relaxed"
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {stripHtml(note.content) || "내용 없음"}
+        </p>
+
+        {note.images && note.images.length > 1 && (
+          <div className="mt-2 flex items-center gap-1 text-[10px] text-slate-600">
+            <ImageIcon size={10} /> {note.images.length}개 이미지
+          </div>
+        )}
+
+        <div className="mt-3.5 flex items-center justify-between">
+          <span className="text-[10px] text-slate-600">
+            {new Date(note.updated_at || note.created_at).toLocaleDateString("ko-KR")}
+          </span>
+          <div
+            className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={(e) => handleTogglePin(e, note)}
+              title={note.pinned ? "핀 해제" : "핀 고정"}
+              className={cn(
+                "h-7 w-7 flex items-center justify-center rounded-xl border transition-all",
+                note.pinned
+                  ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                  : "border-white/10 bg-white/5 text-slate-500 hover:text-amber-300 hover:border-amber-400/20"
+              )}
+            >
+              <Pin size={11} />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }}
+              title="삭제"
+              className="h-7 w-7 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-500 hover:text-red-300 hover:border-red-400/20 transition-all"
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 py-8">
+      {/* Header */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200/60">Personal Note</div>
+          <h1 className="mt-1 text-2xl font-semibold bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent">
+            개인 노트룸
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            이벤트, 아이디어, 보스 패턴 등 다양한 메모를 자유롭게 기록하세요.
+          </p>
+        </div>
+        <button
+          onClick={openNewNote}
+          className="flex items-center gap-2 rounded-2xl bg-amber-500 px-5 py-3 font-semibold text-sm text-white hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 active:scale-95 shrink-0"
+        >
+          <Plus size={18} /> 노트 추가
+        </button>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        {/* Search */}
+        <div className="relative flex-1">
+          <input
+            type="text"
+            placeholder="노트 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-black/30 border border-white/10 rounded-2xl px-4 py-2.5 pl-4 text-sm text-white focus:outline-none focus:border-amber-400/50 placeholder:text-slate-600"
+          />
+        </div>
+        {/* Category filter */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setFilterCategory("all")}
+            className={cn(
+              "rounded-xl border px-3 py-2 text-xs font-semibold transition-all",
+              filterCategory === "all"
+                ? "border-amber-400/30 bg-amber-400/15 text-amber-200"
+                : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+            )}
+          >
+            전체
+          </button>
+          {NOTE_CATEGORY_OPTIONS.map((cat) => (
+            <button
+              key={cat.value}
+              onClick={() => setFilterCategory(cat.value)}
+              className={cn(
+                "rounded-xl border px-3 py-2 text-xs font-semibold transition-all",
+                filterCategory === cat.value
+                  ? cn("border", cat.color)
+                  : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+              )}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Notes */}
+      {loadingNotes ? (
+        <div className="text-center py-20 text-slate-500">불러오는 중...</div>
+      ) : filteredNotes.length === 0 ? (
+        <div className="text-center py-24 rounded-[2rem] border border-dashed border-white/8 bg-white/[0.015]">
+          <div className="text-5xl mb-5">📝</div>
+          <div className="text-slate-400 font-semibold">
+            {searchQuery || filterCategory !== "all" ? "검색 결과가 없습니다." : "아직 노트가 없습니다."}
+          </div>
+          <div className="text-slate-600 text-sm mt-2">
+            {searchQuery || filterCategory !== "all"
+              ? "다른 검색어나 카테고리를 시도해보세요."
+              : "+ 버튼을 눌러 첫 노트를 작성해보세요!"}
+          </div>
+          {!searchQuery && filterCategory === "all" && (
+            <button
+              onClick={openNewNote}
+              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-amber-500 px-6 py-3 font-semibold text-sm text-white hover:bg-amber-400 transition-all"
+            >
+              <Plus size={16} /> 첫 노트 작성하기
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {pinnedNotes.length > 0 && (
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/50 mb-3 flex items-center gap-2">
+                <Pin size={10} /> 고정된 노트
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {pinnedNotes.map((note) => <NoteCard key={note.id} note={note} />)}
+              </div>
+            </div>
+          )}
+          {unpinnedNotes.length > 0 && (
+            <div>
+              {pinnedNotes.length > 0 && (
+                <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500/60 mb-3">모든 노트</div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {unpinnedNotes.map((note) => <NoteCard key={note.id} note={note} />)}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Note Editor Modal ── */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md overflow-y-auto"
+            onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="relative w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[#090d18] shadow-[0_32px_80px_rgba(0,0,0,0.6)] overflow-hidden my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Top accent line */}
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
+
+              <div className="p-6 space-y-5">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/60">
+                      {editNote ? "노트 편집" : "새 노트 작성"}
+                    </div>
+                    <div className="mt-0.5 text-lg font-semibold text-white">
+                      {editNote ? "내용을 수정합니다" : "새 노트를 작성합니다"}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setIsModalOpen(false)}
+                    className="h-9 w-9 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* Category + Title */}
+                <div className="flex flex-col gap-3">
+                  {/* Category picker */}
+                  <div className="flex flex-wrap gap-2">
+                    {NOTE_CATEGORY_OPTIONS.map((cat) => (
+                      <button
+                        key={cat.value}
+                        type="button"
+                        onClick={() => setNoteCategory(cat.value)}
+                        className={cn(
+                          "rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all",
+                          noteCategory === cat.value
+                            ? cn("border", cat.color)
+                            : "border-white/10 bg-white/5 text-slate-500 hover:text-slate-200"
+                        )}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Title input */}
+                  <input
+                    type="text"
+                    placeholder="제목을 입력하세요..."
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-white font-semibold text-sm focus:outline-none focus:border-amber-400/60 transition-colors placeholder:text-slate-600 placeholder:font-normal"
+                    value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)}
+                  />
+                </div>
+
+                {/* Rich Text Toolbar */}
+                <div className="flex flex-wrap items-center gap-1.5 p-3 rounded-2xl border border-white/8 bg-black/20">
+                  {/* Bold, Italic, Underline */}
+                  {[
+                    { cmd: "bold", label: "B", cls: "font-bold" },
+                    { cmd: "italic", label: "I", cls: "italic" },
+                    { cmd: "underline", label: "U", cls: "underline" },
+                  ].map((btn) => (
+                    <button
+                      key={btn.cmd}
+                      type="button"
+                      onClick={() => applyFormat(btn.cmd)}
+                      className={cn(
+                        "h-8 w-8 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-white transition-all",
+                        btn.cls
+                      )}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+
+                  <div className="w-px h-5 bg-white/10 mx-0.5" />
+
+                  {/* Font size */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider hidden sm:block">크기</span>
+                    <select
+                      value={noteFontSize}
+                      onChange={(e) => {
+                        const sz = Number(e.target.value);
+                        setNoteFontSize(sz);
+                        const htmlSize =
+                          sz <= 10 ? "1" : sz <= 13 ? "2" : sz <= 16 ? "3" :
+                          sz <= 18 ? "4" : sz <= 24 ? "5" : sz <= 32 ? "6" : "7";
+                        applyFormat("fontSize", htmlSize);
+                      }}
+                      className="bg-black/40 border border-white/10 rounded-xl px-2 py-1 text-xs text-white"
+                    >
+                      {FONT_SIZE_OPTIONS.map((s) => (
+                        <option key={s} value={s}>{s}px</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Font color */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider hidden sm:block">색상</span>
+                    <div className="flex items-center gap-1">
+                      {FONT_COLOR_PRESETS.map((color) => (
+                        <button
+                          key={color}
+                          type="button"
+                          onClick={() => {
+                            setNoteFontColor(color);
+                            applyFormat("foreColor", color);
+                          }}
+                          className={cn(
+                            "h-5 w-5 rounded-full border-2 transition-all hover:scale-110",
+                            noteFontColor === color ? "border-white/60 scale-110" : "border-transparent"
+                          )}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                      <input
+                        type="color"
+                        value={noteFontColor}
+                        onChange={(e) => {
+                          setNoteFontColor(e.target.value);
+                          applyFormat("foreColor", e.target.value);
+                        }}
+                        className="h-5 w-5 rounded-full border border-white/10 cursor-pointer bg-transparent"
+                        title="커스텀 색상"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="w-px h-5 bg-white/10 mx-0.5" />
+
+                  {/* Lists */}
+                  <button
+                    type="button"
+                    onClick={() => applyFormat("insertUnorderedList")}
+                    className="h-8 px-2.5 flex items-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-slate-300 transition-all"
+                  >
+                    • 목록
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyFormat("insertOrderedList")}
+                    className="h-8 px-2.5 flex items-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-slate-300 transition-all"
+                  >
+                    1. 번호
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyFormat("removeFormat")}
+                    className="h-8 px-2.5 flex items-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-slate-400 transition-all"
+                    title="서식 초기화"
+                  >
+                    ✕ 초기화
+                  </button>
+                </div>
+
+                {/* Content Editable */}
+                <div
+                  ref={contentEditableRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  style={{ fontSize: `${noteFontSize}px`, color: noteFontColor, minHeight: "160px" }}
+                  className="w-full bg-black/30 border border-white/10 rounded-2xl px-4 py-3.5 focus:outline-none focus:border-amber-400/50 leading-relaxed text-white transition-colors"
+                  onInput={() => {}}
+                  data-placeholder="내용을 입력하세요..."
+                />
+
+                {/* Image Section */}
+                <div className="space-y-3">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                    이미지 첨부
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="이미지 URL 입력..."
+                      value={imageInputUrl}
+                      onChange={(e) => setImageInputUrl(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleImageUrlAdd(); } }}
+                      className="flex-1 bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400/50 placeholder:text-slate-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleImageUrlAdd}
+                      className="px-4 py-2.5 rounded-xl bg-amber-500/15 border border-amber-400/25 text-amber-200 text-sm font-semibold hover:bg-amber-500/25 transition-all shrink-0"
+                    >
+                      추가
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImage}
+                      className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-slate-300 text-sm font-semibold hover:bg-white/10 transition-all flex items-center gap-2 shrink-0 disabled:opacity-50"
+                    >
+                      <ImageIcon size={14} />
+                      {uploadingImage ? "업로드 중..." : "파일"}
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleImageFile(f);
+                      }}
+                    />
+                  </div>
+
+                  {noteImages.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {noteImages.map((img, idx) => (
+                        <div key={idx} className="relative group">
+                          <img
+                            src={img}
+                            alt=""
+                            className="h-20 w-20 rounded-2xl object-cover border border-white/10 group-hover:opacity-80 transition-opacity"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setNoteImages((prev) => prev.filter((_, i) => i !== idx))}
+                            className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="flex-1 py-3.5 rounded-2xl border border-white/10 bg-white/5 font-semibold text-slate-300 hover:bg-white/8 transition-all"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex-[2] py-3.5 rounded-2xl bg-amber-500 font-semibold text-white hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {saving ? "저장 중..." : "저장하기"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 export default function App() {
   return (
