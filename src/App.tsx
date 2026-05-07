@@ -3114,6 +3114,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
   const [todayRaids, setTodayRaids] = useState<any[]>([]);
   const [upcomingRaids, setUpcomingRaids] = useState<any[]>([]);
   const [contentImgMap, setContentImgMap] = useState<Record<string, string>>({});
+  const [participantCountMap, setParticipantCountMap] = useState<Record<string, number>>({});
   const [weeklySchedules, setWeeklySchedules] = useState<Record<string, any[]>>({});
   const [selectedWeekDate, setSelectedWeekDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -3213,6 +3214,26 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
             });
             setContentImgMap(imgMap);
           } catch { /* 이미지 로드 실패는 무시 */ }
+        }
+
+        // 레이드 참여자 수 로드
+        const allScheduleIds = [
+          ...(weekRes.data || []).map((r: any) => r.id),
+          ...(upcomingList.slice(0, 5)).map((r: any) => r.id),
+        ].filter(Boolean);
+        if (allScheduleIds.length > 0) {
+          try {
+            const { data: partData } = await supabase
+              .from("raid_participants")
+              .select("schedule_id")
+              .in("schedule_id", allScheduleIds);
+            const countMap: Record<string, number> = {};
+            (partData || []).forEach((p: any) => {
+              const sid = String(p.schedule_id);
+              countMap[sid] = (countMap[sid] || 0) + 1;
+            });
+            if (mounted) setParticipantCountMap(countMap);
+          } catch { /* 참여자 수 로드 실패 무시 */ }
         }
         setSelectedWeekDate((prev) => {
           if (prev && currentWeekDays.some((d) => d.key === prev)) return prev;
@@ -3458,6 +3479,31 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
                                 <Clock size={10} /> {raid.raid_time}
                                 {raid.raid_type && <><span>·</span>{raid.raid_type}</>}
                               </div>
+                              {/* 참여자 진행도 바 */}
+                              {(() => {
+                                const maxP = Number(raid.max_participants) || (raid.raid_type === "4인" ? 4 : 8);
+                                const curP = participantCountMap[String(raid.id)] || 0;
+                                const pct = Math.min(100, Math.round((curP / maxP) * 100));
+                                const isFull = curP >= maxP;
+                                const barColor = isFull
+                                  ? "bg-rose-400"
+                                  : pct >= 75
+                                  ? "bg-amber-400"
+                                  : "bg-emerald-400";
+                                return (
+                                  <div className="mt-1.5 flex items-center gap-2">
+                                    <div className="flex-1 h-1 rounded-full bg-white/[0.08] overflow-hidden">
+                                      <div
+                                        className={cn("h-full rounded-full transition-all duration-500", barColor)}
+                                        style={{ width: `${pct}%` }}
+                                      />
+                                    </div>
+                                    <span className={cn("text-[10px] font-semibold tabular-nums shrink-0", isFull ? "text-rose-300" : "text-slate-400")}>
+                                      {curP}/{maxP}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </div>
                             <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold shrink-0", status.cls)}>
                               {status.label}
@@ -3507,6 +3553,27 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
                             <span>{raid.raid_time}</span>
                             {raid.difficulty && <><span>·</span><span className="text-slate-400">{raid.difficulty}</span></>}
                           </div>
+                          {/* 참여자 진행도 바 */}
+                          {(() => {
+                            const maxP = Number(raid.max_participants) || (raid.raid_type === "4인" ? 4 : 8);
+                            const curP = participantCountMap[String(raid.id)] || 0;
+                            const pct = Math.min(100, Math.round((curP / maxP) * 100));
+                            const isFull = curP >= maxP;
+                            const barColor = isFull ? "bg-rose-400" : pct >= 75 ? "bg-amber-400" : "bg-emerald-400";
+                            return (
+                              <div className="mt-1.5 flex items-center gap-2">
+                                <div className="flex-1 h-1 rounded-full bg-white/[0.08] overflow-hidden">
+                                  <div
+                                    className={cn("h-full rounded-full transition-all duration-500", barColor)}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <span className={cn("text-[10px] font-semibold tabular-nums shrink-0", isFull ? "text-rose-300" : "text-slate-400")}>
+                                  {curP}/{maxP}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold shrink-0", status.cls)}>
                           {status.label}
