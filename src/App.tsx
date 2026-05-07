@@ -6669,9 +6669,11 @@ const AdminDashboard = () => {
     weeklyNewUsers: 0, totalPoints: 0, weeklyRaids: 0,
     weeklyParticipants: 0,
   });
-  const [recentUsers, setRecentUsers] = useState<any[]>([]);
-  const [topPoints, setTopPoints]     = useState<any[]>([]);
-  const [loading, setLoading]         = useState(true);
+  const [recentUsers,         setRecentUsers]         = useState<any[]>([]);
+  const [topPoints,           setTopPoints]           = useState<any[]>([]);
+  const [weeklyParticipants,  setWeeklyParticipants]  = useState<{ name: string; count: number }[]>([]);
+  const [showAllParticipants, setShowAllParticipants] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -6682,13 +6684,24 @@ const AdminDashboard = () => {
         supabase.from("profiles").select("id, nickname, points, last_attendance, created_at, rank_name").order("created_at", { ascending: false }),
         supabase.from("guild_members").select("id", { count: "exact", head: true }),
         supabase.from("raid_schedules").select("id", { count: "exact", head: true }).gte("created_at", weekAgo),
-        supabase.from("raid_participants").select("character_name").gte("created_at", weekAgo),
+        supabase.from("raid_participants").select("character_name, user_id").gte("created_at", weekAgo),
       ]);
-      const users = usersR.status === "fulfilled" ? (usersR.value.data || []) : [];
+      const users     = usersR.status === "fulfilled" ? (usersR.value.data || []) : [];
       const charCount = charsR.status === "fulfilled" ? (charsR.value.count || 0) : 0;
       const raidCount = raidsR.status === "fulfilled" ? (raidsR.value.count || 0) : 0;
       const parts     = partsR.status === "fulfilled" ? (partsR.value.data || []) : [];
-      const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+      // 캐릭터별 참여 횟수 집계
+      const nameCountMap: Record<string, number> = {};
+      parts.forEach((p: any) => {
+        const name = p.character_name || "알 수 없음";
+        nameCountMap[name] = (nameCountMap[name] || 0) + 1;
+      });
+      const sortedParticipants = Object.entries(nameCountMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count);
+
+      setWeeklyParticipants(sortedParticipants);
       setStats({
         totalUsers: users.length,
         totalChars: charCount,
@@ -6696,7 +6709,7 @@ const AdminDashboard = () => {
         weeklyNewUsers: users.filter((u: any) => new Date(u.created_at) >= new Date(weekAgo)).length,
         totalPoints: users.reduce((s: number, u: any) => s + Number(u.points || 0), 0),
         weeklyRaids: raidCount,
-        weeklyParticipants: new Set(parts.map((p: any) => p.character_name)).size,
+        weeklyParticipants: sortedParticipants.length,
       });
       setRecentUsers(users.slice(0, 5));
       setTopPoints([...users].sort((a: any, b: any) => Number(b.points||0) - Number(a.points||0)).slice(0, 5));
@@ -6713,6 +6726,8 @@ const AdminDashboard = () => {
     </div>
   );
 
+  const displayedParticipants = showAllParticipants ? weeklyParticipants : weeklyParticipants.slice(0, 10);
+
   return (
     <div className="space-y-8">
       <div>
@@ -6724,6 +6739,7 @@ const AdminDashboard = () => {
           <StatCard label="이번 주 신규" value={stats.weeklyNewUsers} sub="7일 이내 가입" color="text-sky-300" />
         </div>
       </div>
+
       <div>
         <div className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-4">레이드 & 포인트</div>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -6732,6 +6748,47 @@ const AdminDashboard = () => {
           <StatCard label="포인트 총량" value={stats.totalPoints.toLocaleString()} sub="전체 유통 포인트" color="text-amber-300" />
         </div>
       </div>
+
+      {/* 주간 참여 캐릭터 목록 */}
+      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-widest text-stone-500">주간 참여 캐릭터</div>
+            <div className="text-[10px] text-stone-600 mt-0.5">이번 주 레이드에 참여한 캐릭터 · 참여 횟수 순</div>
+          </div>
+          <span className="text-xs font-bold text-rose-300">{stats.weeklyParticipants}명</span>
+        </div>
+        {loading ? (
+          <div className="text-stone-600 text-sm">불러오는 중...</div>
+        ) : weeklyParticipants.length === 0 ? (
+          <div className="text-stone-600 text-sm py-4 text-center">이번 주 참여 기록이 없어요.</div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {displayedParticipants.map((p, i) => (
+                <div key={p.name} className="flex items-center justify-between rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] font-bold text-stone-600 w-4 shrink-0">{i + 1}</span>
+                    <span className="truncate text-sm font-semibold text-white">{p.name}</span>
+                  </div>
+                  <span className="shrink-0 ml-2 rounded-full bg-rose-400/15 border border-rose-400/20 px-2 py-0.5 text-[10px] font-bold text-rose-300">
+                    {p.count}회
+                  </span>
+                </div>
+              ))}
+            </div>
+            {weeklyParticipants.length > 10 && (
+              <button
+                onClick={() => setShowAllParticipants(p => !p)}
+                className="mt-3 w-full rounded-xl border border-white/8 py-2 text-xs text-stone-500 hover:text-amber-300 hover:border-amber-400/20 transition-all"
+              >
+                {showAllParticipants ? "접기 ▲" : `더보기 (${weeklyParticipants.length - 10}명 더) ▼`}
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
           <div className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-4">최근 가입</div>
@@ -6768,6 +6825,7 @@ const AdminDashboard = () => {
       </div>
     </div>
   );
+
 };
 
 const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
@@ -8966,37 +9024,48 @@ type ArmoryTab = "equipment" | "skills" | "arkgrid" | "gems" | "avatars" | "expe
 // ══════════════════════════════════════════════════════════
 //  RaidMemoPanel — 마이룸 레이드 메모
 // ══════════════════════════════════════════════════════════
-type MemoItem = { id: string; hp_line: string; pattern: string; image_url: string };
+type MemoItem = { id: string; hp_line: string; pattern: string };
 
 const RaidMemoPanel = ({ user }: { user: any }) => {
-  const [raids,       setRaids]       = useState<any[]>([]);
-  const [selectedRaid,setSelectedRaid]= useState<string>("");
-  const [memoItems,   setMemoItems]   = useState<MemoItem[]>([]);
-  const [saving,      setSaving]      = useState(false);
-  const [uploading,   setUploading]   = useState<string | null>(null);
+  const [raids,        setRaids]        = useState<any[]>([]);
+  const [selectedRaid, setSelectedRaid] = useState<string>("");
+  const [raidImage,    setRaidImage]    = useState<string>("");
+  const [memoItems,    setMemoItems]    = useState<MemoItem[]>([]);
+  const [saving,       setSaving]       = useState(false);
 
-  // 레이드 목록 로드
+  // 레이드 목록 로드 (image_url 포함)
   useEffect(() => {
-    supabase.from("contents").select("id, name").eq("category","레이드").order("name")
+    supabase.from("contents")
+      .select("id, name, image_url")
+      .eq("category", "레이드")
+      .order("name")
       .then(({ data }) => setRaids(data || []));
   }, []);
 
-  // 선택 레이드 메모 로드
+  // 선택 레이드 변경 시 이미지 + 메모 로드
   useEffect(() => {
-    if (!selectedRaid || !user?.id) return;
+    if (!selectedRaid) { setRaidImage(""); setMemoItems([]); return; }
+    // 레이드 이미지
+    const found = raids.find((r: any) => r.name === selectedRaid);
+    setRaidImage(found?.image_url || "");
+    // 메모 로드
+    if (!user?.id) return;
     supabase.from("raid_memos")
       .select("*").eq("user_id", user.id).eq("raid_name", selectedRaid).maybeSingle()
       .then(({ data }) => {
         if (data?.memo_items) {
-          setMemoItems(Array.isArray(data.memo_items) ? data.memo_items : []);
+          // 구버전 image_url 필드 제거하며 마이그레이션
+          const items = (Array.isArray(data.memo_items) ? data.memo_items : [])
+            .map((item: any) => ({ id: item.id, hp_line: item.hp_line || "", pattern: item.pattern || "" }));
+          setMemoItems(items);
         } else {
           setMemoItems([]);
         }
       });
-  }, [selectedRaid, user?.id]);
+  }, [selectedRaid, user?.id, raids]);
 
   const newItem = (): MemoItem => ({
-    id: crypto.randomUUID(), hp_line: "", pattern: "", image_url: "",
+    id: crypto.randomUUID(), hp_line: "", pattern: "",
   });
 
   const addItem = () => setMemoItems(p => [...p, newItem()]);
@@ -9006,20 +9075,6 @@ const RaidMemoPanel = ({ user }: { user: any }) => {
 
   const removeItem = (id: string) =>
     setMemoItems(p => p.filter(item => item.id !== id));
-
-  const uploadImage = async (id: string, file: File) => {
-    setUploading(id);
-    try {
-      const client = getSupabaseOrThrow();
-      const ext = file.name.split(".").pop();
-      const path = `raid_memos/${user.id}/${Date.now()}.${ext}`;
-      const { error } = await client.storage.from("images").upload(path, file, { upsert: true });
-      if (error) throw error;
-      const { data: { publicUrl } } = client.storage.from("images").getPublicUrl(path);
-      updateItem(id, "image_url", publicUrl);
-    } catch (e: any) { showToast("이미지 업로드 실패: " + e.message, "error"); }
-    setUploading(null);
-  };
 
   const saveMemo = async () => {
     if (!selectedRaid || !user?.id) return;
@@ -9035,8 +9090,18 @@ const RaidMemoPanel = ({ user }: { user: any }) => {
 
   return (
     <div className="space-y-6">
-      {/* 레이드 선택 */}
+      {/* 레이드 선택 + 헤더 */}
       <div className="flex items-center gap-3">
+        {/* 레이드 이미지 썸네일 */}
+        <div className={cn(
+          "shrink-0 h-12 w-12 rounded-xl border overflow-hidden bg-black/40 flex items-center justify-center transition-all",
+          raidImage ? "border-white/15" : "border-dashed border-white/10"
+        )}>
+          {raidImage
+            ? <img src={raidImage} alt="" className="h-full w-full object-cover" />
+            : <Swords size={18} className="text-stone-600" />
+          }
+        </div>
         <select
           value={selectedRaid}
           onChange={e => setSelectedRaid(e.target.value)}
@@ -9063,55 +9128,39 @@ const RaidMemoPanel = ({ user }: { user: any }) => {
 
       {selectedRaid && (
         <>
-          {/* 메모 행 목록 */}
-          <div className="space-y-3">
+          {/* 기믹 메모 목록 */}
+          <div className="space-y-2">
             {memoItems.length === 0 && (
               <div className="rounded-2xl border border-dashed border-white/8 py-10 text-center text-stone-600 text-sm">
                 아래 버튼으로 기믹 메모를 추가해봐
               </div>
             )}
             {memoItems.map((item, idx) => (
-              <div key={item.id} className="rounded-2xl border border-white/8 bg-white/[0.025] p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-400/15 text-[11px] font-bold text-amber-300 shrink-0">
-                    {idx + 1}
-                  </div>
-                  <input
-                    value={item.hp_line}
-                    onChange={e => updateItem(item.id, "hp_line", e.target.value)}
-                    placeholder="HP 구간 (예: 500줄, x줄)"
-                    className="w-40 shrink-0 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold text-amber-200 placeholder:text-stone-600 outline-none focus:border-amber-400/30 transition-all"
-                  />
-                  <textarea
-                    value={item.pattern}
-                    onChange={e => updateItem(item.id, "pattern", e.target.value)}
-                    placeholder="기믹 / 패턴 설명 (예: 협동카운터, 저스트가드)"
-                    rows={2}
-                    className="flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white placeholder:text-stone-600 outline-none focus:border-amber-400/30 transition-all resize-none leading-5"
-                  />
-                  <button onClick={() => removeItem(item.id)}
-                    className="shrink-0 flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 text-stone-500 hover:border-rose-400/30 hover:text-rose-300 hover:bg-rose-400/8 transition-all">
-                    <X size={13} />
-                  </button>
+              <div key={item.id} className="flex items-start gap-2 rounded-2xl border border-white/8 bg-white/[0.025] px-4 py-3">
+                {/* 번호 */}
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-amber-400/15 text-[11px] font-bold text-amber-300 mt-1.5">
+                  {idx + 1}
                 </div>
-                {/* 이미지 영역 */}
-                <div className="flex items-start gap-3 pl-8">
-                  {item.image_url ? (
-                    <div className="relative group">
-                      <img src={item.image_url} alt="메모 이미지"
-                        className="h-28 rounded-xl object-cover border border-white/10 bg-black/30" />
-                      <button onClick={() => updateItem(item.id, "image_url", "")}
-                        className="absolute -top-2 -right-2 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] shadow">✕</button>
-                    </div>
-                  ) : (
-                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-white/12 bg-black/20 px-4 py-3 text-[11px] text-stone-500 hover:border-amber-400/25 hover:text-amber-300 transition-all">
-                      <ImageIcon size={13} />
-                      {uploading === item.id ? "업로드 중..." : "이미지 첨부"}
-                      <input type="file" accept="image/*" className="hidden"
-                        onChange={e => { if (e.target.files?.[0]) uploadImage(item.id, e.target.files[0]); }} />
-                    </label>
-                  )}
-                </div>
+                {/* HP 구간 */}
+                <input
+                  value={item.hp_line}
+                  onChange={e => updateItem(item.id, "hp_line", e.target.value)}
+                  placeholder="HP 구간"
+                  className="w-28 shrink-0 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold text-amber-200 placeholder:text-stone-600 outline-none focus:border-amber-400/30 transition-all"
+                />
+                {/* 패턴 설명 */}
+                <textarea
+                  value={item.pattern}
+                  onChange={e => updateItem(item.id, "pattern", e.target.value)}
+                  placeholder="기믹 / 패턴 설명 (예: 협동카운터, 저스트가드)"
+                  rows={2}
+                  className="flex-1 resize-none rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white placeholder:text-stone-600 outline-none focus:border-amber-400/30 transition-all leading-5"
+                />
+                {/* 삭제 */}
+                <button onClick={() => removeItem(item.id)}
+                  className="shrink-0 flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 text-stone-500 hover:border-rose-400/30 hover:text-rose-300 hover:bg-rose-400/[0.08] transition-all mt-0.5">
+                  <X size={13} />
+                </button>
               </div>
             ))}
           </div>
