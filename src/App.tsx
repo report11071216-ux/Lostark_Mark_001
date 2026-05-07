@@ -29,6 +29,8 @@ import {
   MessageCircle,
   Smile,
   ChevronDown,
+  Pencil,
+  Gift,
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 
