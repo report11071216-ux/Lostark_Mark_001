@@ -1526,6 +1526,7 @@ const PassivePointBackgroundSync = ({
 function AppInner() {
   const [activeTab, setActiveTab] = useState("home");
   const pendingTabRef = useRef<string | null>(null);
+  const [showSelector, setShowSelector] = useState(false);
   const [user, setUser] = useState<UserLike>(null);
   const [profile, setProfile] = useState<ProfileLike>(null);
   const [loading, setLoading] = useState(true);
@@ -1630,10 +1631,9 @@ useEffect(() => {
 
       if (event === "SIGNED_IN") {
         void fetchInitialData();
-        if (pendingTabRef.current) {
-          setActiveTab(pendingTabRef.current);
-          pendingTabRef.current = null;
-        }
+        // 로그인 직후 카드 선택 화면 표시
+        setShowSelector(true);
+        pendingTabRef.current = null;
       }
       if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
         void fetchInitialData();
@@ -1716,6 +1716,7 @@ const fetchInitialData = async () => {
     await client.auth.signOut();
     setUser(null);
     setProfile(null);
+    setShowSelector(false);
     setActiveTab("home");
   };
 
@@ -1763,6 +1764,29 @@ const fetchInitialData = async () => {
     );
   }
 
+  if (showSelector) {
+    return (
+      <PageShell settings={settings}>
+        <ToastViewport />
+        <SectionSelector
+          profile={profile}
+          onSelect={(tab) => {
+            setActiveTab(tab);
+            setShowSelector(false);
+          }}
+          onLogout={async () => {
+            const client = getSupabaseOrThrow();
+            await client.auth.signOut();
+            setUser(null);
+            setProfile(null);
+            setShowSelector(false);
+            setActiveTab("home");
+          }}
+        />
+      </PageShell>
+    );
+  }
+
   return (
     <PageShell settings={settings}>
       <ToastViewport />
@@ -1773,6 +1797,7 @@ const fetchInitialData = async () => {
           user={user}
           profile={profile}
           onLogout={handleLogout}
+          onShowSelector={() => setShowSelector(true)}
         />
 
         <PassivePointBackgroundSync
@@ -3763,7 +3788,7 @@ const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
   );
 };
 
-const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
+const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelector }: any) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -3910,6 +3935,14 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                       </div>
 
                       <div className="mt-2 space-y-1">
+                        <button
+                          onClick={() => { onShowSelector?.(); setIsProfileMenuOpen(false); }}
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-amber-300/80 transition-all hover:bg-amber-300/[0.06] hover:text-amber-200"
+                        >
+                          <span>🏠 섹션 선택으로</span>
+                          <ChevronRight size={15} />
+                        </button>
+
                         <button
                           onClick={() => handleMove("myroom")}
                           className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
@@ -16028,6 +16061,177 @@ const AdminPointShopManager = () => {
 
 
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// ── SectionSelector — 로그인 후 섹션 선택 화면 ────────────────
+// ═══════════════════════════════════════════════════════════
+const SectionSelector = ({
+  profile,
+  onSelect,
+  onLogout,
+}: {
+  profile: any;
+  onSelect: (tab: string) => void;
+  onLogout: () => void;
+}) => {
+  const displayName =
+    profile?.nickname ||
+    profile?.display_name ||
+    profile?.character_name ||
+    "길드원";
+
+  const cards = [
+    {
+      key: "home",
+      title: "쁘밍 입장",
+      subtitle: "Guild Main",
+      desc: "레이드 일정, 공지사항, 길드원 정보 등 메인 페이지로 입장합니다.",
+      emoji: "⚔️",
+      bg: "from-[#0a0e18] to-[#0d1020]",
+      borderIdle: "border-amber-300/15",
+      borderHover: "hover:border-amber-200/50",
+      badgeCls: "bg-amber-400/12 text-amber-200 border-amber-400/22",
+      glowCls: "hover:shadow-[0_0_60px_rgba(251,191,36,0.12),0_24px_48px_rgba(0,0,0,0.4)]",
+      accentLine: "from-transparent via-amber-400/50 to-transparent",
+      iconBg: "bg-amber-300/10 border-amber-300/18",
+      descColor: "text-slate-500",
+    },
+    {
+      key: "myroom",
+      title: "마이룸",
+      subtitle: "My Room",
+      desc: "나의 캐릭터, 레이드 기록, 포인트 현황 등 개인 공간으로 이동합니다.",
+      emoji: "👑",
+      bg: "from-[#0a0e18] to-[#0d0e20]",
+      borderIdle: "border-violet-300/15",
+      borderHover: "hover:border-violet-200/50",
+      badgeCls: "bg-violet-400/12 text-violet-200 border-violet-400/22",
+      glowCls: "hover:shadow-[0_0_60px_rgba(139,92,246,0.12),0_24px_48px_rgba(0,0,0,0.4)]",
+      accentLine: "from-transparent via-violet-400/50 to-transparent",
+      iconBg: "bg-violet-300/10 border-violet-300/18",
+      descColor: "text-slate-500",
+    },
+    {
+      key: "note",
+      title: "개인 노트",
+      subtitle: "Personal Note",
+      desc: "이벤트, 아이디어, 보스 패턴 등 나만의 메모 공간으로 이동합니다.",
+      emoji: "📝",
+      bg: "from-[#0a0e18] to-[#0a1210]",
+      borderIdle: "border-emerald-300/15",
+      borderHover: "hover:border-emerald-200/50",
+      badgeCls: "bg-emerald-400/12 text-emerald-200 border-emerald-400/22",
+      glowCls: "hover:shadow-[0_0_60px_rgba(52,211,153,0.12),0_24px_48px_rgba(0,0,0,0.4)]",
+      accentLine: "from-transparent via-emerald-400/50 to-transparent",
+      iconBg: "bg-emerald-300/10 border-emerald-300/18",
+      descColor: "text-slate-500",
+    },
+  ];
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-16 relative overflow-hidden">
+      {/* Background radial glows */}
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-amber-400/[0.04] blur-[80px] rounded-full" />
+        <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[300px] bg-violet-400/[0.04] blur-[80px] rounded-full" />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[300px] bg-emerald-400/[0.03] blur-[80px] rounded-full" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-4xl mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          <div className="inline-flex items-center gap-3 rounded-2xl border border-amber-200/15 bg-amber-300/[0.06] px-5 py-2.5 mb-6">
+            <Shield size={16} className="text-amber-300" />
+            <span className="text-sm font-semibold text-amber-200">
+              {displayName}님, 환영합니다!
+            </span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-semibold bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent tracking-tight">
+            어디로 이동할까요?
+          </h1>
+          <p className="mt-4 text-slate-500 text-sm">
+            원하는 섹션을 선택하여 이동하세요.
+          </p>
+        </motion.div>
+
+        {/* Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {cards.map((card, idx) => (
+            <motion.button
+              key={card.key}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.1 + idx * 0.1 }}
+              onClick={() => onSelect(card.key)}
+              className={cn(
+                "group relative flex flex-col items-center text-center rounded-[2rem] border bg-gradient-to-b p-8 transition-all duration-300 overflow-hidden",
+                card.bg,
+                card.borderIdle,
+                card.borderHover,
+                card.glowCls
+              )}
+            >
+              {/* Top accent line */}
+              <div className={cn("absolute top-0 inset-x-8 h-px bg-gradient-to-r", card.accentLine)} />
+
+              {/* Hover shimmer */}
+              <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[linear-gradient(160deg,rgba(255,255,255,0.025),transparent_40%,rgba(255,255,255,0.01))]" />
+
+              {/* Icon */}
+              <motion.div
+                whileHover={{ scale: 1.08 }}
+                transition={{ duration: 0.2 }}
+                className={cn(
+                  "flex h-20 w-20 items-center justify-center rounded-[1.5rem] border text-4xl mb-6 shadow-[0_8px_24px_rgba(0,0,0,0.3)]",
+                  card.iconBg
+                )}
+              >
+                {card.emoji}
+              </motion.div>
+
+              {/* Badge */}
+              <span className={cn("mb-3 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider", card.badgeCls)}>
+                {card.subtitle}
+              </span>
+
+              {/* Title */}
+              <h2 className="text-xl font-semibold text-white mb-3">{card.title}</h2>
+
+              {/* Desc */}
+              <p className={cn("text-xs leading-relaxed", card.descColor)}>{card.desc}</p>
+
+              {/* Enter arrow */}
+              <div className="mt-6 flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-400 group-hover:border-white/15 group-hover:text-white group-hover:bg-white/[0.07] transition-all">
+                입장하기 <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </motion.button>
+          ))}
+        </div>
+
+        {/* Logout link */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-center mt-10"
+        >
+          <button
+            onClick={onLogout}
+            className="text-[11px] font-semibold text-slate-600 hover:text-slate-400 uppercase tracking-widest transition-all"
+          >
+            로그아웃
+          </button>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
 // ── LandingPage — 비로그인 진입 화면 ────────────────────────
 // ═══════════════════════════════════════════════════════════
 const LandingPage = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
