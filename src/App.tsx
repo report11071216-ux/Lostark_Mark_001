@@ -8804,6 +8804,384 @@ const Auth = ({ mode, setMode }: any) => {
 };
 
 
+
+// ══════════════════════════════════════════════════════════
+//  ArmoryViewModal — 마이룸 캐릭터 전투정보실 뷰어
+// ══════════════════════════════════════════════════════════
+type ArmoryTab = "equipment" | "skills" | "arkgrid" | "gems" | "avatars" | "expedition";
+
+const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClose: () => void; onEdit: () => void }) => {
+  const [tab, setTab] = useState<ArmoryTab>("equipment");
+
+  // 탭별 데이터
+  const [equipData,   setEquipData]   = useState<LostarkEquipment[]>([]);
+  const [skillData,   setSkillData]   = useState<LostarkCombatSkill[]>([]);
+  const [arkPassive,  setArkPassive]  = useState<LostarkArkPassive | null>(null);
+  const [arkGrid,     setArkGrid]     = useState<LostarkArkGrid | null>(null);
+  const [gemData,     setGemData]     = useState<LostarkGem[]>([]);
+  const [avatarData,  setAvatarData]  = useState<LostarkAvatar[]>([]);
+  const [siblingData, setSiblingData] = useState<LostarkSibling[]>([]);
+
+  const [loading,  setLoading]  = useState<Partial<Record<ArmoryTab, boolean>>>({});
+  const [errors,   setErrors]   = useState<Partial<Record<ArmoryTab, string>>>({});
+  const [fetched,  setFetched]  = useState<Partial<Record<ArmoryTab, boolean>>>({});
+
+  const enc = encodeURIComponent(character.character_name || "");
+
+  const fetchTab = async (t: ArmoryTab) => {
+    if (fetched[t] || loading[t]) return;
+    setLoading(p => ({ ...p, [t]: true }));
+    try {
+      const typeMap: Record<ArmoryTab, string | string[]> = {
+        equipment:  "equipment",
+        skills:     "combat-skills",
+        arkgrid:    ["arkpassive", "arkgrid"],
+        gems:       "gems",
+        avatars:    "avatars",
+        expedition: "siblings",
+      };
+      const types = typeMap[t];
+      if (Array.isArray(types)) {
+        const [apR, agR] = await Promise.all(types.map(tp => fetch(`/api/lostark?character=${enc}&type=${tp}`)));
+        const [apJ, agJ] = await Promise.all([apR.json(), agR.json()]);
+        if (apJ?.ok) setArkPassive(apJ.data as LostarkArkPassive);
+        if (agJ?.ok) setArkGrid(agJ.data as LostarkArkGrid);
+        if (!apJ?.ok && !agJ?.ok) throw new Error(apJ?.error || "조회 실패");
+      } else {
+        const res  = await fetch(`/api/lostark?character=${enc}&type=${types}`);
+        const json = await res.json();
+        if (!json?.ok) throw new Error(json?.error || "조회 실패");
+        const d = json.data;
+        if (t === "equipment")  setEquipData(Array.isArray(d) ? d : []);
+        if (t === "skills")     setSkillData((Array.isArray(d) ? d : []).filter((s: LostarkCombatSkill) => s.Level > 0 || s.IsAwakening));
+        if (t === "gems")       setGemData(Array.isArray(d?.Gems) ? d.Gems : []);
+        if (t === "avatars")    setAvatarData(Array.isArray(d) ? d : []);
+        if (t === "expedition") setSiblingData((Array.isArray(d) ? d : []).sort((a: LostarkSibling, b: LostarkSibling) => Number(b.ItemAvgLevel?.replace(/,/g,"")) - Number(a.ItemAvgLevel?.replace(/,/g,""))));
+      }
+      setFetched(p => ({ ...p, [t]: true }));
+    } catch (e: any) {
+      setErrors(p => ({ ...p, [t]: e?.message || "오류" }));
+    }
+    setLoading(p => ({ ...p, [t]: false }));
+  };
+
+  useEffect(() => { fetchTab("equipment"); }, []);
+  useEffect(() => { fetchTab(tab); }, [tab]);
+
+  const EQUIP_ORDER = ["무기","투구","어깨","상의","하의","장갑","목걸이","귀걸이","귀걸이","반지","반지","어빌리티 스톤","팔찌","보조장비"];
+  const sortedEquip = [...equipData].sort((a,b) => {
+    const ai = EQUIP_ORDER.indexOf(a.Type); const bi = EQUIP_ORDER.indexOf(b.Type);
+    return (ai===-1?99:ai)-(bi===-1?99:bi);
+  });
+
+  const TABS: { id: ArmoryTab; label: string }[] = [
+    { id:"equipment",  label:"장비" },
+    { id:"skills",     label:"스킬" },
+    { id:"arkgrid",    label:"아크 그리드" },
+    { id:"gems",       label:"보석" },
+    { id:"avatars",    label:"아바타" },
+    { id:"expedition", label:"보유 캐릭" },
+  ];
+
+  const cardBg = "bg-white/[0.05] border border-white/10";
+
+  const TabLoading = () => (
+    <div className="flex items-center justify-center gap-2 py-12">
+      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        className="h-5 w-5 rounded-full border-2 border-amber-400 border-t-transparent" />
+      <span className="text-sm text-stone-400">불러오는 중...</span>
+    </div>
+  );
+  const Empty = ({ msg }: { msg: string }) => (
+    <div className="py-10 text-center text-sm text-stone-500">{msg}</div>
+  );
+  const Err = ({ msg }: { msg: string }) => (
+    <div className="rounded-2xl border border-rose-400/20 bg-rose-400/8 p-5 text-center">
+      <div className="text-rose-300 text-sm font-semibold mb-1">조회 실패</div>
+      <div className="text-xs text-stone-400">{msg}</div>
+      <button onClick={() => { setErrors(p=>({...p,[tab]:undefined})); setFetched(p=>({...p,[tab]:false})); fetchTab(tab); }}
+        className="mt-3 text-xs text-amber-400 underline">재시도</button>
+    </div>
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-4 backdrop-blur-xl"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity:0, y:20, scale:0.97 }}
+        animate={{ opacity:1, y:0, scale:1 }}
+        exit={{ opacity:0, y:12, scale:0.97 }}
+        transition={{ duration:0.2 }}
+        className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#080808] shadow-[0_32px_80px_rgba(0,0,0,0.9)]"
+        style={{ maxHeight:"92vh" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* 헤더 */}
+        <div className="relative overflow-hidden" style={{ minHeight:120 }}>
+          {(character.avatar_url || character.image_url) && (
+            <div className="absolute inset-0">
+              <img src={character.avatar_url || character.image_url} alt={character.character_name}
+                className="w-full h-full object-cover object-top"
+                style={{ filter:"brightness(0.35) saturate(1.1)" }} />
+              <div className="absolute inset-0" style={{ background:"linear-gradient(to bottom, transparent 10%, #080808 100%)" }} />
+            </div>
+          )}
+          <div className="relative z-10 flex items-end justify-between px-6 py-5" style={{ minHeight:120 }}>
+            <div className="flex items-end gap-4">
+              {(character.avatar_url || character.image_url) && (
+                <img src={character.avatar_url || character.image_url} alt={character.character_name}
+                  className="h-14 w-14 rounded-2xl border-2 border-white/20 object-cover object-top bg-black/50 shrink-0" />
+              )}
+              <div>
+                <div className="text-xl font-bold text-white">{character.character_name}</div>
+                <div className="text-sm text-white/50 mt-0.5">
+                  {character.class_name}
+                  {character.item_level && <span className="text-amber-300"> · {character.item_level}</span>}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={onEdit}
+                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-stone-300 hover:bg-white/10 hover:text-white transition-all">
+                <Pencil size={12} /> 수정
+              </button>
+              <button onClick={onClose}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-stone-400 hover:bg-white/10 hover:text-white transition-all">
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 탭 바 */}
+        <div className="flex overflow-x-auto border-b border-white/8 bg-black/40 px-2">
+          {TABS.map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={cn(
+                "shrink-0 px-4 py-3 text-xs font-semibold border-b-2 transition-all whitespace-nowrap",
+                tab === t.id ? "border-amber-400 text-amber-300" : "border-transparent text-stone-500 hover:text-white hover:bg-white/5"
+              )}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* 탭 바디 */}
+        <div className="overflow-y-auto p-5 space-y-2" style={{ maxHeight:"calc(92vh - 220px)" }}>
+
+          {/* ── 장비 ── */}
+          {tab === "equipment" && (
+            loading.equipment ? <TabLoading /> :
+            errors.equipment  ? <Err msg={errors.equipment} /> :
+            sortedEquip.length === 0 ? <Empty msg="장비 정보가 없습니다." /> : (
+              sortedEquip.map((eq, i) => (
+                <div key={i} className={cn("flex items-center gap-3 rounded-xl p-2.5", cardBg)}>
+                  <img src={eq.Icon} alt={eq.Name} className="h-10 w-10 rounded-lg object-cover bg-black/40 shrink-0"
+                    style={{ boxShadow:`0 0 0 1.5px ${gradeColor(eq.Grade)}` }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-semibold truncate">{eq.Name}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-stone-500">{eq.Type}</span>
+                      <span className="text-[10px] font-bold" style={{ color:gradeColor(eq.Grade) }}>· {eq.Grade}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )
+          )}
+
+          {/* ── 스킬 ── */}
+          {tab === "skills" && (
+            loading.skills ? <TabLoading /> :
+            errors.skills  ? <Err msg={errors.skills} /> :
+            skillData.length === 0 ? <Empty msg="스킬 정보가 없습니다." /> : (
+              skillData.map((sk, i) => (
+                <div key={i} className={cn("rounded-2xl p-3", cardBg)}>
+                  <div className="flex items-start gap-3">
+                    <div className="relative shrink-0">
+                      <img src={sk.Icon} alt={sk.Name} className="h-11 w-11 rounded-xl object-cover bg-black/40 border border-white/10" />
+                      {sk.Level > 0 && (
+                        <span className="absolute -bottom-1 -right-1 rounded-full bg-black border border-amber-400/60 px-1.5 text-[9px] font-bold text-amber-300">{sk.Level}</span>
+                      )}
+                      {sk.IsAwakening && (
+                        <span className="absolute -top-1 -left-1 rounded-full bg-purple-600 px-1 text-[8px] font-bold text-white border border-purple-400">각</span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                        <span className="text-sm font-bold">{sk.Name}</span>
+                        {sk.Rune && (
+                          <span className="flex items-center gap-1 bg-white/5 rounded px-1.5 py-0.5">
+                            <img src={sk.Rune.Icon} alt={sk.Rune.Name} className="h-3.5 w-3.5 rounded" />
+                            <span className="text-[10px] font-semibold" style={{ color:gradeColor(sk.Rune.Grade) }}>{sk.Rune.Name}</span>
+                          </span>
+                        )}
+                      </div>
+                      {sk.Tripods?.filter(t => t.IsSelected).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {sk.Tripods.filter(t => t.IsSelected).map((tp, ti) => (
+                            <div key={ti} className="flex items-center gap-1 rounded-lg bg-amber-400/10 border border-amber-400/20 px-2 py-1">
+                              <img src={tp.Icon} alt={tp.Name} className="h-3.5 w-3.5 rounded" />
+                              <span className="text-[10px] font-semibold text-amber-200">{tp.Name}</span>
+                              {tp.Level !== undefined && <span className="text-[9px] text-amber-400/70">Lv.{tp.Level}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )
+          )}
+
+          {/* ── 아크 그리드 ── */}
+          {tab === "arkgrid" && (
+            loading.arkgrid ? <TabLoading /> :
+            errors.arkgrid  ? <Err msg={errors.arkgrid} /> : (
+              <div className="space-y-4">
+                {/* 아크 패시브 포인트 */}
+                {arkPassive?.Points && arkPassive.Points.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-stone-500 mb-2">아크 패시브 포인트</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {arkPassive.Points.map((pt, i) => (
+                        <div key={i} className={cn("rounded-xl p-3 text-center", cardBg)}>
+                          <div className="text-[10px] text-stone-400 mb-1">{pt.Name}</div>
+                          <div className="text-xl font-bold text-amber-300">{pt.Value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* 아크 패시브 효과 */}
+                {arkPassive?.Effects && arkPassive.Effects.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-stone-500 mb-2">아크 패시브 효과</div>
+                    {arkPassive.Effects.map((ef, i) => (
+                      <div key={i} className={cn("flex items-center gap-3 rounded-xl p-2.5 mb-1.5", cardBg)}>
+                        {ef.Icon && <img src={ef.Icon} alt={ef.Name} className="h-8 w-8 rounded-lg object-cover bg-black/40 shrink-0 border border-white/10" />}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold">{ef.Name}</span>
+                            {ef.Level > 0 && <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Lv.{ef.Level}</span>}
+                          </div>
+                          <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">{ef.Description}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* 아크 그리드 */}
+                {arkGrid && (
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-stone-500 mb-2">아크 그리드</div>
+                    {arkGrid.Name && <div className="text-sm font-bold text-amber-200 mb-2">{arkGrid.Name}</div>}
+                    {arkGrid.Effects?.map((ef, i) => (
+                      <div key={i} className={cn("flex items-center gap-3 rounded-xl p-2.5 mb-1.5", cardBg)}>
+                        {ef.Icon && <img src={ef.Icon} alt={ef.Name} className="h-8 w-8 rounded-lg object-cover bg-black/40 shrink-0 border border-white/10" />}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-semibold">{ef.Name}</div>
+                          <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">{ef.Description}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!arkPassive && !arkGrid && <Empty msg="아크 패시브/그리드 정보가 없습니다." />}
+              </div>
+            )
+          )}
+
+          {/* ── 보석 ── */}
+          {tab === "gems" && (
+            loading.gems ? <TabLoading /> :
+            errors.gems  ? <Err msg={errors.gems} /> :
+            gemData.length === 0 ? <Empty msg="보석 정보가 없습니다." /> : (
+              <div className="grid grid-cols-2 gap-2">
+                {[...gemData].sort((a,b) => b.Level-a.Level).map((gem, i) => (
+                  <div key={i} className={cn("flex items-center gap-2.5 rounded-xl p-2.5", cardBg)}>
+                    <div className="relative shrink-0">
+                      <img src={gem.Icon} alt={gem.Name} className="h-10 w-10 rounded-lg object-cover bg-black/40"
+                        style={{ boxShadow:`0 0 0 1.5px ${gradeColor(gem.Grade)}` }} />
+                      <span className="absolute -bottom-1 -right-1 rounded-full bg-black border border-amber-400/50 px-1 text-[8px] font-bold text-amber-300">{gem.Level}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold truncate">{gem.Skill?.Name || gem.Name}</div>
+                      <div className="text-[10px] mt-0.5" style={{ color:gradeColor(gem.Grade) }}>{gem.Grade}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+
+          {/* ── 아바타 ── */}
+          {tab === "avatars" && (
+            loading.avatars ? <TabLoading /> :
+            errors.avatars  ? <Err msg={errors.avatars} /> :
+            avatarData.length === 0 ? <Empty msg="아바타 정보가 없습니다." /> : (
+              avatarData.map((av, i) => (
+                <div key={i} className={cn("flex items-center gap-3 rounded-xl p-2.5", cardBg)}>
+                  <img src={av.Icon} alt={av.Name} className="h-10 w-10 rounded-lg object-cover bg-black/40 shrink-0"
+                    style={{ boxShadow:`0 0 0 1.5px ${gradeColor(av.Grade)}` }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-semibold truncate">{av.Name}</span>
+                      {av.IsSet && <span className="rounded-full bg-sky-400/15 border border-sky-400/25 px-1.5 py-0.5 text-[9px] font-bold text-sky-300">세트</span>}
+                      {av.IsInner && <span className="rounded-full bg-purple-400/15 border border-purple-400/25 px-1.5 py-0.5 text-[9px] font-bold text-purple-300">이너</span>}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-stone-500">{av.Type}</span>
+                      <span className="text-[10px] font-bold" style={{ color:gradeColor(av.Grade) }}>· {av.Grade}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )
+          )}
+
+          {/* ── 보유 캐릭 (원정대) ── */}
+          {tab === "expedition" && (
+            loading.expedition ? <TabLoading /> :
+            errors.expedition  ? <Err msg={errors.expedition} /> :
+            siblingData.length === 0 ? <Empty msg="원정대 정보가 없습니다." /> : (
+              siblingData.map((sib, i) => (
+                <div key={i} className={cn(
+                  "flex items-center justify-between rounded-xl px-3 py-2.5",
+                  sib.CharacterName === character.character_name ? "border border-amber-400/30 bg-amber-400/8" : cardBg
+                )}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] font-bold text-amber-400/60 w-5 shrink-0">{i+1}</span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold truncate">{sib.CharacterName}</span>
+                        {sib.CharacterName === character.character_name && (
+                          <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-bold text-amber-300 shrink-0">현재</span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-stone-500">{sib.ServerName} · {sib.CharacterClassName}</div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-2">
+                    <div className="text-xs font-bold text-amber-300">{sib.ItemAvgLevel}</div>
+                    <div className="text-[10px] text-stone-500">Lv.{sib.CharacterLevel}</div>
+                  </div>
+                </div>
+              ))
+            )
+          )}
+
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+// ── End ArmoryViewModal ──────────────────────────────────────
+
 const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   const [rankIcon, setRankIcon] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
@@ -8852,6 +9230,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   const [lostarkLoading, setLostarkLoading] = useState(false);
   const [lostarkFetched, setLostarkFetched] = useState(false);
   const [lostarkImageUrl, setLostarkImageUrl] = useState<string | null>(null);
+  const [viewingCharacterId, setViewingCharacterId] = useState<string | null>(null);
 
   const toggleWeaponPanel = (characterId: string) => {
     setExpandedWeaponPanels((prev) => ({
@@ -10096,822 +10475,216 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
   return (
     <div className="max-w-6xl mx-auto py-24 px-6">
-      <h2 className="text-4xl font-semibold mb-10">My Room</h2>
 
-      <div className="bg-white/5 p-10 rounded-3xl space-y-6">
-        <div className="grid md:grid-cols-5 gap-4">
-          <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-            <div className="text-[11px] uppercase tracking-[0.22em] text-slate-400 font-semibold">닉네임</div>
-            <div className="mt-3 text-2xl font-semibold" style={getNicknameEffectStyle(profile)}>
-              {profile.nickname || "-"}
-            </div>
+      {/* ── 헤더 ── */}
+      <div className="mb-10 flex items-end justify-between">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-300/70 mb-2">My Room</div>
+          <h2 className="text-4xl font-bold text-white" style={getNicknameEffectStyle(profile)}>
+            {profile.nickname || "-"}
+          </h2>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-center">
+            <div className="text-[9px] uppercase tracking-widest text-stone-500">포인트</div>
+            <div className="text-lg font-bold text-amber-300">{myPoint || profile.points || 0}</div>
           </div>
-          <InfoMiniCard title="포인트" value={`${myPoint || profile.points || 0}`} />
-          <InfoMiniCard title="낙원력" value={`Lv.${nakwonLevel}`} />
-          <InfoMiniCard title="오늘 강화권" value={`${remainingEnhanceAttempts}/${dailyEnhanceLimit}`} />
-          <InfoMiniCard title="보유 뱃지" value={`${ownedBadges.length}개`} />
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 text-center">
+            <div className="text-[9px] uppercase tracking-widest text-stone-500">보유 뱃지</div>
+            <div className="text-lg font-bold text-white">{ownedBadges.length}</div>
+          </div>
+          <button
+            onClick={handleAttendance}
+            className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 px-5 py-3 text-sm font-semibold text-emerald-300 hover:bg-emerald-400/20 transition-all"
+          >
+            출석 체크 +10P
+          </button>
+        </div>
+      </div>
+
+      {/* ── 캐릭터 목록 ── */}
+      <div className="space-y-4">
+
+        {/* 등록 버튼 */}
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-semibold text-stone-400">내 캐릭터 <span className="text-amber-300">{characters.length}</span></div>
+          <button
+            onClick={() => setShowRegister(true)}
+            className="flex items-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-5 py-2.5 text-sm font-semibold text-amber-300 hover:bg-amber-400/18 hover:border-amber-400/50 transition-all"
+          >
+            <Plus size={15} /> 캐릭터 등록
+          </button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {[
-            ["growth", "낙원력/성장"],
-            ["characters", "캐릭터/장비"],
-          ].map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setMyRoomTab(key as "growth" | "characters")}
-              className={cn(
-                "px-4 py-2 rounded-full border text-sm font-semibold transition",
-                myRoomTab === key ? "bg-amber-500 border-amber-400 text-white" : "bg-white/5 border-white/10 text-slate-400"
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {myRoomTab === "growth" && (
-          <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-4">
-            <div className="rounded-[2rem] border border-amber-300/20 bg-gradient-to-br from-amber-400/10 via-black/30 to-transparent p-5">
-              <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-amber-200">Nakwon Level</div>
-              <div className="mt-2 text-2xl font-semibold">낙원력 제단</div>
-              <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <div className="text-4xl font-semibold text-white">Lv.{nakwonLevel}</div>
-                  <div className="mt-1 text-sm text-slate-400">누적 주입 {nakwonTotalSpent}P · 오늘 강화권 {dailyEnhanceLimit}회</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-right">
-                  <div className="text-xs text-slate-500">다음 레벨까지</div>
-                  <div className="text-lg font-semibold text-amber-200">{nakwonExp} / {nakwonRequiredExp} EXP</div>
-                </div>
-              </div>
-              <div className="mt-4 h-3 rounded-full bg-white/10 overflow-hidden">
-                <div className="h-full rounded-full bg-amber-300" style={{ width: `${nakwonProgressPercent}%` }} />
-              </div>
-              <div className="mt-4 grid md:grid-cols-3 gap-3">
-                <MiniStat label="일일 강화 시도권" value={`${dailyEnhanceLimit}회`} />
-                <MiniStat label="남은 시도권" value={`${remainingEnhanceAttempts}회`} />
-                <MiniStat label="파괴방지권" value={`${protectionTicketCount}개`} />
-              </div>
-              <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-                <div className="text-sm font-semibold">포인트를 낙원 경험치로 주입</div>
-                <div className="mt-2 text-xs text-slate-400">1P = 1EXP · 낙원력이 오를수록 계정 전체 일일 강화 시도권이 증가해.</div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {[50, 100, 300, 500].map((amount) => (
-                    <button
-                      key={amount}
-                      type="button"
-                      onClick={() => void handleNakwonInfuse(amount)}
-                      disabled={nakwonSubmitting}
-                      className="px-4 py-2 rounded-xl border border-amber-200/30 bg-amber-400/10 text-amber-100 text-sm font-semibold"
-                    >
-                      {amount}P 주입
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <input
-                    value={nakwonSpendAmount}
-                    onChange={(e) => setNakwonSpendAmount(e.target.value.replace(/[^0-9]/g, ""))}
-                    placeholder="직접 입력"
-                    className="flex-1 min-w-[160px] bg-black border border-white/10 rounded-xl px-4 py-3 text-sm font-semibold"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => void handleNakwonInfuse()}
-                    disabled={nakwonSubmitting}
-                    className="px-5 py-3 rounded-xl bg-amber-400 text-white font-semibold"
-                  >
-                    {nakwonSubmitting ? "주입 중..." : "직접 주입"}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-          <div className="rounded-[2rem] border border-amber-400/20 bg-gradient-to-br from-amber-400/10 via-black/30 to-transparent p-5">
-            <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-amber-200">Hourly Point Engine</div>
-            <div className="mt-2 text-2xl font-semibold">자동 포인트 현황</div>
-            {bestPointCharacter ? (
-              <>
-                <div className="mt-3 text-sm text-slate-300">
-                  기준 캐릭터 <span className="font-semibold text-white">{bestPointCharacter.character_name}</span> · {bestPointCharacter.equipped_weapon_name} {getEnhancementDisplay(bestPointCharacter.equipped_weapon_level)}
-                </div>
-                <div className="mt-4 grid md:grid-cols-3 gap-3">
-                  <MiniStat label={`${pointRateSettings.cycle_minutes}분마다`} value={`${pointPerTick}P`} />
-                  <MiniStat label="다음 지급까지" value={getNextPointTickInfo(passivePointState.lastTickAt, pointRateSettings.cycle_minutes).formatted} />
-                  <MiniStat label="5강 보너스" value={`+${Math.floor(normalizeEnhancementLevel(bestPointCharacter.equipped_weapon_level) / 5) * Number(pointRateSettings.enhancement_bonus_per_5 || 0)}P`} />
-                </div>
-                <div className="mt-3 text-xs text-slate-400">
-                  {WEAPON_RARITY_THEMES[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)].label} 기본 {pointRateSettings.rate_by_rarity[normalizeWeaponRarity(bestPointCharacter.equipped_weapon_rarity)]}P + 강화 보너스 적용 · 시간당 예상 {bestPointCharacter.hourly_point_rate}P
-                </div>
-                <div className="mt-3 text-xs text-slate-400">
-                  오늘 누적 {passivePointState.passivePointsDate === getTodayKey() ? passivePointState.passivePointsToday : 0}P / 일일 최대 {pointRateSettings.daily_cap}P
-                </div>
-              </>
-            ) : (
-              <div className="mt-3 text-sm text-slate-500">장착 무기가 있는 캐릭터가 있어야 시간당 포인트가 계산돼.</div>
-            )}
+        {/* 캐릭터 카드 목록 */}
+        {characters.length === 0 ? (
+          <div className="rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] py-20 text-center">
+            <div className="text-stone-500 text-sm mb-2">등록된 캐릭터가 없어</div>
+            <div className="text-stone-600 text-xs">위의 캐릭터 등록 버튼을 눌러줘</div>
           </div>
-
-          <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
-            <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-amber-200">Nickname FX</div>
-            <div className="mt-2 text-2xl font-semibold">닉네임 꾸미기</div>
-            <div className="mt-3 text-3xl font-semibold" style={getNicknameEffectStyle(profile)}>
-              {profile.nickname || "Guild Member"}
-            </div>
-            <div className="mt-4 space-y-3 max-h-[220px] overflow-y-auto pr-1">
-              <button onClick={clearNicknameEffect} className="w-full px-4 py-3 rounded-2xl bg-white/10 border border-white/10 text-sm font-semibold">
-                기본 닉네임으로 되돌리기
-              </button>
-              {ownedNicknameEffects.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-slate-500">
-                  아직 보유한 닉네임 효과가 없어. 포인트샵 닉네임 탭에서 구매해줘.
-                </div>
-              )}
-              {ownedNicknameEffects.map((effect: any) => (
-                <button key={effect.id} onClick={() => equipNicknameEffect(effect)} className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-4 text-left">
-                  <div className="text-lg font-semibold" style={getNicknameEffectStyle(effect)}>{effect.title || "닉네임 이펙트"}</div>
-                  <div className="mt-1 text-xs text-slate-400">보유 수량 {Number(effect.quantity || 1)}개 · 클릭하면 즉시 적용</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        )}
-
-        {myRoomTab === "growth" && (
-        <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.24em] font-semibold text-amber-200">Point Earn Logs</div>
-              <div className="mt-2 text-2xl font-semibold">포인트 획득 로그</div>
-            </div>
-            <button onClick={() => void fetchPointEarnLogs()} className="px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-sm font-semibold">
-              새로고침
-            </button>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            {pointEarnLogs.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-sm text-slate-500">
-                아직 기록된 포인트 획득 로그가 없어. 1시간 주기가 지나면 여기 바로 쌓여.
-              </div>
-            ) : (
-              pointEarnLogs.map((log: any) => (
-                <div key={log.id} className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="text-base font-semibold text-white">{log.title || "포인트 획득"}</div>
-                      <div className="mt-1 text-sm text-slate-400">{log.description || "포인트가 지급됐어."}</div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {characters.map((character: any) => {
+              const { theme } = getPrimaryBadgeTheme(character);
+              return (
+                <div
+                  key={character.id}
+                  className="group relative overflow-hidden rounded-[2rem] border cursor-pointer transition-all hover:scale-[1.015]"
+                  style={{ background: "#000", borderColor: "rgba(255,255,255,0.1)", boxShadow: "0 4px 32px rgba(0,0,0,0.6)" }}
+                  onClick={() => setViewingCharacterId(character.id)}
+                >
+                  {/* 배경 이미지 */}
+                  {(character.avatar_url || character.image_url) && (
+                    <div className="absolute inset-0">
+                      <img
+                        src={character.avatar_url || character.image_url}
+                        alt={character.character_name}
+                        className="w-full h-full object-cover object-top"
+                        style={{ filter: "brightness(0.45) saturate(1.1)" }}
+                      />
+                      <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 25%, #000 100%)" }} />
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-semibold text-amber-200">+{Number(log.points || 0)}P</div>
-                      <div className="text-xs text-slate-500">{new Date(log.created_at).toLocaleString("ko-KR")}</div>
+                  )}
+
+                  <div className="relative z-10 p-5 flex flex-col min-h-[200px] justify-between">
+                    {/* 상단 */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex flex-wrap gap-1.5">
+                        {character.is_main && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 inline-flex items-center gap-1">
+                            <Crown size={9} />MAIN
+                          </span>
+                        )}
+                        {character.role_hint === "서포터" && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-400/20 text-sky-300 border border-sky-400/30">서폿</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setEditingCharacterId(character.id); }}
+                        className="opacity-0 group-hover:opacity-100 flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 bg-black/50 text-stone-400 hover:text-white transition-all"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                    </div>
+
+                    {/* 하단 */}
+                    <div>
+                      <div className="text-xl font-bold text-white drop-shadow">{character.character_name}</div>
+                      <div className="text-xs text-white/50 mt-0.5">{character.class_name}</div>
+                      <div className="mt-2 flex items-center gap-3 text-xs text-white/40">
+                        <span className="text-amber-300 font-bold text-sm">Lv. {character.item_level}</span>
+                        {character.character_level && <span>캐릭터 {character.character_level}</span>}
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center gap-1.5 text-[10px] text-violet-300/70">
+                        <Sparkles size={10} />
+                        <span>클릭하면 전투정보실 확인 가능</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))
-            )}
+              );
+            })}
           </div>
-        </div>
-
         )}
 
-        {myRoomTab === "characters" && (
-          <>
-        <div className="flex flex-wrap gap-3 items-center">
-          <button onClick={handleAttendance} className="bg-green-600 px-5 py-3 rounded-xl font-semibold">
-            출석 체크 (+10P)
-          </button>
-          <button
-            onClick={() => setShowRegister(true)}
-            className="bg-amber-500 px-5 py-3 rounded-xl font-semibold"
-          >
-            캐릭터 등록
-          </button>
-          {rankIcon && <img src={rankIcon} className="w-20 h-20 object-contain" />}
-        </div>
-
-        <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <div className="text-xl font-semibold">보유 뱃지 관리</div>
-              <div className="text-sm text-slate-400">착용 중이 아닌 뱃지는 여기서 삭제할 수 있어.</div>
+        {/* 뱃지 관리 */}
+        {ownedBadges.length > 0 && (
+          <div className="mt-8 rounded-[2rem] border border-white/8 bg-white/[0.02] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-base font-bold text-white">보유 뱃지 관리</div>
+              <div className="text-xs text-stone-500">미착용 뱃지만 삭제 가능</div>
             </div>
-          </div>
-
-          {ownedBadges.length === 0 ? (
-            <div className="text-sm text-slate-500">보유한 뱃지가 없습니다.</div>
-          ) : (
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
               {ownedBadges.map((badge: any) => {
-                const theme = getBadgeVisualTheme(badge);
+                const thm = getBadgeVisualTheme(badge);
                 const isUsed = usedBadgeIds.has(String(badge.badge_item_id));
                 return (
-                  <div
-                    key={`${badge.badge_item_id}-${badge.id || badge.created_at || badge.badge_name}`}
+                  <div key={`${badge.badge_item_id}-${badge.id || badge.created_at}`}
                     className="rounded-2xl border p-4"
-                    style={{
-                      background: theme.cardBackground,
-                      borderColor: theme.cardBorder,
-                      boxShadow: theme.cardShadow,
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-3">
+                    style={{ background: thm.cardBackground, borderColor: thm.cardBorder }}>
+                    <div className="flex items-center justify-between gap-3">
                       <div>
-                        <div className="font-semibold">{badge.badge_name}</div>
-                        <div className="text-xs mt-1" style={{ color: theme.chipText }}>
-                          {theme.label}
-                        </div>
+                        <div className="text-sm font-semibold text-white">{badge.badge_name}</div>
+                        <div className="text-[10px] mt-0.5" style={{ color: thm.chipText }}>{thm.label}</div>
                       </div>
                       <button
                         onClick={() => deleteOwnedBadge(badge)}
                         disabled={isUsed}
-                        className={cn(
-                          "px-3 py-2 rounded-xl text-xs font-semibold transition",
-                          isUsed ? "bg-slate-800 text-slate-500 cursor-not-allowed" : "bg-red-500/85 hover:bg-red-500 text-white"
-                        )}
-                      >
-                        삭제
-                      </button>
-                    </div>
-                    <div className="mt-3 text-xs text-slate-300">
-                      {isUsed ? "현재 캐릭터가 착용 중인 뱃지" : "미착용 뱃지 · 삭제 가능"}
+                        className={cn("px-3 py-1.5 rounded-xl text-xs font-semibold transition",
+                          isUsed ? "bg-white/5 text-stone-600 cursor-not-allowed" : "bg-rose-500/80 hover:bg-rose-500 text-white")}
+                      >{isUsed ? "착용 중" : "삭제"}</button>
                     </div>
                   </div>
                 );
               })}
-            </div>
-          )}
-        </div>
-
-
-        <div className="rounded-[2rem] border border-white/10 bg-black/20 p-5 mt-5">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <div className="text-xl font-semibold">보유 무기 파츠</div>
-              <div className="text-sm text-slate-400">뽑기로 획득한 무기는 아래에서 확인하고 각 캐릭터에 장착할 수 있어.</div>
-            </div>
-            <div className="px-3 py-2 rounded-xl bg-white/5 text-sm font-semibold text-slate-300">
-              {ownedWeapons.length}개 보유
             </div>
           </div>
-
-          {ownedWeapons.length === 0 ? (
-            <div className="text-sm text-slate-500">아직 보유한 무기 파츠가 없습니다. 포인트샵 무기 뽑기에서 획득해봐.</div>
-          ) : (
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {ownedWeapons.map((weapon: any) => {
-                const theme = getWeaponTheme(weapon);
-                return (
-                  <div
-                    key={`${weapon.weapon_id || weapon.id}-${weapon.created_at || weapon.name}`}
-                    className="rounded-2xl border p-4 bg-black/25"
-                    style={{ borderColor: theme.border, boxShadow: `0 0 18px ${theme.glow}` }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <WeaponImage weapon={weapon} className="h-14 w-14 rounded-2xl" />
-                      <div className="min-w-0">
-                        <div className="font-semibold truncate">{weapon.name}</div>
-                        <div className="mt-1 inline-flex px-2 py-1 rounded-full text-[10px] font-semibold border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
-                          {theme.label}
-                        </div>
-                        <div className="mt-2 text-xs text-slate-400 line-clamp-2">
-                          {weapon.description || "길드탭 캐릭터 카드에 표시되는 장비 파츠"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-          {characters.length === 0 && (
-            <div className="md:col-span-2 rounded-2xl border border-dashed border-white/10 bg-black/20 p-8 text-center text-slate-400">
-              아직 보이는 캐릭터가 없어. 기존 캐릭터가 있는데도 안 보이면 아래 SQL 백필을 한 번 실행해줘.
-            </div>
-          )}
-          {characters.map((character) => {
-            const { theme } = getPrimaryBadgeTheme(character);
-            return (
-            <div
-              key={character.id}
-              className="p-4 rounded-2xl border relative overflow-hidden"
-              style={{
-                background: theme.cardBackground,
-                borderColor: theme.cardBorder,
-                boxShadow: theme.cardShadow,
-              }}
-            >
-              <div className="absolute inset-0 pointer-events-none opacity-90" style={{ background: theme.aura }} />
-              <div className="relative z-10">
-              {character.avatar_url && (
-                <img
-                  src={character.avatar_url || character.image_url}
-                  className="w-full h-40 object-cover rounded-xl mb-3"
-                />
-              )}
-
-              {!character.isEditing ? (
-                <>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-bold text-lg">{character.character_name}</div>
-                      <div className="text-sm text-slate-400">{character.class_name}</div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 justify-end">
-                      {getCharacterBadges(character).length > 0 ? (
-                        getCharacterBadges(character).map((badge: any, index: number) => {
-                          const badgeTheme = getBadgeVisualTheme(badge);
-                          return (
-                          <span
-                            key={`${badge.badge_item_id}-${index}`}
-                            className="px-3 py-1 rounded-full text-xs font-semibold"
-                            style={{
-                              background: badgeTheme.chipBackground,
-                              color: badgeTheme.chipText,
-                              border: `1px solid ${badgeTheme.chipBorder}`,
-                              boxShadow: `0 0 16px ${hexToRgba(badgeTheme.glow, 0.18)}`,
-                            }}
-                          >
-                            {badge.badge_name}
-                          </span>
-                        );
-                        })
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <InfoMiniCard title="아이템레벨" value={character.item_level || "-"} />
-                    <InfoMiniCard title="캐릭터 레벨" value={character.character_level || "-"} />
-                    <InfoMiniCard title="전투력" value={character.combat_power || "-"} />
-                    <InfoMiniCard title="역할" value={character.role_hint || "딜러"} />
-                    <InfoMiniCard title="생일" value={character.birthday ? formatShortDate(character.birthday) : "-"} />
-                    <InfoMiniCard title="MBTI" value={character.mbti || "-"} />
-                  </div>
-
-
-                  <div className="mt-4 text-sm text-slate-300 whitespace-pre-wrap">
-                    {character.character_intro || "소개 문구를 넣어 캐릭터를 꾸밀 수 있어."}
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <button
-                      type="button"
-                      onClick={() => toggleWeaponPanel(character.id)}
-                      className="w-full text-left"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <div className="text-xs text-slate-400 uppercase tracking-widest">장비 파츠 [무기]</div>
-                            <span className="inline-flex px-2 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] font-semibold text-slate-300">
-                              {ownedWeapons.length}개 보유
-                            </span>
-                          </div>
-
-                          {character.equipped_weapon_name ? (
-                            <div className="mt-2 flex items-center gap-3 min-w-0">
-                              <WeaponImage weapon={{ image_url: character.equipped_weapon_image_url, rarity: character.equipped_weapon_rarity }} className="h-12 w-12 rounded-2xl shrink-0" />
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <div className="font-semibold truncate">{character.equipped_weapon_name}</div>
-                                  <span className="inline-flex px-2 py-1 rounded-full border border-amber-200/30 bg-amber-400/10 text-[10px] font-semibold text-amber-100 shrink-0">
-                                    {getEnhancementDisplay(character.equipped_weapon_level)}
-                                  </span>
-                                </div>
-                                <div className="text-xs text-slate-400">
-                                  현재 장착 중 · {getWeaponTheme({ rarity: character.equipped_weapon_rarity }).label}
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="mt-2 text-sm text-slate-500">아직 장착한 무기가 없습니다.</div>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          {character.equipped_weapon_name && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                clearWeaponFromCharacter(character);
-                              }}
-                              className="px-3 py-2 rounded-xl bg-slate-800 text-xs font-semibold text-white"
-                            >
-                              무기 해제
-                            </button>
-                          )}
-                          <div
-                            className={cn(
-                              "flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 transition-transform",
-                              expandedWeaponPanels[character.id] ? "rotate-90" : "rotate-0"
-                            )}
-                          >
-                            <ChevronRight size={18} />
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-
-                    {!expandedWeaponPanels[character.id] && ownedWeapons.length > 0 && (
-                      <div className="mt-3 text-xs text-slate-500">
-                        눌러서 보유 무기 목록을 펼치고 장착하거나, 현재 무기를 하루 1회 강화할 수 있어. 현재 보유 포인트 {myPoint}P · 강화석 {ownedEnhanceItems.reduce((sum, item) => sum + Number(item.quantity || 0), 0)}개
-                      </div>
-                    )}
-
-                    <AnimatePresence initial={false}>
-                      {expandedWeaponPanels[character.id] && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="overflow-hidden"
-                        >
-                          {character.equipped_weapon_name && (
-                            <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4">
-                              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                                <div className="min-w-0">
-                                  <div className="text-[10px] uppercase tracking-[0.24em] text-amber-100/80 font-semibold">Weapon Enhance</div>
-                                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                                    <span className="text-lg font-semibold">{character.equipped_weapon_name}</span>
-                                    <span className="inline-flex px-2.5 py-1 rounded-full border border-amber-200/30 bg-black/20 text-xs font-semibold text-amber-50">
-                                      {getEnhancementDisplay(character.equipped_weapon_level)}
-                                    </span>
-                                  </div>
-                                  <div className="mt-2 text-sm text-amber-100/80">
-                                    성공 확률 {getEnhancementSuccessRate(character.equipped_weapon_level, (ownedEnhanceItems.filter((item: any) => Number(item.quantity || 0) > 0).sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0]?.bonus_rate) || 0)}%
-                                    {ownedEnhanceItems.some((item: any) => Number(item.quantity || 0) > 0) && ` · 최고 강화석 자동 사용 (${getEnhancementItemEffectText(ownedEnhanceItems.filter((item: any) => Number(item.quantity || 0) > 0).sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))[0])})`}
-                                  </div>
-                                  <div className="mt-1 text-xs text-amber-50/60">
-                                    계정 전체 일일 강화 시도권 {remainingEnhanceAttempts}/{dailyEnhanceLimit} · 1회 시도당 1P 소모 · 최대 {ENHANCEMENT_MAX_LEVEL}강
-                                  </div>
-                                  {getEnhancementDestroyRate(character.equipped_weapon_level) > 0 && (
-                                    <div className="mt-2 text-xs text-rose-200">
-                                      현재 단계 파손 확률 {getEnhancementDestroyRate(character.equipped_weapon_level)}% · 방지권 보유 {protectionTicketCount}개
-                                    </div>
-                                  )}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => enhanceEquippedWeapon(character)}
-                                  disabled={
-                                    enhancingCharacterId === String(character.id) ||
-                                    normalizeEnhancementLevel(character.equipped_weapon_level) >= ENHANCEMENT_MAX_LEVEL ||
-                                    remainingEnhanceAttempts <= 0
-                                  }
-                                  className={cn(
-                                    "px-4 py-3 rounded-xl text-sm font-semibold transition whitespace-nowrap",
-                                    enhancingCharacterId === String(character.id) ||
-                                      normalizeEnhancementLevel(character.equipped_weapon_level) >= ENHANCEMENT_MAX_LEVEL ||
-                                      remainingEnhanceAttempts <= 0
-                                      ? "bg-slate-700 text-slate-300"
-                                      : "bg-amber-400 text-white hover:bg-amber-300"
-                                  )}
-                                >
-                                  {enhancingCharacterId === String(character.id) ? "강화 중..." : "강화 시도"}
-                                </button>
-                              </div>
-
-                              {ownedEnhanceItems.length > 0 && (
-                                <div className="mt-4 flex flex-wrap gap-2">
-                                  {ownedEnhanceItems
-                                    .filter((item: any) => Number(item.quantity || 0) > 0)
-                                    .sort((a: any, b: any) => Number(b.bonus_rate || 0) - Number(a.bonus_rate || 0))
-                                    .map((item: any) => (
-                                      <div key={item.id} className="px-3 py-2 rounded-xl border border-white/10 bg-black/20 text-xs">
-                                        <span className="font-semibold text-white">{item.item_name || item.title || (item.item_type === "enhance_protect_ticket" ? "파괴방지권" : "강화석")}</span>
-                                        <span className="text-amber-100 ml-2">
-                                          {item.item_type === "enhance_protect_ticket" ? "파손 자동 방지" : getEnhancementItemEffectText(item)}
-                                        </span>
-                                        <span className="text-slate-400 ml-2">x{item.quantity}</span>
-                                      </div>
-                                    ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="mt-4 grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-                            {ownedWeapons.length === 0 ? (
-                              <div className="text-sm text-slate-500 md:col-span-2 xl:col-span-3">보유한 무기 파츠가 없습니다.</div>
-                            ) : (
-                              ownedWeapons.map((weapon: any) => {
-                                const theme = getWeaponTheme(weapon);
-                                const isEquipped =
-                                  String(character.equipped_weapon_inventory_id || "") === String(weapon.inventory_id || weapon.id || "") ||
-                                  String(character.equipped_weapon_id || "") === String(weapon.weapon_id || weapon.id || "");
-                                return (
-                                  <div
-                                    key={`${character.id}-${weapon.inventory_id || weapon.weapon_id || weapon.id}-${weapon.created_at || weapon.name}`}
-                                    className="rounded-2xl border p-3 bg-black/20"
-                                    style={{ borderColor: isEquipped ? theme.border : "rgba(255,255,255,0.08)", boxShadow: isEquipped ? `0 0 20px ${theme.glow}` : "none" }}
-                                  >
-                                    <div className="flex items-start gap-3">
-                                      <WeaponImage weapon={weapon} className="h-12 w-12 rounded-2xl shrink-0" />
-                                      <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          <div className="font-semibold truncate">{weapon.name}</div>
-                                          <span className="inline-flex px-2 py-1 rounded-full border border-amber-200/30 bg-amber-400/10 text-[10px] font-semibold text-amber-100 shrink-0">
-                                            {getEnhancementDisplay(weapon.enhancement_level)}
-                                          </span>
-                                        </div>
-                                        <div className="text-[11px] mt-1 inline-flex px-2 py-1 rounded-full border" style={{ color: theme.text, borderColor: theme.border, background: theme.background }}>
-                                          {theme.label}
-                                        </div>
-                                        <div className="mt-2 text-xs text-slate-400 line-clamp-2">
-                                          {weapon.description || "길드탭 캐릭터 카드 장착 파츠"}
-                                        </div>
-                                        <button
-                                          onClick={() => equipWeaponToCharacter(character, weapon)}
-                                          className={cn(
-                                            "mt-3 w-full px-3 py-2 rounded-xl text-xs font-semibold transition",
-                                            isEquipped ? "bg-amber-500 text-white" : "bg-amber-500 hover:bg-amber-400 text-white"
-                                          )}
-                                        >
-                                          {isEquipped ? "장착 중" : "이 무기 장착"}
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => openCharacterEditModal(character.id)}
-                      className="bg-amber-500 px-4 py-2 rounded-xl text-sm font-semibold"
-                    >
-                      수정
-                    </button>
-                    <button
-                      onClick={() => deleteCharacter(character.id)}
-                      className="bg-red-500 px-4 py-2 rounded-xl text-sm font-semibold"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-3">
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <AdminInput label="캐릭터명" value={character.draft.character_name} onChange={(v: any) => updateDraft(character.id, "character_name", v)} />
-                    <AdminInput label="직업" value={character.draft.class_name} onChange={(v: any) => updateDraft(character.id, "class_name", v)} />
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-3">
-                    <AdminInput label="아이템레벨" value={String(character.draft.item_level || "")} onChange={(v: any) => updateDraft(character.id, "item_level", v)} />
-                    <AdminInput label="캐릭터 레벨" value={String(character.draft.character_level || "")} onChange={(v: any) => updateDraft(character.id, "character_level", v)} />
-                    <AdminInput label="전투력" value={String(character.draft.combat_power || "")} onChange={(v: any) => updateDraft(character.id, "combat_power", v)} />
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <select
-                      value={character.draft.role_hint}
-                      onChange={(e) => updateDraft(character.id, "role_hint", e.target.value)}
-                      className="w-full bg-black border border-white/10 rounded-xl p-4"
-                    >
-                      <option value="딜러">딜러</option>
-                      <option value="서포터">서포터</option>
-                    </select>
-                    <AdminInput label="생일" type="date" value={character.draft.birthday || ""} onChange={(v: any) => updateDraft(character.id, "birthday", v)} />
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <AdminInput label="MBTI" value={character.draft.mbti || ""} onChange={(v: any) => updateDraft(character.id, "mbti", String(v || "").toUpperCase().slice(0, 4))} placeholder="예: ENFJ" />
-                    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                      <div className="text-xs text-slate-400 mb-3">착용 뱃지 (복수 선택 가능)</div>
-                      <div className="flex flex-wrap gap-2">
-                        {ownedBadges.length === 0 && (
-                          <div className="text-sm text-slate-500">보유한 뱃지가 없습니다.</div>
-                        )}
-                        {ownedBadges.map((badge) => {
-                          const checked = (character.draft.equipped_badge_ids || []).includes(String(badge.badge_item_id));
-                          return (
-                            <label
-                              key={badge.badge_item_id}
-                              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer"
-                              style={{
-                                borderColor: checked ? badge.badge_color || "#8b5cf6" : "rgba(255,255,255,0.08)",
-                                backgroundColor: checked ? `${badge.badge_color || "#8b5cf6"}22` : "rgba(255,255,255,0.03)",
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  const next = new Set(character.draft.equipped_badge_ids || []);
-                                  if (e.target.checked) next.add(String(badge.badge_item_id));
-                                  else next.delete(String(badge.badge_item_id));
-                                  updateDraft(character.id, "equipped_badge_ids", Array.from(next));
-                                }}
-                              />
-                              <span
-                                className="text-xs font-semibold"
-                                style={{ color: badge.badge_color || "#c4b5fd" }}
-                              >
-                                {badge.badge_name}
-                                {normalizeBadgeEffectKey(badge.badge_card_effect) !== "none" ? ` · ${getBadgeVisualTheme(badge).label}` : ""}
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                    <div className="text-xs text-slate-400 mb-3">캐릭터 이미지 수정</div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null;
-                        updateDraft(character.id, "new_image_file", file);
-                        updateDraft(
-                          character.id,
-                          "image_preview_url",
-                          createPreviewUrl(file, character.draft.avatar_url || character.avatar_url || "")
-                        );
-                      }}
-                      className="w-full text-sm text-slate-400"
-                    />
-                    {(character.draft.image_preview_url || (character.draft.avatar_url !== "" && (character.draft.avatar_url || character.avatar_url))) && (
-                      <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-3">
-                        <div className="text-xs text-slate-400 mb-2">현재/새 미리보기</div>
-                        <img
-                          src={character.draft.image_preview_url || character.draft.avatar_url || character.avatar_url}
-                          className="w-full max-w-xs h-44 object-cover rounded-xl"
-                        />
-                      </div>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          updateDraft(character.id, "new_image_file", null);
-                          updateDraft(character.id, "avatar_url", "");
-                          updateDraft(character.id, "image_preview_url", "");
-                        }}
-                        className="px-3 py-2 rounded-xl border border-rose-400/20 bg-rose-400/10 text-xs font-semibold text-rose-300 hover:bg-rose-400/20 transition"
-                      >
-                        이미지 제거
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          updateDraft(character.id, "new_image_file", null);
-                          updateDraft(character.id, "avatar_url", character.avatar_url || "");
-                          updateDraft(character.id, "image_preview_url", character.avatar_url || "");
-                        }}
-                        className="px-3 py-2 rounded-xl border border-white/10 bg-white/[0.05] text-xs font-semibold text-slate-300 hover:bg-white/[0.08] transition"
-                      >
-                        원래 이미지로 복원
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-slate-400">캐릭터 테마색</label>
-                      <div className="flex gap-2 mt-2 flex-wrap">
-                        {BADGE_PRESET_COLORS.map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            onClick={() => updateDraft(character.id, "profile_theme", color)}
-                            className="w-8 h-8 rounded-full border-2"
-                            style={{ backgroundColor: color, borderColor: character.draft.profile_theme === color ? "#fff" : "transparent" }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <AdminInput label="직접 색상 입력" value={character.draft.profile_theme || ""} onChange={(v: any) => updateDraft(character.id, "profile_theme", v)} />
-                  </div>
-
-                  <textarea
-                    value={character.draft.character_intro || ""}
-                    onChange={(e) => updateDraft(character.id, "character_intro", e.target.value)}
-                    placeholder="캐릭터 소개 / 한줄 각오 / 컨셉 문구"
-                    className="w-full bg-black border border-white/10 rounded-xl p-4 min-h-[100px]"
-                  />
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => saveCharacterEdit(character)}
-                      className="bg-amber-400 px-4 py-3 rounded-xl font-semibold"
-                    >
-                      저장
-                    </button>
-                    <button
-                      onClick={() => toggleEditing(character.id, false)}
-                      className="bg-slate-700 px-4 py-3 rounded-xl font-semibold"
-                    >
-                      취소
-                    </button>
-                  </div>
-                </div>
-              )}
-              </div>
-            </div>
-          );
-          })}
-        </div>
-          </>
         )}
       </div>
+
+      {/* ══════════════════════════════════════════════
+          캐릭터 전투정보실 모달
+          ══════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {viewingCharacterId && (() => {
+          const char = characters.find((c: any) => c.id === viewingCharacterId);
+          if (!char) return null;
+          return (
+            <ArmoryViewModal
+              character={char}
+              onClose={() => setViewingCharacterId(null)}
+              onEdit={() => { setViewingCharacterId(null); setEditingCharacterId(char.id); }}
+            />
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* ══ 캐릭터 등록 모달 ══ */}
       <AnimatePresence>
         {showRegister && (
-          <ModalFrame
-            onClose={() => {
-              setShowRegister(false);
-              setImageFile(null);
-            }}
-          >
-            <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/94 shadow-[0_30px_100px_rgba(2,6,23,0.58)] backdrop-blur-2xl">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.02),transparent_46%)]" />
-              <div className="relative border-b border-white/10 px-6 py-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200">Character Create</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">캐릭터 등록</div>
-                    <div className="mt-2 text-sm text-slate-400">새 캐릭터 정보를 입력하고 마이룸에 추가해.</div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowRegister(false);
-                      setImageFile(null);
-                    }}
-                    className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
-                  >
-                    <X size={18} />
-                  </button>
+          <ModalFrame onClose={() => { setShowRegister(false); setImageFile(null); }}>
+            <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#080808] shadow-[0_30px_100px_rgba(0,0,0,0.8)]">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.10),transparent_40%)]" />
+              {/* 헤더 */}
+              <div className="relative flex items-center justify-between border-b border-white/8 px-6 py-5">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-300/70">Character Register</div>
+                  <div className="mt-1 text-xl font-bold text-white">캐릭터 등록</div>
                 </div>
+                <button onClick={() => { setShowRegister(false); setImageFile(null); }}
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 text-stone-400 hover:text-white hover:bg-white/8 transition-all">
+                  <X size={18} />
+                </button>
               </div>
 
-              <div className="relative space-y-5 px-6 py-6">
-
-                {/* 전투정보실 자동 입력 영역 */}
-                <div className="rounded-[1.5rem] border border-amber-200/15 bg-amber-300/[0.06] p-4 space-y-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200/80">
-                    전투정보실 자동 불러오기
-                  </div>
-                  <p className="text-xs text-stone-400 leading-relaxed">
-                    캐릭터명을 입력하고 아래 버튼을 누르면 직업 · 아이템레벨 · 캐릭터레벨 · 이미지를 자동으로 채워줘.
-                  </p>
+              <div className="relative space-y-4 px-6 py-6">
+                {/* 전투정보실 조회 */}
+                <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-4 space-y-3">
+                  <div className="text-[11px] font-bold uppercase tracking-widest text-amber-300/80">전투정보실 자동 조회</div>
+                  <p className="text-xs text-stone-500 leading-relaxed">캐릭터명을 입력하고 조회하면 직업·레벨·이미지가 자동으로 입력돼.</p>
                   <div className="flex gap-2">
                     <input
                       value={characterName}
-                      onChange={(e) => {
-                        setCharacterName(e.target.value);
-                        setLostarkFetched(false);
-                        setLostarkImageUrl(null);
-                      }}
+                      onChange={(e) => { setCharacterName(e.target.value); setLostarkFetched(false); setLostarkImageUrl(null); }}
                       placeholder="캐릭터명 입력"
-                      className="flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30 placeholder:text-slate-600"
+                      className="flex-1 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-amber-400/30 placeholder:text-stone-600"
                     />
                     <button
                       onClick={fetchLostarkInfo}
                       disabled={lostarkLoading || !characterName.trim()}
-                      className="shrink-0 rounded-xl border border-amber-400/30 bg-amber-400/15 px-4 py-3 text-xs font-semibold text-amber-200 transition-all hover:bg-amber-400/25 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="shrink-0 rounded-xl border border-amber-400/30 bg-amber-400/15 px-5 py-3 text-xs font-bold text-amber-200 hover:bg-amber-400/25 disabled:opacity-40 transition-all"
                     >
-                      {lostarkLoading ? "조회중..." : "불러오기"}
+                      {lostarkLoading ? "조회 중..." : "조회"}
                     </button>
                   </div>
-
-                  {/* 성공 배너 */}
                   {lostarkFetched && (
-                    <div className="flex items-center gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3">
+                    <div className="flex items-center gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/8 px-4 py-3">
                       {lostarkImageUrl && (
-                        <img
-                          src={lostarkImageUrl}
-                          alt="캐릭터"
-                          className="h-12 w-10 rounded-lg object-cover object-top border border-white/10"
-                        />
+                        <img src={lostarkImageUrl} alt="캐릭터" className="h-12 w-10 rounded-lg object-cover object-top border border-white/10" />
                       )}
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-emerald-300">정보 불러오기 완료 ✓</div>
-                        <div className="mt-0.5 text-[11px] text-stone-400 truncate">
-                          {className} · Lv.{characterLevel} · {itemLevel}
-                        </div>
-                        <div className="mt-0.5 text-[10px] text-stone-500">
-                          이미지는 직접 업로드하지 않으면 전투정보실 이미지가 사용돼.
-                        </div>
+                      <div>
+                        <div className="text-xs font-bold text-emerald-300">✓ 조회 완료 — 아래 내용이 자동 입력됐어</div>
+                        <div className="text-[11px] text-stone-400 mt-0.5">{className} · Lv.{characterLevel} · 아이템 {itemLevel}</div>
                       </div>
                     </div>
                   )}
@@ -10920,12 +10693,9 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                 <div className="grid md:grid-cols-2 gap-3">
                   <AdminInput label="직업" value={className} onChange={setClassName} />
                   <div className="space-y-1.5">
-                    <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">역할</label>
-                    <select
-                      value={roleHint}
-                      onChange={(e) => setRoleHint(e.target.value)}
-                      className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
-                    >
+                    <label className="ml-1 text-[10px] font-semibold uppercase tracking-widest text-stone-500">역할</label>
+                    <select value={roleHint} onChange={(e) => setRoleHint(e.target.value)}
+                      className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3.5 text-white outline-none focus:border-amber-400/25 transition-all">
                       <option value="딜러">딜러</option>
                       <option value="서포터">서포터</option>
                     </select>
@@ -10933,44 +10703,27 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
                 </div>
                 <div className="grid md:grid-cols-3 gap-3">
                   <AdminInput label="아이템레벨" value={itemLevel} onChange={setItemLevel} />
-                  <AdminInput label="캐릭터 레벨" value={characterLevel} onChange={setCharacterLevel} />
+                  <AdminInput label="캐릭터레벨" value={characterLevel} onChange={setCharacterLevel} />
                   <AdminInput label="전투력" value={combatPower} onChange={setCombatPower} />
                 </div>
                 <div className="grid md:grid-cols-2 gap-3">
                   <AdminInput label="생일" type="date" value={birthday} onChange={setBirthday} />
-                  <AdminInput label="MBTI" value={mbti} onChange={(value: string) => setMbti(String(value || "").toUpperCase().slice(0, 4))} placeholder="예: INFP" />
+                  <AdminInput label="MBTI" value={mbti} onChange={(v: string) => setMbti(String(v||"").toUpperCase().slice(0,4))} placeholder="예: INFP" />
                 </div>
-                <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">캐릭터 이미지 직접 업로드 (선택)</div>
-                  <p className="mt-1 text-[11px] text-stone-500">직접 업로드하면 전투정보실 이미지 대신 이 이미지가 사용돼.</p>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                    className="mt-3 w-full text-sm text-slate-400"
-                  />
-                  {imageFile && (
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-3">
-                      <div className="mb-2 text-xs text-slate-400">미리보기</div>
-                      <img src={URL.createObjectURL(imageFile)} className="h-44 w-full max-w-xs rounded-xl object-cover" />
-                    </div>
-                  )}
+                <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-widest text-stone-500 mb-1">이미지 직접 업로드 (선택)</div>
+                  <p className="text-[11px] text-stone-600">업로드하지 않으면 전투정보실 이미지가 자동으로 사용돼.</p>
+                  <input type="file" accept="image/*" onChange={(e) => setImageFile(e.target.files?.[0] || null)} className="mt-3 w-full text-sm text-stone-500" />
+                  {imageFile && <img src={URL.createObjectURL(imageFile)} className="mt-3 h-36 w-full max-w-xs rounded-xl object-cover" />}
                 </div>
                 <div className="grid grid-cols-2 gap-3 pt-1">
-                  <button
-                    onClick={() => {
-                      setShowRegister(false);
-                      setImageFile(null);
-                    }}
-                    className="rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
-                  >
+                  <button onClick={() => { setShowRegister(false); setImageFile(null); }}
+                    className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3.5 text-sm font-semibold text-stone-400 hover:text-white transition-all">
                     취소
                   </button>
-                  <button
-                    onClick={saveCharacter}
-                    className="rounded-[1.35rem] bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110"
-                  >
-                    저장
+                  <button onClick={saveCharacter}
+                    className="rounded-[1.35rem] bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-3.5 text-sm font-bold text-slate-950 hover:brightness-110 transition-all">
+                    등록
                   </button>
                 </div>
               </div>
@@ -10979,6 +10732,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
         )}
       </AnimatePresence>
 
+      {/* ══ 캐릭터 수정 모달 ══ */}
       <AnimatePresence>
         {editingCharacter && editingCharacter.draft && (
           <ModalFrame
@@ -11131,8 +10885,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     </div>
   );
 };
-
-
 const RankingPage = ({ user, profile }: any) => {
   const [tab, setTab] = useState("points");
   const [rows, setRows] = useState<any[]>([]);
