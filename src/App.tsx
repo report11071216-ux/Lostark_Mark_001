@@ -6684,7 +6684,11 @@ const AdminDashboard = () => {
         supabase.from("profiles").select("id, nickname, points, last_attendance, created_at, rank_name").order("created_at", { ascending: false }),
         supabase.from("guild_members").select("id", { count: "exact", head: true }),
         supabase.from("raid_schedules").select("id", { count: "exact", head: true }).gte("created_at", weekAgo),
-        supabase.from("raid_participants").select("character_name, user_id").gte("created_at", weekAgo),
+        // raid_schedules와 조인해서 이번 주 레이드 참여자만 가져오기
+        supabase
+          .from("raid_participants")
+          .select("character_name, user_id, raid_schedules!inner(raid_date)")
+          .gte("raid_schedules.raid_date", new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0]),
       ]);
       const users     = usersR.status === "fulfilled" ? (usersR.value.data || []) : [];
       const charCount = charsR.status === "fulfilled" ? (charsR.value.count || 0) : 0;
