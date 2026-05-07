@@ -2950,6 +2950,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
   });
   const [todayRaids, setTodayRaids] = useState<any[]>([]);
   const [upcomingRaids, setUpcomingRaids] = useState<any[]>([]);
+  const [contentImgMap, setContentImgMap] = useState<Record<string, string>>({});
   const [weeklySchedules, setWeeklySchedules] = useState<Record<string, any[]>>({});
   const [selectedWeekDate, setSelectedWeekDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -3031,6 +3032,25 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
         setWeeklySchedules(scheduleMap);
         setTodayRaids(todayRes.data || []);
         setUpcomingRaids(upcomingList.slice(0, 5));
+
+        // contents 테이블에서 레이드 이미지 로드
+        const allRaidNames = Array.from(new Set([
+          ...(weekRes.data || []).map((r: any) => String(r.raid_name || "").trim()),
+          ...(upcomingList.slice(0, 5)).map((r: any) => String(r.raid_name || "").trim()),
+        ])).filter(Boolean);
+        if (allRaidNames.length > 0) {
+          try {
+            const { data: contentsData } = await supabase
+              .from("contents")
+              .select("name, image_url")
+              .in("name", allRaidNames);
+            const imgMap: Record<string, string> = {};
+            (contentsData || []).forEach((c: any) => {
+              if (c.name && c.image_url) imgMap[String(c.name).trim()] = c.image_url;
+            });
+            setContentImgMap(imgMap);
+          } catch { /* 이미지 로드 실패는 무시 */ }
+        }
         setSelectedWeekDate((prev) => {
           if (prev && currentWeekDays.some((d) => d.key === prev)) return prev;
           const todayMatch = currentWeekDays.find((d) => d.key === today);
@@ -3250,19 +3270,30 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
                   <div className="space-y-2">
                     {selectedSchedules.map((raid: any) => {
                       const status = getRaidStatusBadge(raid);
+                      const raidImgUrl = contentImgMap[String(raid.raid_name || "").trim()];
                       return (
                         <button key={raid.id} onClick={() => onRaidSearch?.(raid)}
-                          className="w-full rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 text-left transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.05]">
-                          <div className="flex items-center justify-between gap-3">
+                          className="w-full rounded-2xl border border-white/[0.07] bg-white/[0.03] px-3 py-3 text-left transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.05]">
+                          <div className="flex items-center gap-3">
+                            {/* 레이드 이미지 */}
+                            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-white/10">
+                              {raidImgUrl ? (
+                                <img src={raidImgUrl} alt={raid.raid_name} className="h-full w-full object-cover opacity-75" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-amber-300/8">
+                                  <Swords size={14} className="text-amber-300/60" />
+                                </div>
+                              )}
+                            </div>
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold text-white truncate">{raid.raid_name}</span>
                                 {raid.difficulty && <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-slate-400 shrink-0">{raid.difficulty}</span>}
                                 {raid.experience && <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300 shrink-0">{raid.experience}</span>}
                               </div>
-                              <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                              <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
                                 <Clock size={10} /> {raid.raid_time}
-                                <span>·</span> {raid.raid_type}
+                                {raid.raid_type && <><span>·</span>{raid.raid_type}</>}
                               </div>
                             </div>
                             <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold shrink-0", status.cls)}>
@@ -3287,15 +3318,32 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
                 <div className="p-3 space-y-1.5">
                   {upcomingRaids.map((raid: any) => {
                     const status = getRaidStatusBadge(raid);
+                    const raidImgUrl = contentImgMap[String(raid.raid_name || "").trim()];
                     return (
                       <button key={raid.id} onClick={() => onRaidSearch?.(raid)}
                         className="flex w-full items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-left transition-all hover:border-amber-200/18 hover:bg-amber-300/[0.04]">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-200/15 bg-amber-300/8 text-[10px] font-bold text-amber-200">
-                          {new Date(raid.raid_date).getDate()}
+                        {/* 레이드 이미지 썸네일 */}
+                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-white/10">
+                          {raidImgUrl ? (
+                            <img
+                              src={raidImgUrl}
+                              alt={raid.raid_name}
+                              className="h-full w-full object-cover opacity-80"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-amber-300/8 text-[11px] font-bold text-amber-200">
+                              {new Date(raid.raid_date).getDate()}
+                            </div>
+                          )}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-semibold text-white">{raid.raid_name}</div>
-                          <div className="text-[11px] text-slate-500">{formatShortDate(raid.raid_date)} · {raid.raid_time}</div>
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 flex-wrap">
+                            <span>{formatShortDate(raid.raid_date)}</span>
+                            <span>·</span>
+                            <span>{raid.raid_time}</span>
+                            {raid.difficulty && <><span>·</span><span className="text-slate-400">{raid.difficulty}</span></>}
+                          </div>
                         </div>
                         <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold shrink-0", status.cls)}>
                           {status.label}
@@ -6594,7 +6642,7 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
     setResettingPoints(true);
     try {
       const client = getSupabaseOrThrow();
-      const { error } = await client.from("profiles").update({ points: 0, passive_points_today: 0 });
+      const { error } = await client.from("profiles").update({ points: 0, passive_points_today: 0 }).not('id', 'is', null);
       if (error) { showToast(error.message, "error"); return; }
       showToast("전체 포인트 초기화 완료 ✅", "success");
     } catch (e: any) {
