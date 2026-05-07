@@ -2885,45 +2885,47 @@ const ProkyonWidget = () => {
                       </div>
                     </div>
 
-                    {/* 보상 아이템 */}
-                    {item.RewardItems && item.RewardItems.length > 0 && (() => {
-                      // API 응답 구조: RewardItems = [ { ItemLevel, Items: [...] } ] 또는 [ { Name, Icon, Grade } ]
-                      const flatItems: Array<{ Name: string; Icon: string; Grade: string }> = [];
-                      item.RewardItems.forEach((r: any) => {
-                        if (Array.isArray(r.Items)) {
-                          // 중첩 구조: { ItemLevel, Items: [...] }
-                          r.Items.forEach((it: any) => flatItems.push(it));
-                        } else if (r.Icon) {
-                          // 단순 구조: { Name, Icon, Grade }
-                          flatItems.push(r);
-                        }
-                      });
-                      // 중복 아이템명 제거
-                      const unique = flatItems.filter((it, idx, arr) =>
-                        arr.findIndex(x => x.Name === it.Name) === idx
-                      );
-                      if (unique.length === 0) return null;
+                    {/* 보상 아이템 — 4티어 하드코딩 (API 미업데이트 대응) */}
+                    {(() => {
+                      const REWARDS_4T: Record<string, Array<{ name: string; color: string; emoji: string }>> = {
+                        "카오스게이트": [
+                          { name: "운명의 파편",    color: "#E6C97A", emoji: "✨" },
+                          { name: "귀속 골드",      color: "#fbbf24", emoji: "💰" },
+                          { name: "전설 각인서",    color: "#FF8C00", emoji: "📖" },
+                          { name: "유물 각인서",    color: "#E6C97A", emoji: "📜" },
+                        ],
+                        "모험 섬": [
+                          { name: "귀속 골드",      color: "#fbbf24", emoji: "💰" },
+                          { name: "섬의 마음",       color: "#00CCFF", emoji: "💎" },
+                        ],
+                        "필드 보스": [
+                          { name: "파괴석 결정",     color: "#FF8C00", emoji: "🔴" },
+                          { name: "수호석 결정",     color: "#4A90D9", emoji: "🔵" },
+                          { name: "전설 각인서",    color: "#FF8C00", emoji: "📖" },
+                          { name: "유물 각인서",    color: "#E6C97A", emoji: "📜" },
+                          { name: "4티어 보석",      color: "#B44BE1", emoji: "💠" },
+                        ],
+                        "태초의 섬": [
+                          { name: "운명의 파편",    color: "#E6C97A", emoji: "✨" },
+                        ],
+                      };
+                      const rewards = REWARDS_4T[item.CategoryName];
+                      if (!rewards) return null;
                       return (
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {unique.slice(0, 6).map((reward, ri) => (
-                            <div key={ri} className="relative group">
-                              <img
-                                src={reward.Icon}
-                                alt={reward.Name}
-                                className="h-7 w-7 rounded-lg object-cover bg-black/40"
-                                style={{ boxShadow: `0 0 0 1.5px ${GRADE_COLORS_WIDGET[reward.Grade] || "#666"}` }}
-                                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                              />
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-50 pointer-events-none">
-                                <div className="whitespace-nowrap rounded-lg bg-black/90 border border-white/10 px-2 py-1 text-[10px] text-white shadow-xl">
-                                  {reward.Name}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                          {unique.length > 6 && (
-                            <span className="text-[10px] text-stone-500">+{unique.length - 6}</span>
-                          )}
+                        <div>
+                          <div className="text-[9px] text-stone-600 uppercase tracking-widest mb-1.5">전리품 (4티어)</div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {rewards.map((r, ri) => (
+                              <span
+                                key={ri}
+                                className="flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold border"
+                                style={{ color: r.color, borderColor: `${r.color}40`, background: `${r.color}12` }}
+                              >
+                                <span>{r.emoji}</span>
+                                {r.name}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       );
                     })()}
