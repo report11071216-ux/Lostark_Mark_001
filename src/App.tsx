@@ -6682,56 +6682,25 @@ const AdminDashboard = () => {
       const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
       const weekAgoDate = new Date(Date.now() - 7 * 86400000).toISOString().split("T")[0];
 
-      const [usersR, charsR, raidsR, partsR] = await Promise.allSettled([
+      const [usersR, charsR, raidsR, weekSchedulesR, allPartsR] = await Promise.allSettled([
         supabase.from("profiles").select("id, nickname, points, last_attendance, created_at, rank_name").order("created_at", { ascending: false }),
         supabase.from("guild_members").select("id", { count: "exact", head: true }),
         supabase.from("raid_schedules").select("id", { count: "exact", head: true }).gte("created_at", weekAgo),
-        // 참여자를 raid_schedules와 조인해서 날짜로 필터
-        supabase
-          .from("raid_participants")
-          .select("character_name, user_id, raid_schedules(raid_date)")
-          .gte("raid_schedules.raid_date", weekAgoDate),
+        supabase.from("raid_schedules").select("id, raid_date").gte("raid_date", weekAgoDate),
+        supabase.from("raid_participants").select("character_name, schedule_id"),
       ]);
 
-      const users     = usersR.status === "fulfilled" ? (usersR.value.data || []) : [];
-      const charCount = charsR.status === "fulfilled" ? (charsR.value.count || 0) : 0;
-      const raidCount = raidsR.status === "fulfilled" ? (raidsR.value.count || 0) : 0;
-      // 조인 결과에서 raid_date가 있는 것만 필터 (null = 해당 주 아님)
-      const allParts  = partsR.status === "fulfilled" ? (partsR.value.data || []) : [];
-      const parts = allParts.filter((p: any) => p.raid_schedules?.raid_date >= weekAgoDate);
+      const users         = usersR.status === "fulfilled" ? (usersR.value.data || []) : [];
+      const charCount     = charsR.status === "fulfilled" ? (charsR.value.count || 0) : 0;
+      const raidCount     = raidsR.status === "fulfilled" ? (raidsR.value.count || 0) : 0;
+      const weekSchedules = weekSchedulesR.status === "fulfilled" ? (weekSchedulesR.value.data || []) : [];
+      const allParts      = allPartsR.status === "fulfilled" ? (allPartsR.value.data || []) : [];
 
-      // 2단계 없이 직접 집계
-      let weekRaidIds: string[] = [];
-      if (partsR.status === "fulfilled") {
-        const weekRaidsR = await supabase
-          .from("raid_schedules")
-          .select("id")
-          .gte("raid_date", weekAgoDate)
-          .lte("raid_date", new Date().toISOString().split("T")[0]);
-        weekRaidIds = (weekRaidsR.data || []).map((r: any) => r.id);
-      }
+      const weekIdSet = new Set(weekSchedules.map((s: any) => s.id));
+      const weekParts = allParts.filter((p: any) => weekIdSet.has(p.schedule_id));
 
-      let finalParts: any[] = [];
-      if (weekRaidIds.length > 0) {
-        // 50개씩 나눠서 조회 (URL 길이 제한 우회)
-        const chunks: string[][] = [];
-        for (let i = 0; i < weekRaidIds.length; i += 50) {
-          chunks.push(weekRaidIds.slice(i, i + 50));
-        }
-        const results = await Promise.all(
-          chunks.map((chunk) =>
-            supabase
-              .from("raid_participants")
-              .select("character_name, user_id")
-              .in("schedule_id", chunk)
-          )
-        );
-        finalParts = results.flatMap((r) => r.data || []);
-      }
-
-      // 캐릭터별 참여 횟수 집계
       const nameCountMap: Record<string, number> = {};
-      finalParts.forEach((p: any) => {
+      weekParts.forEach((p: any) => {
         const name = p.character_name || "알 수 없음";
         nameCountMap[name] = (nameCountMap[name] || 0) + 1;
       });
