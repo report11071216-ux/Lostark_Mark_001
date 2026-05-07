@@ -1,10 +1,30 @@
 // ─────────────────────────────────────────────
 //  api/discord.ts
 //  지원 메서드: POST (전송) · PATCH (수정) · DELETE (삭제)
+//  + 다중 웹훅 target 지원
+//    body.target = "raid"    → DISCORD_WEBHOOK_RAID
+//    body.target = "welcome" → DISCORD_WEBHOOK_WELCOME
+//    body.target = (없음)    → DISCORD_WEBHOOK_URL (기본)
 //  + Discord rate limit 자동 재시도
 // ─────────────────────────────────────────────
 
 const MAX_RETRIES = 3;
+
+/**
+ * target 값에 따라 환경변수에서 웹훅 URL 선택
+ * DISCORD_WEBHOOK_RAID / DISCORD_WEBHOOK_WELCOME 미설정 시
+ * 기본 DISCORD_WEBHOOK_URL 로 폴백
+ */
+function resolveWebhookUrl(target?: string): string | undefined {
+  switch (target) {
+    case "raid":
+      return process.env.DISCORD_WEBHOOK_RAID || process.env.DISCORD_WEBHOOK_URL;
+    case "welcome":
+      return process.env.DISCORD_WEBHOOK_WELCOME || process.env.DISCORD_WEBHOOK_URL;
+    default:
+      return process.env.DISCORD_WEBHOOK_URL;
+  }
+}
 
 /**
  * Discord 웹훅 fetch + rate limit(429) 자동 재시도
@@ -18,14 +38,12 @@ async function discordFetch(
 
   if (response.status === 429 && retries > 0) {
     let retryAfterMs = 1000;
-
     try {
       const data = await response.clone().json();
       retryAfterMs = (data?.retry_after ?? 1) * 1000;
     } catch {
       // JSON 파싱 실패 시 기본값 사용
     }
-
     await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
     return discordFetch(url, options, retries - 1);
   }
@@ -34,19 +52,21 @@ async function discordFetch(
 }
 
 export default async function handler(req: any, res: any) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-
-  if (!webhookUrl) {
-    return res.status(500).json({
-      ok: false,
-      error: "DISCORD_WEBHOOK_URL is missing",
-    });
-  }
-
   if (!["POST", "PATCH", "DELETE"].includes(req.method)) {
     return res.status(405).json({
       ok: false,
       error: "Method not allowed (POST · PATCH · DELETE only)",
+    });
+  }
+
+  // target 에 따라 웹훅 URL 결정
+  const target = req.body?.target as string | undefined;
+  const webhookUrl = resolveWebhookUrl(target);
+
+  if (!webhookUrl) {
+    return res.status(500).json({
+      ok: false,
+      error: `웹훅 URL이 설정되지 않았습니다. target="${target ?? "default"}" — 환경변수를 확인해주세요.`,
     });
   }
 
@@ -59,8 +79,8 @@ export default async function handler(req: any, res: any) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            content: req.body.message ?? "",
-            embeds: req.body.embeds ?? [],
+            content: req.body.content ?? req.body.message ?? "",
+            embeds:  req.body.embeds ?? [],
           }),
         }
       );
@@ -77,13 +97,13 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({
         ok: true,
         messageId: data?.id,
-        discord: data,
+        discord:   data,
       });
     }
 
     // ── PATCH: 기존 메시지 수정 ──────────────────────────
     if (req.method === "PATCH") {
-      const { messageId, message, embeds } = req.body || {};
+      const { messageId, message, content, embeds } = req.body || {};
 
       if (!messageId) {
         return res.status(400).json({
@@ -98,8 +118,8 @@ export default async function handler(req: any, res: any) {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            content: message ?? "",
-            embeds: embeds ?? [],
+            content: content ?? message ?? "",
+            embeds:  embeds ?? [],
           }),
         }
       );
@@ -113,10 +133,7 @@ export default async function handler(req: any, res: any) {
         });
       }
 
-      return res.status(200).json({
-        ok: true,
-        discord: data,
-      });
+      return res.status(200).json({ ok: true, discord: data });
     }
 
     // ── DELETE: 기존 메시지 삭제 ─────────────────────────
@@ -135,7 +152,6 @@ export default async function handler(req: any, res: any) {
         { method: "DELETE" }
       );
 
-      // 204 No Content = 성공
       if (response.status === 204 || response.ok) {
         return res.status(200).json({ ok: true });
       }
