@@ -8870,11 +8870,21 @@ const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClo
   useEffect(() => { fetchTab("equipment"); }, []);
   useEffect(() => { fetchTab(tab); }, [tab]);
 
-  const EQUIP_ORDER = ["무기","투구","어깨","상의","하의","장갑","목걸이","귀걸이","귀걸이","반지","반지","어빌리티 스톤","팔찌","보조장비"];
-  const sortedEquip = [...equipData].sort((a,b) => {
+  // HTML 태그 제거 헬퍼
+  const stripHtml = (str: string) => {
+    if (!str) return "";
+    return str.replace(/<[^>]*>/g, "").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&").replace(/\s+/g," ").trim();
+  };
+
+  const ARMOR_TYPES  = ["무기","투구","어깨","상의","하의","장갑"];
+  const ACCESS_TYPES = ["목걸이","귀걸이","반지","어빌리티 스톤","팔찌","보조장비"];
+  const EQUIP_ORDER  = [...ARMOR_TYPES, ...ACCESS_TYPES];
+  const sortedEquip  = [...equipData].sort((a,b) => {
     const ai = EQUIP_ORDER.indexOf(a.Type); const bi = EQUIP_ORDER.indexOf(b.Type);
     return (ai===-1?99:ai)-(bi===-1?99:bi);
   });
+  const armorEquip  = sortedEquip.filter(eq => ARMOR_TYPES.includes(eq.Type));
+  const accessEquip = sortedEquip.filter(eq => ACCESS_TYPES.includes(eq.Type));
 
   const TABS: { id: ArmoryTab; label: string }[] = [
     { id:"equipment",  label:"장비" },
@@ -8979,19 +8989,42 @@ const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClo
             loading.equipment ? <TabLoading /> :
             errors.equipment  ? <Err msg={errors.equipment} /> :
             sortedEquip.length === 0 ? <Empty msg="장비 정보가 없습니다." /> : (
-              sortedEquip.map((eq, i) => (
-                <div key={i} className={cn("flex items-center gap-3 rounded-xl p-2.5", cardBg)}>
-                  <img src={eq.Icon} alt={eq.Name} className="h-10 w-10 rounded-lg object-cover bg-black/40 shrink-0"
-                    style={{ boxShadow:`0 0 0 1.5px ${gradeColor(eq.Grade)}` }} />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-semibold truncate">{eq.Name}</div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] text-stone-500">{eq.Type}</span>
-                      <span className="text-[10px] font-bold" style={{ color:gradeColor(eq.Grade) }}>· {eq.Grade}</span>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                {/* 왼쪽: 방어구 */}
+                <div className="space-y-1.5">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-stone-600 px-1 mb-2">장비</div>
+                  {armorEquip.map((eq, i) => (
+                    <div key={i} className={cn("flex items-center gap-2 rounded-xl p-2", cardBg)}>
+                      <img src={eq.Icon} alt={eq.Name} className="h-9 w-9 rounded-lg object-cover bg-black/40 shrink-0"
+                        style={{ boxShadow:`0 0 0 1.5px ${gradeColor(eq.Grade)}` }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[11px] font-semibold truncate leading-tight">{eq.Name}</div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[9px] text-stone-500">{eq.Type}</span>
+                          <span className="text-[9px] font-bold" style={{ color:gradeColor(eq.Grade) }}>· {eq.Grade}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  ))}
                 </div>
-              ))
+                {/* 오른쪽: 악세 */}
+                <div className="space-y-1.5">
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-stone-600 px-1 mb-2">악세서리</div>
+                  {accessEquip.map((eq, i) => (
+                    <div key={i} className={cn("flex items-center gap-2 rounded-xl p-2", cardBg)}>
+                      <img src={eq.Icon} alt={eq.Name} className="h-9 w-9 rounded-lg object-cover bg-black/40 shrink-0"
+                        style={{ boxShadow:`0 0 0 1.5px ${gradeColor(eq.Grade)}` }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[11px] font-semibold truncate leading-tight">{eq.Name}</div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-[9px] text-stone-500">{eq.Type}</span>
+                          <span className="text-[9px] font-bold" style={{ color:gradeColor(eq.Grade) }}>· {eq.Grade}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )
           )}
 
@@ -9071,7 +9104,7 @@ const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClo
                             <span className="text-xs font-semibold">{ef.Name}</span>
                             {ef.Level > 0 && <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Lv.{ef.Level}</span>}
                           </div>
-                          <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">{ef.Description}</div>
+                          <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-2">{stripHtml(ef.Description)}</div>
                         </div>
                       </div>
                     ))}
@@ -9087,7 +9120,7 @@ const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClo
                         {ef.Icon && <img src={ef.Icon} alt={ef.Name} className="h-8 w-8 rounded-lg object-cover bg-black/40 shrink-0 border border-white/10" />}
                         <div className="min-w-0 flex-1">
                           <div className="text-xs font-semibold">{ef.Name}</div>
-                          <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">{ef.Description}</div>
+                          <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-2">{stripHtml(ef.Description)}</div>
                         </div>
                       </div>
                     ))}
@@ -9112,7 +9145,7 @@ const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClo
                       <span className="absolute -bottom-1 -right-1 rounded-full bg-black border border-amber-400/50 px-1 text-[8px] font-bold text-amber-300">{gem.Level}</span>
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold truncate">{gem.Skill?.Name || gem.Name}</div>
+                      <div className="text-xs font-semibold truncate">{stripHtml(gem.Skill?.Name || gem.Name)}</div>
                       <div className="text-[10px] mt-0.5" style={{ color:gradeColor(gem.Grade) }}>{gem.Grade}</div>
                     </div>
                   </div>
