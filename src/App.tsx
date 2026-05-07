@@ -9508,7 +9508,6 @@ type RaidMemo = { raid_name: string; image_url: string; memo_items: MemoItem[]; 
 // ═══════════════════════════════════════════════════════════
 type MemoTagDef = {
   label: string;
-  icon: string;
   bg: string;
   text: string;
   border: string;
@@ -9518,7 +9517,6 @@ type MemoTagDef = {
 const MEMO_TAGS: MemoTagDef[] = [
   {
     label: "카운터",
-    icon: "🛡️",
     bg: "bg-blue-400/15",
     text: "text-blue-300",
     border: "border-blue-400/25",
@@ -9526,7 +9524,6 @@ const MEMO_TAGS: MemoTagDef[] = [
   },
   {
     label: "저스트가드",
-    icon: "⚡",
     bg: "bg-yellow-400/15",
     text: "text-yellow-300",
     border: "border-yellow-400/25",
@@ -9534,7 +9531,6 @@ const MEMO_TAGS: MemoTagDef[] = [
   },
   {
     label: "협동카운터",
-    icon: "🤝",
     bg: "bg-violet-400/15",
     text: "text-violet-300",
     border: "border-violet-400/25",
@@ -9542,7 +9538,6 @@ const MEMO_TAGS: MemoTagDef[] = [
   },
   {
     label: "무력",
-    icon: "💥",
     bg: "bg-orange-400/15",
     text: "text-orange-300",
     border: "border-orange-400/25",
@@ -9575,11 +9570,11 @@ const renderMemoPattern = (text: string): React.ReactNode => {
         <span
           key={key++}
           className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold mx-0.5 align-middle",
+            "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold mx-0.5 align-middle",
             tagDef.bg, tagDef.text, tagDef.border
           )}
         >
-          {tagDef.icon} {tagLabel}
+          {tagLabel}
         </span>
       );
     } else {
@@ -9827,12 +9822,12 @@ const RaidMemoEditModal = ({
                       type="button"
                       onClick={() => insertTag(item.id, tag.label)}
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all",
+                        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all",
                         tag.bg, tag.text, tag.border, tag.hoverBg
                       )}
                       title={`[${tag.label}] 삽입`}
                     >
-                      {tag.icon} {tag.label}
+                      {tag.label}
                     </button>
                   ))}
                 </div>
