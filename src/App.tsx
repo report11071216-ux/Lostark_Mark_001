@@ -1747,8 +1747,12 @@ const fetchInitialData = async () => {
       <ToastViewport />
       <div className="relative z-10">
         {profile?.role === "admin" && (
-          <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-[#0a1632] via-[#0d1525] to-[#0a1228] text-[10px] font-semibold py-1 text-center tracking-[0.24em] uppercase">
-            👑 Administrator Session Active
+          <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-[#0a1632] via-[#0d1525] to-[#0a1228] text-[10px] font-semibold py-1.5 px-4 flex items-center justify-between tracking-[0.24em] uppercase">
+            <div className="opacity-0 w-32 pointer-events-none hidden md:block">spacer</div>
+            <span>👑 Administrator Session Active</span>
+            <div className="w-32 flex justify-end">
+              <ThemeSwatchPicker />
+            </div>
           </div>
         )}
 
@@ -2484,6 +2488,175 @@ const SplineBackground = ({ sceneUrl }: { sceneUrl: string }) => {
     />
   );
 };
+
+
+// ═══════════════════════════════════════════════════════════
+// ── UI Theme System (5 accent color presets) ────────────────
+// ═══════════════════════════════════════════════════════════
+
+type UIThemeKey = "amber" | "violet" | "cyan" | "rose" | "emerald";
+
+const UI_THEME_PRESETS: Record<UIThemeKey, {
+  label: string;
+  desc: string;
+  swatches: [string, string, string];
+}> = {
+  amber:   { label: "Amber Gold",    desc: "골드 앰버",       swatches: ["#fbbf24","#f59e0b","#fde68a"] },
+  violet:  { label: "Violet Dream",  desc: "바이올렛 드림",   swatches: ["#a78bfa","#8b5cf6","#ddd6fe"] },
+  cyan:    { label: "Cyber Cyan",    desc: "사이버 시안",     swatches: ["#22d3ee","#06b6d4","#a5f3fc"] },
+  rose:    { label: "Rose Bloom",    desc: "로즈 블룸",       swatches: ["#fb7185","#f43f5e","#fecdd3"] },
+  emerald: { label: "Emerald Night", desc: "에메랄드 나이트", swatches: ["#34d399","#10b981","#a7f3d0"] },
+};
+
+const generateThemeCSS = (t: UIThemeKey): string => {
+  if (t === "amber") return "";
+  const C: Record<UIThemeKey, { t50:string;t100:string;t200:string;t300:string;t400:string;t500:string;
+    r400:string;r300:string;r200:string;r500:string; }> = {
+    amber:   { t50:"#fffbeb",t100:"#fef3c7",t200:"#fde68a",t300:"#fcd34d",t400:"#fbbf24",t500:"#f59e0b", r400:"251,191,36",r300:"252,211,77",r200:"253,230,138",r500:"245,158,11" },
+    violet:  { t50:"#f5f3ff",t100:"#ede9fe",t200:"#ddd6fe",t300:"#c4b5fd",t400:"#a78bfa",t500:"#8b5cf6", r400:"167,139,250",r300:"196,181,253",r200:"221,214,254",r500:"139,92,246" },
+    cyan:    { t50:"#ecfeff",t100:"#cffafe",t200:"#a5f3fc",t300:"#67e8f9",t400:"#22d3ee",t500:"#06b6d4", r400:"34,211,238",r300:"103,232,249",r200:"165,243,252",r500:"6,182,212" },
+    rose:    { t50:"#fff1f2",t100:"#ffe4e6",t200:"#fecdd3",t300:"#fda4af",t400:"#fb7185",t500:"#f43f5e", r400:"251,113,133",r300:"253,164,175",r200:"254,205,211",r500:"244,63,94" },
+    emerald: { t50:"#ecfdf5",t100:"#d1fae5",t200:"#a7f3d0",t300:"#6ee7b7",t400:"#34d399",t500:"#10b981", r400:"52,211,153",r300:"110,231,183",r200:"167,243,208",r500:"16,185,129" },
+  };
+  const c = C[t];
+  const p = `[data-ui-theme="${t}"]`;
+  return `
+  /* ── ${t} theme overrides ── */
+  ${p} .text-amber-50  { color: ${c.t50}  !important; }
+  ${p} .text-amber-100 { color: ${c.t100} !important; }
+  ${p} .text-amber-200 { color: ${c.t200} !important; }
+  ${p} .text-amber-300 { color: ${c.t300} !important; }
+  ${p} .text-amber-400 { color: ${c.t400} !important; }
+  ${p} .text-amber-500 { color: ${c.t500} !important; }
+
+  ${p} .border-amber-100\/10  { border-color: rgba(${c.r200},0.10) !important; }
+  ${p} .border-amber-200\/12  { border-color: rgba(${c.r200},0.12) !important; }
+  ${p} .border-amber-200\/14  { border-color: rgba(${c.r200},0.14) !important; }
+  ${p} .border-amber-200\/15  { border-color: rgba(${c.r200},0.15) !important; }
+  ${p} .border-amber-200\/16  { border-color: rgba(${c.r200},0.16) !important; }
+  ${p} .border-amber-200\/18  { border-color: rgba(${c.r200},0.18) !important; }
+  ${p} .border-amber-200\/20  { border-color: rgba(${c.r200},0.20) !important; }
+  ${p} .border-amber-200\/22  { border-color: rgba(${c.r200},0.22) !important; }
+  ${p} .border-amber-200\/25  { border-color: rgba(${c.r200},0.25) !important; }
+  ${p} .border-amber-200\/30  { border-color: rgba(${c.r200},0.30) !important; }
+  ${p} .border-amber-200\/35  { border-color: rgba(${c.r200},0.35) !important; }
+  ${p} .border-amber-400\/20  { border-color: rgba(${c.r400},0.20) !important; }
+  ${p} .border-amber-400\/25  { border-color: rgba(${c.r400},0.25) !important; }
+  ${p} .border-amber-400\/30  { border-color: rgba(${c.r400},0.30) !important; }
+  ${p} .border-amber-400\/40  { border-color: rgba(${c.r400},0.40) !important; }
+  ${p} .border-amber-400\/15  { border-color: rgba(${c.r400},0.15) !important; }
+
+  ${p} .bg-amber-500  { background-color: ${c.t500} !important; }
+  ${p} .bg-amber-400  { background-color: ${c.t400} !important; }
+  ${p} .bg-amber-400\/6   { background-color: rgba(${c.r400},0.06) !important; }
+  ${p} .bg-amber-400\/8   { background-color: rgba(${c.r400},0.08) !important; }
+  ${p} .bg-amber-400\/10  { background-color: rgba(${c.r400},0.10) !important; }
+  ${p} .bg-amber-400\/12  { background-color: rgba(${c.r400},0.12) !important; }
+  ${p} .bg-amber-400\/15  { background-color: rgba(${c.r400},0.15) !important; }
+  ${p} .bg-amber-400\/16  { background-color: rgba(${c.r400},0.16) !important; }
+  ${p} .bg-amber-400\/18  { background-color: rgba(${c.r400},0.18) !important; }
+  ${p} .bg-amber-400\/20  { background-color: rgba(${c.r400},0.20) !important; }
+  ${p} .bg-amber-300\/8   { background-color: rgba(${c.r300},0.08) !important; }
+  ${p} .bg-amber-300\/10  { background-color: rgba(${c.r300},0.10) !important; }
+  ${p} .bg-amber-300\/12  { background-color: rgba(${c.r300},0.12) !important; }
+  ${p} .bg-amber-200\/15  { background-color: rgba(${c.r200},0.15) !important; }
+
+  ${p} .from-amber-400 { --tw-gradient-from: ${c.t400} !important; }
+  ${p} .from-amber-500 { --tw-gradient-from: ${c.t500} !important; }
+  ${p} .to-amber-300   { --tw-gradient-to:   ${c.t300} !important; }
+  ${p} .to-amber-400   { --tw-gradient-to:   ${c.t400} !important; }
+  ${p} .via-amber-100  { --tw-gradient-via:  ${c.t100} !important; }
+  ${p} .via-amber-300  { --tw-gradient-via:  ${c.t300} !important; }
+
+  ${p} .hover\:border-amber-200\/20:hover  { border-color: rgba(${c.r200},0.20) !important; }
+  ${p} .hover\:border-amber-200\/22:hover  { border-color: rgba(${c.r200},0.22) !important; }
+  ${p} .hover\:border-amber-200\/25:hover  { border-color: rgba(${c.r200},0.25) !important; }
+  ${p} .hover\:border-amber-200\/30:hover  { border-color: rgba(${c.r200},0.30) !important; }
+  ${p} .hover\:bg-amber-300\/\[0\.04\]:hover { background-color: rgba(${c.r300},0.04) !important; }
+  ${p} .hover\:bg-amber-300\/\[0\.05\]:hover { background-color: rgba(${c.r300},0.05) !important; }
+  ${p} .hover\:bg-amber-300\/\[0\.06\]:hover { background-color: rgba(${c.r300},0.06) !important; }
+  ${p} .hover\:bg-amber-300\/\[0\.08\]:hover { background-color: rgba(${c.r300},0.08) !important; }
+  ${p} .hover\:bg-amber-400:hover  { background-color: ${c.t400} !important; }
+  ${p} .hover\:brightness-110:hover { filter: brightness(1.1); }
+  ${p} .hover\:text-amber-100:hover { color: ${c.t100} !important; }
+  ${p} .focus\:border-amber-200\/25:focus  { border-color: rgba(${c.r200},0.25) !important; }
+  ${p} .focus\:border-amber-200\/30:focus  { border-color: rgba(${c.r200},0.30) !important; }
+  ${p} .focus\:ring-amber-400\/10:focus    { --tw-ring-color: rgba(${c.r400},0.10) !important; }
+
+  /* Navbar active indicator */
+  ${p} nav .via-amber-200 { --tw-gradient-via: ${c.t200} !important; }
+  ${p} .selection\:bg-amber-300\/25 ::selection { background-color: rgba(${c.r300},0.25) !important; }
+
+  /* Animate pulse glow */
+  ${p} .bg-amber-200 { background-color: ${c.t200} !important; }
+  ${p} .bg-amber-300 { background-color: ${c.t300} !important; }
+  ${p} .bg-amber-100 { background-color: ${c.t100} !important; }
+
+  ${p} .text-amber-50\/80 { color: rgba(${c.r200},0.80) !important; }
+  `;
+};
+
+const UIThemeContext = React.createContext<{
+  uiTheme: UIThemeKey;
+  setUITheme: (t: UIThemeKey) => void;
+}>({ uiTheme: "amber", setUITheme: () => {} });
+
+const useUITheme = () => React.useContext(UIThemeContext);
+
+const UIThemeProvider = ({ children }: { children: React.ReactNode }) => {
+  const [uiTheme, setUIThemeState] = React.useState<UIThemeKey>(() => {
+    try { return (localStorage.getItem("guild_ui_theme") as UIThemeKey) || "amber"; } catch { return "amber"; }
+  });
+  React.useEffect(() => {
+    const root = document.documentElement;
+    if (uiTheme === "amber") root.removeAttribute("data-ui-theme");
+    else root.setAttribute("data-ui-theme", uiTheme);
+    try { localStorage.setItem("guild_ui_theme", uiTheme); } catch {}
+  }, [uiTheme]);
+  const setUITheme = (t: UIThemeKey) => setUIThemeState(t);
+  return (
+    <UIThemeContext.Provider value={{ uiTheme, setUITheme }}>
+      <style>{generateThemeCSS("violet")}{generateThemeCSS("cyan")}{generateThemeCSS("rose")}{generateThemeCSS("emerald")}</style>
+      {children}
+    </UIThemeContext.Provider>
+  );
+};
+
+// 관리자 배너에서 사용하는 테마 스와치 선택기
+const ThemeSwatchPicker = () => {
+  const { uiTheme, setUITheme } = useUITheme();
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[9px] font-semibold uppercase tracking-[0.2em] opacity-60">UI Theme</span>
+      <div className="flex items-center gap-1.5">
+        {(Object.entries(UI_THEME_PRESETS) as [UIThemeKey, typeof UI_THEME_PRESETS[UIThemeKey]][]).map(([key, preset]) => {
+          const isActive = uiTheme === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setUITheme(key)}
+              title={`${preset.label} — ${preset.desc}`}
+              className={cn(
+                "relative flex h-5 w-5 items-center justify-center rounded-full transition-all",
+                isActive
+                  ? "ring-2 ring-white/60 ring-offset-1 ring-offset-transparent scale-110"
+                  : "opacity-60 hover:opacity-100 hover:scale-110"
+              )}
+              style={{
+                background: `linear-gradient(135deg, ${preset.swatches[0]}, ${preset.swatches[1]})`,
+              }}
+            >
+              {isActive && (
+                <span className="h-1.5 w-1.5 rounded-full bg-white/90 shadow" />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+// ── End UI Theme System ──────────────────────────────────────
 
 const LIGHT_MODE_STYLES = `
   .light-mode {
@@ -7156,8 +7329,58 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
   const splineSceneUrl = String(uiImages?.spline_scene_url || "");
   const splineEnabled = uiImages?.spline_enabled === true;
 
+  const { uiTheme, setUITheme } = useUITheme();
+
   return (
     <div className="space-y-8">
+
+      {/* ── UI 테마 선택 ── */}
+      <div className="rounded-[2rem] border border-white/10 bg-[#0a0e18] p-6">
+        <div className="mb-5">
+          <div className="text-[10px] uppercase tracking-[0.28em] text-amber-200 font-semibold">UI Theme</div>
+          <div className="mt-2 text-2xl font-semibold">UI 컬러 테마</div>
+          <div className="text-sm text-slate-400 mt-1">길드 홈페이지의 전체 강조 색상을 변경합니다. 변경 즉시 적용됩니다.</div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+          {(Object.entries(UI_THEME_PRESETS) as [UIThemeKey, typeof UI_THEME_PRESETS[UIThemeKey]][]).map(([key, preset]) => {
+            const isActive = uiTheme === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setUITheme(key)}
+                className={cn(
+                  "relative overflow-hidden rounded-[1.5rem] border p-4 text-left transition-all",
+                  isActive
+                    ? "border-white/30 shadow-[0_0_0_2px_rgba(255,255,255,0.12)]"
+                    : "border-white/10 hover:border-white/20"
+                )}
+                style={{
+                  background: isActive
+                    ? `linear-gradient(135deg, rgba(${key === "amber" ? "251,191,36" : key === "violet" ? "167,139,250" : key === "cyan" ? "34,211,238" : key === "rose" ? "251,113,133" : "52,211,153"},0.18), rgba(10,14,24,0.95))`
+                    : "rgba(255,255,255,0.03)",
+                }}
+              >
+                {/* 색상 도트 */}
+                <div className="flex gap-1.5 mb-3">
+                  {preset.swatches.map((sw, i) => (
+                    <div key={i} className="h-5 w-5 rounded-full shadow-sm" style={{ background: sw, opacity: i === 0 ? 1 : i === 1 ? 0.75 : 0.45 }} />
+                  ))}
+                </div>
+                <div className="text-sm font-semibold text-white">{preset.label}</div>
+                <div className="mt-0.5 text-[10px] text-slate-400">{preset.desc}</div>
+                {isActive && (
+                  <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M1.5 5L3.8 7.5L8.5 2.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <AdminInput
         label="Guild Name"
         value={settings.guild_name}
@@ -15475,8 +15698,10 @@ const AdminPointShopManager = () => {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AppInner />
-    </ThemeProvider>
+    <UIThemeProvider>
+      <ThemeProvider>
+        <AppInner />
+      </ThemeProvider>
+    </UIThemeProvider>
   );
 }
