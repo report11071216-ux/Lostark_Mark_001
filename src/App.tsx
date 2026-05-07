@@ -172,7 +172,7 @@ const difficultyOptions = ["노말", "하드", "나이트메어"];
 const classNameByMode = (mode: string) => {
   if (mode === "anime") {
     return {
-      card: "from-[#2a2116]/80 to-[#17110b]/90 border-amber-400/30 hover:border-amber-200",
+      card: "from-[#0a1632]/80 to-[#0a0e18]/90 border-amber-400/30 hover:border-amber-200",
       badge: "text-amber-200",
       bar: "bg-amber-400",
       chip: "bg-amber-400/15 text-amber-200 border border-amber-400/20",
@@ -180,7 +180,7 @@ const classNameByMode = (mode: string) => {
   }
 
   return {
-    card: "from-[#2a2116]/80 to-[#17110b]/90 border-amber-400/30 hover:border-amber-200",
+    card: "from-[#0a1632]/80 to-[#0a0e18]/90 border-amber-400/30 hover:border-amber-200",
     badge: "text-amber-200",
     bar: "bg-amber-400",
     chip: "bg-amber-400/15 text-amber-200 border border-amber-400/20",
@@ -1089,7 +1089,7 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 12, scale: 0.98 }}
               transition={{ duration: 0.22 }}
-              className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-amber-100/12 bg-[#0d0a06]/95 shadow-[0_28px_80px_rgba(0,0,0,0.56)] backdrop-blur-2xl"
+              className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-amber-100/12 bg-[#070d1a]/95 shadow-[0_28px_80px_rgba(0,0,0,0.56)] backdrop-blur-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* 모달 헤더 */}
@@ -1747,7 +1747,7 @@ const fetchInitialData = async () => {
       <ToastViewport />
       <div className="relative z-10">
         {profile?.role === "admin" && (
-          <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-[#2a2116] via-[#1a140f] to-[#23190f] text-[10px] font-semibold py-1 text-center tracking-[0.24em] uppercase">
+          <div className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-[#0a1632] via-[#0d1525] to-[#0a1228] text-[10px] font-semibold py-1 text-center tracking-[0.24em] uppercase">
             👑 Administrator Session Active
           </div>
         )}
@@ -2101,7 +2101,7 @@ const GuildChat = ({ user, profile }: { user: any; profile: any }) => {
 
   const bgPanel = isLight
     ? "bg-[#fdfaf4] border-amber-200/40"
-    : "bg-[#0e0b07]/95 border-amber-100/12";
+    : "bg-[#070d1a]/95 border-amber-100/12";
   const bgHeader = isLight
     ? "bg-[#f5efe3] border-amber-200/30"
     : "bg-[#160f08]/90 border-white/8";
@@ -2273,7 +2273,7 @@ const GuildChat = ({ user, profile }: { user: any; profile: any }) => {
                         transition={{ duration: 0.15 }}
                         className={cn(
                           "grid grid-cols-10 gap-1 rounded-2xl border p-2",
-                          isLight ? "bg-white border-amber-200/40 shadow-md" : "bg-[#1a1108] border-white/10"
+                          isLight ? "bg-white border-amber-200/40 shadow-md" : "bg-[#0d1525] border-white/10"
                         )}
                       >
                         {CHAT_EMOJIS.map((emoji) => (
@@ -2511,8 +2511,8 @@ const LIGHT_MODE_STYLES = `
   /* 카드/패널 */
   .light-mode .bg-slate-950\\/94,
   .light-mode .bg-slate-950\\/50,
-  .light-mode .bg-\\[\\#120d08\\]\\/95,
-  .light-mode .bg-\\[\\#120d08\\]\\/96 {
+  .light-mode .bg-\\[\\#070d1a\\]\\/95,
+  .light-mode .bg-\\[\\#070d1a\\]\\/96 {
     background: rgba(255,252,245,0.97) !important;
   }
   .light-mode .bg-white\\/\\[0\\.03\\],
@@ -2948,6 +2948,8 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
     nextRaidLabel: "예정된 일정 없음",
     nextRaidDate: "",
   });
+  const [todayRaids, setTodayRaids] = useState<any[]>([]);
+  const [upcomingRaids, setUpcomingRaids] = useState<any[]>([]);
   const [weeklySchedules, setWeeklySchedules] = useState<Record<string, any[]>>({});
   const [selectedWeekDate, setSelectedWeekDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -2956,14 +2958,12 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const noticeCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_notice).length : 0;
-  const pinnedCount = Array.isArray(posts) ? posts.filter((post: any) => post?.is_pinned).length : 0;
+  const pinnedNotices = Array.isArray(posts) ? posts.filter((post: any) => post?.is_notice || post?.is_pinned).slice(0, 2) : [];
 
   const dayLabels = ["월", "화", "수", "목", "금", "토", "일"];
 
   const parseLocalDate = useCallback((dateKey: string) => {
-    const [year, month, day] = String(dateKey || "")
-      .split("-")
-      .map((value) => Number(value));
+    const [year, month, day] = String(dateKey || "").split("-").map((v) => Number(v));
     if (!year || !month || !day) return new Date();
     return new Date(year, month - 1, day);
   }, []);
@@ -2975,7 +2975,6 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
     const monday = new Date(today);
     monday.setHours(0, 0, 0, 0);
     monday.setDate(today.getDate() + mondayOffset);
-
     return Array.from({ length: 7 }, (_, index) => {
       const value = new Date(monday);
       value.setDate(monday.getDate() + index);
@@ -2997,87 +2996,69 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
 
   useEffect(() => {
     let mounted = true;
-
     const fetchHeroStats = async () => {
       if (!supabase) return;
-
       try {
         const today = getTodayKey();
         const nextWeek = new Date();
         nextWeek.setDate(nextWeek.getDate() + 7);
         const nextWeekKey = formatDate(nextWeek.getFullYear(), nextWeek.getMonth(), nextWeek.getDate());
 
-        const [membersRes, schedulesRes] = await Promise.all([
+        const [membersRes, weekRes, todayRes, upcomingRes] = await Promise.all([
           supabase.from("profiles").select("id", { count: "exact", head: true }),
-          supabase
-            .from("raid_schedules")
-            .select("*")
-            .gte("raid_date", currentWeekRange.start)
-            .lte("raid_date", currentWeekRange.end)
-            .order("raid_date", { ascending: true })
+          supabase.from("raid_schedules").select("*")
+            .gte("raid_date", currentWeekRange.start).lte("raid_date", currentWeekRange.end)
+            .order("raid_date", { ascending: true }).order("raid_time", { ascending: true }),
+          supabase.from("raid_schedules").select("*").eq("raid_date", today)
             .order("raid_time", { ascending: true }),
+          supabase.from("raid_schedules").select("*")
+            .gte("raid_date", today).lte("raid_date", nextWeekKey)
+            .order("raid_date", { ascending: true }).order("raid_time", { ascending: true }),
         ]);
-
-        const upcomingRes = await supabase
-          .from("raid_schedules")
-          .select("*")
-          .gte("raid_date", today)
-          .lte("raid_date", nextWeekKey)
-          .order("raid_date", { ascending: true })
-          .order("raid_time", { ascending: true });
 
         if (!mounted) return;
 
-        const scheduleMap = (schedulesRes.data || []).reduce((acc: Record<string, any[]>, raid: any) => {
+        const scheduleMap = (weekRes.data || []).reduce((acc: Record<string, any[]>, raid: any) => {
           const key = raid.raid_date || today;
           if (!acc[key]) acc[key] = [];
           acc[key].push(raid);
           return acc;
         }, {});
 
-        const upcomingSchedules = upcomingRes.data || [];
-        const nextRaid = upcomingSchedules[0];
+        const upcomingList = upcomingRes.data || [];
+        const nextRaid = upcomingList[0];
 
         setWeeklySchedules(scheduleMap);
+        setTodayRaids(todayRes.data || []);
+        setUpcomingRaids(upcomingList.slice(0, 5));
         setSelectedWeekDate((prev) => {
-          if (prev && currentWeekDays.some((day) => day.key === prev)) return prev;
-          const todayMatch = currentWeekDays.find((day) => day.key === today);
+          if (prev && currentWeekDays.some((d) => d.key === prev)) return prev;
+          const todayMatch = currentWeekDays.find((d) => d.key === today);
           return todayMatch?.key || currentWeekDays[0]?.key || "";
         });
         setHeroStats({
           memberCount: membersRes.count || 0,
-          upcomingRaids: upcomingSchedules.length,
+          upcomingRaids: upcomingList.length,
           nextRaidLabel: nextRaid?.raid_name || "예정된 일정 없음",
-          nextRaidDate: nextRaid
-            ? `${nextRaid.raid_date || ""} ${nextRaid.raid_time || ""}`.trim()
-            : "",
+          nextRaidDate: nextRaid ? `${nextRaid.raid_date || ""} ${nextRaid.raid_time || ""}`.trim() : "",
         });
       } catch (error) {
         console.error("Hero stats fetch error:", error);
       }
     };
-
     void fetchHeroStats();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [posts, currentWeekRange.start, currentWeekRange.end, currentWeekDays]);
 
-  // 레이드 검색 로직
+  // 레이드 검색
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); setSearchOpen(false); return; }
     setSearchLoading(true);
     const timer = setTimeout(async () => {
       try {
-        const { data } = await supabase
-          .from("raid_schedules")
-          .select("*")
-          .ilike("raid_name", `%${searchQuery.trim()}%`)
-          .gte("raid_date", getTodayKey())
-          .order("raid_date", { ascending: true })
-          .order("raid_time", { ascending: true })
-          .limit(8);
+        const { data } = await supabase.from("raid_schedules").select("*")
+          .ilike("raid_name", `%${searchQuery.trim()}%`).gte("raid_date", getTodayKey())
+          .order("raid_date", { ascending: true }).order("raid_time", { ascending: true }).limit(8);
         setSearchResults(data || []);
         setSearchOpen(true);
       } catch { setSearchResults([]); }
@@ -3086,7 +3067,6 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // 검색창 바깥 클릭 시 닫기
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
@@ -3095,75 +3075,63 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const selectedDay = currentWeekDays.find((day) => day.key === selectedWeekDate) || currentWeekDays[0];
+  const selectedDay = currentWeekDays.find((d) => d.key === selectedWeekDate) || currentWeekDays[0];
   const selectedSchedules = selectedDay ? weeklySchedules[selectedDay.key] || [] : [];
-  const primarySchedule = selectedSchedules[0];
+
+  const getRaidStatusBadge = (raid: any) => {
+    const now = new Date();
+    const raidDate = raid.raid_date;
+    const raidTime = raid.raid_time || "00:00";
+    const [h, m] = raidTime.split(":").map(Number);
+    const raidDT = new Date(`${raidDate}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00`);
+    const diffMin = (raidDT.getTime() - now.getTime()) / 60000;
+    if (raid.is_completed) return { label: "완료", cls: "bg-emerald-400/15 text-emerald-300 border-emerald-400/25" };
+    if (diffMin < 0 && diffMin > -180) return { label: "진행 중", cls: "bg-violet-400/15 text-violet-300 border-violet-400/25 animate-pulse" };
+    if (diffMin >= 0 && diffMin < 60) return { label: `${Math.round(diffMin)}분 후`, cls: "bg-amber-400/15 text-amber-200 border-amber-400/25" };
+    return { label: raidTime, cls: "bg-white/5 text-slate-300 border-white/10" };
+  };
 
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(245,194,105,0.12),transparent_26%),linear-gradient(180deg,rgba(24,18,13,0.02),rgba(24,18,13,0.08)_54%,transparent)]" />
+      {/* 배경 */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.07),transparent_40%),radial-gradient(ellipse_at_top_right,rgba(245,194,105,0.08),transparent_36%)]" />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-7xl items-start gap-4 px-6 pb-4 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,620px)] xl:grid-cols-[minmax(0,1fr)_340px_260px]">
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-6 pb-4 pt-6">
+
+        {/* ─── TOP ROW: 길드 헤더 + 빠른 검색 ─── */}
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.72 }}
-          className="pt-1 text-center md:text-left"
+          transition={{ duration: 0.6 }}
+          className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-200/14 bg-white/[0.035] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-amber-200">
-            <Sparkles size={10} />
-            Guild Residence
-          </span>
-
-          <h1 className="mt-4 bg-gradient-to-b from-[#fff9ef] via-[#f3e1b8] to-[#b88d44] bg-clip-text text-4xl font-semibold leading-none tracking-[0.01em] text-transparent md:text-5xl">
-            {getDisplayGuildName(settings?.guild_name)}
-          </h1>
-
-          <p className="mt-3 max-w-xl text-sm font-normal leading-7 text-stone-300">
-            {settings?.guild_description}
-          </p>
-
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 md:justify-start">
-            <button
-              type="button"
-              onClick={onNavigateToNotices}
-              className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] px-3.5 py-2.5 backdrop-blur-md shadow-[0_12px_28px_rgba(0,0,0,0.16)] hover:border-amber-200/30 hover:bg-amber-300/[0.06] transition-all cursor-pointer text-left"
-              title="게시판 공지 탭으로 이동"
-            >
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-                공지
-              </div>
-              <div className="mt-1 text-lg font-semibold text-amber-50">{noticeCount}</div>
-            </button>
-            <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] px-3.5 py-2.5 backdrop-blur-md shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-                7일 일정
-              </div>
-              <div className="mt-1 text-lg font-semibold text-amber-50">{heroStats.upcomingRaids}</div>
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-200/20 bg-[linear-gradient(180deg,rgba(251,191,36,0.18),rgba(120,53,15,0.08))] shadow-[0_12px_30px_rgba(214,164,78,0.18)]">
+              <Shield size={22} className="text-amber-200" />
             </div>
-            <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] px-3.5 py-2.5 backdrop-blur-md shadow-[0_12px_28px_rgba(0,0,0,0.16)]">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-                길드원
-              </div>
-              <div className="mt-1 text-lg font-semibold text-amber-50">{heroStats.memberCount}</div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/70">Guild Residence</div>
+              <h1 className="mt-0.5 bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-2xl font-semibold text-transparent md:text-3xl">
+                {getDisplayGuildName(settings?.guild_name)}
+              </h1>
             </div>
-          </div>
-
-          <div className="mt-5 flex justify-center md:justify-start">
-            <button
-              type="button"
-              onClick={onOpenRaidCalendar}
-              className="group inline-flex items-center gap-2 rounded-[1.3rem] border border-amber-200/16 bg-[linear-gradient(180deg,rgba(245,194,105,0.12),rgba(245,194,105,0.06))] px-4 py-2.5 text-sm font-medium text-amber-50 backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-amber-100/26 hover:text-white hover:shadow-[0_16px_30px_rgba(214,164,78,0.14)]"
-            >
-              <CalendarDays size={16} className="transition-transform group-hover:scale-105" />
-              월별 레이드 일정
-            </button>
+            <div className="hidden items-center gap-2 sm:flex">
+              <span className="flex items-center gap-1.5 rounded-full border border-amber-200/15 bg-amber-300/8 px-3 py-1.5 text-xs font-semibold text-amber-100">
+                <Users size={12} /> {heroStats.memberCount}명
+              </span>
+              <span className="flex items-center gap-1.5 rounded-full border border-blue-300/15 bg-blue-300/8 px-3 py-1.5 text-xs font-semibold text-blue-200">
+                <CalendarDays size={12} /> 7일 {heroStats.upcomingRaids}건
+              </span>
+              <button onClick={onNavigateToNotices} className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300 transition-all hover:border-amber-200/25 hover:text-amber-100">
+                <Bell size={12} /> 공지 {noticeCount}
+              </button>
+            </div>
           </div>
 
           {/* 레이드 검색 */}
-          <div ref={searchRef} className="relative mt-5 w-full max-w-md mx-auto md:mx-0">
+          <div ref={searchRef} className="relative w-full max-w-sm">
             <div className="relative flex items-center">
-              <div className="pointer-events-none absolute left-3.5 text-stone-500">
+              <div className="pointer-events-none absolute left-3.5 text-slate-500">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
                 </svg>
@@ -3173,8 +3141,8 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
-                placeholder="레이드 검색... (예: 카제로스, 에키드나)"
-                className="w-full rounded-[1.3rem] border border-white/10 bg-white/[0.05] py-3 pl-10 pr-10 text-sm text-white placeholder-stone-500 outline-none backdrop-blur-md transition-all focus:border-amber-200/30 focus:bg-white/[0.08] focus:ring-1 focus:ring-amber-400/10"
+                placeholder="레이드 검색..."
+                className="w-full rounded-2xl border border-white/10 bg-white/[0.05] py-2.5 pl-10 pr-10 text-sm text-white placeholder-slate-500 outline-none backdrop-blur-md transition-all focus:border-amber-200/30 focus:bg-white/[0.08]"
               />
               {searchLoading && (
                 <div className="absolute right-3.5">
@@ -3184,45 +3152,30 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
               )}
               {searchQuery && !searchLoading && (
                 <button onClick={() => { setSearchQuery(""); setSearchResults([]); setSearchOpen(false); }}
-                  className="absolute right-3.5 text-stone-500 hover:text-white transition-colors">
+                  className="absolute right-3.5 text-slate-500 hover:text-white">
                   <X size={14} />
                 </button>
               )}
             </div>
-
-            {/* 검색 결과 드롭다운 */}
             <AnimatePresence>
               {searchOpen && searchResults.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-[1.3rem] border border-white/10 bg-[#0e0b07]/96 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
-                >
+                  className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#070d1a]/96 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
                   {searchResults.map((raid, idx) => (
-                    <button
-                      key={raid.id}
+                    <button key={raid.id}
                       onClick={() => { onRaidSearch?.(raid); setSearchOpen(false); setSearchQuery(""); }}
-                      className={cn(
-                        "flex w-full items-center justify-between px-4 py-3 text-left transition-all hover:bg-amber-400/[0.07]",
-                        idx < searchResults.length - 1 && "border-b border-white/[0.05]"
-                      )}
-                    >
+                      className={cn("flex w-full items-center justify-between px-4 py-3 text-left hover:bg-amber-400/[0.07]",
+                        idx < searchResults.length - 1 && "border-b border-white/[0.05]")}>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-white truncate">{raid.raid_name}</span>
-                          <span className="shrink-0 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-stone-400">{raid.difficulty}</span>
-                          {raid.experience && (
-                            <span className="shrink-0 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300">{raid.experience}</span>
-                          )}
+                          <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-slate-400">{raid.difficulty}</span>
+                          {raid.experience && <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300">{raid.experience}</span>}
                         </div>
-                        <div className="mt-0.5 flex items-center gap-2 text-xs text-stone-500">
-                          <CalendarDays size={10} />
-                          <span>{formatShortDate(raid.raid_date)}</span>
-                          <span>·</span>
-                          <Clock size={10} />
-                          <span>{raid.raid_time}</span>
+                        <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+                          <CalendarDays size={10} /><span>{formatShortDate(raid.raid_date)}</span>
+                          <span>·</span><Clock size={10} /><span>{raid.raid_time}</span>
                         </div>
                       </div>
                       <div className="ml-3 shrink-0 text-[10px] text-amber-400/60">→ 바로가기</div>
@@ -3231,11 +3184,9 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
                 </motion.div>
               )}
               {searchOpen && !searchLoading && searchQuery.trim() && searchResults.length === 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   transition={{ duration: 0.12 }}
-                  className="absolute left-0 right-0 top-full z-50 mt-2 rounded-[1.3rem] border border-white/10 bg-[#0e0b07]/96 px-4 py-5 text-center text-sm text-stone-500 backdrop-blur-2xl"
-                >
+                  className="absolute left-0 right-0 top-full z-50 mt-2 rounded-2xl border border-white/10 bg-[#070d1a]/96 px-4 py-5 text-center text-sm text-slate-500 backdrop-blur-2xl">
                   "{searchQuery}" 에 해당하는 예정 레이드가 없어요.
                 </motion.div>
               )}
@@ -3243,187 +3194,199 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
           </div>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, x: 18 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.76, delay: 0.05 }}
-          className="relative hidden h-full lg:block"
-        >
-          <div className="absolute inset-0 rounded-[2rem] bg-amber-300/8 blur-3xl" />
-          <div className="relative flex h-full min-h-[148px] flex-col overflow-hidden rounded-[1.85rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3 backdrop-blur-2xl shadow-[0_22px_52px_rgba(0,0,0,0.24)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(246,205,127,0.14),transparent_46%)]" />
-            <div className="relative flex items-start justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">
-                  Weekly Raid Schedule
-                </div>
-                <div className="mt-1 text-lg font-semibold text-white">이번주 레이드</div>
-              </div>
-              <button
-                type="button"
-                onClick={onOpenRaidCalendar}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-amber-200/12 bg-amber-300/[0.08] text-amber-50 transition-all hover:border-amber-100/24 hover:bg-amber-300/[0.12] hover:text-white"
-                aria-label="월별 레이드 일정 보기"
-              >
-                <CalendarDays size={16} />
-              </button>
-            </div>
+        {/* ─── MAIN DASHBOARD GRID ─── */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
 
-            <div className="relative mt-3 grid grid-cols-7 gap-1.5">
-              {currentWeekDays.map((day) => {
-                const hasSchedule = (weeklySchedules[day.key]?.length || 0) > 0;
-                const isSelected = selectedDay?.key === day.key;
-                return (
-                  <button
-                    key={day.key}
-                    type="button"
-                    onClick={() => setSelectedWeekDate(day.key)}
-                    className={[
-                      "relative flex h-11 flex-col items-center justify-center rounded-xl border text-center transition-all",
-                      isSelected
-                        ? "border-amber-200/35 bg-amber-300/[0.16] text-white shadow-[0_0_0_1px_rgba(245,197,92,0.12)_inset]"
-                        : hasSchedule
-                        ? "border-amber-200/18 bg-amber-300/[0.08] text-amber-50 hover:border-amber-100/26 hover:bg-amber-300/[0.11]"
-                        : "border-white/7 bg-white/[0.03] text-stone-300 hover:border-white/10 hover:bg-white/[0.05]",
-                    ].join(" ")}
-                  >
-                    {hasSchedule && (
-                      <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-amber-200 shadow-[0_0_8px_rgba(251,191,36,0.55)]" />
-                    )}
-                    <span className="text-[9px] font-semibold">{day.label}</span>
-                    <span className="mt-0.5 text-sm font-medium leading-none">{day.day}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="relative mt-3 flex flex-1 flex-col rounded-[1.1rem] border border-white/7 bg-black/18 p-2.5">
-              <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="font-semibold text-white">
-                  {selectedDay ? `${selectedDay.label}요일 일정` : "이번주 일정"}
-                </span>
-                <span className="text-stone-400">
-                  {selectedDay ? parseLocalDate(selectedDay.key).toLocaleDateString("ko-KR") : ""}
-                </span>
-              </div>
-
-              {primarySchedule ? (
-                <div className="mt-2 flex flex-1 flex-col justify-between rounded-[1rem] border border-amber-200/14 bg-[linear-gradient(135deg,rgba(59,41,18,0.86),rgba(29,22,15,0.96))] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-base font-semibold text-white">
-                        {primarySchedule.raid_name}
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-300">
-                        <span>{primarySchedule.difficulty || "노말"}</span>
-                        <span className="text-stone-600">·</span>
-                        <span>{primarySchedule.type || "raid"}</span>
-                        {selectedSchedules.length > 1 && (
-                          <>
-                            <span className="text-stone-600">·</span>
-                            <span>+{selectedSchedules.length - 1}건 더 있음</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-base font-semibold text-amber-50">
-                      {primarySchedule.raid_time || "--:--"}
-                    </div>
-                  </div>
-                  <div className="mt-2 text-[10px] text-stone-400">
-                    {selectedSchedules.length > 1
-                      ? `이 날 등록된 레이드가 ${selectedSchedules.length}건 있습니다.`
-                      : "등록된 레이드 정보를 확인하세요."}
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-3 flex flex-1 items-center justify-center rounded-[1rem] border border-dashed border-white/10 bg-white/[0.03] px-4 text-center text-sm text-stone-400">
-                  등록된 레이드 일정이 없습니다.
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: 18 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.76, delay: 0.1 }}
-          className="relative hidden h-full xl:block"
-        >
-          <div className="absolute inset-0 rounded-[2rem] bg-amber-300/8 blur-3xl" />
-          <div className="relative flex h-full min-h-[148px] flex-col overflow-hidden rounded-[1.85rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-3 backdrop-blur-2xl shadow-[0_22px_52px_rgba(0,0,0,0.24)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(246,205,127,0.12),transparent_46%)]" />
-            <div className="relative flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">
-                  Overview
-                </div>
-                <div className="mt-1 text-lg font-semibold text-white">
-                  {getDisplayGuildName(settings?.guild_name)}
-                </div>
-              </div>
-              <div className="rounded-xl border border-amber-200/12 bg-amber-300/[0.08] px-2.5 py-1.5 text-[11px] font-medium text-amber-100">
-                Live
-              </div>
-            </div>
-
-            <div className="relative mt-3 grid grid-cols-3 gap-1.5">
-              <button
-                type="button"
-                onClick={onNavigateToNotices}
-                className="rounded-[1rem] border border-white/7 bg-white/[0.035] p-2.5 hover:border-amber-200/30 hover:bg-amber-300/[0.06] transition-all cursor-pointer text-left"
-                title="게시판 공지 탭으로 이동"
-              >
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-                  공지
-                </div>
-                <div className="mt-1 text-lg font-semibold text-amber-50">{noticeCount}</div>
-              </button>
-              <div className="rounded-[1rem] border border-white/7 bg-white/[0.035] p-2.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-                  고정
-                </div>
-                <div className="mt-1 text-lg font-semibold text-amber-50">{pinnedCount}</div>
-              </div>
-              <div className="rounded-[1rem] border border-white/7 bg-white/[0.035] p-2.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-                  다음 일정
-                </div>
-                <div className="mt-1 truncate text-sm font-semibold text-white">{heroStats.nextRaidLabel}</div>
-              </div>
-            </div>
-
-            <div className="relative mt-2.5 rounded-[1.2rem] border border-white/8 bg-black/18 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
-                Next Raid
-              </div>
-              <div className="mt-1.5 truncate text-sm font-semibold text-white">{heroStats.nextRaidLabel}</div>
-              <div className="mt-1 text-xs text-stone-400">
-                {heroStats.nextRaidDate || "예정된 일정이 없습니다."}
-              </div>
-            </div>
-
-            <div className="relative mt-2.5 flex-1 rounded-[1.2rem] border border-white/8 bg-black/18 p-3">
-              <div className="flex items-center justify-between gap-2">
+          {/* ── LEFT: 이번주 레이드 + 오늘 일정 ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.05 }}
+            className="space-y-4"
+          >
+            {/* 이번주 요일 탭 */}
+            <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
+              <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3.5">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
-                    다음 7일 일정
-                  </div>
-                  <div className="mt-1.5 text-sm font-semibold text-white">{heroStats.upcomingRaids}건</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">Weekly Raid Schedule</div>
+                  <div className="mt-0.5 text-base font-semibold text-white">이번 주 레이드 일정</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={onOpenRaidCalendar}
-                  className="inline-flex items-center gap-2 rounded-xl border border-amber-200/12 bg-amber-300/[0.08] px-2.5 py-1.5 text-[11px] font-medium text-amber-50 transition hover:border-amber-100/22 hover:bg-amber-300/[0.12]"
-                >
-                  <CalendarDays size={14} />
-                  월별 일정
+                <button onClick={onOpenRaidCalendar}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200/12 bg-amber-300/[0.08] px-3 py-1.5 text-xs font-semibold text-amber-100 transition-all hover:border-amber-100/22 hover:bg-amber-300/[0.12]">
+                  <CalendarDays size={13} /> 월별 일정
                 </button>
               </div>
+
+              {/* 요일 선택 바 */}
+              <div className="grid grid-cols-7 gap-1.5 p-3">
+                {currentWeekDays.map((day) => {
+                  const hasSchedule = (weeklySchedules[day.key]?.length || 0) > 0;
+                  const isSelected = selectedDay?.key === day.key;
+                  return (
+                    <button key={day.key} onClick={() => setSelectedWeekDate(day.key)}
+                      className={[
+                        "relative flex h-12 flex-col items-center justify-center rounded-xl border transition-all",
+                        isSelected
+                          ? "border-amber-200/35 bg-amber-300/[0.16] text-white shadow-[0_0_0_1px_rgba(245,197,92,0.12)_inset]"
+                          : hasSchedule
+                          ? "border-amber-200/18 bg-amber-300/[0.08] text-amber-50 hover:border-amber-100/26"
+                          : "border-white/7 bg-white/[0.03] text-slate-300 hover:border-white/10",
+                      ].join(" ")}>
+                      {hasSchedule && <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-amber-200 shadow-[0_0_6px_rgba(251,191,36,0.5)]" />}
+                      <span className="text-[9px] font-semibold">{day.label}</span>
+                      <span className="mt-0.5 text-sm font-semibold leading-none">{day.day}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 선택된 날 일정 목록 */}
+              <div className="px-3 pb-3">
+                {selectedSchedules.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-5 text-center text-sm text-slate-500">
+                    {selectedDay?.isToday ? "오늘 등록된 레이드 일정이 없습니다." : "이 날 등록된 레이드 일정이 없습니다."}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedSchedules.map((raid: any) => {
+                      const status = getRaidStatusBadge(raid);
+                      return (
+                        <button key={raid.id} onClick={() => onRaidSearch?.(raid)}
+                          className="w-full rounded-2xl border border-white/[0.07] bg-white/[0.03] px-4 py-3 text-left transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.05]">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-white truncate">{raid.raid_name}</span>
+                                {raid.difficulty && <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-slate-400 shrink-0">{raid.difficulty}</span>}
+                                {raid.experience && <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300 shrink-0">{raid.experience}</span>}
+                              </div>
+                              <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                                <Clock size={10} /> {raid.raid_time}
+                                <span>·</span> {raid.raid_type}
+                              </div>
+                            </div>
+                            <span className={cn("rounded-full border px-2.5 py-1 text-[11px] font-semibold shrink-0", status.cls)}>
+                              {status.label}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
+
+            {/* 다가오는 레이드 목록 */}
+            {upcomingRaids.length > 0 && (
+              <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl">
+                <div className="border-b border-white/[0.06] px-4 py-3.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-300/80">Upcoming</div>
+                  <div className="mt-0.5 text-base font-semibold text-white">예정된 레이드</div>
+                </div>
+                <div className="p-3 space-y-1.5">
+                  {upcomingRaids.map((raid: any) => {
+                    const status = getRaidStatusBadge(raid);
+                    return (
+                      <button key={raid.id} onClick={() => onRaidSearch?.(raid)}
+                        className="flex w-full items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-left transition-all hover:border-amber-200/18 hover:bg-amber-300/[0.04]">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-200/15 bg-amber-300/8 text-[10px] font-bold text-amber-200">
+                          {new Date(raid.raid_date).getDate()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-white">{raid.raid_name}</div>
+                          <div className="text-[11px] text-slate-500">{formatShortDate(raid.raid_date)} · {raid.raid_time}</div>
+                        </div>
+                        <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold shrink-0", status.cls)}>
+                          {status.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </motion.div>
+
+          {/* ── RIGHT: 빠른 실행 + 통계 + 공지 ── */}
+          <motion.div
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.68, delay: 0.08 }}
+            className="space-y-4"
+          >
+            {/* 빠른 실행 */}
+            <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
+              <div className="border-b border-white/[0.06] px-4 py-3.5">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">Quick Access</div>
+                <div className="mt-0.5 text-base font-semibold text-white">빠른 실행</div>
+              </div>
+              <div className="grid grid-cols-3 gap-2 p-3">
+                {[
+                  { icon: <CalendarDays size={18} />, label: "월별 일정", action: onOpenRaidCalendar },
+                  { icon: <Bell size={18} />, label: "공지 보기", action: onNavigateToNotices },
+                  { icon: <Swords size={18} />, label: "레이드 검색", action: () => { const el = document.querySelector<HTMLInputElement>("input[placeholder='레이드 검색...']"); el?.focus(); } },
+                ].map(({ icon, label, action }) => (
+                  <button key={label} onClick={action}
+                    className="flex flex-col items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-3 py-4 text-center text-xs font-semibold text-slate-300 transition-all hover:border-amber-200/25 hover:bg-amber-300/[0.06] hover:text-amber-100">
+                    <span className="text-amber-200">{icon}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 통계 */}
+            <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl">
+              <div className="border-b border-white/[0.06] px-4 py-3.5">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-300/80">Stats</div>
+                <div className="mt-0.5 text-base font-semibold text-white">현황</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 p-3">
+                {[
+                  { label: "길드원", value: heroStats.memberCount, color: "text-amber-200" },
+                  { label: "7일 일정", value: heroStats.upcomingRaids, color: "text-blue-300" },
+                  { label: "공지", value: noticeCount, color: "text-emerald-300" },
+                  { label: "오늘 레이드", value: todayRaids.length, color: "text-violet-300" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3 py-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</div>
+                    <div className={cn("mt-1.5 text-2xl font-semibold", color)}>{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-white/[0.06] px-4 py-3">
+                <div className="text-[10px] text-slate-500 uppercase tracking-widest">다음 레이드</div>
+                <div className="mt-1 truncate text-sm font-semibold text-white">{heroStats.nextRaidLabel}</div>
+                {heroStats.nextRaidDate && (
+                  <div className="mt-0.5 text-xs text-slate-400">{heroStats.nextRaidDate}</div>
+                )}
+              </div>
+            </div>
+
+            {/* 최신 공지 */}
+            {pinnedNotices.length > 0 && (
+              <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl">
+                <div className="border-b border-white/[0.06] px-4 py-3.5">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">Notice</div>
+                  <div className="mt-0.5 text-base font-semibold text-white">최신 공지</div>
+                </div>
+                <div className="p-3 space-y-2">
+                  {pinnedNotices.map((post: any) => (
+                    <button key={post.id} onClick={onNavigateToNotices}
+                      className="w-full rounded-2xl border border-white/[0.06] bg-white/[0.03] px-3.5 py-3 text-left transition-all hover:border-amber-200/18 hover:bg-amber-300/[0.04]">
+                      <div className="flex items-start gap-2">
+                        {post.is_pinned && <Pin size={10} className="mt-0.5 shrink-0 text-amber-400" />}
+                        <span className="text-sm font-semibold text-white line-clamp-1">{post.title}</span>
+                      </div>
+                      <div className="mt-1 text-[11px] text-slate-500">{new Date(post.created_at).toLocaleDateString("ko-KR")}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </div>
       </div>
 
       {/* ── 프로키온의 나침반 위젯 ── */}
@@ -3459,10 +3422,10 @@ const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.22 }}
-            className="relative flex max-h-[88vh] w-full max-w-[1380px] flex-col overflow-hidden rounded-[2rem] border border-white/8 bg-[#120d08]/95 shadow-[0_22px_72px_rgba(2,6,23,0.52)]"
+            className="relative flex max-h-[88vh] w-full max-w-[1380px] flex-col overflow-hidden rounded-[2rem] border border-white/8 bg-[#070d1a]/95 shadow-[0_22px_72px_rgba(2,6,23,0.52)]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/8 bg-[#120d08]/92 px-5 py-4 md:px-6 backdrop-blur-xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/8 bg-[#070d1a]/92 px-5 py-4 md:px-6 backdrop-blur-xl">
               <div>
                 <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-amber-200">
                   Monthly Raid Calendar
@@ -3532,7 +3495,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
   };
 
   return (
-    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-amber-100/10 bg-[linear-gradient(180deg,rgba(16,12,9,0.9),rgba(10,8,6,0.78))] backdrop-blur-2xl shadow-[0_18px_50px_rgba(0,0,0,0.34)]">
+    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-amber-100/10 bg-[linear-gradient(180deg,rgba(7,13,26,0.9),rgba(10,14,24,0.78))] backdrop-blur-2xl shadow-[0_18px_50px_rgba(0,0,0,0.34)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <button
@@ -3617,7 +3580,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout }: any) => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.98 }}
                       transition={{ duration: 0.16 }}
-                      className="absolute right-0 top-[calc(100%+12px)] z-[80] w-64 overflow-hidden rounded-[1.5rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(20,15,11,0.96),rgba(10,8,6,0.94))] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
+                      className="absolute right-0 top-[calc(100%+12px)] z-[80] w-64 overflow-hidden rounded-[1.5rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(7,13,26,0.96),rgba(10,8,6,0.94))] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
                     >
                       <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] p-3">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
@@ -3794,7 +3757,7 @@ const SectionPanel = ({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <div className="bg-[#0f172a]/80 border border-white/10 rounded-[2rem] p-6 md:p-8">
+  <div className="bg-[#0a0e18]/80 border border-white/10 rounded-[2rem] p-6 md:p-8">
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
       <div>
         <h3 className="text-2xl font-semibold tracking-tight">{title}</h3>
@@ -5658,9 +5621,51 @@ const RaidDetailModal = ({
     } catch { showToast("일정 삭제 실패", "error"); }
   };
 
+  const [completingRaid, setCompletingRaid] = useState(false);
+  const handleCompleteRaid = async () => {
+    if (profile?.role !== "admin") { showToast("관리자만 완료 처리할 수 있어.", "error"); return; }
+    if (parts.length === 0) { showToast("참여자가 없어서 완료 처리할 수 없어.", "error"); return; }
+    if (!confirm(`레이드 완료 처리 후 참여자 ${parts.length}명에게 5포인트씩 지급합니다. 진행할까요?`)) return;
+    setCompletingRaid(true);
+    try {
+      const client = getSupabaseOrThrow();
+      // 참여자 character_name으로 guild_members에서 user_id 조회
+      const charNames = parts.map((p: any) => String(p.character_name || "").trim()).filter(Boolean);
+      let awardCount = 0;
+      for (const charName of charNames) {
+        try {
+          const { data: memberData } = await client
+            .from("guild_members")
+            .select("user_id, owner_id")
+            .eq("character_name", charName)
+            .maybeSingle();
+          const userId = memberData?.user_id || memberData?.owner_id;
+          if (userId) {
+            const { error: ptErr } = await client.rpc("add_points", {
+              p_user_id: userId,
+              p_points: 5,
+              p_type: "raid_complete",
+            });
+            if (!ptErr) awardCount++;
+          }
+        } catch (e) {
+          console.error("point award error for", charName, e);
+        }
+      }
+      // 레이드 완료 표시
+      await client.from("raid_schedules").update({ is_completed: true }).eq("id", raid.id);
+      showToast(`레이드 완료! ${awardCount}명에게 5포인트 지급 완료 🎉`, "success");
+      onRefresh();
+    } catch (e: any) {
+      showToast(e?.message || "완료 처리 실패", "error");
+    } finally {
+      setCompletingRaid(false);
+    }
+  };
+
   return (
     <ModalFrame onClose={onClose}>
-      <div className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#0a0806]/96 shadow-[0_40px_120px_rgba(0,0,0,0.7)] backdrop-blur-2xl">
+      <div className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#070d1a]/96 shadow-[0_40px_120px_rgba(0,0,0,0.7)] backdrop-blur-2xl">
         {/* 배경 그라디언트 */}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,180,60,0.13),transparent_42%)]" />
@@ -6111,6 +6116,21 @@ const RaidDetailModal = ({
               >
                 참여하기
               </button>
+            )}
+            {profile?.role === "admin" && !raid.is_completed && (
+              <button
+                onClick={handleCompleteRaid}
+                disabled={completingRaid}
+                className="flex items-center gap-1.5 rounded-[1.2rem] border border-emerald-400/25 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-300 transition-all hover:bg-emerald-400/18 disabled:opacity-50"
+              >
+                <Trophy size={14} />
+                {completingRaid ? "처리 중..." : "레이드 완료 (+5P)"}
+              </button>
+            )}
+            {profile?.role === "admin" && raid.is_completed && (
+              <div className="flex items-center gap-1.5 rounded-[1.2rem] border border-emerald-400/20 bg-emerald-400/8 px-4 py-3 text-sm font-semibold text-emerald-400">
+                <Trophy size={14} /> 완료된 레이드
+              </div>
             )}
             {profile?.role === "admin" && (
               <button
@@ -6567,6 +6587,22 @@ const ModalFrame = ({
 
 const PointEconomyManager = ({ settings, setSettings }: any) => {
   const pointSettings = normalizePointRateSettings(settings?.point_rate_settings);
+  const [resettingPoints, setResettingPoints] = useState(false);
+
+  const handleResetAllPoints = async () => {
+    if (!confirm("⚠️ 전체 길드원의 포인트를 0으로 초기화합니다.\n이 작업은 되돌릴 수 없습니다. 진행할까요?")) return;
+    setResettingPoints(true);
+    try {
+      const client = getSupabaseOrThrow();
+      const { error } = await client.from("profiles").update({ points: 0, passive_points_today: 0 });
+      if (error) { showToast(error.message, "error"); return; }
+      showToast("전체 포인트 초기화 완료 ✅", "success");
+    } catch (e: any) {
+      showToast(e?.message || "초기화 실패", "error");
+    } finally {
+      setResettingPoints(false);
+    }
+  };
 
   const setValue = (patch: any) => {
     setSettings((prev: any) => ({
@@ -6607,7 +6643,7 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
     <div className="space-y-8">
       <SectionPanel title="시간당 포인트 설정" description="무기 등급별 기본 포인트와 5강 단위 추가 포인트를 전부 관리자 페이지에서 설정해.">
         <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
-          <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-4">
+          <div className="rounded-[2rem] border border-white/10 bg-[#0a0e18] p-6 space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <label className="text-xs text-slate-400 mb-2 block">시스템 사용 여부</label>
@@ -6632,7 +6668,15 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
                 />
               ))}
             </div>
-            <div className="flex justify-end">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <button
+                onClick={handleResetAllPoints}
+                disabled={resettingPoints}
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl border border-rose-400/25 bg-rose-400/10 font-semibold text-rose-300 hover:bg-rose-400/18 transition-all disabled:opacity-50"
+              >
+                <Trash2 size={15} />
+                {resettingPoints ? "초기화 중..." : "전체 포인트 초기화"}
+              </button>
               <button onClick={handleSave} className="px-6 py-3 rounded-2xl bg-amber-500 font-semibold">포인트 경제 저장</button>
             </div>
           </div>
@@ -9091,7 +9135,7 @@ const RaidMemoEditModal = ({
     onClose();
   };
 
-  const panelBg = isLight ? "bg-[#fdfaf4] border-amber-200/40" : "bg-[#0e0b07]/97 border-white/10";
+  const panelBg = isLight ? "bg-[#fdfaf4] border-amber-200/40" : "bg-[#070d1a]/97 border-white/10";
   const inputCl = isLight
     ? "border-amber-200/40 bg-white/80 text-[#1a1208] placeholder-stone-400 focus:border-amber-400/50"
     : "border-white/10 bg-black/40 text-white placeholder-stone-600 focus:border-amber-400/30";
@@ -9281,7 +9325,7 @@ const RaidMemoViewModal = ({
 }) => {
   const { theme } = useTheme();
   const isLight = theme === "light";
-  const panelBg = isLight ? "bg-[#fdfaf4] border-amber-200/40" : "bg-[#0e0b07]/97 border-white/10";
+  const panelBg = isLight ? "bg-[#fdfaf4] border-amber-200/40" : "bg-[#070d1a]/97 border-white/10";
 
   return (
     <motion.div
@@ -10429,6 +10473,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
   }, [bestPointCharacter]);
 
   const reconcilePassivePoints = useCallback(async (reason: "boot" | "myroom" | "interval" | "focus" = "interval") => {
+    // 자동 포인트 적립 비활성화 — 레이드 완료 보상 방식으로 전환
+    return;
     if (!user?.id || passiveCatchupLockRef.current) return;
     if (!pointRateSettings.enabled || !bestPointCharacter || pointPerTick <= 0) return;
 
@@ -11847,7 +11893,7 @@ const RankingPage = ({ user, profile }: any) => {
         const myRow = rows.find((m: any) => (m.id || m.profile_id) === user.id);
         return (
           <div className="mt-8 sticky bottom-4 z-10">
-            <div className="rounded-2xl border border-amber-400/40 bg-[#0d0a06]/90 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl p-5 flex justify-between items-center">
+            <div className="rounded-2xl border border-amber-400/40 bg-[#070d1a]/90 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl p-5 flex justify-between items-center">
               <div className="flex items-center gap-5">
                 <div className="text-xl font-semibold w-12 text-center text-amber-300">#{myRank}</div>
                 <div>
@@ -12681,7 +12727,7 @@ const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
   const totalForBand = bandCounts.reduce((s, b) => s + b.count, 0);
 
   return (
-    <div className="mb-10 rounded-[2rem] border border-amber-400/15 bg-gradient-to-br from-[#0e0b07]/95 to-[#0a0807]/95 overflow-hidden">
+    <div className="mb-10 rounded-[2rem] border border-amber-400/15 bg-gradient-to-br from-[#070d1a]/95 to-[#0a0807]/95 overflow-hidden">
       {/* 헤더 */}
       <button
         className="w-full flex items-center justify-between px-6 py-4 hover:bg-white/[0.02] transition-all"
@@ -13188,9 +13234,9 @@ const GuildMembersPage = () => {
             onChange={(e) => setClassFilter(e.target.value)}
             className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30 transition-all appearance-none cursor-pointer min-w-[140px]"
           >
-            <option value="all" className="bg-[#0d0a06]">직업 전체</option>
+            <option value="all" className="bg-[#070d1a]">직업 전체</option>
             {availableClasses.map((cls) => (
-              <option key={cls} value={cls} className="bg-[#0d0a06]">{cls}</option>
+              <option key={cls} value={cls} className="bg-[#070d1a]">{cls}</option>
             ))}
           </select>
         )}
@@ -14061,7 +14107,7 @@ const PointShopPage = ({ user, profile }: any) => {
         return (
           <div
             key={item.id}
-            className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
+            className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0a0e18] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
           >
             <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: cardBackground }} />
             <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: auraBackground }} />
@@ -14213,7 +14259,7 @@ const PointShopPage = ({ user, profile }: any) => {
               return (
                 <div
                   key={product.id}
-                  className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
+                  className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0a0e18] p-5 shadow-[0_20px_60px_rgba(0,0,0,0.28)]"
                 >
                   <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(214,164,78,0.12), rgba(76,29,149,0.3) 52%, rgba(2,6,23,0.96))" }} />
                   <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: "radial-gradient(circle at top right, rgba(250,204,21,0.18), transparent 42%)" }} />
@@ -14321,7 +14367,7 @@ const PointShopPage = ({ user, profile }: any) => {
           </div>
 
           {drawSession && (
-            <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6">
+            <div className="rounded-[2rem] border border-white/10 bg-[#0a0e18] p-6">
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.24em] text-amber-200 font-semibold">Latest Draw Result</div>
@@ -14789,7 +14835,7 @@ const AdminPointShopManager = () => {
       {productAdminTab === "badge" ? (
       <>
       <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
-        <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6">
+        <div className="rounded-[2rem] border border-white/10 bg-[#0a0e18] p-6 space-y-6">
           <div>
             <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-amber-200">Point Shop Item Builder</div>
             <div className="mt-2 text-2xl font-semibold">포인트샵 상품 생성</div>
@@ -14946,7 +14992,7 @@ const AdminPointShopManager = () => {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-[#0b1020] p-5 relative overflow-hidden">
+          <div className="rounded-[2rem] border border-white/10 bg-[#0a0e18] p-5 relative overflow-hidden">
             <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: previewCardBackground }} />
             <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: previewAuraBackground }} />
             <div className="relative z-10">
@@ -14992,7 +15038,7 @@ const AdminPointShopManager = () => {
               {items.filter((item) => item.reward_type === "badge").map((item) => {
                 const badgeTheme = getBadgeVisualTheme(item);
                 return (
-                  <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-[#0b1020] p-5 relative overflow-hidden">
+                  <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-[#0a0e18] p-5 relative overflow-hidden">
                     <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: getPointShopCardBackground(item, badgeTheme) }} />
                     <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: getPointShopAuraBackground(item, badgeTheme) }} />
                     <div className="relative z-10 flex items-start justify-between gap-4">
@@ -15037,7 +15083,7 @@ const AdminPointShopManager = () => {
       </>
       ) : (
       <div className="grid xl:grid-cols-[0.95fr,1.05fr] gap-6">
-        <div className={cn("rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6", productAdminTab !== "weapon_parts" && "hidden")}>
+        <div className={cn("rounded-[2rem] border border-white/10 bg-[#0a0e18] p-6 space-y-6", productAdminTab !== "weapon_parts" && "hidden")}>
           <div>
             <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-amber-200">Weapon Part Builder</div>
             <div className="mt-2 text-2xl font-semibold">장비 파츠 [무기] 등록</div>
@@ -15115,7 +15161,7 @@ const AdminPointShopManager = () => {
         </div>
 
         <div className="space-y-6">
-          <div className={cn("rounded-[2rem] border border-white/10 bg-[#0b1020] p-6 space-y-6", productAdminTab !== "gacha" && "hidden")}>
+          <div className={cn("rounded-[2rem] border border-white/10 bg-[#0a0e18] p-6 space-y-6", productAdminTab !== "gacha" && "hidden")}>
             <div>
               <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-amber-200">Weapon Gacha Builder</div>
               <div className="mt-2 text-2xl font-semibold">무기 가챠 상품 생성</div>
@@ -15230,7 +15276,7 @@ const AdminPointShopManager = () => {
               {gachaProducts.map((item: any) => {
                 const rewards = gachaRewardMap[String(item.id)] || [];
                 return (
-                  <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-[#0b1020] p-5">
+                  <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-[#0a0e18] p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
