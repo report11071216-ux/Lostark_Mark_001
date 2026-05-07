@@ -5962,6 +5962,36 @@ const RaidDetailModal = ({
       // 레이드 완료 표시
       await client.from("raid_schedules").update({ is_completed: true }).eq("id", raid.id);
       showToast(`레이드 완료! ${awardCount}명에게 5포인트 지급 완료 🎉`, "success");
+
+      // ── Discord 레이드 완료 포인트 지급 알림 ──
+      try {
+        const dealerList  = parts.filter((p: any) => p.position === "딜러")  .map((p: any) => p.character_name);
+        const supportList = parts.filter((p: any) => p.position === "서포터").map((p: any) => p.character_name);
+        const otherList   = parts.filter((p: any) => p.position !== "딜러" && p.position !== "서포터").map((p: any) => p.character_name);
+        const fields = [
+          { name: "📅 일정",      value: `${raid.raid_date || ""} ${raid.raid_time || ""}`.trim() || "-", inline: true },
+          { name: "⚔️ 난이도",   value: [raid.difficulty, raid.experience].filter(Boolean).join(" · ") || "노말", inline: true },
+          { name: "🎁 포인트 지급", value: `${awardCount}명 × 5P = **총 ${awardCount * 5}P** 지급`, inline: false },
+          ...(dealerList.length  > 0 ? [{ name: `⚔️ 딜러 (${dealerList.length}명)`,  value: dealerList.join(", "),  inline: false }] : []),
+          ...(supportList.length > 0 ? [{ name: `🛡️ 서포터 (${supportList.length}명)`, value: supportList.join(", "), inline: false }] : []),
+          ...(otherList.length   > 0 ? [{ name: `👤 기타 (${otherList.length}명)`,     value: otherList.join(", "),   inline: false }] : []),
+        ];
+        void fetch("/api/discord", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            target: "raid",
+            embeds: [{
+              title:     `✅ ${raid.raid_name} 레이드 완료!`,
+              color:     0x57f287,
+              fields,
+              footer:    { text: "레이드 완료 · 포인트 지급 알림" },
+              timestamp: new Date().toISOString(),
+            }],
+          }),
+        }).catch(() => {});
+      } catch { /* Discord 전송 실패는 무시 */ }
+
       onRefresh();
     } catch (e: any) {
       showToast(e?.message || "완료 처리 실패", "error");
@@ -11716,6 +11746,38 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
 
     if (!error) {
       showToast("캐릭터 추가 완료", "success");
+
+      // ── Discord 신규 가입 환영 알림 (첫 번째 캐릭터 등록 시에만) ──
+      const isFirstCharacter = characters.length === 0;
+      if (isFirstCharacter) {
+        try {
+          const roleEmoji = roleHint === "서포터" ? "🛡️" : "⚔️";
+          const guildName = profile?.guild_name || "쁘밍 길드";
+          void fetch("/api/discord", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              target: "welcome",
+              embeds: [{
+                title:       "🎉 새 길드원이 합류했습니다!",
+                description: `**${profile?.nickname || characterName}** 님이 ${guildName}에 합류했어요. 환영합니다!`,
+                color:       0x5865f2,
+                fields: [
+                  { name: `${roleEmoji} 캐릭터명`, value: characterName,                                     inline: true  },
+                  { name: "🎭 클래스",              value: className,                                         inline: true  },
+                  { name: "📊 아이템레벨",           value: itemLevel  ? `${itemLevel}`  : "미입력",          inline: true  },
+                  { name: "🏹 역할",                value: roleHint,                                          inline: true  },
+                  ...(mbti ? [{ name: "🧠 MBTI", value: mbti.toUpperCase(), inline: true }] : []),
+                ],
+                thumbnail: imageUrl ? { url: imageUrl } : undefined,
+                footer:    { text: "길드 신규 가입 환영" },
+                timestamp: new Date().toISOString(),
+              }],
+            }),
+          }).catch(() => {});
+        } catch { /* Discord 전송 실패는 무시 */ }
+      }
+
       setCharacterName("");
       setClassName("");
       setItemLevel("");
