@@ -6663,60 +6663,208 @@ const PointEconomyManager = ({ settings, setSettings }: any) => {
 };
 
 
-const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
-  const [adminTab, setAdminTab] = useState("레이드");
+const AdminDashboard = () => {
+  const [stats, setStats] = useState({
+    totalUsers: 0, totalChars: 0, todayAttendance: 0,
+    weeklyNewUsers: 0, totalPoints: 0, weeklyRaids: 0,
+    weeklyParticipants: 0,
+  });
+  const [recentUsers, setRecentUsers] = useState<any[]>([]);
+  const [topPoints, setTopPoints]     = useState<any[]>([]);
+  const [loading, setLoading]         = useState(true);
 
-  const tabs = [
-    "레이드",
-    "가디언 토벌",
-    "클래스",
-    "길드 설정",
-    "공지 관리",
-    "캐릭터 관리",
-    "레이드 관리",
-    "회원 관리",
-    "포인트 경제 관리",
-    "포인트샵 관리",
-  ];
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const today = new Date().toISOString().split("T")[0];
+      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+      const [usersR, charsR, raidsR, partsR] = await Promise.allSettled([
+        supabase.from("profiles").select("id, nickname, points, last_attendance, created_at, rank_name").order("created_at", { ascending: false }),
+        supabase.from("guild_members").select("id", { count: "exact", head: true }),
+        supabase.from("raid_schedules").select("id", { count: "exact", head: true }).gte("created_at", weekAgo),
+        supabase.from("raid_participants").select("character_name").gte("created_at", weekAgo),
+      ]);
+      const users = usersR.status === "fulfilled" ? (usersR.value.data || []) : [];
+      const charCount = charsR.status === "fulfilled" ? (charsR.value.count || 0) : 0;
+      const raidCount = raidsR.status === "fulfilled" ? (raidsR.value.count || 0) : 0;
+      const parts     = partsR.status === "fulfilled" ? (partsR.value.data || []) : [];
+      const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      setStats({
+        totalUsers: users.length,
+        totalChars: charCount,
+        todayAttendance: users.filter((u: any) => u.last_attendance === today).length,
+        weeklyNewUsers: users.filter((u: any) => new Date(u.created_at) >= new Date(weekAgo)).length,
+        totalPoints: users.reduce((s: number, u: any) => s + Number(u.points || 0), 0),
+        weeklyRaids: raidCount,
+        weeklyParticipants: new Set(parts.map((p: any) => p.character_name)).size,
+      });
+      setRecentUsers(users.slice(0, 5));
+      setTopPoints([...users].sort((a: any, b: any) => Number(b.points||0) - Number(a.points||0)).slice(0, 5));
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const StatCard = ({ label, value, sub, color }: any) => (
+    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-3">{label}</div>
+      <div className={cn("text-3xl font-bold", color || "text-white")}>{loading ? "—" : value}</div>
+      {sub && <div className="text-xs text-stone-600 mt-1">{sub}</div>}
+    </div>
+  );
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-6xl mx-auto p-8 text-left">
-      <div className="flex items-center gap-4 mb-10">
-        <Settings className="text-amber-400" size={32} />
-        <h2 className="text-4xl font-semibold uppercase tracking-tight">
-          Admin Console
-        </h2>
+    <div className="space-y-8">
+      <div>
+        <div className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-4">핵심 지표</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="전체 회원" value={stats.totalUsers} sub="가입자 수" color="text-white" />
+          <StatCard label="등록 캐릭터" value={stats.totalChars} sub="길드원 캐릭터" color="text-amber-300" />
+          <StatCard label="오늘 출석" value={stats.todayAttendance} sub={`출석률 ${stats.totalUsers ? Math.round(stats.todayAttendance/stats.totalUsers*100) : 0}%`} color="text-emerald-300" />
+          <StatCard label="이번 주 신규" value={stats.weeklyNewUsers} sub="7일 이내 가입" color="text-sky-300" />
+        </div>
       </div>
-
-      <div className="flex gap-4 mb-10 overflow-x-auto pb-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setAdminTab(tab)}
-            className={`whitespace-nowrap px-6 py-2 rounded-full text-xs font-semibold tracking-widest uppercase transition-all ${
-              adminTab === tab ? "bg-amber-500 text-white" : "bg-white/5 text-slate-500 hover:bg-white/10"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      <div>
+        <div className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-4">레이드 & 포인트</div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <StatCard label="주간 레이드 수" value={stats.weeklyRaids} sub="이번 주 생성" color="text-violet-300" />
+          <StatCard label="주간 참여자" value={stats.weeklyParticipants} sub="고유 캐릭터 수" color="text-rose-300" />
+          <StatCard label="포인트 총량" value={stats.totalPoints.toLocaleString()} sub="전체 유통 포인트" color="text-amber-300" />
+        </div>
       </div>
-
-      <div className="bg-[#111] border border-white/5 rounded-[2.5rem] p-10">
-        {adminTab === "레이드" && <RaidContentEditor isRaid />}
-        {adminTab === "가디언 토벌" && <RaidContentEditor isRaid={false} />}
-        {adminTab === "클래스" && <ClassContentEditor />}
-        {adminTab === "길드 설정" && <GuildSettingsEditor settings={settings} setSettings={setSettings} />}
-        {adminTab === "공지 관리" && <AdminNoticeManager user={user} profile={profile} />}
-        {adminTab === "캐릭터 관리" && <AdminCharacterManager />}
-        {adminTab === "레이드 관리" && <AdminRaidManager />}
-        {adminTab === "회원 관리" && <AdminUserManager />}
-        {adminTab === "포인트 경제 관리" && <PointEconomyManager settings={settings} setSettings={setSettings} />}
-        {adminTab === "포인트샵 관리" && <AdminPointShopManager />}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+          <div className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-4">최근 가입</div>
+          {loading ? <div className="text-stone-600 text-sm">불러오는 중...</div> : (
+            <div className="space-y-2">
+              {recentUsers.map((u: any) => (
+                <div key={u.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                  <div>
+                    <div className="text-sm font-semibold text-white">{u.nickname || "—"}</div>
+                    <div className="text-[10px] text-stone-500">{u.rank_name || "—"}</div>
+                  </div>
+                  <div className="text-[10px] text-stone-600">{new Date(u.created_at).toLocaleDateString("ko-KR")}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-5">
+          <div className="text-xs font-bold uppercase tracking-widest text-stone-500 mb-4">포인트 TOP 5</div>
+          {loading ? <div className="text-stone-600 text-sm">불러오는 중...</div> : (
+            <div className="space-y-2">
+              {topPoints.map((u: any, i: number) => (
+                <div key={u.id} className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-bold text-amber-400/60 w-4">{i+1}</span>
+                    <div className="text-sm font-semibold text-white">{u.nickname || "—"}</div>
+                  </div>
+                  <div className="text-sm font-bold text-amber-300">{Number(u.points||0).toLocaleString()}P</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 };
+
+const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
+  const [adminTab, setAdminTab] = useState("dashboard");
+
+  const NAV_GROUPS = [
+    {
+      label: "개요",
+      items: [{ id: "dashboard", icon: "📊", label: "대시보드" }],
+    },
+    {
+      label: "콘텐츠",
+      items: [
+        { id: "raid",     icon: "⚔️",  label: "레이드" },
+        { id: "guardian", icon: "🛡️", label: "가디언 토벌" },
+        { id: "class",    icon: "🎭", label: "클래스" },
+      ],
+    },
+    {
+      label: "길드",
+      items: [
+        { id: "characters", icon: "👤", label: "캐릭터 관리" },
+        { id: "raids_mgr",  icon: "📅", label: "레이드 관리" },
+        { id: "users",      icon: "👥", label: "회원 관리" },
+        { id: "notice",     icon: "📢", label: "공지 관리" },
+      ],
+    },
+    {
+      label: "시스템",
+      items: [
+        { id: "guild_settings", icon: "⚙️",  label: "길드 설정" },
+        { id: "point_economy",  icon: "💰", label: "포인트 경제" },
+        { id: "point_shop",     icon: "🛒", label: "포인트샵" },
+      ],
+    },
+  ];
+
+  const currentLabel = NAV_GROUPS.flatMap(g => g.items).find(i => i.id === adminTab)?.label || "";
+
+  return (
+    <div className="max-w-7xl mx-auto py-16 px-6 min-h-screen">
+      {/* 헤더 */}
+      <div className="flex items-center gap-3 mb-8">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-400/15 border border-amber-400/20">
+          <Settings size={20} className="text-amber-300" />
+        </div>
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-300/70">Admin Console</div>
+          <div className="text-xl font-bold text-white">{currentLabel}</div>
+        </div>
+      </div>
+
+      <div className="flex gap-6">
+        {/* 사이드바 */}
+        <div className="w-52 shrink-0">
+          <div className="sticky top-6 space-y-5">
+            {NAV_GROUPS.map(group => (
+              <div key={group.label}>
+                <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-stone-600 px-3 mb-1.5">{group.label}</div>
+                <div className="space-y-0.5">
+                  {group.items.map(item => (
+                    <button key={item.id} onClick={() => setAdminTab(item.id)}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all text-left",
+                        adminTab === item.id
+                          ? "bg-amber-500/15 text-amber-300 border border-amber-400/25"
+                          : "text-stone-400 hover:bg-white/[0.05] hover:text-white"
+                      )}>
+                      <span className="text-base leading-none">{item.icon}</span>
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 메인 컨텐츠 */}
+        <div className="flex-1 min-w-0 rounded-[2rem] border border-white/6 bg-[#0d0d0d] p-8">
+          {adminTab === "dashboard"      && <AdminDashboard />}
+          {adminTab === "raid"           && <RaidContentEditor isRaid />}
+          {adminTab === "guardian"       && <RaidContentEditor isRaid={false} />}
+          {adminTab === "class"          && <ClassContentEditor />}
+          {adminTab === "guild_settings" && <GuildSettingsEditor settings={settings} setSettings={setSettings} />}
+          {adminTab === "notice"         && <AdminNoticeManager user={user} profile={profile} />}
+          {adminTab === "characters"     && <AdminCharacterManager />}
+          {adminTab === "raids_mgr"      && <AdminRaidManager />}
+          {adminTab === "users"          && <AdminUserManager />}
+          {adminTab === "point_economy"  && <PointEconomyManager settings={settings} setSettings={setSettings} />}
+          {adminTab === "point_shop"     && <AdminPointShopManager />}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 const GuildSettingsEditor = ({ settings, setSettings }: any) => {
   const uiImages = settings?.point_rate_settings?.ui_images || {};
@@ -8814,6 +8962,172 @@ const Auth = ({ mode, setMode }: any) => {
 // ══════════════════════════════════════════════════════════
 type ArmoryTab = "equipment" | "skills" | "arkgrid" | "gems" | "avatars" | "expedition";
 
+
+// ══════════════════════════════════════════════════════════
+//  RaidMemoPanel — 마이룸 레이드 메모
+// ══════════════════════════════════════════════════════════
+type MemoItem = { id: string; hp_line: string; pattern: string; image_url: string };
+
+const RaidMemoPanel = ({ user }: { user: any }) => {
+  const [raids,       setRaids]       = useState<any[]>([]);
+  const [selectedRaid,setSelectedRaid]= useState<string>("");
+  const [memoItems,   setMemoItems]   = useState<MemoItem[]>([]);
+  const [saving,      setSaving]      = useState(false);
+  const [uploading,   setUploading]   = useState<string | null>(null);
+
+  // 레이드 목록 로드
+  useEffect(() => {
+    supabase.from("contents").select("id, name").eq("category","레이드").order("name")
+      .then(({ data }) => setRaids(data || []));
+  }, []);
+
+  // 선택 레이드 메모 로드
+  useEffect(() => {
+    if (!selectedRaid || !user?.id) return;
+    supabase.from("raid_memos")
+      .select("*").eq("user_id", user.id).eq("raid_name", selectedRaid).maybeSingle()
+      .then(({ data }) => {
+        if (data?.memo_items) {
+          setMemoItems(Array.isArray(data.memo_items) ? data.memo_items : []);
+        } else {
+          setMemoItems([]);
+        }
+      });
+  }, [selectedRaid, user?.id]);
+
+  const newItem = (): MemoItem => ({
+    id: crypto.randomUUID(), hp_line: "", pattern: "", image_url: "",
+  });
+
+  const addItem = () => setMemoItems(p => [...p, newItem()]);
+
+  const updateItem = (id: string, field: keyof MemoItem, value: string) =>
+    setMemoItems(p => p.map(item => item.id === id ? { ...item, [field]: value } : item));
+
+  const removeItem = (id: string) =>
+    setMemoItems(p => p.filter(item => item.id !== id));
+
+  const uploadImage = async (id: string, file: File) => {
+    setUploading(id);
+    try {
+      const client = getSupabaseOrThrow();
+      const ext = file.name.split(".").pop();
+      const path = `raid_memos/${user.id}/${Date.now()}.${ext}`;
+      const { error } = await client.storage.from("images").upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = client.storage.from("images").getPublicUrl(path);
+      updateItem(id, "image_url", publicUrl);
+    } catch (e: any) { showToast("이미지 업로드 실패: " + e.message, "error"); }
+    setUploading(null);
+  };
+
+  const saveMemo = async () => {
+    if (!selectedRaid || !user?.id) return;
+    setSaving(true);
+    const { error } = await supabase.from("raid_memos").upsert(
+      { user_id: user.id, raid_name: selectedRaid, memo_items: memoItems, updated_at: new Date().toISOString() },
+      { onConflict: "user_id,raid_name" }
+    );
+    setSaving(false);
+    if (error) showToast("저장 실패: " + error.message, "error");
+    else showToast("메모 저장 완료!", "success");
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* 레이드 선택 */}
+      <div className="flex items-center gap-3">
+        <select
+          value={selectedRaid}
+          onChange={e => setSelectedRaid(e.target.value)}
+          className="flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-amber-400/30 transition-all"
+        >
+          <option value="">레이드 선택</option>
+          {raids.map((r: any) => (
+            <option key={r.id} value={r.name}>{r.name}</option>
+          ))}
+        </select>
+        {selectedRaid && (
+          <button onClick={saveMemo} disabled={saving}
+            className="shrink-0 rounded-2xl border border-amber-400/30 bg-amber-400/15 px-5 py-3 text-sm font-bold text-amber-200 hover:bg-amber-400/25 disabled:opacity-50 transition-all">
+            {saving ? "저장 중..." : "💾 저장"}
+          </button>
+        )}
+      </div>
+
+      {!selectedRaid && (
+        <div className="rounded-[2rem] border border-dashed border-white/10 py-16 text-center text-stone-500 text-sm">
+          위에서 레이드를 선택해줘
+        </div>
+      )}
+
+      {selectedRaid && (
+        <>
+          {/* 메모 행 목록 */}
+          <div className="space-y-3">
+            {memoItems.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/8 py-10 text-center text-stone-600 text-sm">
+                아래 버튼으로 기믹 메모를 추가해봐
+              </div>
+            )}
+            {memoItems.map((item, idx) => (
+              <div key={item.id} className="rounded-2xl border border-white/8 bg-white/[0.025] p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-400/15 text-[11px] font-bold text-amber-300 shrink-0">
+                    {idx + 1}
+                  </div>
+                  <input
+                    value={item.hp_line}
+                    onChange={e => updateItem(item.id, "hp_line", e.target.value)}
+                    placeholder="HP 구간 (예: 500줄, x줄)"
+                    className="w-40 shrink-0 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold text-amber-200 placeholder:text-stone-600 outline-none focus:border-amber-400/30 transition-all"
+                  />
+                  <textarea
+                    value={item.pattern}
+                    onChange={e => updateItem(item.id, "pattern", e.target.value)}
+                    placeholder="기믹 / 패턴 설명 (예: 협동카운터, 저스트가드)"
+                    rows={2}
+                    className="flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-xs text-white placeholder:text-stone-600 outline-none focus:border-amber-400/30 transition-all resize-none leading-5"
+                  />
+                  <button onClick={() => removeItem(item.id)}
+                    className="shrink-0 flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 text-stone-500 hover:border-rose-400/30 hover:text-rose-300 hover:bg-rose-400/8 transition-all">
+                    <X size={13} />
+                  </button>
+                </div>
+                {/* 이미지 영역 */}
+                <div className="flex items-start gap-3 pl-8">
+                  {item.image_url ? (
+                    <div className="relative group">
+                      <img src={item.image_url} alt="메모 이미지"
+                        className="h-28 rounded-xl object-cover border border-white/10 bg-black/30" />
+                      <button onClick={() => updateItem(item.id, "image_url", "")}
+                        className="absolute -top-2 -right-2 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white text-[10px] shadow">✕</button>
+                    </div>
+                  ) : (
+                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-white/12 bg-black/20 px-4 py-3 text-[11px] text-stone-500 hover:border-amber-400/25 hover:text-amber-300 transition-all">
+                      <ImageIcon size={13} />
+                      {uploading === item.id ? "업로드 중..." : "이미지 첨부"}
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={e => { if (e.target.files?.[0]) uploadImage(item.id, e.target.files[0]); }} />
+                    </label>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 추가 버튼 */}
+          <button onClick={addItem}
+            className="w-full flex items-center justify-center gap-2 rounded-2xl border border-dashed border-white/12 py-3 text-sm font-semibold text-stone-500 hover:border-amber-400/25 hover:text-amber-300 hover:bg-amber-400/[0.04] transition-all">
+            <Plus size={15} /> 기믹 항목 추가
+          </button>
+        </>
+      )}
+    </div>
+  );
+};
+// ── End RaidMemoPanel ─────────────────────────────────────────
+
 const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClose: () => void; onEdit: () => void }) => {
   const [tab, setTab] = useState<ArmoryTab>("equipment");
 
@@ -10657,6 +10971,20 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
             </div>
           </div>
         )}
+
+        {/* ── 레이드 메모 ── */}
+        <div className="mt-8 rounded-[2rem] border border-violet-400/15 bg-violet-400/[0.03] p-6">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-violet-400/20 border border-violet-400/20">
+              <Sparkles size={14} className="text-violet-300" />
+            </div>
+            <div>
+              <div className="text-base font-bold text-white">레이드 메모</div>
+              <div className="text-[11px] text-stone-500">레이드별 기믹/패턴을 HP 구간과 함께 개인 메모로 저장해봐.</div>
+            </div>
+          </div>
+          <RaidMemoPanel user={user} />
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════
