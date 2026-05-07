@@ -5565,6 +5565,26 @@ const RaidDetailModal = ({
   const [allDetails, setAllDetails] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [activeTab, setActiveTab] = useState<"info" | "participants">("info");
+  const [expandedGates, setExpandedGates] = useState<Set<number>>(new Set());
+  const [allExpanded, setAllExpanded] = useState(false);
+
+  const toggleGate = (gateNum: number) => {
+    setExpandedGates(prev => {
+      const next = new Set(prev);
+      if (next.has(gateNum)) next.delete(gateNum);
+      else next.add(gateNum);
+      return next;
+    });
+  };
+  const toggleAllGates = (gateNums: number[]) => {
+    if (allExpanded) {
+      setExpandedGates(new Set());
+      setAllExpanded(false);
+    } else {
+      setExpandedGates(new Set(gateNums));
+      setAllExpanded(true);
+    }
+  };
 
   useEffect(() => {
     if (!user?.id) { setMyCharacterNames([]); return; }
@@ -5856,15 +5876,36 @@ const RaidDetailModal = ({
                 </div>
               )}
 
-              {/* 관문별 상세 정보 */}
+              {/* 관문별 상세 정보 - 아코디언 */}
               {!isAnime && (
-                <div className="space-y-3">
+                <div className="space-y-2">
+                  {/* 섹션 헤더 */}
                   <div className="flex items-center justify-between">
-                    <div className="text-sm font-bold text-white">관문별 상세 정보</div>
-                    {loadingDetails && <div className="text-[11px] text-stone-500 animate-pulse">불러오는 중...</div>}
-                    {!loadingDetails && totalHp > 0 && (
-                      <div className="text-[11px] text-stone-500">총 HP <span className="text-amber-200 font-semibold">{formatLargeNumber(totalHp)}</span></div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-bold text-white">관문별 상세 정보</div>
+                      {loadingDetails && (
+                        <div className="flex items-center gap-1 text-[11px] text-stone-500 animate-pulse">
+                          <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="h-3 w-3 rounded-full border border-amber-400 border-t-transparent" />
+                          불러오는 중
+                        </div>
+                      )}
+                    </div>
+                    {!loadingDetails && (hasNormal || hasHard) && (() => {
+                      const allGateNums = Array.from(new Set([
+                        ...normalDetails.map((d: any) => d.gate_num),
+                        ...hardDetails.map((d: any) => d.gate_num),
+                      ])).sort((a: number, b: number) => a - b);
+                      return (
+                        <button
+                          onClick={() => toggleAllGates(allGateNums)}
+                          className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold text-slate-300 transition-all hover:border-amber-200/25 hover:text-amber-100"
+                        >
+                          <ChevronDown size={12} className={cn("transition-transform", allExpanded && "rotate-180")} />
+                          {allExpanded ? "전체 접기" : "전체 펼치기"}
+                        </button>
+                      );
+                    })()}
                   </div>
 
                   {!loadingDetails && !hasNormal && !hasHard && (
@@ -5874,244 +5915,291 @@ const RaidDetailModal = ({
                     </div>
                   )}
 
-                  {/* ── 노말/하드 나란히 비교 레이아웃 ── */}
+                  {/* 노말/하드 골드 합계 비교 - 항상 표시 (요약 정보) */}
+                  {!loadingDetails && showComparison && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="overflow-hidden rounded-2xl border border-sky-400/20 bg-sky-400/5">
+                        <div className="border-b border-sky-400/15 px-3 py-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300">노말 합계</span>
+                        </div>
+                        <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
+                          {([
+                            { label: "클리어", value: normalClearGold, color: "text-yellow-300" },
+                            { label: "더보기", value: normalMoreGold, color: "text-rose-300" },
+                            { label: "실수령", value: normalGold, color: "text-sky-300" },
+                          ] as any[]).map(({ label, value, color }) => (
+                            <div key={label} className="px-2 py-2 text-center">
+                              <div className="text-[8px] text-stone-500 mb-0.5">{label}</div>
+                              <div className={cn("text-xs font-bold tabular-nums", color)}>{value > 0 ? `${formatLargeNumber(value)} G` : "-"}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-400/5">
+                        <div className="border-b border-amber-400/15 px-3 py-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">하드 합계</span>
+                        </div>
+                        <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
+                          {([
+                            { label: "클리어", value: hardClearGold, color: "text-yellow-300" },
+                            { label: "더보기", value: hardMoreGold, color: "text-rose-300" },
+                            { label: "실수령", value: hardGold, color: "text-amber-300" },
+                          ] as any[]).map(({ label, value, color }) => (
+                            <div key={label} className="px-2 py-2 text-center">
+                              <div className="text-[8px] text-stone-500 mb-0.5">{label}</div>
+                              <div className={cn("text-xs font-bold tabular-nums", color)}>{value > 0 ? `${formatLargeNumber(value)} G` : "-"}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 보상 이미지 */}
+                  {!loadingDetails && rewardImageUrl && (
+                    <div className="overflow-hidden rounded-2xl border border-white/8">
+                      <div className="px-3 py-2 border-b border-white/6 text-[10px] font-bold uppercase tracking-widest text-stone-500">클리어 보상</div>
+                      <img src={rewardImageUrl} alt="클리어 보상" className="w-full object-contain max-h-36 bg-black/20" />
+                    </div>
+                  )}
+
+                  {/* ── 관문 아코디언 ── */}
                   {!loadingDetails && (hasNormal || hasHard) && (() => {
-                    // 관문 수 최대값 기준
                     const gateNums = Array.from(new Set([
-                      ...normalDetails.map(d => d.gate_num),
-                      ...hardDetails.map(d => d.gate_num),
-                    ])).sort((a, b) => a - b);
+                      ...normalDetails.map((d: any) => d.gate_num),
+                      ...hardDetails.map((d: any) => d.gate_num),
+                    ])).sort((a: number, b: number) => a - b);
 
                     return (
-                      <div className="space-y-3">
-                        {/* 노말/하드 골드 합계 비교 헤더 */}
-                        {showComparison && (
-                          <div className="grid grid-cols-2 gap-2">
-                            {/* 노말 합계 */}
-                            <div className="overflow-hidden rounded-2xl border border-sky-400/20 bg-sky-400/5">
-                              <div className="border-b border-sky-400/15 px-3 py-1.5">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300">노말</span>
-                              </div>
-                              <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
-                                {([
-                                  { label:"클리어", value:normalClearGold, color:"text-yellow-300" },
-                                  { label:"더보기 지출", value:normalMoreGold,  color:"text-rose-300" },
-                                  { label:"실수령", value:normalGold,      color:"text-sky-300" },
-                                ] as any[]).map(({ label, value, color }) => (
-                                  <div key={label} className="px-2 py-2 text-center">
-                                    <div className="text-[8px] text-stone-500 mb-0.5">{label}</div>
-                                    <div className={cn("text-xs font-bold tabular-nums", color)}>{value > 0 ? `${formatLargeNumber(value)} G` : "-"}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            {/* 하드 합계 */}
-                            <div className="overflow-hidden rounded-2xl border border-amber-400/20 bg-amber-400/5">
-                              <div className="border-b border-amber-400/15 px-3 py-1.5">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">하드</span>
-                              </div>
-                              <div className="grid grid-cols-3 divide-x divide-white/[0.06]">
-                                {([
-                                  { label:"클리어", value:hardClearGold, color:"text-yellow-300" },
-                                  { label:"더보기 지출", value:hardMoreGold,  color:"text-rose-300" },
-                                  { label:"실수령", value:hardGold,      color:"text-amber-300" },
-                                ] as any[]).map(({ label, value, color }) => (
-                                  <div key={label} className="px-2 py-2 text-center">
-                                    <div className="text-[8px] text-stone-500 mb-0.5">{label}</div>
-                                    <div className={cn("text-xs font-bold tabular-nums", color)}>{value > 0 ? `${formatLargeNumber(value)} G` : "-"}</div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 보상 이미지 */}
-                        {rewardImageUrl && (
-                          <div className="overflow-hidden rounded-2xl border border-white/8">
-                            <div className="px-3 py-2 border-b border-white/6 text-[10px] font-bold uppercase tracking-widest text-stone-500">클리어 보상</div>
-                            <img src={rewardImageUrl} alt="클리어 보상" className="w-full object-contain max-h-40 bg-black/20" />
-                          </div>
-                        )}
-
-                        {/* 관문별 노말/하드 나란히 */}
-                        {gateNums.map(gateNum => {
-                          const nd = normalDetails.find(d => d.gate_num === gateNum);
-                          const hd = hardDetails.find(d => d.gate_num === gateNum);
+                      <div className="space-y-1.5">
+                        {gateNums.map((gateNum: number) => {
+                          const nd = normalDetails.find((d: any) => d.gate_num === gateNum);
+                          const hd = hardDetails.find((d: any) => d.gate_num === gateNum);
                           const refDetail = nd || hd;
                           if (!refDetail) return null;
 
+                          const isOpen = expandedGates.has(gateNum);
                           const gateAttr = String(refDetail.attribute || "").trim();
                           const attrInfo = ATTRIBUTE_ICON[gateAttr] || null;
-                          // 배틀아이템 (노말/하드 통합 중복제거)
                           const gateBattleItems = Array.from(new Set([
-                            ...String(nd?.battle_items || "").split(",").map((s:string) => s.trim()).filter(Boolean),
-                            ...String(hd?.battle_items || "").split(",").map((s:string) => s.trim()).filter(Boolean),
+                            ...String(nd?.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean),
+                            ...String(hd?.battle_items || "").split(",").map((s: string) => s.trim()).filter(Boolean),
                           ]));
 
+                          // 골드 요약 (헤더에 표시)
+                          const normalNet = (Number(nd?.clear_gold) || 0) - (Number(nd?.more_gold) || 0);
+                          const hardNet   = (Number(hd?.clear_gold) || 0) - (Number(hd?.more_gold) || 0);
+
+                          // 공대장 스킬
+                          const skills = [1, 2, 3].map((n: number) => ({
+                            image: refDetail[`raid_skill_${n}_image`] || "",
+                            name:  refDetail[`raid_skill_${n}_name`]  || "",
+                            desc:  refDetail[`raid_skill_${n}_desc`]  || "",
+                          })).filter((s: any) => s.name || s.image || s.desc);
+
+                          const hasDetailContent = gateBattleItems.length > 0 || refDetail.guide || refDetail.mechanics || refDetail.tip || skills.length > 0;
+
                           return (
-                            <div key={gateNum} className="overflow-hidden rounded-[1.3rem] border border-white/8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]">
-                              {/* 관문 헤더 */}
-                              <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/15 text-sm font-bold text-amber-300">
-                                    {gateNum}관
-                                  </div>
+                            <div key={gateNum} className={cn(
+                              "overflow-hidden rounded-[1.3rem] border transition-all duration-200",
+                              isOpen
+                                ? "border-amber-400/20 bg-gradient-to-br from-amber-400/[0.06] to-white/[0.02]"
+                                : "border-white/8 bg-gradient-to-br from-white/[0.04] to-white/[0.02]"
+                            )}>
+                              {/* ── 관문 헤더 (클릭하여 토글) ── */}
+                              <button
+                                onClick={() => toggleGate(gateNum)}
+                                className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                              >
+                                {/* 관문 번호 뱃지 */}
+                                <div className={cn(
+                                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-colors",
+                                  isOpen ? "bg-amber-400/20 text-amber-200" : "bg-white/[0.06] text-slate-300"
+                                )}>
+                                  {gateNum}관
+                                </div>
+
+                                {/* 속성 + 원소 */}
+                                <div className="flex flex-1 flex-wrap items-center gap-2 min-w-0">
                                   {refDetail.element_type && (
-                                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold text-slate-300">{refDetail.element_type}</span>
+                                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 text-[10px] font-semibold text-slate-300">{refDetail.element_type}</span>
                                   )}
                                   {attrInfo && (
-                                    <span className={cn("flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold", attrInfo.bg, attrInfo.color)}>
+                                    <span className={cn("flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold", attrInfo.bg, attrInfo.color)}>
                                       {attrInfo.icon} {gateAttr}
                                     </span>
                                   )}
+                                  {/* 골드 요약 한 줄 */}
+                                  <div className="ml-auto flex items-center gap-2 text-[11px] text-stone-400">
+                                    {showComparison ? (
+                                      <>
+                                        {normalNet > 0 && <span className="text-sky-300 font-semibold">{formatLargeNumber(normalNet)} G</span>}
+                                        {normalNet > 0 && hardNet > 0 && <span className="text-stone-600">/</span>}
+                                        {hardNet > 0 && <span className="text-amber-300 font-semibold">{formatLargeNumber(hardNet)} G</span>}
+                                      </>
+                                    ) : (
+                                      (() => {
+                                        const net = normalNet || hardNet;
+                                        return net > 0 ? <span className="text-yellow-300 font-semibold">{formatLargeNumber(net)} G</span> : null;
+                                      })()
+                                    )}
+                                    {hasDetailContent && !isOpen && (
+                                      <span className="rounded-full border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[9px] text-stone-500">
+                                        상세 보기
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
 
-                              {/* 노말/하드 나란히 수치 비교 */}
-                              {showComparison ? (
-                                <div className="grid grid-cols-2 divide-x divide-white/[0.06]">
-                                  {([
-                                    { label:"노말", d:nd, labelColor:"text-sky-300", borderColor:"border-sky-400/30", bgColor:"bg-sky-400/5" },
-                                    { label:"하드", d:hd, labelColor:"text-amber-300", borderColor:"border-amber-400/30", bgColor:"bg-amber-400/5" },
-                                  ] as any[]).map(({ label, d, labelColor, borderColor, bgColor }) => {
-                                    const clearGold = Number(d?.clear_gold) || 0;
-                                    const moreGold  = Number(d?.more_gold)  || 0;
-                                    const hp        = String(d?.hp || "").trim();
-                                    return (
-                                      <div key={label} className={cn("px-3 py-3 space-y-2", !d && "opacity-40")}>
-                                        <div className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold", borderColor, bgColor, labelColor)}>
-                                          {label}{!d && " · 없음"}
+                                {/* 펼침 아이콘 */}
+                                <ChevronDown
+                                  size={16}
+                                  className={cn("shrink-0 text-stone-500 transition-transform duration-200", isOpen && "rotate-180 text-amber-300")}
+                                />
+                              </button>
+
+                              {/* ── 관문 상세 본문 (접힘/펼침) ── */}
+                              <AnimatePresence initial={false}>
+                                {isOpen && (
+                                  <motion.div
+                                    key={`gate-body-${gateNum}`}
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.22, ease: "easeInOut" }}
+                                    style={{ overflow: "hidden" }}
+                                  >
+                                    <div className="border-t border-white/[0.07] px-4 pb-4 pt-3 space-y-3">
+                                      {/* 노말/하드 수치 비교 */}
+                                      {showComparison ? (
+                                        <div className="grid grid-cols-2 divide-x divide-white/[0.06] rounded-2xl border border-white/8 overflow-hidden">
+                                          {([
+                                            { label: "노말", d: nd, labelColor: "text-sky-300", borderColor: "border-sky-400/30", bgColor: "bg-sky-400/5" },
+                                            { label: "하드", d: hd, labelColor: "text-amber-300", borderColor: "border-amber-400/30", bgColor: "bg-amber-400/5" },
+                                          ] as any[]).map(({ label, d, labelColor, borderColor, bgColor }) => {
+                                            const clearGold = Number(d?.clear_gold) || 0;
+                                            const moreGold  = Number(d?.more_gold)  || 0;
+                                            const hp        = String(d?.hp || "").trim();
+                                            return (
+                                              <div key={label} className={cn("px-3 py-3 space-y-2", !d && "opacity-40")}>
+                                                <div className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold", borderColor, bgColor, labelColor)}>
+                                                  {label}{!d && " · 없음"}
+                                                </div>
+                                                {hp && (
+                                                  <div className="flex items-center justify-between text-xs">
+                                                    <span className="text-stone-500">체력</span>
+                                                    <span className="font-semibold text-rose-300 tabular-nums">{hp}</span>
+                                                  </div>
+                                                )}
+                                                {clearGold > 0 && (
+                                                  <div className="flex items-center justify-between text-xs">
+                                                    <span className="text-stone-500">💰 클리어</span>
+                                                    <span className="font-bold text-yellow-300 tabular-nums">{formatLargeNumber(clearGold)} G</span>
+                                                  </div>
+                                                )}
+                                                {moreGold > 0 && (
+                                                  <div className="flex items-center justify-between text-xs">
+                                                    <span className="text-rose-400/70">🪙 더보기</span>
+                                                    <span className="font-semibold text-rose-300/80 tabular-nums">-{formatLargeNumber(moreGold)} G</span>
+                                                  </div>
+                                                )}
+                                                {clearGold > 0 && (
+                                                  <div className="border-t border-white/[0.06] pt-1.5 flex items-center justify-between text-xs">
+                                                    <span className="text-stone-500">실수령</span>
+                                                    <span className={cn("font-bold tabular-nums", labelColor)}>{formatLargeNumber(clearGold - moreGold)} G</span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
                                         </div>
-                                        {hp && (
-                                          <div className="flex items-center justify-between text-xs">
-                                            <span className="text-stone-500">체력</span>
-                                            <span className="font-semibold text-rose-300 tabular-nums">{hp}</span>
+                                      ) : (
+                                        (() => {
+                                          const d = nd || hd;
+                                          const clearGold = Number(d?.clear_gold) || 0;
+                                          const moreGold  = Number(d?.more_gold)  || 0;
+                                          const hp        = String(d?.hp || "").trim();
+                                          return (
+                                            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm">
+                                              {hp && <span className="text-stone-400">체력 <span className="font-semibold text-rose-300">{hp}</span></span>}
+                                              {clearGold > 0 && <span className="text-stone-400">💰 <span className="font-bold text-yellow-300">{formatLargeNumber(clearGold)} G</span></span>}
+                                              {moreGold  > 0 && <span className="text-stone-400">🪙 <span className="font-semibold text-stone-300">{formatLargeNumber(moreGold)} G</span></span>}
+                                              {(clearGold - moreGold) > 0 && (
+                                                <span className="ml-auto font-bold text-amber-300">실수령 {formatLargeNumber(clearGold - moreGold)} G</span>
+                                              )}
+                                            </div>
+                                          );
+                                        })()
+                                      )}
+
+                                      {/* 배틀아이템 */}
+                                      {gateBattleItems.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {gateBattleItems.map((item: string) => {
+                                            const disp = getBattleItemDisplay(item);
+                                            return (
+                                              <span key={item} className="flex items-center gap-1 rounded-full border border-amber-400/15 bg-amber-400/6 px-2.5 py-1 text-[10px] font-semibold text-amber-200">
+                                                {disp.type === "img"
+                                                  ? <img src={disp.src} alt={item} className="h-3.5 w-3.5 rounded object-cover" />
+                                                  : <span>{disp.src}</span>}
+                                                {item}
+                                              </span>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+
+                                      {/* 가이드 / 기믹 / 팁 */}
+                                      {refDetail.guide && (
+                                        <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-3">
+                                          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-stone-500">공략</div>
+                                          <p className="text-xs leading-6 text-stone-300 whitespace-pre-wrap">{refDetail.guide}</p>
+                                        </div>
+                                      )}
+                                      {refDetail.mechanics && (
+                                        <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-3 py-3">
+                                          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-stone-500">주요 기믹</div>
+                                          <p className="text-xs leading-6 text-stone-300 whitespace-pre-wrap">{refDetail.mechanics}</p>
+                                        </div>
+                                      )}
+                                      {refDetail.tip && (
+                                        <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.04] px-3 py-3">
+                                          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-400/70">팁</div>
+                                          <p className="text-xs leading-6 text-amber-100/80 whitespace-pre-wrap">{refDetail.tip}</p>
+                                        </div>
+                                      )}
+
+                                      {/* 공대장 스킬 */}
+                                      {skills.length > 0 && (
+                                        <div className="overflow-hidden rounded-2xl border border-violet-400/20 bg-violet-400/[0.04]">
+                                          <div className="flex items-center gap-2 border-b border-violet-400/15 px-3 py-2">
+                                            <Sparkles size={11} className="text-violet-300" />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300">공대장 스킬</span>
+                                            <span className="ml-auto text-[9px] text-violet-400/50">난이도 공통</span>
                                           </div>
-                                        )}
-                                        {clearGold > 0 && (
-                                          <div className="flex items-center justify-between text-xs">
-                                            <span className="text-stone-500">💰 클리어</span>
-                                            <span className="font-bold text-yellow-300 tabular-nums">{formatLargeNumber(clearGold)} G</span>
+                                          <div className="space-y-2 p-3">
+                                            {skills.map((sk: any, si: number) => (
+                                              <div key={si} className="flex gap-3 rounded-xl border border-violet-400/15 bg-violet-400/5 p-2.5">
+                                                <div className="flex items-start gap-2 shrink-0">
+                                                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-400/20 text-[10px] font-bold text-violet-300 mt-0.5">{si + 1}</div>
+                                                  {sk.image && <img src={sk.image} alt={sk.name} className="h-10 w-10 rounded-xl object-cover border border-white/10 bg-black/30" />}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                  {sk.name && <div className="text-xs font-bold text-violet-200 mb-1">{sk.name}</div>}
+                                                  {sk.desc && <p className="text-[11px] leading-5 text-stone-300 whitespace-pre-wrap">{sk.desc}</p>}
+                                                </div>
+                                              </div>
+                                            ))}
                                           </div>
-                                        )}
-                                        {moreGold > 0 && (
-                                          <div className="flex items-center justify-between text-xs">
-                                            <span className="text-rose-400/70">🪙 더보기 지출</span>
-                                            <span className="font-semibold text-rose-300/80 tabular-nums">-{formatLargeNumber(moreGold)} G</span>
-                                          </div>
-                                        )}
-                                        {clearGold > 0 && (
-                                          <div className="border-t border-white/[0.06] pt-1.5 flex items-center justify-between text-xs">
-                                            <span className="text-stone-500">실수령</span>
-                                            <span className={cn("font-bold tabular-nums", labelColor)}>{formatLargeNumber(clearGold - moreGold)} G</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                // 단일 난이도
-                                (() => {
-                                  const d = nd || hd;
-                                  const clearGold = Number(d?.clear_gold) || 0;
-                                  const moreGold  = Number(d?.more_gold)  || 0;
-                                  const hp        = String(d?.hp || "").trim();
-                                  return (
-                                    <div className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-                                      {hp && <span className="text-stone-400">체력 <span className="font-semibold text-rose-300">{hp}</span></span>}
-                                      {clearGold > 0 && <span className="text-stone-400">💰 <span className="font-bold text-yellow-300">{formatLargeNumber(clearGold)} G</span></span>}
-                                      {moreGold  > 0 && <span className="text-stone-400">🪙 <span className="font-semibold text-stone-300">{formatLargeNumber(moreGold)} G</span></span>}
-                                      {(clearGold - moreGold) > 0 && (
-                                        <span className="ml-auto font-bold text-amber-300">합계 {formatLargeNumber(clearGold - moreGold)} G</span>
+                                        </div>
                                       )}
                                     </div>
-                                  );
-                                })()
-                              )}
-
-                              {/* 배틀아이템 + 공략/기믹/팁 (노말 기준, 없으면 하드) */}
-                              {(gateBattleItems.length > 0 || refDetail.guide || refDetail.mechanics || refDetail.tip) && (
-                                <div className="space-y-2.5 border-t border-white/[0.06] px-4 py-3">
-                                  {gateBattleItems.length > 0 && (
-                                    <div className="flex flex-wrap gap-1.5">
-                                      {gateBattleItems.map((item: string) => {
-                                        const disp = getBattleItemDisplay(item);
-                                        return (
-                                          <span key={item} className="flex items-center gap-1 rounded-full border border-amber-400/15 bg-amber-400/6 px-2.5 py-1 text-[10px] font-semibold text-amber-200">
-                                            {disp.type === "img"
-                                              ? <img src={disp.src} alt={item} className="h-3.5 w-3.5 rounded object-cover" />
-                                              : <span>{disp.src}</span>
-                                            }
-                                            {item}
-                                          </span>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                  {refDetail.guide && (
-                                    <div>
-                                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">공략</div>
-                                      <p className="text-xs leading-6 text-stone-300 whitespace-pre-wrap">{refDetail.guide}</p>
-                                    </div>
-                                  )}
-                                  {refDetail.mechanics && (
-                                    <div>
-                                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">주요 기믹</div>
-                                      <p className="text-xs leading-6 text-stone-300 whitespace-pre-wrap">{refDetail.mechanics}</p>
-                                    </div>
-                                  )}
-                                  {refDetail.tip && (
-                                    <div>
-                                      <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-500">팁</div>
-                                      <p className="text-xs leading-6 text-amber-100/80 whitespace-pre-wrap">{refDetail.tip}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                             </div>
                           );
                         })}
-
-                        {/* ── 공대장 스킬 통합 표시 (관문별, 난이도 공통) ── */}
-                        {gateNums.map(gateNum => {
-                          const src = normalDetails.find(d => d.gate_num === gateNum)
-                                   || hardDetails.find(d => d.gate_num === gateNum);
-                          if (!src) return null;
-                          const skills = [1,2,3].map(n => ({
-                            image: src[`raid_skill_${n}_image`] || "",
-                            name:  src[`raid_skill_${n}_name`]  || "",
-                            desc:  src[`raid_skill_${n}_desc`]  || "",
-                          })).filter(s => s.name || s.image || s.desc);
-                          if (skills.length === 0) return null;
-                          return (
-                            <div key={`rs-${gateNum}`} className="overflow-hidden rounded-[1.3rem] border border-violet-400/20 bg-violet-400/[0.04]">
-                              <div className="flex items-center gap-2.5 border-b border-violet-400/15 px-4 py-2.5">
-                                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-400/20 text-xs font-bold text-violet-300">{gateNum}관</div>
-                                <Sparkles size={12} className="text-violet-300" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-violet-300">공대장 스킬</span>
-                                <span className="ml-auto text-[9px] text-violet-400/50">난이도 공통</span>
-                              </div>
-                              <div className="space-y-2.5 p-3">
-                                {skills.map((sk, si) => (
-                                  <div key={si} className="flex gap-3 rounded-2xl border border-violet-400/15 bg-violet-400/5 p-3">
-                                    <div className="flex items-start gap-2 shrink-0">
-                                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-400/20 text-[10px] font-bold text-violet-300 mt-0.5">{si+1}</div>
-                                      {sk.image && <img src={sk.image} alt={sk.name} className="h-12 w-12 rounded-xl object-cover border border-white/10 bg-black/30" />}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      {sk.name && <div className="text-xs font-bold text-violet-200 mb-1">{sk.name}</div>}
-                                      {sk.desc && <p className="text-[11px] leading-5 text-stone-300 whitespace-pre-wrap">{sk.desc}</p>}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-
                       </div>
                     );
                   })()}
