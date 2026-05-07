@@ -11370,12 +11370,20 @@ const LostarkProfileModal = ({
   }, [tab]);
 
   const cardBg = "bg-white/[0.05] border border-white/10";
-  const EQUIP_ORDER = ["무기","투구","어깨","상의","하의","장갑","목걸이","귀걸이","귀걸이","반지","반지","어빌리티 스톤","팔찌","보조장비"];
-  const sortedEquip = [...equipment].sort((a, b) => {
+  const stripHtml = (str: string) => {
+    if (!str) return "";
+    return str.replace(/<[^>]*>/g, "").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&").replace(/[ ]+/g," ").trim();
+  };
+  const ARMOR_TYPES  = ["무기","투구","어깨","상의","하의","장갑"];
+  const ACCESS_TYPES = ["목걸이","귀걸이","반지","어빌리티 스톤","팔찌","보조장비"];
+  const EQUIP_ORDER  = [...ARMOR_TYPES, ...ACCESS_TYPES];
+  const sortedEquip  = [...equipment].sort((a, b) => {
     const ai = EQUIP_ORDER.indexOf(a.Type);
     const bi = EQUIP_ORDER.indexOf(b.Type);
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
   });
+  const armorEquip  = sortedEquip.filter(eq => ARMOR_TYPES.includes(eq.Type));
+  const accessEquip = sortedEquip.filter(eq => ACCESS_TYPES.includes(eq.Type));
 
   const TABS: { id: ModalTab; label: string }[] = [
     { id: "overview", label: "📋 장비 · 능력치" },
@@ -11531,27 +11539,49 @@ const LostarkProfileModal = ({
                     </div>
                   )}
 
-                  {/* 장비 */}
+                  {/* 장비 — 좌(방어구) / 우(악세) 2열 */}
                   <div>
                     <div className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 mb-2">장착 장비</div>
                     {sortedEquip.length === 0
                       ? <Empty msg="장비 정보가 없습니다." />
                       : (
-                        <div className="grid grid-cols-1 gap-1.5">
-                          {sortedEquip.map((eq, i) => (
-                            <div key={i} className={cn("flex items-center gap-3 rounded-xl p-2.5", cardBg)}>
-                              <img src={eq.Icon} alt={eq.Name}
-                                className="h-10 w-10 rounded-lg object-cover bg-black/40 shrink-0"
-                                style={{ boxShadow: `0 0 0 1.5px ${gradeColor(eq.Grade)}` }} />
-                              <div className="min-w-0 flex-1">
-                                <div className="text-xs font-semibold truncate">{eq.Name}</div>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-[10px] text-stone-500">{eq.Type}</span>
-                                  <span className="text-[10px] font-bold" style={{ color: gradeColor(eq.Grade) }}>· {eq.Grade}</span>
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                          {/* 왼쪽: 방어구 */}
+                          <div className="space-y-1.5">
+                            <div className="text-[9px] font-bold uppercase tracking-widest text-stone-600 px-1 mb-1.5">장비</div>
+                            {armorEquip.map((eq, i) => (
+                              <div key={i} className={cn("flex items-center gap-2 rounded-xl p-2", cardBg)}>
+                                <img src={eq.Icon} alt={eq.Name}
+                                  className="h-9 w-9 rounded-lg object-cover bg-black/40 shrink-0"
+                                  style={{ boxShadow: `0 0 0 1.5px ${gradeColor(eq.Grade)}` }} />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-[11px] font-semibold truncate leading-tight">{eq.Name}</div>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <span className="text-[9px] text-stone-500">{eq.Type}</span>
+                                    <span className="text-[9px] font-bold" style={{ color: gradeColor(eq.Grade) }}>· {eq.Grade}</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
+                          {/* 오른쪽: 악세 */}
+                          <div className="space-y-1.5">
+                            <div className="text-[9px] font-bold uppercase tracking-widest text-stone-600 px-1 mb-1.5">악세서리</div>
+                            {accessEquip.map((eq, i) => (
+                              <div key={i} className={cn("flex items-center gap-2 rounded-xl p-2", cardBg)}>
+                                <img src={eq.Icon} alt={eq.Name}
+                                  className="h-9 w-9 rounded-lg object-cover bg-black/40 shrink-0"
+                                  style={{ boxShadow: `0 0 0 1.5px ${gradeColor(eq.Grade)}` }} />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-[11px] font-semibold truncate leading-tight">{eq.Name}</div>
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <span className="text-[9px] text-stone-500">{eq.Type}</span>
+                                    <span className="text-[9px] font-bold" style={{ color: gradeColor(eq.Grade) }}>· {eq.Grade}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                   </div>
@@ -11571,7 +11601,7 @@ const LostarkProfileModal = ({
                                   <span className="text-xs font-semibold truncate">{eng.Name}</span>
                                   <span className="shrink-0 rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Lv.{eng.Level}</span>
                                 </div>
-                                <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">{eng.Description}</div>
+                                <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-1">{stripHtml(eng.Description)}</div>
                               </div>
                             </div>
                           ))}
@@ -11592,7 +11622,7 @@ const LostarkProfileModal = ({
                                   {gem.Level}
                                 </span>
                               </div>
-                              <div className="text-[9px] text-stone-400 truncate w-full">{gem.Skill?.Name || gem.Name}</div>
+                              <div className="text-[9px] text-stone-400 truncate w-full">{stripHtml(gem.Skill?.Name || gem.Name)}</div>
                             </div>
                           ))}
                         </div>
@@ -11759,7 +11789,7 @@ const LostarkProfileModal = ({
                                   <span className="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Lv.{ef.Level}</span>
                                 )}
                               </div>
-                              <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-2">{ef.Description}</div>
+                              <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-2">{stripHtml(ef.Description)}</div>
                             </div>
                           </div>
                         ))}
@@ -11782,7 +11812,7 @@ const LostarkProfileModal = ({
                               )}
                               <div className="min-w-0 flex-1">
                                 <div className="text-xs font-semibold">{ef.Name}</div>
-                                <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-2">{ef.Description}</div>
+                                <div className="text-[10px] text-stone-500 mt-0.5 line-clamp-2">{stripHtml(ef.Description)}</div>
                               </div>
                             </div>
                           ))}
@@ -12753,7 +12783,7 @@ const GuildMembersPage = () => {
                                       {gem.Level}
                                     </span>
                                   </div>
-                                  <div className="text-[9px] text-slate-300 leading-tight truncate w-full">{gem.Skill?.Name || gem.Name}</div>
+                                  <div className="text-[9px] text-slate-300 leading-tight truncate w-full">{(gem.Skill?.Name || gem.Name || "").replace(/<[^>]*>/g, "")}</div>
                                   <div className="text-[9px]" style={{ color: gradeColor(gem.Grade) }}>{gem.Grade}</div>
                                 </div>
                               ))}
