@@ -2258,6 +2258,36 @@ const fetchInitialData = async () => {
               </motion.div>
             )}
 
+            {activeTab === "recruit" && (
+              <motion.div
+                key="recruit"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <PartyRecruitBoard
+                  user={user}
+                  profile={profile}
+                  onOpenCalendar={() => setIsRaidCalendarModalOpen(true)}
+                />
+              </motion.div>
+            )}
+
+            {activeTab === "raid_history" && (
+              <motion.div
+                key="raid_history"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <RaidHistoryBoard
+                  user={user}
+                  profile={profile}
+                  onOpenCalendar={() => setIsRaidCalendarModalOpen(true)}
+                />
+              </motion.div>
+            )}
+
             {activeTab === "myroom" && (
               <motion.div
                 key="myroom"
@@ -4577,7 +4607,7 @@ const Hero = ({
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {[
                 { icon: <CalendarDays size={16} />, label: "레이드 일정", action: onOpenRaidCalendar },
-                { icon: <Users size={16} />, label: "파티 모집", action: () => setActiveTab?.("posts") },
+                { icon: <Users size={16} />, label: "파티 모집", action: () => setActiveTab?.("recruit") },
                 { icon: <Bell size={16} />, label: "공지사항", badge: noticeCount, action: onNavigateToNotices },
                 { icon: <Pencil size={16} />, label: "공략 노트", action: () => setActiveTab?.("note") },
                 { icon: <Sparkles size={16} />, label: "출석 체크", action: () => setActiveTab?.("myroom") },
@@ -5121,6 +5151,855 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
   return null;
 };
 
+// ════════════════════════════════════════════════════════════
+// PartyRecruitBoard — 파티 모집 게시판 (Reference B: 컴팩트 리스트)
+//   - raid_schedules에서 오늘 이후의 레이드를 가져와 모집글로 표시
+//   - 필터(전체/모집중/마감/내가 만든) + 검색 + 등록 버튼
+//   - 행 클릭 시 기존 raid 상세 모달(openRaidById 이벤트) 호출
+//   - 등록은 RaidCalendar 모달 열어서 기존 흐름 재활용
+// ════════════════════════════════════════════════════════════
+const PartyRecruitBoard = ({ user, profile, onOpenCalendar }: any) => {
+  const [raids, setRaids] = useState<any[]>([]);
+  const [participantsMap, setParticipantsMap] = useState<Record<string, any[]>>({});
+  const [contentImgMap, setContentImgMap] = useState<Record<string, string>>({});
+  const [tab, setTab] = useState<"all" | "open" | "closed" | "mine">("all");
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  const fetchRaids = useCallback(async () => {
+    if (!supabase) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const today = getTodayKey();
+      // 오늘 이후 ~ 30일 후까지의 raid_schedules
+      const horizon = (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 30);
+        return formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+      })();
+      const { data, error } = await supabase
+        .from("raid_schedules")
+        .select("*")
+        .gte("raid_date", today)
+        .lte("raid_date", horizon)
+        .order("raid_date", { ascending: true })
+        .order("raid_time", { ascending: true });
+      if (error) throw error;
+      const list = data || [];
+      setRaids(list);
+
+      // 참여자 일괄 조회
+      const ids = list.map((r: any) => r.id).filter(Boolean);
+      if (ids.length > 0) {
+        const { data: parts } = await supabase
+          .from("raid_participants")
+          .select("schedule_id, character_name, class_name, position, item_level")
+          .in("schedule_id", ids);
+        const map: Record<string, any[]> = {};
+        (parts || []).forEach((p: any) => {
+          const k = String(p.schedule_id);
+          if (!map[k]) map[k] = [];
+          map[k].push(p);
+        });
+        setParticipantsMap(map);
+      } else {
+        setParticipantsMap({});
+      }
+
+      // 콘텐츠 이미지
+      const names = Array.from(new Set(list.map((r: any) => String(r.raid_name || "").trim()).filter(Boolean)));
+      if (names.length > 0) {
+        const { data: contents } = await supabase
+          .from("contents")
+          .select("name, image_url")
+          .in("name", names);
+        const imgMap: Record<string, string> = {};
+        (contents || []).forEach((c: any) => {
+          if (c.name && c.image_url) imgMap[String(c.name).trim()] = c.image_url;
+        });
+        setContentImgMap(imgMap);
+      }
+    } catch (err) {
+      console.error("[PartyRecruitBoard] fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void fetchRaids(); }, [fetchRaids]);
+
+  // 통계
+  const stats = useMemo(() => {
+    const now = Date.now();
+    let open = 0, closed = 0, mine = 0;
+    raids.forEach(r => {
+      const max = Number(r.max_participants) || (r.raid_type === "4인" ? 4 : 8);
+      const cnt = (participantsMap[String(r.id)] || []).length;
+      const isFull = cnt >= max;
+      const dateTime = new Date(`${r.raid_date}T${r.raid_time || "00:00"}:00`).getTime();
+      if (!isFull && dateTime > now) open++;
+      else closed++;
+      if (r.leader_id === user?.id || (participantsMap[String(r.id)] || []).some((p: any) => p.character_name === profile?.character_name)) {
+        mine++;
+      }
+    });
+    return { open, closed, mine, total: raids.length };
+  }, [raids, participantsMap, user?.id, profile?.character_name]);
+
+  // 필터링
+  const filtered = useMemo(() => {
+    const now = Date.now();
+    let result = raids;
+    if (tab === "open") {
+      result = result.filter(r => {
+        const max = Number(r.max_participants) || (r.raid_type === "4인" ? 4 : 8);
+        const cnt = (participantsMap[String(r.id)] || []).length;
+        const dateTime = new Date(`${r.raid_date}T${r.raid_time || "00:00"}:00`).getTime();
+        return cnt < max && dateTime > now;
+      });
+    } else if (tab === "closed") {
+      result = result.filter(r => {
+        const max = Number(r.max_participants) || (r.raid_type === "4인" ? 4 : 8);
+        const cnt = (participantsMap[String(r.id)] || []).length;
+        const dateTime = new Date(`${r.raid_date}T${r.raid_time || "00:00"}:00`).getTime();
+        return cnt >= max || dateTime <= now;
+      });
+    } else if (tab === "mine") {
+      result = result.filter(r =>
+        r.leader_id === user?.id ||
+        (participantsMap[String(r.id)] || []).some((p: any) => p.character_name === profile?.character_name)
+      );
+    }
+    if (query.trim()) {
+      const q = query.toLowerCase().trim();
+      result = result.filter((r: any) =>
+        String(r.raid_name || "").toLowerCase().includes(q) ||
+        String(r.leader_name || "").toLowerCase().includes(q) ||
+        String(r.difficulty || "").toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [raids, tab, query, participantsMap, user?.id, profile?.character_name]);
+
+  const formatRelativeDate = (dateStr: string, timeStr: string) => {
+    if (!dateStr) return "";
+    const [y, m, d] = String(dateStr).split("-").map(Number);
+    if (!y) return "";
+    const target = new Date(y, m - 1, d);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const diffDays = Math.round((target.getTime() - today.getTime()) / 86400000);
+    const dayKr = ["일","월","화","수","목","금","토"][target.getDay()];
+    const time = timeStr ? ` ${timeStr}` : "";
+    if (diffDays === 0) return `오늘${time}`;
+    if (diffDays === 1) return `내일${time}`;
+    if (diffDays === 2) return `모레${time}`;
+    if (diffDays < 7) return `${m}/${d} (${dayKr})${time}`;
+    return `${m}/${d} (${dayKr})${time}`;
+  };
+
+  const formatTimeAgo = (iso?: string) => {
+    if (!iso) return "";
+    const t = new Date(iso).getTime();
+    const diff = Math.max(0, Date.now() - t);
+    const m = Math.floor(diff / 60000);
+    if (m < 1) return "방금 전";
+    if (m < 60) return `${m}분 전`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}시간 전`;
+    const d = Math.floor(h / 24);
+    return `${d}일 전`;
+  };
+
+  const openRaidDetail = (raid: any) => {
+    onOpenCalendar?.();
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("openRaidById", { detail: { raidId: raid.id } }));
+    }, 350);
+  };
+
+  const TABS: Array<{ key: typeof tab; label: string; count: number; color: string }> = [
+    { key: "all",    label: "전체",    count: stats.total,  color: "#a78bfa" },
+    { key: "open",   label: "모집중",  count: stats.open,   color: "#67e8f9" },
+    { key: "closed", label: "마감",    count: stats.closed, color: "rgba(196,181,253,0.6)" },
+    { key: "mine",   label: "내 모집", count: stats.mine,   color: "#f472b6" },
+  ];
+
+  return (
+    <div className="space-y-4 lg:space-y-5">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em]" style={{ color: "#c4b5fd" }}>
+            Party Recruitment
+          </div>
+          <h1 className="text-2xl font-bold text-white mt-1">파티 모집</h1>
+          <p className="text-xs mt-1" style={{ color: "rgba(155,159,196,0.7)" }}>
+            예정된 레이드에 참여하거나 새 모집글을 등록해보세요
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={fetchRaids}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              color: "rgba(196,181,253,0.85)",
+            }}
+          >
+            <RefreshCw size={12} />
+            새로고침
+          </button>
+          <button
+            onClick={() => onOpenCalendar?.()}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all"
+            style={{
+              background: "linear-gradient(135deg, #8b5cf6, #6d28d9)",
+              boxShadow: "0 8px 24px rgba(139,92,246,0.30)",
+            }}
+          >
+            <Plus size={13} />
+            모집 등록
+          </button>
+        </div>
+      </div>
+
+      {/* 탭 */}
+      <div className="flex gap-0 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        {TABS.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className="px-4 py-2.5 text-xs font-semibold transition-colors relative"
+            style={{
+              color: tab === t.key ? "#fff" : "rgba(196,181,253,0.6)",
+              borderBottom: tab === t.key ? `2px solid ${t.color}` : "2px solid transparent",
+              marginBottom: "-1px",
+            }}
+          >
+            {t.label}
+            {t.count > 0 && (
+              <span className="ml-1.5" style={{ color: t.color, fontWeight: 700 }}>{t.count}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* 검색 */}
+      <div
+        className="flex items-center gap-2 px-3 py-2 rounded-xl"
+        style={{
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.06)",
+        }}
+      >
+        <Search size={14} style={{ color: "rgba(196,181,253,0.5)" }} />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="레이드명, 공대장, 난이도로 검색"
+          className="flex-1 bg-transparent outline-none text-xs"
+          style={{ color: "#fff" }}
+        />
+        {query && (
+          <button onClick={() => setQuery("")} className="text-xs" style={{ color: "rgba(196,181,253,0.6)" }}>
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
+      {/* 리스트 */}
+      <div className="space-y-1.5">
+        {loading ? (
+          <div className="text-center py-12 text-xs" style={{ color: "rgba(155,159,196,0.5)" }}>
+            데이터를 불러오는 중...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 px-4 rounded-2xl"
+            style={{
+              background: "linear-gradient(180deg, rgba(28,23,51,0.55) 0%, rgba(15,13,32,0.75) 100%)",
+              border: "1px solid rgba(139,92,246,0.10)",
+            }}>
+            <div className="text-4xl mb-2" style={{ color: "rgba(196,181,253,0.3)" }}>📭</div>
+            <div className="text-sm font-semibold text-white mb-1">
+              {query ? "검색 결과가 없습니다" : tab === "mine" ? "내가 만든 모집글이 없습니다" : "모집글이 없습니다"}
+            </div>
+            <div className="text-xs" style={{ color: "rgba(155,159,196,0.5)" }}>
+              상단의 "모집 등록" 버튼으로 새 레이드를 만들어보세요
+            </div>
+          </div>
+        ) : filtered.map((r: any) => {
+          const max = Number(r.max_participants) || (r.raid_type === "4인" ? 4 : 8);
+          const parts = participantsMap[String(r.id)] || [];
+          const cnt = parts.length;
+          const dateTime = new Date(`${r.raid_date}T${r.raid_time || "00:00"}:00`).getTime();
+          const isFull = cnt >= max;
+          const isPast = dateTime <= Date.now();
+          const isClosed = isFull || isPast;
+          const isImminent = !isClosed && (max - cnt) <= 1;
+          const img = contentImgMap[String(r.raid_name || "").trim()];
+
+          // 행 컬러 톤
+          let toneR = "139,92,246"; // 보라 기본
+          let toneText = "#a78bfa";
+          let btnBg = "linear-gradient(135deg, #8b5cf6, #6d28d9)";
+          let btnText = "#fff";
+          let btnLabel = "참여";
+          if (isClosed) {
+            toneR = "155,159,196";
+            toneText = "rgba(196,181,253,0.55)";
+            btnBg = "rgba(255,255,255,0.04)";
+            btnText = "rgba(155,159,196,0.6)";
+            btnLabel = isFull ? "마감" : "종료";
+          } else if (isImminent) {
+            toneR = "244,114,182";
+            toneText = "#f472b6";
+            btnBg = "rgba(244,114,182,0.18)";
+            btnText = "#f9a8d4";
+            btnLabel = `${max - cnt}자리`;
+          } else if (r.type === "anime") {
+            toneR = "34,211,238";
+            toneText = "#67e8f9";
+            btnBg = "linear-gradient(135deg, #22d3ee, #0891b2)";
+          }
+
+          return (
+            <button
+              key={r.id}
+              onClick={() => openRaidDetail(r)}
+              className="w-full grid items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-left hover:translate-x-0.5"
+              style={{
+                gridTemplateColumns: "56px 1fr auto auto",
+                background: `rgba(${toneR},0.04)`,
+                border: `1px solid rgba(${toneR},0.14)`,
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = `rgba(${toneR},0.10)`;
+                (e.currentTarget as HTMLElement).style.borderColor = `rgba(${toneR},0.28)`;
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = `rgba(${toneR},0.04)`;
+                (e.currentTarget as HTMLElement).style.borderColor = `rgba(${toneR},0.14)`;
+              }}
+            >
+              {/* 아이콘 */}
+              <div
+                className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+                style={{
+                  background: img
+                    ? `url(${img}) center/cover`
+                    : `radial-gradient(ellipse at 50% 30%, rgba(${toneR},0.30), #1c1733)`,
+                }}
+              >
+                {!img && <Shield size={22} style={{ color: toneText }} />}
+              </div>
+
+              {/* 정보 */}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1 mb-1 flex-wrap">
+                  {r.difficulty && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                      style={{ background: "rgba(244,114,182,0.18)", color: "#f9a8d4" }}>
+                      {r.difficulty}
+                    </span>
+                  )}
+                  {r.experience && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                      style={{ background: "rgba(110,231,183,0.18)", color: "#6ee7b7" }}>
+                      {r.experience}
+                    </span>
+                  )}
+                  {r.raid_type && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                      style={{ background: "rgba(167,139,250,0.18)", color: "#c4b5fd" }}>
+                      {r.raid_type}
+                    </span>
+                  )}
+                  {isImminent && (
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1"
+                      style={{ background: "rgba(251,191,36,0.18)", color: "#fbbf24" }}>
+                      🔥 마감 임박
+                    </span>
+                  )}
+                  <span className="text-[9px] ml-1" style={{ color: "rgba(155,159,196,0.5)" }}>
+                    {formatTimeAgo(r.created_at)}
+                  </span>
+                </div>
+                <div className="text-sm font-bold text-white truncate mb-0.5">
+                  {r.raid_name || "이름 없음"}
+                </div>
+                <div className="text-[10px] flex items-center gap-3 flex-wrap" style={{ color: "rgba(155,159,196,0.7)" }}>
+                  <span className="flex items-center gap-1">
+                    <Clock size={10} />
+                    {formatRelativeDate(r.raid_date, r.raid_time)}
+                  </span>
+                  {r.leader_name && (
+                    <span className="flex items-center gap-1">
+                      <Crown size={10} style={{ color: "#fbbf24" }} />
+                      {r.leader_name}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 참여 인원 */}
+              <div className="text-right flex-shrink-0">
+                <div className="text-xs font-bold" style={{ color: toneText }}>
+                  {cnt} / {max}
+                </div>
+                <div className="mt-1 w-14 h-0.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (cnt / max) * 100)}%`,
+                      background: `linear-gradient(90deg, rgba(${toneR},1), rgba(${toneR},0.6))`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* 액션 */}
+              <div
+                className="px-3 py-1.5 rounded-lg text-xs font-bold flex-shrink-0 transition-all"
+                style={{
+                  background: btnBg,
+                  color: btnText,
+                  border: isClosed ? "1px solid rgba(255,255,255,0.06)" : "none",
+                  boxShadow: !isClosed && !isImminent ? "0 4px 12px rgba(139,92,246,0.20)" : "none",
+                }}
+              >
+                {btnLabel}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {!loading && filtered.length > 0 && (
+        <div className="text-center text-[10px] pt-2" style={{ color: "rgba(155,159,196,0.4)" }}>
+          {filtered.length}개의 모집글 표시 중
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+// ════════════════════════════════════════════════════════════
+// RaidHistoryBoard — 레이드 기록 게시판 (Reference A: 타임라인)
+//   - raid_schedules에서 오늘 이전(과거)의 레이드를 가져와 기록으로 표시
+//   - 날짜별 그룹핑 (오늘/어제/N일전/날짜)
+//   - 각 카드: 썸네일 + 레이드명 + 난이도 + 시간 + 참여자 아바타 + 공대장
+//   - 필터: 전체/내 기록/이번 주/이번 달
+// ════════════════════════════════════════════════════════════
+const RaidHistoryBoard = ({ user, profile, onOpenCalendar }: any) => {
+  const [raids, setRaids] = useState<any[]>([]);
+  const [participantsMap, setParticipantsMap] = useState<Record<string, any[]>>({});
+  const [contentImgMap, setContentImgMap] = useState<Record<string, string>>({});
+  const [filter, setFilter] = useState<"all" | "mine" | "week" | "month">("all");
+  const [loading, setLoading] = useState(true);
+
+  const fetchHistory = useCallback(async () => {
+    if (!supabase) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const today = getTodayKey();
+      // 오늘 이전 90일치
+      const past = (() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 90);
+        return formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+      })();
+      const { data, error } = await supabase
+        .from("raid_schedules")
+        .select("*")
+        .gte("raid_date", past)
+        .lt("raid_date", today)
+        .order("raid_date", { ascending: false })
+        .order("raid_time", { ascending: false });
+      if (error) throw error;
+      const list = data || [];
+      setRaids(list);
+
+      // 참여자 일괄 조회
+      const ids = list.map((r: any) => r.id).filter(Boolean);
+      if (ids.length > 0) {
+        const { data: parts } = await supabase
+          .from("raid_participants")
+          .select("schedule_id, character_name, class_name, position, item_level")
+          .in("schedule_id", ids);
+        const map: Record<string, any[]> = {};
+        (parts || []).forEach((p: any) => {
+          const k = String(p.schedule_id);
+          if (!map[k]) map[k] = [];
+          map[k].push(p);
+        });
+        setParticipantsMap(map);
+      } else {
+        setParticipantsMap({});
+      }
+
+      // 콘텐츠 이미지
+      const names = Array.from(new Set(list.map((r: any) => String(r.raid_name || "").trim()).filter(Boolean)));
+      if (names.length > 0) {
+        const { data: contents } = await supabase
+          .from("contents")
+          .select("name, image_url")
+          .in("name", names);
+        const imgMap: Record<string, string> = {};
+        (contents || []).forEach((c: any) => {
+          if (c.name && c.image_url) imgMap[String(c.name).trim()] = c.image_url;
+        });
+        setContentImgMap(imgMap);
+      }
+    } catch (err) {
+      console.error("[RaidHistoryBoard] fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void fetchHistory(); }, [fetchHistory]);
+
+  // 필터링
+  const filtered = useMemo(() => {
+    let result = raids;
+    const now = new Date();
+    if (filter === "mine") {
+      result = result.filter(r =>
+        r.leader_id === user?.id ||
+        (participantsMap[String(r.id)] || []).some((p: any) => p.character_name === profile?.character_name)
+      );
+    } else if (filter === "week") {
+      const weekAgo = new Date(now); weekAgo.setDate(now.getDate() - 7);
+      result = result.filter(r => new Date(r.raid_date) >= weekAgo);
+    } else if (filter === "month") {
+      const monthAgo = new Date(now); monthAgo.setDate(now.getDate() - 30);
+      result = result.filter(r => new Date(r.raid_date) >= monthAgo);
+    }
+    return result;
+  }, [raids, filter, participantsMap, user?.id, profile?.character_name]);
+
+  // 날짜별 그룹핑
+  const grouped = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    filtered.forEach(r => {
+      const k = String(r.raid_date || "");
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(r);
+    });
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [filtered]);
+
+  const formatGroupHeader = (dateStr: string) => {
+    if (!dateStr) return "";
+    const [y, m, d] = String(dateStr).split("-").map(Number);
+    if (!y) return dateStr;
+    const target = new Date(y, m - 1, d);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const diffDays = Math.round((today.getTime() - target.getTime()) / 86400000);
+    const dayKr = ["일","월","화","수","목","금","토"][target.getDay()];
+    if (diffDays === 0) return `오늘 · ${m}월 ${d}일 (${dayKr})`;
+    if (diffDays === 1) return `어제 · ${m}월 ${d}일 (${dayKr})`;
+    if (diffDays < 7) return `${diffDays}일 전 · ${m}월 ${d}일 (${dayKr})`;
+    return `${m}월 ${d}일 (${dayKr})`;
+  };
+
+  const openRaidDetail = (raid: any) => {
+    onOpenCalendar?.();
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("openRaidById", { detail: { raidId: raid.id } }));
+    }, 350);
+  };
+
+  // 통계 (필터된 결과 기준)
+  const stats = useMemo(() => {
+    const total = filtered.length;
+    const totalParticipations = filtered.reduce((acc, r) => acc + (participantsMap[String(r.id)] || []).length, 0);
+    const myCount = filtered.filter(r => r.leader_id === user?.id || (participantsMap[String(r.id)] || []).some((p: any) => p.character_name === profile?.character_name)).length;
+    return { total, totalParticipations, myCount };
+  }, [filtered, participantsMap, user?.id, profile?.character_name]);
+
+  const FILTERS: Array<{ key: typeof filter; label: string }> = [
+    { key: "all",   label: "전체" },
+    { key: "mine",  label: "내 기록" },
+    { key: "week",  label: "이번 주" },
+    { key: "month", label: "이번 달" },
+  ];
+
+  return (
+    <div className="space-y-4 lg:space-y-5">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.22em]" style={{ color: "#c4b5fd" }}>
+            Raid History
+          </div>
+          <h1 className="text-2xl font-bold text-white mt-1">레이드 기록</h1>
+          <p className="text-xs mt-1" style={{ color: "rgba(155,159,196,0.7)" }}>
+            지난 레이드 활동을 시간 순으로 확인하세요
+          </p>
+        </div>
+        <div className="flex gap-2 items-center">
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              className="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+              style={{
+                background: filter === f.key ? "rgba(139,92,246,0.18)" : "rgba(255,255,255,0.04)",
+                border: filter === f.key ? "1px solid rgba(139,92,246,0.35)" : "1px solid rgba(255,255,255,0.06)",
+                color: filter === f.key ? "#c4b5fd" : "rgba(196,181,253,0.7)",
+              }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 통계 미니 바 */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl p-3 flex items-center gap-3"
+          style={{ background: "linear-gradient(180deg, rgba(28,23,51,0.55) 0%, rgba(15,13,32,0.75) 100%)", border: "1px solid rgba(139,92,246,0.14)" }}>
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center"
+            style={{ background: "rgba(139,92,246,0.14)" }}>
+            <Shield size={18} style={{ color: "#a78bfa" }} />
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(155,159,196,0.6)" }}>총 레이드</div>
+            <div className="text-lg font-bold text-white">{stats.total}<span className="text-xs font-normal ml-1" style={{ color: "rgba(155,159,196,0.5)" }}>회</span></div>
+          </div>
+        </div>
+        <div className="rounded-xl p-3 flex items-center gap-3"
+          style={{ background: "linear-gradient(180deg, rgba(28,23,51,0.55) 0%, rgba(15,13,32,0.75) 100%)", border: "1px solid rgba(139,92,246,0.14)" }}>
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center"
+            style={{ background: "rgba(110,231,183,0.14)" }}>
+            <Users size={18} style={{ color: "#6ee7b7" }} />
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(155,159,196,0.6)" }}>총 참여</div>
+            <div className="text-lg font-bold" style={{ color: "#6ee7b7" }}>{stats.totalParticipations}<span className="text-xs font-normal ml-1" style={{ color: "rgba(155,159,196,0.5)" }}>명</span></div>
+          </div>
+        </div>
+        <div className="rounded-xl p-3 flex items-center gap-3"
+          style={{ background: "linear-gradient(160deg, rgba(76,29,149,0.30) 0%, rgba(15,13,32,0.85) 100%)", border: "1px solid rgba(251,191,36,0.20)" }}>
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center"
+            style={{ background: "rgba(251,191,36,0.14)" }}>
+            <Crown size={18} style={{ color: "#fbbf24" }} />
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "rgba(251,191,36,0.7)" }}>내 참여</div>
+            <div className="text-lg font-bold" style={{ color: "#fbbf24" }}>{stats.myCount}<span className="text-xs font-normal ml-1" style={{ color: "rgba(155,159,196,0.5)" }}>회</span></div>
+          </div>
+        </div>
+      </div>
+
+      {/* 타임라인 */}
+      {loading ? (
+        <div className="text-center py-16 text-xs" style={{ color: "rgba(155,159,196,0.5)" }}>
+          데이터를 불러오는 중...
+        </div>
+      ) : grouped.length === 0 ? (
+        <div className="text-center py-16 px-4 rounded-2xl"
+          style={{
+            background: "linear-gradient(180deg, rgba(28,23,51,0.55) 0%, rgba(15,13,32,0.75) 100%)",
+            border: "1px solid rgba(139,92,246,0.10)",
+          }}>
+          <div className="text-4xl mb-2" style={{ color: "rgba(196,181,253,0.3)" }}>📚</div>
+          <div className="text-sm font-semibold text-white mb-1">기록이 없습니다</div>
+          <div className="text-xs" style={{ color: "rgba(155,159,196,0.5)" }}>
+            완료된 레이드가 여기에 표시됩니다
+          </div>
+        </div>
+      ) : (
+        <div className="relative pl-7">
+          {/* 세로 라인 */}
+          <div className="absolute left-2 top-2 bottom-2 w-px"
+            style={{ background: "linear-gradient(180deg, rgba(167,139,250,0.4), rgba(167,139,250,0.05))" }}
+          />
+
+          {grouped.map(([dateStr, items], gIdx) => (
+            <div key={dateStr} className="mb-6 last:mb-0">
+              {/* 날짜 헤더 + 도트 */}
+              <div className="relative mb-3">
+                <div className="absolute left-[-23px] top-1 w-3.5 h-3.5 rounded-full"
+                  style={{
+                    background: gIdx === 0 ? "#a78bfa" : "rgba(139,92,246,0.5)",
+                    border: "3px solid #15122a",
+                    boxShadow: gIdx === 0 ? "0 0 0 1px #a78bfa" : "none",
+                  }}
+                />
+                <div className="text-xs font-bold" style={{ color: gIdx === 0 ? "#a78bfa" : "rgba(196,181,253,0.85)" }}>
+                  {formatGroupHeader(dateStr)}
+                  <span className="ml-2 font-normal" style={{ color: "rgba(155,159,196,0.5)" }}>
+                    · {items.length}건
+                  </span>
+                </div>
+              </div>
+
+              {/* 카드들 */}
+              <div className="space-y-2">
+                {items.map((r: any) => {
+                  const max = Number(r.max_participants) || (r.raid_type === "4인" ? 4 : 8);
+                  const parts = participantsMap[String(r.id)] || [];
+                  const cnt = parts.length;
+                  const completed = cnt >= Math.ceil(max * 0.5); // 절반 이상 모이면 "완료"로 간주
+                  const img = contentImgMap[String(r.raid_name || "").trim()];
+                  const myParticipation = parts.find((p: any) => p.character_name === profile?.character_name);
+
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => openRaidDetail(r)}
+                      className="w-full text-left rounded-2xl overflow-hidden transition-all"
+                      style={{
+                        background: "linear-gradient(180deg, rgba(28,23,51,0.85) 0%, rgba(15,13,32,0.95) 100%)",
+                        border: completed
+                          ? "1px solid rgba(110,231,183,0.20)"
+                          : "1px solid rgba(155,159,196,0.15)",
+                      }}
+                      onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLElement).style.borderColor = completed
+                          ? "rgba(110,231,183,0.40)"
+                          : "rgba(167,139,250,0.30)";
+                      }}
+                      onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLElement).style.borderColor = completed
+                          ? "rgba(110,231,183,0.20)"
+                          : "rgba(155,159,196,0.15)";
+                      }}
+                    >
+                      <div className="flex gap-3 p-3.5">
+                        {/* 썸네일 */}
+                        <div className="w-20 h-20 rounded-xl flex-shrink-0 relative overflow-hidden"
+                          style={{
+                            background: img
+                              ? `url(${img}) center/cover`
+                              : `radial-gradient(ellipse at 50% 30%, rgba(139,92,246,0.35), #1c1733)`,
+                            border: completed
+                              ? "1px solid rgba(110,231,183,0.30)"
+                              : "1px solid rgba(155,159,196,0.20)",
+                          }}>
+                          {!img && (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Shield size={26} style={{ color: "#c4b5fd" }} />
+                            </div>
+                          )}
+                          {/* 상태 배지 */}
+                          <div className="absolute bottom-0 left-0 right-0 text-center text-[9px] font-bold py-0.5"
+                            style={{
+                              background: completed ? "rgba(110,231,183,0.30)" : "rgba(155,159,196,0.20)",
+                              color: completed ? "#6ee7b7" : "rgba(196,181,253,0.65)",
+                              backdropFilter: "blur(6px)",
+                            }}>
+                            {completed ? "✓ 완료" : "기록"}
+                          </div>
+                        </div>
+
+                        {/* 정보 */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 mb-1.5 flex-wrap">
+                            {r.difficulty && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                                style={{ background: "rgba(244,114,182,0.18)", color: "#f9a8d4" }}>
+                                {r.difficulty}
+                              </span>
+                            )}
+                            {r.experience && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                                style={{ background: "rgba(110,231,183,0.18)", color: "#6ee7b7" }}>
+                                {r.experience}
+                              </span>
+                            )}
+                            <span className="text-[9px] ml-auto flex items-center gap-1"
+                              style={{ color: "rgba(155,159,196,0.5)" }}>
+                              <Clock size={9} />
+                              {r.raid_time}
+                            </span>
+                          </div>
+
+                          <div className="text-sm font-bold text-white mb-1.5 truncate">
+                            {r.raid_name || "이름 없음"}
+                          </div>
+
+                          {/* 공대장 */}
+                          {r.leader_name && (
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md mb-2"
+                              style={{ background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.20)" }}>
+                              <Crown size={10} style={{ color: "#fbbf24" }} />
+                              <span className="text-[10px] font-bold" style={{ color: "#fbbf24" }}>
+                                공대장 · {r.leader_name}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* 참여자 + 내 표시 */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {parts.length > 0 ? (
+                              <div className="flex">
+                                {parts.slice(0, 5).map((p: any, i: number) => (
+                                  <div
+                                    key={i}
+                                    className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold"
+                                    style={{
+                                      background: "linear-gradient(135deg, #6d28d9, #4c1d95)",
+                                      border: "1.5px solid #15122a",
+                                      color: "#ede9fe",
+                                      marginLeft: i === 0 ? 0 : -6,
+                                      zIndex: 5 - i,
+                                    }}
+                                    title={`${p.character_name} (${p.class_name || ""})`}
+                                  >
+                                    {String(p.character_name || "?").slice(0, 1)}
+                                  </div>
+                                ))}
+                                {parts.length > 5 && (
+                                  <div
+                                    className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-bold"
+                                    style={{
+                                      background: "rgba(139,92,246,0.18)",
+                                      border: "1.5px solid #15122a",
+                                      color: "#c4b5fd",
+                                      marginLeft: -6,
+                                    }}
+                                  >
+                                    +{parts.length - 5}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[10px]" style={{ color: "rgba(155,159,196,0.5)" }}>
+                                참여자 정보 없음
+                              </span>
+                            )}
+                            <span className="text-[10px]" style={{ color: "rgba(155,159,196,0.6)" }}>
+                              {parts.length}명 참여
+                            </span>
+                            {myParticipation && (
+                              <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold"
+                                style={{ background: "rgba(139,92,246,0.20)", color: "#c4b5fd", border: "1px solid rgba(139,92,246,0.30)" }}>
+                                내가 참여
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelector, unreadMsgCount, settings, mobileOpen, onMobileClose }: any) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -5161,8 +6040,8 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
       label: "레이드",
       items: [
         { id: "home", icon: "📅", label: "레이드 일정", isRaidCalendar: true },
-        { id: "home", icon: "📋", label: "레이드 기록" },
-        { id: "posts", icon: "👫", label: "파티 모집" },
+        { id: "raid_history", icon: "📋", label: "레이드 기록" },
+        { id: "recruit", icon: "👫", label: "파티 모집" },
       ],
     },
     {
