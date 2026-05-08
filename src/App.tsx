@@ -10961,7 +10961,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
   const [ownedEnhanceItems, setOwnedEnhanceItems] = useState<any[]>([]);
   const [myPoint, setMyPoint] = useState(0);
   const [ownedNicknameEffects, setOwnedNicknameEffects] = useState<any[]>([]);
-  const [myRoomTab, setMyRoomTab] = useState<"growth" | "characters">("growth");
   const [nakwonSpendAmount, setNakwonSpendAmount] = useState("100");
   const [nakwonSubmitting, setNakwonSubmitting] = useState(false);
   const [enhancementAttemptState, setEnhancementAttemptState] = useState(() => ({
@@ -11065,6 +11064,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
   useEffect(() => {
     if (myRoomTab === "messages") fetchMessages();
   }, [myRoomTab, fetchMessages]);
+
+  const handleAttendance = async () => {
     const today = new Date().toISOString().split("T")[0];
 
     if (profile.last_attendance === today) {
