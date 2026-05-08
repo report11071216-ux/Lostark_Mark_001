@@ -3227,7 +3227,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
         nextWeek.setDate(nextWeek.getDate() + 7);
         const nextWeekKey = formatDate(nextWeek.getFullYear(), nextWeek.getMonth(), nextWeek.getDate());
 
-        const [membersRes, weekRes, todayRes, upcomingRes, rankersRes] = await Promise.all([
+        const [membersRes, weekRes, todayRes, upcomingRes] = await Promise.all([
           supabase.from("profiles").select("id", { count: "exact", head: true }),
           supabase.from("raid_schedules").select("*")
             .gte("raid_date", currentWeekRange.start).lte("raid_date", currentWeekRange.end)
@@ -3237,8 +3237,6 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
           supabase.from("raid_schedules").select("*")
             .gte("raid_date", today).lte("raid_date", nextWeekKey)
             .order("raid_date", { ascending: true }).order("raid_time", { ascending: true }),
-          supabase.from("profiles").select("id, nickname, points, rank_name, character_name")
-            .order("points", { ascending: false }).limit(5),
         ]);
 
         if (!mounted) return;
@@ -3256,7 +3254,6 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
         setWeeklySchedules(scheduleMap);
         setTodayRaids(todayRes.data || []);
         setUpcomingRaids(upcomingList.slice(0, 5));
-        setTopRankers(rankersRes.data || []);
 
         // contents 테이블에서 레이드 이미지 로드
         const allRaidNames = Array.from(new Set([
@@ -3314,6 +3311,23 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
     void fetchHeroStats();
     return () => { mounted = false; };
   }, [posts, currentWeekRange.start, currentWeekRange.end, currentWeekDays]);
+
+  // 포인트 랭킹 TOP 5 별도 fetch
+  useEffect(() => {
+    if (!supabase) return;
+    supabase
+      .from("profiles")
+      .select("id, nickname, points, rank_name")
+      .order("points", { ascending: false })
+      .limit(5)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Top rankers fetch error:", error);
+          return;
+        }
+        setTopRankers(data || []);
+      });
+  }, []);
 
   // 레이드 검색
   useEffect(() => {
