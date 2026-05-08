@@ -1527,6 +1527,19 @@ function AppInner() {
   const [activeTab, setActiveTab] = useState("home");
   const pendingTabRef = useRef<string | null>(null);
   const [showSelector, setShowSelector] = useState(false);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+
+  const fetchUnreadMsgCount = useCallback(async (uid: string) => {
+    if (!supabase || !uid) return;
+    try {
+      const { count } = await supabase
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("receiver_id", uid)
+        .eq("is_read", false);
+      setUnreadMsgCount(count || 0);
+    } catch { /* ignore */ }
+  }, []);
   const [user, setUser] = useState<UserLike>(null);
   const [profile, setProfile] = useState<ProfileLike>(null);
   const [loading, setLoading] = useState(true);
@@ -1631,7 +1644,7 @@ useEffect(() => {
 
       if (event === "SIGNED_IN") {
         void fetchInitialData();
-        // 로그인 직후 카드 선택 화면 표시
+        if (currentUser?.id) void fetchUnreadMsgCount(currentUser.id);
         setShowSelector(true);
         pendingTabRef.current = null;
       }
@@ -1798,6 +1811,8 @@ const fetchInitialData = async () => {
           profile={profile}
           onLogout={handleLogout}
           onShowSelector={() => setShowSelector(true)}
+          unreadMsgCount={unreadMsgCount}
+          onMsgRead={() => fetchUnreadMsgCount(user?.id)}
         />
 
         <PassivePointBackgroundSync
@@ -1862,7 +1877,14 @@ const fetchInitialData = async () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <MyRoom user={user} profile={profile} setProfile={setProfile} fetchProfile={fetchProfile} />
+                <MyRoom
+                  user={user}
+                  profile={profile}
+                  setProfile={setProfile}
+                  fetchProfile={fetchProfile}
+                  unreadMsgCount={unreadMsgCount}
+                  onMsgRead={() => fetchUnreadMsgCount(user?.id)}
+                />
               </motion.div>
             )}
 
@@ -3955,7 +3977,7 @@ const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
   );
 };
 
-const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelector }: any) => {
+const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelector, unreadMsgCount, onMsgRead }: any) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -4114,7 +4136,14 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
                           onClick={() => handleMove("myroom")}
                           className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
                         >
-                          <span>마이룸 이동</span>
+                          <span className="flex items-center gap-2">
+                            마이룸 이동
+                            {unreadMsgCount > 0 && (
+                              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                                {unreadMsgCount > 9 ? "9+" : unreadMsgCount}
+                              </span>
+                            )}
+                          </span>
                           <ChevronRight size={15} />
                         </button>
 
@@ -5754,6 +5783,7 @@ const CreateRaidModal = ({
   const [raidList, setRaidList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState(emptyRaidForm);
+  const [sendNotice, setSendNotice] = useState(true);
 
   useEffect(() => {
     const fetchRaidList = async () => {
@@ -5842,6 +5872,34 @@ const CreateRaidModal = ({
       }
 
       showToast("일정 생성 완료", "success");
+
+      // 쪽지 발송 (sendNotice 체크 시)
+      if (sendNotice && supabase) {
+        try {
+          const { data: allProfiles } = await supabase
+            .from("profiles")
+            .select("id, nickname");
+          if (allProfiles && allProfiles.length > 0) {
+            const msgs = allProfiles.map((p: any) => ({
+              sender_id: null,
+              sender_name: "길드 시스템",
+              receiver_id: p.id,
+              receiver_name: p.nickname || "",
+              title: `📅 새 레이드 일정: ${form.raid_name}`,
+              content: `새 레이드 일정이 등록되었습니다.\n\n레이드: ${form.raid_name}\n날짜: ${date}\n시간: ${form.raid_time}\n난이도: ${form.difficulty || "미정"}\n인원: ${form.raid_type || "8인"}\n\n홈페이지에서 참여 신청을 해주세요!`,
+              is_read: false,
+            }));
+            // 50명씩 배치 insert
+            for (let i = 0; i < msgs.length; i += 50) {
+              await supabase.from("messages").insert(msgs.slice(i, i + 50));
+            }
+            showToast(`${allProfiles.length}명에게 쪽지를 발송했습니다.`, "info");
+          }
+        } catch (e) {
+          console.error("notice send error:", e);
+        }
+      }
+
       onRefresh();
       onClose();
     } catch (error: any) {
@@ -6006,6 +6064,20 @@ const CreateRaidModal = ({
               {form.raid_name || "레이드 미선택"} · {form.raid_time} · {form.type === "raid" ? `${form.raid_type} / ${form.difficulty} / ${form.experience}` : "시청형 일정"}
             </div>
           </div>
+
+          {/* 쪽지 발송 옵션 */}
+          <label className="flex items-center gap-3 rounded-2xl border border-blue-400/20 bg-blue-400/[0.06] px-4 py-3 cursor-pointer hover:bg-blue-400/10 transition-all">
+            <input
+              type="checkbox"
+              checked={sendNotice}
+              onChange={(e) => setSendNotice(e.target.checked)}
+              className="h-4 w-4 rounded accent-blue-400"
+            />
+            <div>
+              <div className="text-sm font-semibold text-blue-200">✉️ 전체 길드원에게 쪽지 발송</div>
+              <div className="text-xs text-slate-500 mt-0.5">체크 시 레이드 일정이 모든 길드원 쪽지함으로 전송됩니다.</div>
+            </div>
+          </label>
 
           <div className="grid grid-cols-2 gap-3 pt-1">
             <button
@@ -10859,7 +10931,19 @@ const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClo
 };
 // ── End ArmoryViewModal ──────────────────────────────────────
 
-const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
+const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsgRead }: any) => {
+  const [myRoomTab, setMyRoomTab] = useState<"characters" | "messages">("characters");
+  const [messages, setMessages] = useState<any[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [composing, setComposing] = useState(false);
+  const [msgTo, setMsgTo] = useState("");
+  const [msgToId, setMsgToId] = useState("");
+  const [msgTitle, setMsgTitle] = useState("");
+  const [msgBody, setMsgBody] = useState("");
+  const [msgSending, setMsgSending] = useState(false);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [memberResults, setMemberResults] = useState<any[]>([]);
+  const [viewingMsg, setViewingMsg] = useState<any | null>(null);
   const [rankIcon, setRankIcon] = useState<string | null>(null);
   const [showRegister, setShowRegister] = useState(false);
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
@@ -10916,7 +11000,71 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
     }));
   };
 
-  const handleAttendance = async () => {
+  const fetchMessages = useCallback(async () => {
+    if (!supabase || !user?.id) return;
+    setMessagesLoading(true);
+    try {
+      const { data } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("receiver_id", user.id)
+        .order("created_at", { ascending: false });
+      setMessages(data || []);
+    } catch { /* ignore */ }
+    setMessagesLoading(false);
+  }, [user?.id]);
+
+  const markAsRead = async (msg: any) => {
+    if (!msg.is_read && supabase) {
+      await supabase.from("messages").update({ is_read: true }).eq("id", msg.id);
+      setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, is_read: true } : m));
+      onMsgRead?.();
+    }
+    setViewingMsg({ ...msg, is_read: true });
+  };
+
+  const sendMessage = async () => {
+    if (!supabase || !user?.id || !msgToId || !msgTitle.trim() || !msgBody.trim()) {
+      showToast("받는 사람, 제목, 내용을 모두 입력해주세요.", "error"); return;
+    }
+    setMsgSending(true);
+    try {
+      const { error } = await supabase.from("messages").insert({
+        sender_id: user.id,
+        sender_name: profile?.nickname || "알 수 없음",
+        receiver_id: msgToId,
+        receiver_name: msgTo,
+        title: msgTitle.trim(),
+        content: msgBody.trim(),
+        is_read: false,
+      });
+      if (error) throw error;
+      showToast("쪽지를 보냈습니다.", "success");
+      setComposing(false); setMsgTo(""); setMsgToId(""); setMsgTitle(""); setMsgBody(""); setMemberSearch(""); setMemberResults([]);
+    } catch (e: any) {
+      showToast(e.message || "전송 실패", "error");
+    }
+    setMsgSending(false);
+  };
+
+  const searchMembers = async (query: string) => {
+    setMemberSearch(query);
+    if (!query.trim() || !supabase) { setMemberResults([]); return; }
+    const { data } = await supabase.from("profiles").select("id, nickname").ilike("nickname", `%${query}%`).limit(8);
+    setMemberResults((data || []).filter((m: any) => m.id !== user?.id));
+  };
+
+  const deleteMessage = async (msgId: string) => {
+    if (!supabase) return;
+    await supabase.from("messages").delete().eq("id", msgId).eq("receiver_id", user.id);
+    setMessages((prev) => prev.filter((m) => m.id !== msgId));
+    if (viewingMsg?.id === msgId) setViewingMsg(null);
+    onMsgRead?.();
+  };
+
+  useEffect(() => {
+    if (myRoomTab === "messages") fetchMessages();
+  }, [myRoomTab, fetchMessages]);
     const today = new Date().toISOString().split("T")[0];
 
     if (profile.last_attendance === today) {
@@ -12213,10 +12361,37 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
         </div>
       </div>
 
-      {/* ── 캐릭터 목록 ── */}
+      {/* ── 탭 바 ── */}
+      <div className="flex items-center gap-2 mb-6 border-b border-white/8 pb-4">
+        {[
+          { key: "characters", label: "캐릭터 관리" },
+          { key: "messages", label: "쪽지함" },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setMyRoomTab(tab.key as any)}
+            className={cn(
+              "relative flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all",
+              myRoomTab === tab.key
+                ? "bg-amber-500/15 border border-amber-400/30 text-amber-200"
+                : "text-slate-500 hover:text-slate-300"
+            )}
+          >
+            {tab.label}
+            {tab.key === "messages" && (unreadMsgCount > 0) && (
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {unreadMsgCount > 9 ? "9+" : unreadMsgCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── 캐릭터 탭 ── */}
+      {myRoomTab === "characters" && (
       <div className="space-y-4">
 
-        {/* 등록 버튼 */}
+      {/* 등록 버튼 */}
         <div className="flex items-center justify-between">
           <div className="text-sm font-semibold text-stone-400">내 캐릭터 <span className="text-amber-300">{characters.length}</span></div>
           <button
@@ -12608,6 +12783,183 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile }: any) => {
       </AnimatePresence>
 
     </div>
+    )} {/* end characters tab */}
+
+      {/* ── 쪽지 탭 ── */}
+      {myRoomTab === "messages" && (
+        <div className="space-y-4">
+          {/* 쪽지 작성 버튼 */}
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold text-slate-400">
+              받은 쪽지 <span className="text-amber-300">{messages.length}</span>
+              {messages.filter((m) => !m.is_read).length > 0 && (
+                <span className="ml-2 text-red-400 text-xs">({messages.filter((m) => !m.is_read).length}개 안읽음)</span>
+              )}
+            </div>
+            <button
+              onClick={() => setComposing(true)}
+              className="flex items-center gap-2 rounded-2xl border border-violet-400/30 bg-violet-400/10 px-5 py-2.5 text-sm font-semibold text-violet-300 hover:bg-violet-400/18 transition-all"
+            >
+              <Pencil size={14} /> 쪽지 작성
+            </button>
+          </div>
+
+          {/* 메시지 목록 */}
+          {messagesLoading ? (
+            <div className="py-16 text-center text-slate-500 text-sm">불러오는 중...</div>
+          ) : messages.length === 0 ? (
+            <div className="rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] py-20 text-center">
+              <div className="text-4xl mb-4">✉️</div>
+              <div className="text-slate-500 text-sm">받은 쪽지가 없습니다.</div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {messages.map((msg) => (
+                <button
+                  key={msg.id}
+                  onClick={() => markAsRead(msg)}
+                  className={cn(
+                    "w-full flex items-center gap-4 rounded-2xl border px-4 py-3.5 text-left transition-all hover:border-violet-300/30",
+                    msg.is_read
+                      ? "border-white/8 bg-white/[0.02]"
+                      : "border-violet-400/25 bg-violet-400/[0.06]"
+                  )}
+                >
+                  <div className={cn("h-2 w-2 shrink-0 rounded-full", msg.is_read ? "bg-slate-700" : "bg-red-500")} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={cn("text-sm font-semibold truncate", msg.is_read ? "text-slate-300" : "text-white")}>
+                        {msg.title}
+                      </span>
+                      {!msg.is_read && (
+                        <span className="shrink-0 rounded-full bg-red-500/20 border border-red-500/30 px-1.5 py-0.5 text-[9px] font-bold text-red-300">NEW</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500 flex items-center gap-2">
+                      <span>보낸이: <span className="text-slate-400">{msg.sender_name}</span></span>
+                      <span>·</span>
+                      <span>{new Date(msg.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
+                  </div>
+                  <Trash2
+                    size={14}
+                    className="text-slate-600 hover:text-red-400 shrink-0 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); deleteMessage(msg.id); }}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* 쪽지 상세 모달 */}
+          <AnimatePresence>
+            {viewingMsg && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+                onClick={(e) => { if (e.target === e.currentTarget) setViewingMsg(null); }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-[#090d18] p-6 shadow-2xl"
+                >
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-300/70">Message</div>
+                      <div className="text-lg font-semibold text-white mt-0.5">{viewingMsg.title}</div>
+                    </div>
+                    <button onClick={() => setViewingMsg(null)} className="h-8 w-8 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <div className="text-xs text-slate-500 mb-4 flex items-center gap-2">
+                    <span>보낸이: <span className="text-slate-300 font-semibold">{viewingMsg.sender_name}</span></span>
+                    <span>·</span>
+                    <span>{new Date(viewingMsg.created_at).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                  <div className="min-h-[100px] rounded-2xl border border-white/8 bg-black/30 px-4 py-3 text-sm text-slate-200 leading-relaxed whitespace-pre-wrap">
+                    {viewingMsg.content}
+                  </div>
+                  <div className="mt-4 flex gap-2 justify-end">
+                    <button
+                      onClick={() => { deleteMessage(viewingMsg.id); setViewingMsg(null); }}
+                      className="rounded-xl border border-red-400/25 bg-red-400/8 px-4 py-2 text-xs font-semibold text-red-300 hover:bg-red-400/15 transition-all"
+                    >
+                      삭제
+                    </button>
+                    <button onClick={() => setViewingMsg(null)} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 transition-all">
+                      닫기
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* 쪽지 작성 모달 */}
+          <AnimatePresence>
+            {composing && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+                onClick={(e) => { if (e.target === e.currentTarget) setComposing(false); }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}
+                  className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-[#090d18] p-6 shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-300/70">New Message</div>
+                      <div className="text-lg font-semibold text-white mt-0.5">쪽지 작성</div>
+                    </div>
+                    <button onClick={() => setComposing(false)} className="h-8 w-8 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-400 hover:text-white transition-all">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <div className="space-y-3">
+                    {/* 받는 사람 검색 */}
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="받는 사람 닉네임 검색..."
+                        value={msgToId ? `✓ ${msgTo}` : memberSearch}
+                        onChange={(e) => { if (msgToId) { setMsgToId(""); setMsgTo(""); } searchMembers(e.target.value); }}
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-400/60 placeholder:text-slate-600"
+                      />
+                      {memberResults.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 z-10 mt-1 rounded-2xl border border-white/10 bg-[#0a0d18] shadow-xl overflow-hidden">
+                          {memberResults.map((m: any) => (
+                            <button key={m.id} onClick={() => { setMsgTo(m.nickname); setMsgToId(m.id); setMemberSearch(""); setMemberResults([]); }}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-200 hover:bg-white/5 transition-all text-left">
+                              <span className="font-semibold">{m.nickname}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <input type="text" placeholder="제목" value={msgTitle} onChange={(e) => setMsgTitle(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-400/60 placeholder:text-slate-600" />
+                    <textarea placeholder="내용을 입력하세요..." value={msgBody} onChange={(e) => setMsgBody(e.target.value)} rows={5}
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-violet-400/60 placeholder:text-slate-600 resize-none" />
+                    <div className="flex gap-3">
+                      <button onClick={() => setComposing(false)} className="flex-1 py-3 rounded-2xl border border-white/10 bg-white/5 text-sm font-semibold text-slate-300 hover:bg-white/8 transition-all">
+                        취소
+                      </button>
+                      <button onClick={sendMessage} disabled={msgSending}
+                        className="flex-[2] py-3 rounded-2xl bg-violet-500 text-sm font-semibold text-white hover:bg-violet-400 transition-all disabled:opacity-50 shadow-lg shadow-violet-500/20">
+                        {msgSending ? "전송 중..." : "보내기"}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )} {/* end messages tab */}
+
   );
 };
 const RankingPage = ({ user, profile }: any) => {
@@ -14708,7 +15060,11 @@ const PointShopPage = ({ user, profile }: any) => {
   const [gachaRewards, setGachaRewards] = useState<Record<string, any[]>>({});
   const [myPoint, setMyPoint] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [shopTab, setShopTab] = useState<"guild" | "nickname" | "enhance" | "gacha">("guild");
+  const [shopTab, setShopTab] = useState<"guild" | "nickname" | "enhance" | "gacha" | "gold">("guild");
+  const [goldRequests, setGoldRequests] = useState<any[]>([]);
+  const [goldLoading, setGoldLoading] = useState(false);
+  const [goldSubmitting, setGoldSubmitting] = useState(false);
+  const [goldQty, setGoldQty] = useState(1); // 1단위 = 100P = 5000골드
   const [drawSession, setDrawSession] = useState<any>(null);
   const [drawingProductId, setDrawingProductId] = useState<string | null>(null);
   const [purchasingItemId, setPurchasingItemId] = useState<string | null>(null);
@@ -14716,6 +15072,52 @@ const PointShopPage = ({ user, profile }: any) => {
   useEffect(() => {
     fetchShop();
   }, [user?.id]);
+
+  const fetchGoldRequests = async () => {
+    if (!supabase || !user?.id) return;
+    setGoldLoading(true);
+    const { data } = await supabase
+      .from("gold_exchange_requests")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    setGoldRequests(data || []);
+    setGoldLoading(false);
+  };
+
+  const submitGoldExchange = async () => {
+    if (!user || !supabase) return showToast("로그인 후 사용 가능합니다.", "error");
+    const cost = goldQty * 100;
+    const gold = goldQty * 5000;
+    if (myPoint < cost) return showToast(`포인트가 부족합니다. (필요: ${cost}P)`, "error");
+    if (goldQty < 1) return showToast("수량은 1 이상이어야 합니다.", "error");
+    if (!confirm(`${cost}P를 사용하여 ${gold.toLocaleString()} 골드 교환을 신청하시겠습니까?\n관리자 확인 후 게임 내에서 골드가 지급됩니다.`)) return;
+
+    setGoldSubmitting(true);
+    const client = getSupabaseOrThrow();
+    try {
+      // 포인트 차감
+      const { error: ptErr } = await client.from("profiles").update({ points: myPoint - cost }).eq("id", user.id);
+      if (ptErr) throw ptErr;
+      // 교환 요청 생성
+      const { error: reqErr } = await client.from("gold_exchange_requests").insert({
+        user_id: user.id,
+        user_name: profile?.nickname || "알 수 없음",
+        points_spent: cost,
+        gold_amount: gold,
+        status: "pending",
+      });
+      if (reqErr) throw reqErr;
+      setMyPoint((p: number) => p - cost);
+      showToast(`${gold.toLocaleString()} 골드 교환 신청 완료! 관리자가 확인 후 지급합니다.`, "success");
+      setGoldQty(1);
+      fetchGoldRequests();
+    } catch (e: any) {
+      showToast(e.message || "신청 실패", "error");
+    }
+    setGoldSubmitting(false);
+  };
 
   const fetchShop = async () => {
     setLoading(true);
@@ -15106,13 +15508,16 @@ const PointShopPage = ({ user, profile }: any) => {
           ["nickname", "닉네임 상점"],
           ["enhance", "강화석 상점"],
           ["gacha", "무기 가챠"],
+          ["gold", "💰 골드 교환"],
         ].map(([key, label]) => (
           <button
             key={key}
-            onClick={() => setShopTab(key as "guild" | "nickname" | "enhance" | "gacha")}
+            onClick={() => { setShopTab(key as any); if (key === "gold") fetchGoldRequests(); }}
             className={cn(
               "px-4 py-2 rounded-full text-sm font-semibold border transition",
-              shopTab === key ? "bg-amber-500 border-amber-400 text-white" : "bg-white/5 border-white/10 text-slate-400"
+              shopTab === key
+                ? key === "gold" ? "bg-yellow-500 border-yellow-400 text-black" : "bg-amber-500 border-amber-400 text-white"
+                : "bg-white/5 border-white/10 text-slate-400"
             )}
           >
             {label}
@@ -15120,8 +15525,103 @@ const PointShopPage = ({ user, profile }: any) => {
         ))}
       </div>
 
-      {loading ? (
+      {loading && shopTab !== "gold" ? (
         <div className="py-16 text-center text-slate-500">포인트샵 불러오는 중...</div>
+      ) : shopTab === "gold" ? (
+        /* ── 골드 교환 탭 ── */
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* 교환 안내 카드 */}
+          <div className="relative overflow-hidden rounded-[2rem] border border-yellow-400/25 bg-[linear-gradient(135deg,rgba(234,179,8,0.12),rgba(251,191,36,0.06),rgba(0,0,0,0))] p-7">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent" />
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-yellow-400/30 bg-yellow-400/15 text-2xl">💰</div>
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-yellow-300/70">Gold Exchange</div>
+                <div className="text-xl font-semibold text-white">골드 교환권</div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3 mb-5 space-y-1.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">교환 비율</span>
+                <span className="font-semibold text-white">100P → 5,000 골드</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">내 포인트</span>
+                <span className="font-semibold text-amber-300">{myPoint.toLocaleString()} P</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">최대 교환 가능</span>
+                <span className="font-semibold text-yellow-300">{Math.floor(myPoint / 100) * 5000 > 0 ? `${(Math.floor(myPoint / 100) * 5000).toLocaleString()} 골드` : "포인트 부족"}</span>
+              </div>
+            </div>
+
+            {/* 수량 선택 */}
+            <div className="mb-4">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">교환 수량</div>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setGoldQty((q) => Math.max(1, q - 1))}
+                  className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 text-lg font-bold text-white hover:bg-white/10 transition-all">−</button>
+                <div className="flex-1 text-center">
+                  <div className="text-2xl font-bold text-white">{goldQty}</div>
+                  <div className="text-xs text-slate-500">= {(goldQty * 100).toLocaleString()}P → {(goldQty * 5000).toLocaleString()} 골드</div>
+                </div>
+                <button onClick={() => setGoldQty((q) => Math.min(Math.floor(myPoint / 100), q + 1))}
+                  className="h-10 w-10 rounded-xl border border-white/10 bg-white/5 text-lg font-bold text-white hover:bg-white/10 transition-all">+</button>
+              </div>
+              <div className="mt-3 flex gap-2">
+                {[1, 2, 5, 10].map((n) => (
+                  <button key={n} onClick={() => setGoldQty(n)}
+                    className={cn("flex-1 rounded-xl border py-1.5 text-xs font-semibold transition-all",
+                      goldQty === n ? "border-yellow-400/40 bg-yellow-400/15 text-yellow-300" : "border-white/10 bg-white/5 text-slate-400 hover:text-white")}>
+                    {n}회
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={submitGoldExchange}
+              disabled={goldSubmitting || myPoint < 100}
+              className="w-full rounded-2xl bg-yellow-500 py-4 font-semibold text-black hover:bg-yellow-400 transition-all shadow-lg shadow-yellow-500/20 disabled:opacity-40 active:scale-[0.98]"
+            >
+              {goldSubmitting ? "신청 중..." : `${(goldQty * 100).toLocaleString()}P로 ${(goldQty * 5000).toLocaleString()} 골드 교환 신청`}
+            </button>
+            <p className="mt-3 text-center text-xs text-slate-600">신청 후 관리자 확인 시 인게임에서 골드가 지급됩니다.</p>
+          </div>
+
+          {/* 교환 내역 */}
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">교환 신청 내역</div>
+            {goldLoading ? (
+              <div className="py-8 text-center text-slate-600 text-sm">불러오는 중...</div>
+            ) : goldRequests.length === 0 ? (
+              <div className="rounded-[1.5rem] border border-dashed border-white/10 py-10 text-center text-slate-600 text-sm">신청 내역이 없습니다.</div>
+            ) : (
+              <div className="space-y-2">
+                {goldRequests.map((req) => {
+                  const statusMap: Record<string, { label: string; cls: string }> = {
+                    pending:  { label: "검토 중", cls: "bg-amber-400/15 text-amber-300 border-amber-400/25" },
+                    approved: { label: "지급 완료", cls: "bg-emerald-400/15 text-emerald-300 border-emerald-400/25" },
+                    rejected: { label: "거절됨", cls: "bg-red-400/15 text-red-300 border-red-400/25" },
+                  };
+                  const s = statusMap[req.status] || statusMap.pending;
+                  return (
+                    <div key={req.id} className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3">
+                      <div>
+                        <div className="text-sm font-semibold text-white">{req.gold_amount.toLocaleString()} 골드</div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {req.points_spent}P 사용 · {new Date(req.created_at).toLocaleDateString("ko-KR")}
+                        </div>
+                        {req.admin_note && <div className="text-xs text-slate-400 mt-0.5">메모: {req.admin_note}</div>}
+                      </div>
+                      <span className={cn("rounded-full border px-2.5 py-0.5 text-[10px] font-semibold", s.cls)}>{s.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       ) : shopTab === "guild" ? (
         renderShopCards(guildItems, "아직 등록된 뱃지 상품이 없습니다.")
       ) : shopTab === "nickname" ? (
@@ -15316,6 +15816,9 @@ const PointShopPage = ({ user, profile }: any) => {
 
 const AdminPointShopManager = () => {
   const [title, setTitle] = useState("");
+  const [goldExchangeReqs, setGoldExchangeReqs] = useState<any[]>([]);
+  const [goldReqsLoading, setGoldReqsLoading] = useState(false);
+  const [adminManagerTab, setAdminManagerTab] = useState<"shop" | "gold_requests">("gold_requests");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [rewardType, setRewardType] = useState<"badge" | "enhance_stone" | "nickname_effect">("badge");
@@ -15358,6 +15861,7 @@ const AdminPointShopManager = () => {
     fetchItems();
     fetchWeaponParts();
     fetchGachaProducts();
+    fetchGoldExchangeReqs();
   }, []);
 
   useEffect(() => {
@@ -15376,6 +15880,28 @@ const AdminPointShopManager = () => {
       setRewardType("badge");
     }
   }, [managerTab]);
+
+  const fetchGoldExchangeReqs = async () => {
+    if (!supabase) return;
+    setGoldReqsLoading(true);
+    const { data } = await supabase
+      .from("gold_exchange_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+    setGoldExchangeReqs(data || []);
+    setGoldReqsLoading(false);
+  };
+
+  const handleGoldReqAction = async (req: any, action: "approved" | "rejected", note = "") => {
+    if (!supabase) return;
+    await supabase.from("gold_exchange_requests").update({
+      status: action,
+      admin_note: note || null,
+      processed_at: new Date().toISOString(),
+    }).eq("id", req.id);
+    showToast(action === "approved" ? "지급 완료 처리됐습니다." : "거절 처리됐습니다.", "success");
+    fetchGoldExchangeReqs();
+  };
 
   const fetchItems = async () => {
     const { data, error } = await supabase.from("point_shop_items").select("*").order("created_at", { ascending: false });
@@ -15691,7 +16217,95 @@ const AdminPointShopManager = () => {
     .sort((a: any, b: any) => getProbabilityNumber(b.probability) - getProbabilityNumber(a.probability));
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
+      {/* 최상단 탭: 골드교환 관리 vs 포인트샵 관리 */}
+      <div className="flex gap-3 border-b border-white/8 pb-4">
+        {[
+          { key: "gold_requests", label: "💰 골드 교환 신청 관리", badge: goldExchangeReqs.filter((r) => r.status === "pending").length },
+          { key: "shop", label: "🛒 포인트샵 상품 관리" },
+        ].map((t) => (
+          <button key={t.key} onClick={() => { setAdminManagerTab(t.key as any); if (t.key === "gold_requests") fetchGoldExchangeReqs(); }}
+            className={cn("relative flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all border",
+              adminManagerTab === t.key ? "bg-amber-500/15 border-amber-400/30 text-amber-200" : "border-white/10 bg-white/5 text-slate-400 hover:text-white")}>
+            {t.label}
+            {(t as any).badge > 0 && (
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {(t as any).badge}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* 골드 교환 신청 관리 */}
+      {adminManagerTab === "gold_requests" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-yellow-300/70">Gold Exchange</div>
+              <div className="text-xl font-semibold text-white mt-0.5">골드 교환 신청 목록</div>
+              <div className="text-sm text-slate-500 mt-1">신청 확인 후 게임에서 골드 지급 후 '지급 완료'를 눌러주세요.</div>
+            </div>
+            <button onClick={fetchGoldExchangeReqs} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 transition-all">
+              새로고침
+            </button>
+          </div>
+
+          {goldReqsLoading ? (
+            <div className="py-12 text-center text-slate-500">불러오는 중...</div>
+          ) : goldExchangeReqs.length === 0 ? (
+            <div className="rounded-[2rem] border border-dashed border-white/10 py-16 text-center text-slate-600">신청 내역이 없습니다.</div>
+          ) : (
+            <div className="space-y-3">
+              {goldExchangeReqs.map((req) => {
+                const statusMap: Record<string, { label: string; cls: string }> = {
+                  pending:  { label: "검토 중", cls: "bg-amber-400/15 text-amber-300 border-amber-400/25" },
+                  approved: { label: "지급 완료", cls: "bg-emerald-400/15 text-emerald-300 border-emerald-400/25" },
+                  rejected: { label: "거절됨", cls: "bg-red-400/15 text-red-300 border-red-400/25" },
+                };
+                const s = statusMap[req.status] || statusMap.pending;
+                return (
+                  <div key={req.id} className={cn(
+                    "rounded-[1.5rem] border p-4 flex flex-col sm:flex-row sm:items-center gap-4",
+                    req.status === "pending" ? "border-yellow-400/20 bg-yellow-400/[0.04]" : "border-white/8 bg-white/[0.02]"
+                  )}>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className="font-semibold text-white text-sm">{req.user_name}</span>
+                        <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold", s.cls)}>{s.label}</span>
+                      </div>
+                      <div className="text-sm text-yellow-300 font-bold">{req.gold_amount.toLocaleString()} 골드</div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        사용 포인트: {req.points_spent}P · {new Date(req.created_at).toLocaleString("ko-KR")}
+                      </div>
+                      {req.admin_note && <div className="text-xs text-slate-400 mt-1">메모: {req.admin_note}</div>}
+                    </div>
+                    {req.status === "pending" && (
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          onClick={() => handleGoldReqAction(req, "approved")}
+                          className="rounded-xl bg-emerald-500/15 border border-emerald-400/30 px-4 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25 transition-all"
+                        >
+                          ✓ 지급 완료
+                        </button>
+                        <button
+                          onClick={() => { const note = prompt("거절 사유 (선택):"); handleGoldReqAction(req, "rejected", note || ""); }}
+                          className="rounded-xl bg-red-500/10 border border-red-400/25 px-4 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/20 transition-all"
+                        >
+                          ✕ 거절
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 포인트샵 상품 관리 */}
+      {adminManagerTab === "shop" && (<>
       <div className="rounded-[2rem] border border-white/10 bg-black/20 p-3">
         <div className="flex flex-wrap gap-2">
           {[
@@ -16220,7 +16834,7 @@ const AdminPointShopManager = () => {
           )}
         </div>
       </div>
-      )}
+      </>)} {/* end shop tab */}
     </div>
 
   );
