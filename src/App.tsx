@@ -3170,6 +3170,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
   });
   const [todayRaids, setTodayRaids] = useState<any[]>([]);
   const [upcomingRaids, setUpcomingRaids] = useState<any[]>([]);
+  const [topRankers, setTopRankers] = useState<any[]>([]);
   const [contentImgMap, setContentImgMap] = useState<Record<string, string>>({});
   const [participantCountMap, setParticipantCountMap] = useState<Record<string, number>>({});
   const [weeklySchedules, setWeeklySchedules] = useState<Record<string, any[]>>({});
@@ -3226,7 +3227,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
         nextWeek.setDate(nextWeek.getDate() + 7);
         const nextWeekKey = formatDate(nextWeek.getFullYear(), nextWeek.getMonth(), nextWeek.getDate());
 
-        const [membersRes, weekRes, todayRes, upcomingRes] = await Promise.all([
+        const [membersRes, weekRes, todayRes, upcomingRes, rankersRes] = await Promise.all([
           supabase.from("profiles").select("id", { count: "exact", head: true }),
           supabase.from("raid_schedules").select("*")
             .gte("raid_date", currentWeekRange.start).lte("raid_date", currentWeekRange.end)
@@ -3236,6 +3237,8 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
           supabase.from("raid_schedules").select("*")
             .gte("raid_date", today).lte("raid_date", nextWeekKey)
             .order("raid_date", { ascending: true }).order("raid_time", { ascending: true }),
+          supabase.from("profiles").select("id, nickname, points, rank_name, character_name")
+            .order("points", { ascending: false }).limit(5),
         ]);
 
         if (!mounted) return;
@@ -3253,6 +3256,7 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
         setWeeklySchedules(scheduleMap);
         setTodayRaids(todayRes.data || []);
         setUpcomingRaids(upcomingList.slice(0, 5));
+        setTopRankers(rankersRes.data || []);
 
         // contents 테이블에서 레이드 이미지 로드
         const allRaidNames = Array.from(new Set([
@@ -3574,73 +3578,70 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
               </div>
             </div>
 
-            {/* 다가오는 레이드 목록 */}
-            {upcomingRaids.length > 0 && (
-              <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl">
-                <div className="border-b border-white/[0.06] px-4 py-3.5">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-blue-300/80">Upcoming</div>
-                  <div className="mt-0.5 text-base font-semibold text-white">예정된 레이드</div>
+            {/* 포인트 랭킹 TOP 5 */}
+            <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
+              <div className="border-b border-white/[0.06] px-4 py-3.5 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">Point Ranking</div>
+                  <div className="mt-0.5 text-base font-semibold text-white">포인트 랭킹 TOP 5</div>
                 </div>
-                <div className="p-3 space-y-1.5">
-                  {upcomingRaids.map((raid: any) => {
-                    const status = getRaidStatusBadge(raid);
-                    const raidImgUrl = contentImgMap[String(raid.raid_name || "").trim()];
-                    return (
-                      <button key={raid.id} onClick={() => onRaidSearch?.(raid)}
-                        className="flex w-full items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-left transition-all hover:border-amber-200/18 hover:bg-amber-300/[0.04]">
-                        {/* 레이드 이미지 썸네일 */}
-                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-white/10">
-                          {raidImgUrl ? (
-                            <img
-                              src={raidImgUrl}
-                              alt={raid.raid_name}
-                              className="h-full w-full object-cover opacity-80"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-amber-300/8 text-[11px] font-bold text-amber-200">
-                              {new Date(raid.raid_date).getDate()}
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-semibold text-white">{raid.raid_name}</div>
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 flex-wrap">
-                            <span>{formatShortDate(raid.raid_date)}</span>
-                            <span>·</span>
-                            <span>{raid.raid_time}</span>
-                            {raid.difficulty && <><span>·</span><span className="text-slate-400">{raid.difficulty}</span></>}
-                          </div>
-                          {/* 참여자 진행도 바 */}
-                          {(() => {
-                            const maxP = Number(raid.max_participants) || (raid.raid_type === "4인" ? 4 : 8);
-                            const curP = participantCountMap[String(raid.id)] || 0;
-                            const pct = Math.min(100, Math.round((curP / maxP) * 100));
-                            const isFull = curP >= maxP;
-                            const barColor = isFull ? "bg-rose-400" : pct >= 75 ? "bg-amber-400" : "bg-emerald-400";
-                            return (
-                              <div className="mt-1.5 flex items-center gap-2">
-                                <div className="flex-1 h-1 rounded-full bg-white/[0.08] overflow-hidden">
-                                  <div
-                                    className={cn("h-full rounded-full transition-all duration-500", barColor)}
-                                    style={{ width: `${pct}%` }}
-                                  />
-                                </div>
-                                <span className={cn("text-[10px] font-semibold tabular-nums shrink-0", isFull ? "text-rose-300" : "text-slate-400")}>
-                                  {curP}/{maxP}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                        <span className={cn("rounded-full border px-2 py-0.5 text-[10px] font-semibold shrink-0", status.cls)}>
-                          {status.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <Trophy size={16} className="text-amber-300/60" />
               </div>
-            )}
+              <div className="p-3 space-y-1.5">
+                {topRankers.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-slate-600">랭킹 데이터가 없습니다.</div>
+                ) : topRankers.map((member: any, idx: number) => {
+                  const rank = idx + 1;
+                  const pts = Number(member.points || 0);
+                  const name = member.nickname || member.character_name || "알 수 없음";
+                  const maxPts = Number(topRankers[0]?.points || 1);
+                  const pct = Math.min(100, Math.round((pts / Math.max(maxPts, 1)) * 100));
+
+                  const rankConfig: Record<number, { medal: string; barColor: string; textColor: string; borderColor: string; bg: string }> = {
+                    1: { medal: "🥇", barColor: "bg-amber-400", textColor: "text-amber-300", borderColor: "border-amber-400/30", bg: "bg-amber-400/[0.06]" },
+                    2: { medal: "🥈", barColor: "bg-slate-300", textColor: "text-slate-300", borderColor: "border-slate-300/20", bg: "bg-white/[0.03]" },
+                    3: { medal: "🥉", barColor: "bg-orange-400", textColor: "text-orange-300", borderColor: "border-orange-400/25", bg: "bg-orange-400/[0.04]" },
+                    4: { medal: "4", barColor: "bg-blue-400", textColor: "text-blue-300", borderColor: "border-white/8", bg: "bg-white/[0.02]" },
+                    5: { medal: "5", barColor: "bg-violet-400", textColor: "text-violet-300", borderColor: "border-white/8", bg: "bg-white/[0.02]" },
+                  };
+                  const cfg = rankConfig[rank] || rankConfig[5];
+
+                  return (
+                    <div
+                      key={member.id}
+                      className={cn(
+                        "flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-all",
+                        cfg.borderColor,
+                        cfg.bg
+                      )}
+                    >
+                      {/* 순위 */}
+                      <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-bold", rank <= 3 ? "text-base" : cfg.textColor)}>
+                        {rank <= 3 ? cfg.medal : rank}
+                      </div>
+
+                      {/* 이름 + 바 */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="truncate text-sm font-semibold text-white">{name}</span>
+                          <span className={cn("shrink-0 text-xs font-bold tabular-nums", cfg.textColor)}>
+                            {pts.toLocaleString()}P
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.8, delay: idx * 0.08, ease: "easeOut" }}
+                            className={cn("h-full rounded-full", cfg.barColor)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </motion.div>
 
           {/* ── RIGHT: 빠른 실행 + 통계 + 공지 ── */}
