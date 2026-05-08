@@ -135,7 +135,6 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const defaultSettings = {
   guild_name: "쁘밍",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
-  discord_invite_url: "",
   point_rate_settings: {
     enabled: true,
     cycle_minutes: 60,
@@ -155,6 +154,9 @@ const defaultSettings = {
       side_right_enabled: true,
       spline_scene_url: "",
       spline_enabled: false,
+    },
+    external_links: {
+      discord_invite_url: "",
     },
   },
 };
@@ -1396,6 +1398,9 @@ type PointRateSettings = {
     spline_scene_url?: string;
     spline_enabled?: boolean;
   };
+  external_links?: {
+    discord_invite_url?: string;
+  };
 };
 
 const normalizePointRateSettings = (value: any): PointRateSettings => {
@@ -1419,6 +1424,9 @@ const normalizePointRateSettings = (value: any): PointRateSettings => {
       side_right_enabled: raw?.ui_images?.side_right_enabled !== false,
       spline_scene_url: String(raw?.ui_images?.spline_scene_url || ""),
       spline_enabled: raw?.ui_images?.spline_enabled === true,
+    },
+    external_links: {
+      discord_invite_url: String(raw?.external_links?.discord_invite_url || ""),
     },
   };
 };
@@ -2019,7 +2027,11 @@ const fetchInitialData = async () => {
               {/* 디스코드 버튼 — 설정된 디스코드 초대 URL을 새 탭으로 열기 */}
               <button
                 onClick={() => {
-                  const url = String((settings as any)?.discord_invite_url || "").trim();
+                  const url = String(
+                    (settings as any)?.point_rate_settings?.external_links?.discord_invite_url ||
+                    (settings as any)?.discord_invite_url || // 구 경로 호환
+                    ""
+                  ).trim();
                   if (!url) {
                     showToast("디스코드 초대 링크가 설정되지 않았어요. 관리자가 [관리자 패널 → 길드 설정]에서 등록해주세요.", "info");
                     return;
@@ -5359,7 +5371,7 @@ const MainContentViewer = ({ type }: { type: string }) => {
   }, [type]);
 
   return (
-    <section className="max-w-7xl mx-auto px-3 sm:px-6 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 pb-8">
+    <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 pb-8 max-w-[900px]">
       {items.length === 0 && (
         <div className="col-span-full text-center text-slate-600 font-semibold py-10 uppercase">
           No Contents Registered.
@@ -8999,8 +9011,17 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
       />
       <AdminInput
         label="Discord 초대 URL (상단 [길드 디스코드] 버튼 클릭 시 새 탭으로 열림)"
-        value={(settings as any).discord_invite_url || ""}
-        onChange={(v: any) => setSettings({ ...settings, discord_invite_url: v })}
+        value={settings?.point_rate_settings?.external_links?.discord_invite_url || ""}
+        onChange={(v: any) => setSettings({
+          ...settings,
+          point_rate_settings: {
+            ...(settings.point_rate_settings || {}),
+            external_links: {
+              ...(settings.point_rate_settings?.external_links || {}),
+              discord_invite_url: v,
+            },
+          },
+        })}
       />
 
       {/* ── Spline 배경 설정 ── */}
