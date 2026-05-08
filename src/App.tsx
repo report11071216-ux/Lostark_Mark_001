@@ -888,8 +888,8 @@ const HomeFeaturePortal = ({
       badge: "Core Content",
       icon: <Swords size={22} />,
       stats: "주요 레이드 콘텐츠",
-      glow: "from-amber-300/16 via-amber-200/8 to-transparent",
-      activeClass: "border-amber-200/24 bg-amber-300/[0.08] shadow-[0_18px_40px_rgba(245,188,93,0.14)]",
+      accentR: "240,180,41",
+      accentHex: "#F0B429",
     },
     {
       key: "가디언 토벌",
@@ -898,8 +898,8 @@ const HomeFeaturePortal = ({
       badge: "Field Hunt",
       icon: <Shield size={22} />,
       stats: "토벌 정보 바로가기",
-      glow: "from-yellow-200/14 via-amber-200/8 to-transparent",
-      activeClass: "border-yellow-200/22 bg-yellow-200/[0.06] shadow-[0_18px_40px_rgba(250,218,122,0.12)]",
+      accentR: "52,211,153",
+      accentHex: "#34D399",
     },
     {
       key: "클래스",
@@ -908,8 +908,8 @@ const HomeFeaturePortal = ({
       badge: "Class Index",
       icon: <Sparkles size={22} />,
       stats: "캐릭터 빌드 탐색",
-      glow: "from-orange-200/14 via-amber-200/8 to-transparent",
-      activeClass: "border-orange-200/22 bg-orange-200/[0.06] shadow-[0_18px_40px_rgba(251,191,36,0.12)]",
+      accentR: "167,139,250",
+      accentHex: "#a78bfa",
     },
   ];
 
@@ -917,7 +917,7 @@ const HomeFeaturePortal = ({
     <section className="relative z-10 mx-auto max-w-7xl px-3 sm:px-6 pb-3 md:pb-4">
       <div className="mb-4 flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-amber-300/90">Feature Gateway</div>
+          <div className="text-[11px] font-medium uppercase tracking-[0.28em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>Feature Gateway</div>
           <h2 className="mt-2 text-xl font-semibold tracking-[0.02em] text-white md:text-2xl">
             핵심 콘텐츠 바로가기
           </h2>
@@ -937,42 +937,72 @@ const HomeFeaturePortal = ({
           return (
             <motion.button
               key={card.key}
-              whileHover={{ y: -3, scale: 1.006 }}
+              whileHover={{ y: -4, scale: 1.008 }}
               onClick={() => setContentView(card.key)}
-              className={cn(
-                "group relative overflow-hidden rounded-[1.55rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.034),rgba(255,255,255,0.02))] p-4 text-left backdrop-blur-xl transition-all shadow-[0_18px_38px_rgba(0,0,0,0.24)]",
-                active ? card.activeClass : "hover:border-amber-200/18 hover:bg-white/[0.045] hover:shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
-              )}
+              className="group relative overflow-hidden p-4 text-left backdrop-blur-xl transition-all"
+              style={{
+                borderRadius: "var(--guild-radius-lg,20px)",
+                border: active
+                  ? `1px solid rgba(${card.accentR},0.35)`
+                  : "1px solid rgba(255,255,255,0.07)",
+                background: active
+                  ? `linear-gradient(160deg, rgba(${card.accentR},0.10) 0%, rgba(8,12,22,0.96) 100%)`
+                  : "linear-gradient(180deg,rgba(13,21,38,0.80),rgba(8,12,22,0.88))",
+                boxShadow: active
+                  ? `0 18px_40px rgba(${card.accentR},0.14), inset 0 0 0 1px rgba(${card.accentR},0.12)`
+                  : "0 12px 32px rgba(0,0,0,0.22)",
+              }}
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${card.glow} opacity-90`} />
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/20 to-transparent" />
+              {/* 상단 액센트 라인 */}
+              <div
+                className="absolute top-0 left-0 right-0 h-px transition-opacity"
+                style={{
+                  background: `linear-gradient(90deg,transparent,rgba(${card.accentR},${active ? "0.55" : "0.20"}) 50%,transparent)`,
+                }}
+              />
+              {/* 배경 글로우 */}
+              {active && (
+                <div
+                  className="pointer-events-none absolute top-0 right-0 h-24 w-24 opacity-60"
+                  style={{ background: `radial-gradient(circle, rgba(${card.accentR},0.20) 0%, transparent 70%)` }}
+                />
+              )}
 
               <div className="relative z-10">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] border border-amber-100/12 bg-white/[0.05] text-amber-100 shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+                  <div
+                    className="flex h-11 w-11 items-center justify-center rounded-2xl transition-all"
+                    style={{
+                      border: `1px solid rgba(${card.accentR},0.25)`,
+                      background: `rgba(${card.accentR},0.12)`,
+                      color: card.accentHex,
+                    }}
+                  >
                     {card.icon}
                   </div>
-                  <div className="rounded-full border border-white/8 bg-white/[0.035] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] text-stone-300">
+                  <div
+                    className="rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em]"
+                    style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)", color: "var(--guild-text-3,#5C6882)" }}
+                  >
                     {card.badge}
                   </div>
                 </div>
 
                 <div className="mt-4">
                   <div className="text-lg font-semibold text-white">{card.title}</div>
-                  <div className="mt-1.5 text-sm leading-6 text-stone-300">
+                  <div className="mt-1.5 text-sm leading-6" style={{ color: "var(--guild-text-2,#A0AAC0)" }}>
                     {card.subtitle}
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/8 pt-3">
-                  <div className="text-xs font-medium text-stone-400">{card.stats}</div>
+                <div className="mt-4 flex items-center justify-between gap-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="text-xs font-medium" style={{ color: "var(--guild-text-3,#5C6882)" }}>{card.stats}</div>
                   <div
-                    className={cn(
-                      "rounded-xl border px-3 py-1.5 text-[11px] font-medium transition-all",
-                      active
-                        ? "border-amber-100/12 bg-white/[0.08] text-amber-50"
-                        : "border-white/10 bg-white/[0.04] text-stone-300 group-hover:text-amber-50"
-                    )}
+                    className="rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all"
+                    style={active
+                      ? { border: `1px solid rgba(${card.accentR},0.30)`, background: `rgba(${card.accentR},0.14)`, color: card.accentHex }
+                      : { border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2,#A0AAC0)" }
+                    }
                   >
                     {active ? "현재 선택됨" : "열기"}
                   </div>
@@ -1016,27 +1046,38 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
 
   return (
     <section className="mx-auto max-w-7xl px-3 sm:px-6 pb-4 pt-2 md:pt-3">
-      <div className="overflow-hidden rounded-[1.85rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.032),rgba(255,255,255,0.018))] shadow-[0_28px_70px_rgba(0,0,0,0.26)]">
-        <div className="border-b border-white/8 px-5 py-4 md:px-6">
+      <div
+        className="relative overflow-hidden"
+        style={{
+          borderRadius: "var(--guild-radius-xl,24px)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          background: "linear-gradient(180deg,rgba(13,21,38,0.92),rgba(8,12,22,0.95))",
+          boxShadow: "0 28px 70px rgba(0,0,0,0.32)",
+        }}
+      >
+        {/* 상단 액센트 라인 */}
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,rgba(var(--ga-r400,167,139,250),0.30) 50%,transparent)` }} />
+        <div className="relative px-5 py-4 md:px-6" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/16 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200">
+              <div
+                className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]"
+                style={{ background: `rgba(var(--ga-r400,167,139,250),0.10)`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.20)`, color: `var(--ga-200,#ddd6fe)` }}
+              >
                 <Bell size={13} />
                 Guild Notice
               </div>
-              <h2 className="mt-3 text-2xl font-semibold tracking-[0.02em] text-white">
-                공지사항
-              </h2>
-              <p className="mt-1 text-sm text-stone-400">
+              <h2 className="mt-3 text-2xl font-semibold tracking-[0.02em] text-white">공지사항</h2>
+              <p className="mt-1 text-sm" style={{ color: "var(--guild-text-3,#5C6882)" }}>
                 길드 운영에 필요한 핵심 공지를 정리해서 보여줘.
               </p>
             </div>
-
-            <div className="rounded-[1.35rem] border border-amber-100/10 bg-white/[0.03] px-4 py-3 text-right shadow-[0_12px_30px_rgba(0,0,0,0.18)]">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
-                Total
-              </div>
-              <div className="mt-1 text-lg font-semibold text-amber-100">{notices.length}</div>
+            <div
+              className="text-right"
+              style={{ borderRadius: "var(--guild-radius-md,16px)", border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)", padding: "0.75rem 1rem" }}
+            >
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>Total</div>
+              <div className="mt-1 text-lg font-semibold" style={{ color: `var(--ga-200,#ddd6fe)` }}>{notices.length}</div>
             </div>
           </div>
         </div>
@@ -1059,37 +1100,48 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
               <button
                 key={notice.id}
                 onClick={() => setSelectedNotice(notice)}
-                className={cn(
-                  "w-full rounded-[1.35rem] border px-4 py-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-amber-200/22 hover:bg-white/[0.05] hover:shadow-[0_14px_28px_rgba(0,0,0,0.16)] cursor-pointer",
-                  notice.is_pinned
-                    ? "border-amber-200/18 bg-[linear-gradient(180deg,rgba(245,194,105,0.09),rgba(245,194,105,0.04))]"
-                    : "border-white/10 bg-white/[0.03]"
-                )}
+                className="w-full text-left transition-all hover:-translate-y-0.5 cursor-pointer"
+                style={{
+                  borderRadius: "var(--guild-radius-md,16px)",
+                  border: notice.is_pinned
+                    ? "1px solid rgba(240,180,41,0.22)"
+                    : "1px solid rgba(255,255,255,0.07)",
+                  background: notice.is_pinned
+                    ? "linear-gradient(180deg,rgba(240,180,41,0.07),rgba(240,180,41,0.03))"
+                    : "rgba(255,255,255,0.025)",
+                  padding: "0.875rem 1rem",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = `rgba(var(--ga-r400,167,139,250),0.28)`;
+                  (e.currentTarget as HTMLButtonElement).style.background = `rgba(var(--ga-r400,167,139,250),0.06)`;
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 12px 28px rgba(0,0,0,0.18)";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.borderColor = notice.is_pinned ? "rgba(240,180,41,0.22)" : "rgba(255,255,255,0.07)";
+                  (e.currentTarget as HTMLButtonElement).style.background = notice.is_pinned ? "linear-gradient(180deg,rgba(240,180,41,0.07),rgba(240,180,41,0.03))" : "rgba(255,255,255,0.025)";
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+                }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="mb-1.5 flex flex-wrap items-center gap-2">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
                       {notice.is_pinned && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/18 bg-amber-300/12 px-2 py-1 text-[10px] font-semibold text-amber-100">
-                          <Pin size={11} />
-                          PIN
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                          style={{ background: "rgba(240,180,41,0.12)", border: "1px solid rgba(240,180,41,0.25)", color: "#FCD34D" }}>
+                          <Pin size={10} /> PIN
                         </span>
                       )}
-                      <span className="inline-flex rounded-full border border-amber-200/18 bg-amber-300/12 px-2 py-1 text-[10px] font-semibold text-amber-200">
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        style={{ background: `rgba(var(--ga-r400,167,139,250),0.10)`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.20)`, color: `var(--ga-200,#ddd6fe)` }}>
                         공지
                       </span>
-                      <span className="text-[11px] text-stone-500">{formatDateTime(notice.created_at)}</span>
+                      <span className="text-[11px]" style={{ color: "var(--guild-text-3,#5C6882)" }}>{formatDateTime(notice.created_at)}</span>
                     </div>
-
-                    <div className="truncate text-base font-semibold text-white">
-                      {notice.title}
-                    </div>
-                    <div className="mt-1.5 line-clamp-1 text-sm text-stone-400">
-                      {notice.content}
-                    </div>
+                    <div className="truncate text-base font-semibold text-white">{notice.title}</div>
+                    <div className="mt-1 line-clamp-1 text-sm" style={{ color: "var(--guild-text-2,#A0AAC0)" }}>{notice.content}</div>
                   </div>
-
-                  <div className="shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-[11px] font-medium text-stone-300">
+                  <div className="shrink-0 rounded-xl px-2.5 py-2 text-[11px] font-medium"
+                    style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2,#A0AAC0)" }}>
                     보기
                   </div>
                 </div>
@@ -1192,9 +1244,19 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
 };
 
 const MiniStat = ({ label, value }: { label: string; value: React.ReactNode }) => (
-  <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-semibold">{label}</div>
-    <div className="mt-1 text-lg font-semibold">{value}</div>
+  <div
+    style={{
+      borderRadius: "var(--guild-radius-md,16px)",
+      border: "1px solid rgba(255,255,255,0.07)",
+      background: "rgba(255,255,255,0.03)",
+      padding: "0.75rem 1rem",
+    }}
+  >
+    <div
+      className="text-[10px] uppercase tracking-[0.2em] font-semibold"
+      style={{ color: "var(--guild-text-3,#5C6882)" }}
+    >{label}</div>
+    <div className="mt-1 text-lg font-semibold text-white">{value}</div>
   </div>
 );
 
@@ -4220,18 +4282,24 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
   };
 
   return (
-    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-amber-100/10 bg-[linear-gradient(180deg,rgba(7,13,26,0.9),rgba(10,14,24,0.78))] backdrop-blur-2xl shadow-[0_18px_50px_rgba(0,0,0,0.34)]">
+    <nav className="fixed left-0 right-0 top-0 z-50 backdrop-blur-2xl" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(180deg,rgba(8,12,22,0.94),rgba(5,9,18,0.88))", boxShadow: "0 4px 32px rgba(0,0,0,0.28)" }}>
       <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
         <div className="flex items-center gap-3">
           <button
             onClick={() => handleMove("home")}
-            className="group flex items-center gap-3 rounded-[1.1rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] px-3 py-2 transition-all hover:border-amber-200/22 hover:bg-amber-300/[0.08] hover:shadow-[0_12px_30px_rgba(212,175,55,0.12)]"
+            className="group flex items-center gap-3 px-3 py-2 transition-all rounded-2xl"
+            style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.08)`; (e.currentTarget as HTMLButtonElement).style.borderColor=`rgba(var(--ga-r400,167,139,250),0.22)`; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.03)"; (e.currentTarget as HTMLButtonElement).style.borderColor="rgba(255,255,255,0.08)"; }}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.16),rgba(120,53,15,0.08))] text-amber-100 shadow-[0_10px_24px_rgba(214,164,78,0.16)]">
+            <div
+              className="flex h-9 w-9 items-center justify-center rounded-xl transition-all"
+              style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.25)`, background: `rgba(var(--ga-r400,167,139,250),0.12)`, color: `var(--ga-200,#ddd6fe)` }}
+            >
               <Shield size={16} />
             </div>
             <div className="hidden text-left sm:block">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/80">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.28em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
                 {profile?.role === "admin" ? "👑 Admin Console" : "Guild Service"}
               </div>
               <div className="text-sm font-semibold tracking-[0.02em] text-white">
@@ -4241,22 +4309,31 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
           </button>
         </div>
 
-        <div className="hidden items-center gap-1.5 rounded-[1.2rem] border border-amber-100/10 bg-white/[0.03] p-1.5 backdrop-blur-md md:flex">
+        <div
+          className="hidden items-center gap-1 p-1.5 backdrop-blur-md md:flex"
+          style={{ borderRadius: "var(--guild-radius-md,16px)", border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)" }}
+        >
           {navItems.map((item) => {
             const active = activeTab === item.id;
             return (
               <button
                 key={item.id}
                 onClick={() => handleMove(item.id)}
-                className={`relative rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
-                  active
-                    ? "bg-[linear-gradient(180deg,rgba(245,194,105,0.16),rgba(245,194,105,0.08))] text-amber-50 shadow-[inset_0_0_0_1px_rgba(246,205,127,0.16),0_10px_24px_rgba(212,175,55,0.1)]"
-                    : "text-stone-400 hover:bg-white/[0.05] hover:text-white"
-                }`}
+                className="relative rounded-xl px-4 py-2 text-sm font-semibold transition-all"
+                style={active ? {
+                  background: `rgba(var(--ga-r400,167,139,250),0.14)`,
+                  color: `var(--ga-100,#ede9fe)`,
+                  boxShadow: `inset 0 0 0 1px rgba(var(--ga-r400,167,139,250),0.18), 0 4px 16px rgba(var(--ga-r400,167,139,250),0.12)`,
+                } : { color: "var(--guild-text-3,#5C6882)" }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = "var(--guild-text-1,#F1F0FF)"; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = "var(--guild-text-3,#5C6882)"; }}
               >
                 <span className="relative z-10">{item.label}</span>
                 {active && (
-                  <span className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full bg-gradient-to-r from-transparent via-amber-200 to-transparent" />
+                  <span
+                    className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full"
+                    style={{ background: `linear-gradient(90deg,transparent,var(--ga-300,#c4b5fd),transparent)` }}
+                  />
                 )}
               </button>
             );
@@ -4277,7 +4354,10 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
           {user ? (
             <>
               <button
-                className="hidden h-11 w-11 items-center justify-center rounded-[1.1rem] border border-amber-100/10 bg-white/[0.03] text-stone-300 transition-all hover:-translate-y-0.5 hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white md:flex"
+                className="hidden h-10 w-10 items-center justify-center rounded-xl transition-all hover:-translate-y-0.5 md:flex"
+                style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "var(--guild-text-2,#A0AAC0)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.10)`; (e.currentTarget as HTMLButtonElement).style.color=`var(--ga-200,#ddd6fe)`; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.03)"; (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-2,#A0AAC0)"; }}
                 title="알림"
               >
                 <Bell size={16} />
@@ -4286,9 +4366,15 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setIsProfileMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-3 rounded-[1.1rem] border border-amber-100/10 bg-white/[0.03] px-3 py-2 transition-all hover:border-amber-200/22 hover:bg-amber-300/[0.08] hover:shadow-[0_12px_30px_rgba(212,175,55,0.12)]"
+                  className="flex items-center gap-3 rounded-2xl px-3 py-2 transition-all"
+                  style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.08)`; (e.currentTarget as HTMLButtonElement).style.borderColor=`rgba(var(--ga-r400,167,139,250),0.22)`; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.03)"; (e.currentTarget as HTMLButtonElement).style.borderColor="rgba(255,255,255,0.08)"; }}
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-[1rem] border border-amber-200/18 bg-[linear-gradient(180deg,rgba(251,191,36,0.16),rgba(120,53,15,0.08))] text-sm font-semibold text-amber-50 shadow-[0_8px_24px_rgba(214,164,78,0.16)]">
+                  <div
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-semibold"
+                    style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.25)`, background: `rgba(var(--ga-r400,167,139,250),0.14)`, color: `var(--ga-100,#ede9fe)` }}
+                  >
                     {avatarText}
                   </div>
                   <div className="hidden text-left sm:block">
@@ -4314,10 +4400,11 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.98 }}
                       transition={{ duration: 0.16 }}
-                      className="absolute right-0 top-[calc(100%+8px)] sm:top-[calc(100%+12px)] z-[80] w-56 sm:w-64 overflow-hidden rounded-[1.5rem] border border-amber-100/10 bg-[linear-gradient(180deg,rgba(7,13,26,0.96),rgba(10,8,6,0.94))] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.5)] backdrop-blur-2xl"
+                      className="absolute right-0 top-[calc(100%+8px)] sm:top-[calc(100%+12px)] z-[80] w-56 sm:w-64 overflow-hidden p-2 backdrop-blur-2xl"
+                      style={{ borderRadius: "var(--guild-radius-lg,20px)", border: "1px solid rgba(255,255,255,0.10)", background: "linear-gradient(180deg,rgba(13,21,38,0.98),rgba(8,12,22,0.96))", boxShadow: "0 24px_80px rgba(0,0,0,0.55), 0 0 0 1px rgba(var(--ga-r400,167,139,250),0.08) inset" }}
                     >
-                      <div className="rounded-[1.2rem] border border-amber-100/10 bg-white/[0.035] p-3">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
+                      <div className="rounded-2xl p-3" style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.14)`, background: `rgba(var(--ga-r400,167,139,250),0.07)` }}>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
                           Signed In
                         </div>
                         <div className="mt-2 text-base font-semibold text-white">{displayName}</div>
@@ -4327,7 +4414,10 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
                       <div className="mt-2 space-y-1">
                         <button
                           onClick={() => { onShowSelector?.(); setIsProfileMenuOpen(false); }}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-amber-300/80 transition-all hover:bg-amber-300/[0.06] hover:text-amber-200"
+                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-all"
+                          style={{ color: `var(--ga-300,#c4b5fd)` }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.08)`; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="transparent"; }}
                         >
                           <span>🏠 섹션 선택으로</span>
                           <ChevronRight size={15} />
@@ -4393,13 +4483,17 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
             <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 onClick={() => handleMove("login")}
-                className="rounded-[1.1rem] border border-amber-100/10 bg-white/[0.03] px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium text-stone-300 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
+                className="rounded-xl px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-all"
+                style={{ border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2,#A0AAC0)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color="#fff"; (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.08)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-2,#A0AAC0)"; (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.04)"; }}
               >
                 로그인
               </button>
               <button
                 onClick={() => handleMove("signup")}
-                className="rounded-[1.1rem] border border-amber-200/14 bg-[linear-gradient(180deg,rgba(245,194,105,0.18),rgba(245,194,105,0.1))] px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-semibold text-amber-100 transition-all hover:bg-[linear-gradient(180deg,rgba(245,194,105,0.24),rgba(245,194,105,0.12))]"
+                className="rounded-xl px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-white transition-all"
+                style={{ background: `linear-gradient(135deg,var(--ga-400,#a78bfa),var(--ga-500,#8b5cf6))`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.30)`, boxShadow: `var(--ga-shadow-btn,0 4px 16px rgba(139,92,246,0.35))` }}
               >
                 회원가입
               </button>
@@ -4514,11 +4608,26 @@ const SectionPanel = ({
   action?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <div className="bg-[#0a0e18]/80 border border-white/10 rounded-[2rem] p-6 md:p-8">
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+  <div
+    className="relative overflow-hidden"
+    style={{
+      background: "linear-gradient(180deg, rgba(13,21,38,0.92) 0%, rgba(8,12,22,0.95) 100%)",
+      border: "1px solid rgba(255,255,255,0.07)",
+      borderRadius: "var(--guild-radius-xl, 24px)",
+      padding: "1.5rem",
+    }}
+  >
+    {/* 상단 액센트 라인 */}
+    <div
+      className="absolute top-0 left-0 right-0 h-px"
+      style={{ background: `linear-gradient(90deg, transparent, rgba(var(--ga-r400,167,139,250),0.30) 50%, transparent)` }}
+    />
+    <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
       <div>
-        <h3 className="text-2xl font-semibold tracking-tight">{title}</h3>
-        {description && <p className="text-sm text-slate-400 mt-1">{description}</p>}
+        <h3 className="text-xl font-semibold tracking-tight text-white">{title}</h3>
+        {description && (
+          <p className="text-sm mt-1" style={{ color: "var(--guild-text-3,#5C6882)" }}>{description}</p>
+        )}
       </div>
       {action}
     </div>
@@ -5599,10 +5708,13 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
               {monthlyCharacterStats.slice(0, 6).map((item, index) => (
                 <div
                   key={item.nickname}
-                  className="flex items-center justify-between gap-4 rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.04]"
+                  className="flex items-center justify-between gap-4 rounded-2xl px-4 py-4 transition-all" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)" }}
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-amber-200/15 bg-amber-300/10 text-sm font-semibold text-amber-100">
+                    <div
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold"
+                      style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.20)`, background: `rgba(var(--ga-r400,167,139,250),0.10)`, color: `var(--ga-200,#ddd6fe)` }}
+                    >
                       #{index + 1}
                     </div>
                     <div className="min-w-0">
@@ -5839,7 +5951,9 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                   <button
                     key={raid.id}
                     onClick={() => setSelectedRaid(raid)}
-                    className="w-full rounded-[1.5rem] border border-white/10 bg-white/[0.03] p-4 text-left transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.04]"
+                    className="w-full rounded-2xl p-4 text-left transition-all" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor=`rgba(var(--ga-r400,167,139,250),0.22)`; (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.06)`; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor="rgba(255,255,255,0.07)"; (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.025)"; }}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
@@ -5848,7 +5962,10 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                           {formatShortDate(raid.raid_date)} · {raid.raid_time}
                         </div>
                       </div>
-                      <div className="rounded-full border border-amber-200/15 bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-100">
+                      <div
+                        className="rounded-full px-3 py-1 text-xs font-semibold"
+                        style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.20)`, background: `rgba(var(--ga-r400,167,139,250),0.08)`, color: `var(--ga-200,#ddd6fe)` }}
+                      >
                         {raidParts.length}/{getCapacity(raid).maxParticipants}
                       </div>
                     </div>
@@ -5942,8 +6059,27 @@ const SummaryChip = ({
   label: string;
   value: string | number;
 }) => (
-  <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.05]">
-    <div className="mb-1 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-200">
+  <div
+    className="backdrop-blur-md transition-all"
+    style={{
+      borderRadius: "var(--guild-radius-md,16px)",
+      border: "1px solid rgba(255,255,255,0.08)",
+      background: "rgba(255,255,255,0.03)",
+      padding: "1rem",
+    }}
+    onMouseEnter={e => {
+      (e.currentTarget as HTMLDivElement).style.borderColor = `rgba(var(--ga-r400,167,139,250),0.22)`;
+      (e.currentTarget as HTMLDivElement).style.background = `rgba(var(--ga-r400,167,139,250),0.06)`;
+    }}
+    onMouseLeave={e => {
+      (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.08)";
+      (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.03)";
+    }}
+  >
+    <div
+      className="mb-1.5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em]"
+      style={{ color: `var(--ga-300,#c4b5fd)` }}
+    >
       {icon}
       {label}
     </div>
@@ -5952,10 +6088,18 @@ const SummaryChip = ({
 );
 
 const InfoMiniCard = ({ title, value }: { title: string; value: string }) => (
-  <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-4">
-    <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-2">
-      {title}
-    </div>
+  <div
+    style={{
+      borderRadius: "var(--guild-radius-md,16px)",
+      border: "1px solid rgba(255,255,255,0.07)",
+      background: "rgba(255,255,255,0.03)",
+      padding: "1rem",
+    }}
+  >
+    <div
+      className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+      style={{ color: "var(--guild-text-3,#5C6882)" }}
+    >{title}</div>
     <div className="text-base font-semibold text-white">{value}</div>
   </div>
 );
@@ -6701,7 +6845,7 @@ const RaidDetailModal = ({
                     <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold text-slate-300">{raid.difficulty}</span>
                     <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold text-slate-300">{raid.raid_type}</span>
                     {raid.experience && (
-                      <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">{raid.experience}</span>
+                      <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold" style={{ background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.22)", color: "#6EE7B7" }}>{raid.experience}</span>
                     )}
                   </>
                 )}
@@ -6712,7 +6856,8 @@ const RaidDetailModal = ({
                 <span className="flex items-center gap-1.5"><Clock size={13} />{raid.raid_time}</span>
                 <span className={cn(
                   "flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                  isFull ? "bg-rose-400/10 text-rose-300" : "bg-emerald-400/10 text-emerald-300"
+                  isFull ? "text-rose-300" : "text-emerald-300",
+                  isFull ? "bg-rose-400/10 border border-rose-400/20" : "bg-emerald-400/10 border border-emerald-400/20"
                 )}>
                   <span className={cn("h-1.5 w-1.5 rounded-full", isFull ? "bg-rose-400" : "bg-emerald-400 animate-pulse")} />
                   {isFull ? "모집 완료" : "모집 중"}
