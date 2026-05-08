@@ -135,6 +135,7 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const defaultSettings = {
   guild_name: "쁘밍",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
+  discord_invite_url: "",
   point_rate_settings: {
     enabled: true,
     cycle_minutes: 60,
@@ -880,6 +881,7 @@ const HomeFeaturePortal = ({
   contentView: string;
   setContentView: (value: string) => void;
 }) => {
+  // ── 카드 색상: 대시보드 보라 테마와 일치 (violet / cyan / pink) ──
   const cards = [
     {
       key: "레이드",
@@ -888,8 +890,8 @@ const HomeFeaturePortal = ({
       badge: "Core Content",
       icon: <Swords size={22} />,
       stats: "주요 레이드 콘텐츠",
-      accentR: "240,180,41",
-      accentHex: "#F0B429",
+      accentR: "167,139,250",
+      accentHex: "#a78bfa",
     },
     {
       key: "가디언 토벌",
@@ -898,8 +900,8 @@ const HomeFeaturePortal = ({
       badge: "Field Hunt",
       icon: <Shield size={22} />,
       stats: "토벌 정보 바로가기",
-      accentR: "52,211,153",
-      accentHex: "#34D399",
+      accentR: "34,211,238",
+      accentHex: "#22d3ee",
     },
     {
       key: "클래스",
@@ -908,13 +910,13 @@ const HomeFeaturePortal = ({
       badge: "Class Index",
       icon: <Sparkles size={22} />,
       stats: "캐릭터 빌드 탐색",
-      accentR: "167,139,250",
-      accentHex: "#a78bfa",
+      accentR: "244,114,182",
+      accentHex: "#f472b6",
     },
   ];
 
   return (
-    <section className="relative z-10 mx-auto max-w-7xl px-3 sm:px-6 pb-3 md:pb-4">
+    <section className="relative z-10 pb-3 md:pb-4">
       {/* 좌측 정렬: 제목·설명 + "현재 선택" 인라인 핀 */}
       <div className="mb-4">
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -944,15 +946,15 @@ const HomeFeaturePortal = ({
               onClick={() => setContentView(card.key)}
               className="group relative overflow-hidden p-4 text-left backdrop-blur-xl transition-all"
               style={{
-                borderRadius: "var(--guild-radius-lg,20px)",
+                borderRadius: "1.5rem",
                 border: active
-                  ? `1px solid rgba(${card.accentR},0.35)`
-                  : "1px solid rgba(255,255,255,0.07)",
+                  ? `1px solid rgba(${card.accentR},0.42)`
+                  : "1px solid rgba(139,92,246,0.14)",
                 background: active
-                  ? `linear-gradient(160deg, rgba(${card.accentR},0.10) 0%, rgba(8,12,22,0.96) 100%)`
-                  : "linear-gradient(180deg,rgba(13,21,38,0.80),rgba(8,12,22,0.88))",
+                  ? `linear-gradient(160deg, rgba(${card.accentR},0.14) 0%, rgba(28,23,51,0.85) 55%, rgba(15,13,32,0.95) 100%)`
+                  : "linear-gradient(180deg, rgba(28,23,51,0.55) 0%, rgba(15,13,32,0.75) 100%)",
                 boxShadow: active
-                  ? `0 18px_40px rgba(${card.accentR},0.14), inset 0 0 0 1px rgba(${card.accentR},0.12)`
+                  ? `0 18px 40px rgba(${card.accentR},0.18), inset 0 0 0 1px rgba(${card.accentR},0.10)`
                   : "0 12px 32px rgba(0,0,0,0.22)",
               }}
             >
@@ -960,14 +962,14 @@ const HomeFeaturePortal = ({
               <div
                 className="absolute top-0 left-0 right-0 h-px transition-opacity"
                 style={{
-                  background: `linear-gradient(90deg,transparent,rgba(${card.accentR},${active ? "0.55" : "0.20"}) 50%,transparent)`,
+                  background: `linear-gradient(90deg,transparent,rgba(${card.accentR},${active ? "0.65" : "0.25"}) 50%,transparent)`,
                 }}
               />
               {/* 배경 글로우 */}
               {active && (
                 <div
                   className="pointer-events-none absolute top-0 right-0 h-24 w-24 opacity-60"
-                  style={{ background: `radial-gradient(circle, rgba(${card.accentR},0.20) 0%, transparent 70%)` }}
+                  style={{ background: `radial-gradient(circle, rgba(${card.accentR},0.22) 0%, transparent 70%)` }}
                 />
               )}
 
@@ -976,8 +978,8 @@ const HomeFeaturePortal = ({
                   <div
                     className="flex h-11 w-11 items-center justify-center rounded-2xl transition-all"
                     style={{
-                      border: `1px solid rgba(${card.accentR},0.25)`,
-                      background: `rgba(${card.accentR},0.12)`,
+                      border: `1px solid rgba(${card.accentR},0.30)`,
+                      background: `rgba(${card.accentR},0.14)`,
                       color: card.accentHex,
                     }}
                   >
@@ -985,7 +987,11 @@ const HomeFeaturePortal = ({
                   </div>
                   <div
                     className="rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em]"
-                    style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.03)", color: "var(--guild-text-3,#5C6882)" }}
+                    style={{
+                      border: `1px solid rgba(${card.accentR},0.18)`,
+                      background: `rgba(${card.accentR},0.06)`,
+                      color: `rgba(${card.accentR},0.85)`,
+                    }}
                   >
                     {card.badge}
                   </div>
@@ -993,18 +999,18 @@ const HomeFeaturePortal = ({
 
                 <div className="mt-4">
                   <div className="text-lg font-semibold text-white">{card.title}</div>
-                  <div className="mt-1.5 text-sm leading-6" style={{ color: "var(--guild-text-2,#A0AAC0)" }}>
+                  <div className="mt-1.5 text-sm leading-6" style={{ color: "rgba(155,159,196,0.85)" }}>
                     {card.subtitle}
                   </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between gap-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div className="text-xs font-medium" style={{ color: "var(--guild-text-3,#5C6882)" }}>{card.stats}</div>
+                  <div className="text-xs font-medium" style={{ color: "rgba(155,159,196,0.65)" }}>{card.stats}</div>
                   <div
                     className="rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all"
                     style={active
-                      ? { border: `1px solid rgba(${card.accentR},0.30)`, background: `rgba(${card.accentR},0.14)`, color: card.accentHex }
-                      : { border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2,#A0AAC0)" }
+                      ? { border: `1px solid rgba(${card.accentR},0.35)`, background: `rgba(${card.accentR},0.18)`, color: card.accentHex }
+                      : { border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "rgba(196,181,253,0.85)" }
                     }
                   >
                     {active ? "현재 선택됨" : "열기"}
@@ -2010,9 +2016,20 @@ const fetchInitialData = async () => {
 
             {/* 오른쪽: 디스코드 버튼, 알림, 프로필 */}
             <div className="flex items-center gap-2">
-              {/* 디스코드 버튼 */}
+              {/* 디스코드 버튼 — 설정된 디스코드 초대 URL을 새 탭으로 열기 */}
               <button
-                className="hidden sm:flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all"
+                onClick={() => {
+                  const url = String((settings as any)?.discord_invite_url || "").trim();
+                  if (!url) {
+                    showToast("디스코드 초대 링크가 설정되지 않았어요. 관리자가 [관리자 패널 → 길드 설정]에서 등록해주세요.", "info");
+                    return;
+                  }
+                  // 외부 URL 검증
+                  let safe = url;
+                  if (!/^https?:\/\//i.test(safe)) safe = `https://${safe}`;
+                  window.open(safe, "_blank", "noopener,noreferrer");
+                }}
+                className="hidden sm:flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all cursor-pointer"
                 style={{
                   background: "rgba(88,101,242,0.15)",
                   border: "1px solid rgba(88,101,242,0.25)",
@@ -8979,6 +8996,11 @@ const GuildSettingsEditor = ({ settings, setSettings }: any) => {
         label="Guild Description"
         value={settings.guild_description}
         onChange={(v: any) => setSettings({ ...settings, guild_description: v })}
+      />
+      <AdminInput
+        label="Discord 초대 URL (상단 [길드 디스코드] 버튼 클릭 시 새 탭으로 열림)"
+        value={(settings as any).discord_invite_url || ""}
+        onChange={(v: any) => setSettings({ ...settings, discord_invite_url: v })}
       />
 
       {/* ── Spline 배경 설정 ── */}
