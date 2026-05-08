@@ -1085,62 +1085,76 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
             onClick={() => setSelectedNotice(null)}
           >
             <motion.div
-              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              initial={{ opacity: 0, y: 24, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 12, scale: 0.98 }}
-              transition={{ duration: 0.22 }}
-              className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-amber-100/12 bg-[#070d1a]/95 shadow-[0_28px_80px_rgba(0,0,0,0.56)] backdrop-blur-2xl"
+              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              transition={{ duration: 0.20, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-full max-w-2xl overflow-hidden backdrop-blur-2xl"
+              style={{
+                borderRadius: "var(--guild-radius-xl,24px)",
+                border: "1px solid rgba(var(--ga-r400,167,139,250),0.18)",
+                background: "linear-gradient(160deg, #0d1526 0%, #080c16 100%)",
+                boxShadow: "0 0 0 1px rgba(var(--ga-r400,167,139,250),0.06) inset, 0 32px 80px rgba(0,0,0,0.65)",
+              }}
               onClick={(e) => e.stopPropagation()}
             >
+              {/* 상단 액센트 라인 */}
+              <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,rgba(var(--ga-r400,167,139,250),0.7) 40%,rgba(var(--ga-r300,196,181,253),0.4) 60%,transparent)` }} />
+              <div className="pointer-events-none absolute top-0 right-0 h-36 w-36 opacity-50" style={{ background: `radial-gradient(circle,rgba(var(--ga-r400,167,139,250),0.14),transparent 70%)` }} />
+
               {/* 모달 헤더 */}
-              <div className="border-b border-white/8 px-6 py-5">
+              <div className="relative px-6 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <div className="mb-2.5 flex flex-wrap items-center gap-2">
                       {selectedNotice.is_pinned && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/18 bg-amber-300/12 px-2 py-1 text-[10px] font-semibold text-amber-100">
-                          <Pin size={11} />
-                          PIN
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold"
+                          style={{ background: "rgba(240,180,41,0.12)", border: "1px solid rgba(240,180,41,0.25)", color: "#FCD34D" }}
+                        >
+                          <Pin size={11} /> PIN
                         </span>
                       )}
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/16 bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200">
-                        <Bell size={11} />
-                        공지
+                      <span
+                        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]"
+                        style={{ background: `rgba(var(--ga-r400,167,139,250),0.12)`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.22)`, color: `var(--ga-200,#ddd6fe)` }}
+                      >
+                        <Bell size={11} /> 공지
                       </span>
-                      <span className="text-[11px] text-stone-500">{formatDateTime(selectedNotice.created_at)}</span>
+                      <span className="text-[11px]" style={{ color: "var(--guild-text-3,#5C6882)" }}>{formatDateTime(selectedNotice.created_at)}</span>
                     </div>
-                    <h3 className="text-xl font-semibold leading-snug text-white md:text-2xl">
-                      {selectedNotice.title}
-                    </h3>
+                    <h3 className="text-xl font-semibold leading-snug text-white md:text-2xl">{selectedNotice.title}</h3>
                   </div>
                   <button
                     onClick={() => setSelectedNotice(null)}
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all"
+                    style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-3,#5C6882)" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.12)`; (e.currentTarget as HTMLButtonElement).style.borderColor=`rgba(var(--ga-r400,167,139,250),0.28)`; (e.currentTarget as HTMLButtonElement).style.color=`var(--ga-200,#ddd6fe)`; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.borderColor="rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-3,#5C6882)"; }}
                   >
-                    <X size={18} />
+                    <X size={16} />
                   </button>
                 </div>
               </div>
 
               {/* 모달 본문 */}
-              <div className="max-h-[60vh] overflow-y-auto px-6 py-6">
-                <div className="text-sm leading-7 text-stone-300 whitespace-pre-wrap">
+              <div className="relative max-h-[60vh] overflow-y-auto px-6 py-6">
+                <div className="text-sm leading-7 whitespace-pre-wrap" style={{ color: "var(--guild-text-2,#A0AAC0)" }}>
                   {selectedNotice.content || "내용이 없습니다."}
                 </div>
                 {selectedNotice.image_url && (
-                  <img
-                    src={selectedNotice.image_url}
-                    alt="공지 이미지"
-                    className="mt-6 w-full rounded-2xl border border-white/10 object-cover"
-                  />
+                  <img src={selectedNotice.image_url} alt="공지 이미지" className="mt-6 w-full rounded-2xl object-cover" style={{ border: "1px solid rgba(255,255,255,0.08)" }} />
                 )}
               </div>
 
               {/* 모달 푸터 */}
-              <div className="border-t border-white/8 px-6 py-4">
+              <div className="relative px-6 py-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                 <button
                   onClick={() => setSelectedNotice(null)}
-                  className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
+                  className="w-full rounded-2xl py-3 text-sm font-semibold transition-all"
+                  style={{ border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2,#A0AAC0)" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color="#fff"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-2,#A0AAC0)"; }}
                 >
                   닫기
                 </button>
@@ -6056,184 +6070,234 @@ const CreateRaidModal = ({
 
   return (
     <ModalFrame onClose={onClose}>
-      <div className="relative w-full max-w-lg overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/92 shadow-[0_28px_90px_rgba(2,6,23,0.56)] backdrop-blur-2xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(245,197,92,0.18),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_46%)]" />
-        <div className="relative border-b border-white/10 px-6 py-5 md:px-7">
+      <div
+        className="relative w-full max-w-lg overflow-hidden backdrop-blur-2xl"
+        style={{
+          borderRadius: "var(--guild-radius-xl, 24px)",
+          border: "1px solid rgba(var(--ga-r400, 167,139,250), 0.18)",
+          background: "linear-gradient(160deg, #0d1526 0%, #080c16 100%)",
+          boxShadow: "0 0 0 1px rgba(var(--ga-r400,167,139,250),0.06) inset, 0 32px 80px rgba(0,0,0,0.65)",
+        }}
+      >
+        {/* 상단 액센트 라인 */}
+        <div
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: `linear-gradient(90deg, transparent, rgba(var(--ga-r400,167,139,250),0.7) 40%, rgba(var(--ga-r300,196,181,253),0.4) 60%, transparent)` }}
+        />
+        {/* 배경 글로우 */}
+        <div
+          className="pointer-events-none absolute top-0 right-0 h-48 w-48 opacity-60"
+          style={{ background: `radial-gradient(circle, rgba(var(--ga-r400,167,139,250),0.14) 0%, transparent 70%)` }}
+        />
+
+        <div className="relative border-b px-6 py-5 md:px-7" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200">
+              <div
+                className="mb-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]"
+                style={{
+                  background: `rgba(var(--ga-r400,167,139,250),0.12)`,
+                  border: `1px solid rgba(var(--ga-r400,167,139,250),0.22)`,
+                  color: `var(--ga-200, #ddd6fe)`,
+                }}
+              >
                 Create Schedule
               </div>
               <h3 className="text-2xl font-semibold text-white">{date}</h3>
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-1.5 text-sm" style={{ color: "var(--guild-text-3, #5C6882)" }}>
                 일정 유형과 시간을 설정하고 바로 캘린더에 추가할 수 있어.
               </p>
             </div>
             <button
               onClick={onClose}
-              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all"
+              style={{
+                border: "1px solid rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.04)",
+                color: "var(--guild-text-3, #5C6882)",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = `rgba(var(--ga-r400,167,139,250),0.12)`;
+                (e.currentTarget as HTMLButtonElement).style.borderColor = `rgba(var(--ga-r400,167,139,250),0.28)`;
+                (e.currentTarget as HTMLButtonElement).style.color = `var(--ga-200, #ddd6fe)`;
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.04)";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.08)";
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--guild-text-3, #5C6882)";
+              }}
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
         </div>
 
-        <div className="relative space-y-5 px-6 py-6 md:px-7 md:py-7">
+        <div className="relative space-y-4 px-6 py-6 md:px-7 md:py-6">
+          {/* 날짜 + 상태 미니 카드 */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                일정 날짜
-              </div>
-              <div className="mt-2 text-sm font-semibold text-white">{date}</div>
+            <div className="rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>일정 날짜</div>
+              <div className="mt-1.5 text-sm font-semibold text-white">{date}</div>
             </div>
-            <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                일정 상태
-              </div>
-              <div className="mt-2 text-sm font-semibold text-amber-100">Draft Ready</div>
+            <div className="rounded-2xl px-4 py-3" style={{ background: `rgba(var(--ga-r400,167,139,250),0.07)`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.15)` }}>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>상태</div>
+              <div className="mt-1.5 text-sm font-semibold" style={{ color: "var(--ga-300,#c4b5fd)" }}>Draft Ready</div>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
+          {/* 레이드 선택 */}
+          <div className="space-y-2">
+            <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>
               레이드 선택
             </label>
             <select
               value={form.raid_name}
               onChange={(e) => setForm({ ...form, raid_name: e.target.value })}
-              className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
+              className="w-full rounded-2xl px-4 py-3.5 text-white outline-none transition-all"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.09)",
+              }}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = `rgba(var(--ga-r400,167,139,250),0.45)`;
+                e.currentTarget.style.background = `rgba(var(--ga-r400,167,139,250),0.06)`;
+                e.currentTarget.style.boxShadow = `0 0 0 3px rgba(var(--ga-r400,167,139,250),0.12)`;
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
             >
               <option value="">레이드 선택</option>
               {raidList.map((raid) => (
-                <option key={raid.id} value={raid.name}>
-                  {raid.name}
-                </option>
+                <option key={raid.id} value={raid.name}>{raid.name}</option>
               ))}
             </select>
           </div>
 
+          {/* 컨텐츠 유형 + 시간 */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-3">
-              <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                컨텐츠 유형
-              </label>
+            <div className="space-y-2">
+              <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>컨텐츠 유형</label>
               <select
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value as any })}
-                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
+                className="w-full rounded-2xl px-4 py-3.5 text-white outline-none transition-all"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}
+                onFocus={e => { e.currentTarget.style.borderColor=`rgba(var(--ga-r400,167,139,250),0.45)`; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(var(--ga-r400,167,139,250),0.12)`; }}
+                onBlur={e => { e.currentTarget.style.borderColor="rgba(255,255,255,0.09)"; e.currentTarget.style.boxShadow="none"; }}
               >
                 {CONTENT_MODE_OPTIONS.map((mode) => (
-                  <option key={mode} value={mode}>
-                    {mode === "raid" ? "레이드" : "영화 · 애니 시청"}
-                  </option>
+                  <option key={mode} value={mode}>{mode === "raid" ? "레이드" : "영화 · 애니 시청"}</option>
                 ))}
               </select>
             </div>
-
-            <div className="space-y-3">
-              <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                시작 시간
-              </label>
+            <div className="space-y-2">
+              <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>시작 시간</label>
               <input
                 type="time"
                 value={form.raid_time}
                 onChange={(e) => setForm({ ...form, raid_time: e.target.value })}
-                className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
+                className="w-full rounded-2xl px-4 py-3.5 text-white outline-none transition-all"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}
+                onFocus={e => { e.currentTarget.style.borderColor=`rgba(var(--ga-r400,167,139,250),0.45)`; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(var(--ga-r400,167,139,250),0.12)`; }}
+                onBlur={e => { e.currentTarget.style.borderColor="rgba(255,255,255,0.09)"; e.currentTarget.style.boxShadow="none"; }}
               />
             </div>
           </div>
 
           {form.type === "raid" && (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-3">
-                  <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                    레이드 인원
-                  </label>
-                  <select
-                    value={form.raid_type}
-                    onChange={(e) => setForm({ ...form, raid_type: e.target.value })}
-                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
-                  >
-                    {RAID_TYPE_OPTIONS.map((raidType) => (
-                      <option key={raidType} value={raidType}>
-                        {raidType}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                    난이도
-                  </label>
-                  <select
-                    value={form.difficulty}
-                    onChange={(e) => setForm({ ...form, difficulty: e.target.value })}
-                    className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
-                  >
-                    {difficultyOptions.map((difficulty) => (
-                      <option key={difficulty} value={difficulty}>
-                        {difficulty}
-                      </option>
-                    ))}
-                  </select>
+              {/* 인원 + 난이도 — 칩 선택 */}
+              <div className="space-y-2">
+                <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>레이드 인원</label>
+                <div className="flex gap-2">
+                  {RAID_TYPE_OPTIONS.map((rt) => (
+                    <button
+                      key={rt}
+                      type="button"
+                      onClick={() => setForm({ ...form, raid_type: rt })}
+                      className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all"
+                      style={form.raid_type === rt
+                        ? { background: `rgba(var(--ga-r400,167,139,250),0.18)`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.4)`, color: `var(--ga-200,#ddd6fe)` }
+                        : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", color: "var(--guild-text-2,#A0AAC0)" }
+                      }
+                    >{rt}</button>
+                  ))}
                 </div>
               </div>
-
-              <div className="space-y-3">
-                <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em] text-slate-500">
-                  숙련도
-                </label>
-                <select
-                  value={form.experience}
-                  onChange={(e) => setForm({ ...form, experience: e.target.value })}
-                  className="w-full rounded-[1.35rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-white outline-none transition-all focus:border-amber-200/25 focus:bg-amber-300/[0.04]"
-                >
-                  {RAID_EXPERIENCE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
+              <div className="space-y-2">
+                <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>난이도</label>
+                <div className="flex gap-2">
+                  {difficultyOptions.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setForm({ ...form, difficulty: d })}
+                      className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all"
+                      style={form.difficulty === d
+                        ? { background: `rgba(var(--ga-r400,167,139,250),0.18)`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.4)`, color: `var(--ga-200,#ddd6fe)` }
+                        : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", color: "var(--guild-text-2,#A0AAC0)" }
+                      }
+                    >{d}</button>
                   ))}
-                </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="ml-1 text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>숙련도</label>
+                <div className="flex gap-2 flex-wrap">
+                  {RAID_EXPERIENCE_OPTIONS.map((exp) => (
+                    <button
+                      key={exp}
+                      type="button"
+                      onClick={() => setForm({ ...form, experience: exp })}
+                      className="rounded-xl px-4 py-2.5 text-sm font-semibold transition-all"
+                      style={form.experience === exp
+                        ? { background: `rgba(var(--ga-r400,167,139,250),0.18)`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.4)`, color: `var(--ga-200,#ddd6fe)` }
+                        : { background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", color: "var(--guild-text-2,#A0AAC0)" }
+                      }
+                    >{exp}</button>
+                  ))}
+                </div>
               </div>
             </>
           )}
 
-          <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.03] px-4 py-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-              Preview
-            </div>
-            <div className="mt-2 text-sm text-slate-300">
+          {/* 프리뷰 */}
+          <div className="rounded-2xl px-4 py-3.5" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] mb-1.5" style={{ color: "var(--guild-text-3,#5C6882)" }}>Preview</div>
+            <div className="text-sm" style={{ color: "var(--guild-text-2,#A0AAC0)" }}>
               {form.raid_name || "레이드 미선택"} · {form.raid_time} · {form.type === "raid" ? `${form.raid_type} / ${form.difficulty} / ${form.experience}` : "시청형 일정"}
             </div>
           </div>
 
           {/* 쪽지 발송 옵션 */}
-          <label className="flex items-center gap-3 rounded-2xl border border-blue-400/20 bg-blue-400/[0.06] px-4 py-3 cursor-pointer hover:bg-blue-400/10 transition-all">
-            <input
-              type="checkbox"
-              checked={sendNotice}
-              onChange={(e) => setSendNotice(e.target.checked)}
-              className="h-4 w-4 rounded accent-blue-400"
-            />
+          <label className="flex items-center gap-3 rounded-2xl px-4 py-3 cursor-pointer transition-all" style={{ border: "1px solid rgba(96,165,250,0.2)", background: "rgba(96,165,250,0.06)" }}>
+            <input type="checkbox" checked={sendNotice} onChange={(e) => setSendNotice(e.target.checked)} className="h-4 w-4 rounded accent-blue-400" />
             <div>
               <div className="text-sm font-semibold text-blue-200">✉️ 전체 길드원에게 쪽지 발송</div>
               <div className="text-xs text-slate-500 mt-0.5">체크 시 레이드 일정이 모든 길드원 쪽지함으로 전송됩니다.</div>
             </div>
           </label>
 
+          {/* 액션 버튼 */}
           <div className="grid grid-cols-2 gap-3 pt-1">
             <button
               onClick={onClose}
-              className="rounded-[1.35rem] border border-white/10 bg-white/[0.05] px-4 py-3.5 text-sm font-semibold text-slate-300 transition-all hover:bg-white/[0.08] hover:text-white"
+              className="rounded-2xl py-3.5 text-sm font-semibold transition-all"
+              style={{ border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2,#A0AAC0)" }}
             >
               취소
             </button>
             <button
               onClick={save}
               disabled={loading}
-              className="rounded-[1.35rem] bg-gradient-to-r from-amber-400 to-amber-300 px-4 py-3.5 text-sm font-semibold text-slate-950 transition-all hover:brightness-110 disabled:opacity-60"
+              className="rounded-2xl py-3.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
+              style={{
+                background: `linear-gradient(135deg, var(--ga-400,#a78bfa), var(--ga-500,#8b5cf6))`,
+                boxShadow: `var(--ga-shadow-btn, 0 4px 16px rgba(139,92,246,0.35))`,
+              }}
             >
               {loading ? "생성 중..." : "일정 생성"}
             </button>
@@ -6477,11 +6541,21 @@ const RaidDetailModal = ({
 
   return (
     <ModalFrame onClose={onClose}>
-      <div className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#070d1a]/96 shadow-[0_40px_120px_rgba(0,0,0,0.7)] backdrop-blur-2xl">
-        {/* 배경 그라디언트 */}
+      <div
+        className="relative w-full max-w-3xl overflow-hidden backdrop-blur-2xl"
+        style={{
+          borderRadius: "var(--guild-radius-xl,24px)",
+          border: "1px solid rgba(var(--ga-r400,167,139,250),0.16)",
+          background: "linear-gradient(160deg, #0d1526 0%, #080c16 100%)",
+          boxShadow: "0 0 0 1px rgba(var(--ga-r400,167,139,250),0.05) inset, 0 40px 120px rgba(0,0,0,0.72)",
+        }}
+      >
+        {/* 상단 액센트 라인 */}
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg, transparent, rgba(var(--ga-r400,167,139,250),0.65) 40%, rgba(240,180,41,0.35) 65%, transparent)` }} />
+        {/* 배경 글로우 */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(245,180,60,0.13),transparent_42%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(245,100,60,0.05),transparent_38%)]" />
+          <div className="absolute top-0 right-0 h-64 w-64 opacity-50" style={{ background: `radial-gradient(circle, rgba(var(--ga-r400,167,139,250),0.12) 0%, transparent 70%)` }} />
+          <div className="absolute bottom-0 left-0 h-48 w-48 opacity-30" style={{ background: "radial-gradient(circle, rgba(240,180,41,0.08) 0%, transparent 70%)" }} />
         </div>
 
         {/* ── 헤더 ── */}
@@ -6490,7 +6564,14 @@ const RaidDetailModal = ({
             <div className="min-w-0 flex-1">
               {/* 배지 */}
               <div className="mb-2.5 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em]"
+                  style={{
+                    background: `rgba(var(--ga-r400,167,139,250),0.12)`,
+                    border: `1px solid rgba(var(--ga-r400,167,139,250),0.25)`,
+                    color: `var(--ga-200,#ddd6fe)`,
+                  }}
+                >
                   {isAnime ? "Watch Party" : "⚔️ Raid"}
                 </span>
                 {!isAnime && (
@@ -6518,9 +6599,12 @@ const RaidDetailModal = ({
             </div>
             <button
               onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-400 transition-all hover:border-amber-200/20 hover:bg-amber-300/[0.08] hover:text-white"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all"
+              style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-3,#5C6882)" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.12)`; (e.currentTarget as HTMLButtonElement).style.borderColor=`rgba(var(--ga-r400,167,139,250),0.28)`; (e.currentTarget as HTMLButtonElement).style.color=`var(--ga-200,#ddd6fe)`; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.borderColor="rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-3,#5C6882)"; }}
             >
-              <X size={17} />
+              <X size={16} />
             </button>
           </div>
 
@@ -6535,7 +6619,7 @@ const RaidDetailModal = ({
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(100, (parts.length / capacity.maxParticipants) * 100)}%` }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300"
+                className="h-full rounded-full" style={{ background: `linear-gradient(90deg, var(--ga-400,#a78bfa), var(--ga-300,#c4b5fd))` }}
               />
             </div>
             {!isAnime && (
@@ -6561,7 +6645,7 @@ const RaidDetailModal = ({
               >
                 {label}
                 {activeTab === id && (
-                  <motion.div layoutId="raid-modal-tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-amber-400" />
+                  <motion.div layoutId="raid-modal-tab-indicator" className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style={{ background: `var(--ga-400,#a78bfa)` }} />
                 )}
               </button>
             ))}
@@ -7448,15 +7532,23 @@ const ModalFrame = ({
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-[rgba(2,6,23,0.76)] px-3 py-4 backdrop-blur-xl sm:items-center sm:p-4"
+    className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto px-3 py-4 backdrop-blur-[28px] sm:items-center sm:p-4"
+    style={{ background: "rgba(3,6,18,0.82)" }}
     onClick={onClose}
   >
-    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,197,92,0.12),transparent_28%),radial-gradient(circle_at_bottom,rgba(214,164,78,0.08),transparent_24%)]" />
+    {/* 배경 글로우 — 현재 테마 색상 반응 */}
+    <div
+      className="pointer-events-none absolute inset-0"
+      style={{
+        background: `radial-gradient(ellipse 80% 40% at 50% 0%, rgba(var(--ga-r400, 167,139,250),0.07), transparent 60%),
+                     radial-gradient(ellipse 60% 30% at 50% 100%, rgba(var(--ga-r500, 139,92,246),0.04), transparent 60%)`,
+      }}
+    />
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.96 }}
+      initial={{ opacity: 0, y: 24, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: 20, scale: 0.96 }}
-      transition={{ duration: 0.18 }}
+      exit={{ opacity: 0, y: 16, scale: 0.97 }}
+      transition={{ duration: 0.20, ease: [0.16, 1, 0.3, 1] }}
       onClick={(e) => e.stopPropagation()}
       className="relative flex w-full items-center justify-center py-2 sm:py-6 min-h-full sm:min-h-0"
     >
@@ -9808,12 +9900,44 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/90 backdrop-blur-xl px-3 py-4 sm:p-6 text-left"
     >
-      <div className="relative w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[#0e0b08]/97 p-6 shadow-2xl sm:p-10 my-2">
-        <button onClick={onClose} className="absolute top-6 right-6 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-400 hover:text-white transition">
-          <X size={18} />
-        </button>
-        <h3 className="text-2xl font-semibold uppercase text-amber-400 mb-1">새 게시글 작성</h3>
-        <p className="text-sm text-slate-500 mb-7">일반 글 +5P · 댓글 +5P</p>
+      <div
+        className="relative w-full max-w-2xl my-2 overflow-hidden backdrop-blur-2xl"
+        style={{
+          borderRadius: "var(--guild-radius-xl,24px)",
+          border: "1px solid rgba(var(--ga-r400,167,139,250),0.18)",
+          background: "linear-gradient(160deg, #0d1526 0%, #080c16 100%)",
+          boxShadow: "0 0 0 1px rgba(var(--ga-r400,167,139,250),0.06) inset, 0 32px 80px rgba(0,0,0,0.65)",
+          padding: "0",
+        }}
+      >
+        {/* 상단 액센트 라인 */}
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: `linear-gradient(90deg,transparent,rgba(var(--ga-r400,167,139,250),0.7) 40%,rgba(var(--ga-r300,196,181,253),0.4) 60%,transparent)` }} />
+        {/* 글로우 */}
+        <div className="pointer-events-none absolute top-0 right-0 h-40 w-40 opacity-50" style={{ background: `radial-gradient(circle,rgba(var(--ga-r400,167,139,250),0.14),transparent 70%)` }} />
+
+        {/* 헤더 */}
+        <div className="relative flex items-start justify-between px-7 pt-7 pb-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div>
+            <div
+              className="mb-2.5 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em]"
+              style={{ background: `rgba(var(--ga-r400,167,139,250),0.12)`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.22)`, color: `var(--ga-200,#ddd6fe)` }}
+            >
+              New Post
+            </div>
+            <h3 className="text-2xl font-semibold text-white">새 게시글 작성</h3>
+            <p className="mt-1 text-sm" style={{ color: "var(--guild-text-3,#5C6882)" }}>일반 글 +5P · 댓글 +5P</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-xl transition-all"
+            style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-3,#5C6882)" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.12)`; (e.currentTarget as HTMLButtonElement).style.borderColor=`rgba(var(--ga-r400,167,139,250),0.28)`; (e.currentTarget as HTMLButtonElement).style.color=`var(--ga-200,#ddd6fe)`; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.borderColor="rgba(255,255,255,0.08)"; (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-3,#5C6882)"; }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+        <div className="relative px-7 py-6" style={{ paddingBottom: "1.75rem" }}>
 
         <div className="space-y-4">
           {/* 카테고리 + 관리자 옵션 */}
@@ -9846,7 +9970,10 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="제목"
-            className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-sm font-semibold text-white outline-none placeholder:text-stone-600 focus:border-amber-200/25"
+            className="w-full rounded-2xl px-5 py-4 text-sm font-semibold text-white outline-none transition-all placeholder:text-stone-600"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}
+            onFocus={e => { e.currentTarget.style.borderColor=`rgba(var(--ga-r400,167,139,250),0.45)`; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(var(--ga-r400,167,139,250),0.12)`; }}
+            onBlur={e => { e.currentTarget.style.borderColor="rgba(255,255,255,0.09)"; e.currentTarget.style.boxShadow="none"; }}
           />
 
           <textarea
@@ -9854,7 +9981,10 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
             onChange={(e) => setContent(e.target.value)}
             placeholder="내용을 입력해줘"
             rows={6}
-            className="w-full resize-none rounded-2xl border border-white/10 bg-black/30 px-5 py-4 text-sm text-white outline-none placeholder:text-stone-600 focus:border-amber-200/25"
+            className="w-full resize-none rounded-2xl px-5 py-4 text-sm text-white outline-none transition-all placeholder:text-stone-600"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}
+            onFocus={e => { e.currentTarget.style.borderColor=`rgba(var(--ga-r400,167,139,250),0.45)`; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(var(--ga-r400,167,139,250),0.12)`; }}
+            onBlur={e => { e.currentTarget.style.borderColor="rgba(255,255,255,0.09)"; e.currentTarget.style.boxShadow="none"; }}
           />
 
           {/* 유튜브 URL */}
@@ -9863,7 +9993,10 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
               value={youtubeUrl}
               onChange={(e) => setYoutubeUrl(e.target.value)}
               placeholder="YouTube URL (선택) — 붙여넣으면 자동 임베드"
-              className="w-full rounded-2xl border border-white/10 bg-black/30 px-5 py-3.5 text-sm text-white outline-none placeholder:text-stone-600 focus:border-amber-200/25"
+              className="w-full rounded-2xl px-5 py-3.5 text-sm text-white outline-none transition-all placeholder:text-stone-600"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)" }}
+              onFocus={e => { e.currentTarget.style.borderColor=`rgba(var(--ga-r400,167,139,250),0.45)`; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(var(--ga-r400,167,139,250),0.12)`; }}
+              onBlur={e => { e.currentTarget.style.borderColor="rgba(255,255,255,0.09)"; e.currentTarget.style.boxShadow="none"; }}
             />
             {ytId && (
               <div className="overflow-hidden rounded-2xl border border-white/10 aspect-video">
@@ -9882,13 +10015,18 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
           <button
             onClick={handlePost}
             disabled={submitting}
-            className="w-full rounded-2xl bg-amber-500 py-4 font-semibold uppercase tracking-widest hover:bg-amber-400 transition disabled:opacity-60 flex items-center justify-center gap-2"
+            className="w-full rounded-2xl py-4 font-semibold tracking-wide text-white transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            style={{
+              background: `linear-gradient(135deg, var(--ga-400,#a78bfa), var(--ga-500,#8b5cf6))`,
+              boxShadow: `var(--ga-shadow-btn,0 4px 16px rgba(139,92,246,0.35))`,
+            }}
           >
             <Send size={16} />
             {submitting ? "등록 중..." : "게시하기"}
           </button>
         </div>
       </div>
+        </div>{/* /px-7 py-6 */}
     </motion.div>
   );
 };
@@ -10180,7 +10318,7 @@ const RaidMemoEditModal = ({
     onClose();
   };
 
-  const panelBg = isLight ? "bg-[#fdfaf4] border-amber-200/40" : "bg-[#070d1a]/97 border-white/10";
+  const panelBg = isLight ? "bg-[#fdfaf4] border-amber-200/40" : "bg-[#0d1526]/97 border-[rgba(167,139,250,0.18)]";
   const inputCl = isLight
     ? "border-amber-200/40 bg-white/80 text-[#1a1208] placeholder-stone-400 focus:border-amber-400/50"
     : "border-white/10 bg-black/40 text-white placeholder-stone-600 focus:border-amber-400/30";
@@ -10398,7 +10536,7 @@ const RaidMemoViewModal = ({
 }) => {
   const { theme } = useTheme();
   const isLight = theme === "light";
-  const panelBg = isLight ? "bg-[#fdfaf4] border-amber-200/40" : "bg-[#070d1a]/97 border-white/10";
+  const panelBg = isLight ? "bg-[#fdfaf4] border-amber-200/40" : "bg-[#0d1526]/97 border-[rgba(167,139,250,0.18)]";
 
   return (
     <motion.div
