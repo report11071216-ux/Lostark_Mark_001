@@ -289,6 +289,273 @@ const toNumber = (value: any) => {
 const cn = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
+// ═══════════════════════════════════════════════════════════
+// 캐릭터 아바타 시스템 (기존 인프라 활용)
+//   1) 메모리 캐시        — 페이지 내 중복 호출 방지
+//   2) guild_members.avatar_url — 멤버 등록 시 이미 저장됨 (DB 1회)
+//   3) /api/lostark?character=X&type=profile — DB에 없을 때 fallback
+//
+// 추가 마이그레이션/환경변수/API 라우트 없음. 기존 데이터 그대로 사용.
+// ═══════════════════════════════════════════════════════════
+
+type CharacterAvatarInfo = {
+  avatar_url: string | null;
+  class_name: string | null;
+};
+
+// 메모리 캐시 — 이미 조회한 캐릭터는 재조회 안 함
+const characterAvatarMemCache: Record<string, CharacterAvatarInfo | "MISS"> = {};
+const characterAvatarFetchPromises: Record<string, Promise<CharacterAvatarInfo | null>> = {};
+
+// guild_members 에서 avatar_url 조회 (이미 길드 등록 시 저장된 데이터)
+const fetchAvatarFromGuildMembers = async (
+  characterName: string
+): Promise<CharacterAvatarInfo | null> => {
+  if (!supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from("guild_members")
+      .select("avatar_url, class_name")
+      .eq("character_name", characterName)
+      .not("avatar_url", "is", null)
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    return {
+      avatar_url: data.avatar_url || null,
+      class_name: data.class_name || null,
+    };
+  } catch {
+    return null;
+  }
+};
+
+// 기존 /api/lostark 엔드포인트로 직접 조회 (응답 형식: { ok, data })
+const fetchAvatarFromLostarkAPI = async (
+  characterName: string
+): Promise<CharacterAvatarInfo | null> => {
+  try {
+    const res = await fetch(
+      `/api/lostark?character=${encodeURIComponent(characterName)}&type=profile`
+    );
+    const json = await res.json();
+    if (!json?.ok || !json?.data) return null;
+    return {
+      avatar_url: json.data.CharacterImage || null,
+      class_name: json.data.CharacterClassName || null,
+    };
+  } catch {
+    return null;
+  }
+};
+
+// 메인 진입점 — 메모리 → guild_members → /api/lostark 순으로 조회
+const getCharacterAvatar = async (
+  characterName: string
+): Promise<CharacterAvatarInfo | null> => {
+  const key = String(characterName || "").trim();
+  if (!key) return null;
+
+  // 메모리 캐시 hit
+  const mem = characterAvatarMemCache[key];
+  if (mem === "MISS") return null;
+  if (mem) return mem;
+
+  // 동시 호출 dedup
+  if (characterAvatarFetchPromises[key]) {
+    return characterAvatarFetchPromises[key];
+  }
+
+  const promise = (async () => {
+    // 1) guild_members 우선 (이미 캐싱된 데이터)
+    const fromDB = await fetchAvatarFromGuildMembers(key);
+    if (fromDB && fromDB.avatar_url) {
+      characterAvatarMemCache[key] = fromDB;
+      return fromDB;
+    }
+
+    // 2) /api/lostark fallback (비길드원 또는 정보 누락)
+    const fromAPI = await fetchAvatarFromLostarkAPI(key);
+    if (fromAPI && fromAPI.avatar_url) {
+      characterAvatarMemCache[key] = fromAPI;
+      return fromAPI;
+    }
+
+    // 3) 둘 다 없음
+    characterAvatarMemCache[key] = "MISS";
+    return null;
+  })();
+
+  characterAvatarFetchPromises[key] = promise;
+  try {
+    return await promise;
+  } finally {
+    delete characterAvatarFetchPromises[key];
+  }
+};
+
+// React 훅
+const useCharacterAvatar = (characterName: string | null | undefined) => {
+  const [info, setInfo] = useState<CharacterAvatarInfo | null>(null);
+
+  useEffect(() => {
+    const key = String(characterName || "").trim();
+    if (!key) {
+      setInfo(null);
+      return;
+    }
+
+    // 동기 캐시 hit이면 즉시 set (깜빡임 방지)
+    const mem = characterAvatarMemCache[key];
+    if (mem && mem !== "MISS") {
+      setInfo(mem);
+      return;
+    }
+
+    let mounted = true;
+    getCharacterAvatar(key).then((res) => {
+      if (mounted) setInfo(res);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [characterName]);
+
+  return info;
+};
+
+// 이니셜 추출 (이미지 없을 때 폴백)
+const getCharacterInitial = (name?: string | null) => {
+  const n = String(name || "").trim();
+  if (!n) return "?";
+  if (/[\uAC00-\uD7AF]/.test(n[0])) return n.slice(0, 1);
+  return n.slice(0, 2).toUpperCase();
+};
+
+// 캐릭명 해시 → 폴백 배경색
+const getCharacterFallbackColor = (name: string) => {
+  const palette = [
+    "#4C1D95", "#831843", "#064E3B", "#1E3A8A",
+    "#312E81", "#92400E", "#7C2D12", "#134E4A",
+    "#581C87", "#9F1239", "#365314", "#1E40AF",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  }
+  return palette[Math.abs(hash) % palette.length];
+};
+
+type CharacterAvatarProps = {
+  characterName?: string | null;
+  size?: number;
+  className?: string;
+  showBorder?: boolean;
+  borderColor?: string;
+};
+
+const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
+  characterName,
+  size = 28,
+  className,
+  showBorder = true,
+  borderColor = "#0F172A",
+}) => {
+  const name = String(characterName || "").trim();
+  const info = useCharacterAvatar(name);
+  const [imgError, setImgError] = useState(false);
+
+  const fallbackBg = name ? getCharacterFallbackColor(name) : "#1E293B";
+  const initial = getCharacterInitial(name);
+  const showImage = info?.avatar_url && !imgError;
+
+  return (
+    <div
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-full flex items-center justify-center",
+        className
+      )}
+      style={{
+        width: size,
+        height: size,
+        background: showImage ? "#0F172A" : fallbackBg,
+        border: showBorder ? `2px solid ${borderColor}` : undefined,
+        fontSize: Math.max(8, size * 0.32),
+        fontWeight: 500,
+        color: "rgba(255,255,255,0.92)",
+      }}
+      title={name}
+    >
+      {showImage ? (
+        <img
+          src={info!.avatar_url as string}
+          alt={name}
+          loading="lazy"
+          onError={() => setImgError(true)}
+          style={{
+            width: size * 1.6,
+            height: size * 1.6,
+            objectFit: "cover",
+            // 로아 캐릭터 이미지는 어깨 아래까지 잡혀서 살짝 위로 — 얼굴 위주로 보여줌
+            objectPosition: "center 18%",
+          }}
+        />
+      ) : (
+        <span>{initial}</span>
+      )}
+    </div>
+  );
+};
+
+// 참여자 아바타 스택 (모집 카드 등에서 활용)
+type CharacterAvatarStackProps = {
+  characterNames: string[];
+  max?: number;
+  size?: number;
+  borderColor?: string;
+};
+
+const CharacterAvatarStack: React.FC<CharacterAvatarStackProps> = ({
+  characterNames,
+  max = 4,
+  size = 22,
+  borderColor = "#111827",
+}) => {
+  const visible = characterNames.slice(0, max);
+  const overflow = Math.max(0, characterNames.length - max);
+
+  return (
+    <div className="flex items-center">
+      {visible.map((name, idx) => (
+        <div
+          key={`${name}-${idx}`}
+          style={{ marginLeft: idx === 0 ? 0 : -size * 0.3 }}
+        >
+          <CharacterAvatar characterName={name} size={size} borderColor={borderColor} />
+        </div>
+      ))}
+      {overflow > 0 && (
+        <div
+          className="rounded-full flex items-center justify-center font-medium"
+          style={{
+            width: size,
+            height: size,
+            marginLeft: -size * 0.3,
+            background: "rgba(255,255,255,0.06)",
+            border: `2px solid ${borderColor}`,
+            color: "#94A3B8",
+            fontSize: Math.max(8, size * 0.34),
+          }}
+        >
+          +{overflow}
+        </div>
+      )}
+    </div>
+  );
+};
+// ═══════════════════════════════════════════════════════════
+
 const ThemeToggleButton = () => {
   const { theme, toggleTheme } = useTheme();
   return (
@@ -7797,12 +8064,12 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-px bg-white/5">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5 p-1 sm:p-2">
             {Array.from({ length: firstDayOffset }).map((_, i) => (
               <div
                 key={`empty-${i}`}
-                className="min-h-[70px] sm:min-h-[110px] md:min-h-[156px]"
-                style={{ background: "rgba(255,255,255,0.008)", borderRight: "1px solid rgba(255,255,255,0.03)" }}
+                className="min-h-[70px] sm:min-h-[110px] md:min-h-[140px] rounded-lg sm:rounded-xl"
+                style={{ background: "rgba(255,255,255,0.012)" }}
               />
             ))}
 
@@ -7823,75 +8090,74 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
               return (
                 <div
                   key={day}
-                  className="group relative min-h-[70px] sm:min-h-[110px] md:min-h-[156px] overflow-hidden p-1 sm:p-3 transition-all duration-150 hover:z-[1]"
+                  className="group relative min-h-[70px] sm:min-h-[110px] md:min-h-[140px] overflow-hidden p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl transition-all duration-150 hover:z-[1]"
                   style={{
                     background: isToday
-                      ? `rgba(var(--ga-r400,167,139,250),0.07)`
-                      : "rgba(255,255,255,0.015)",
-                    borderTop: "1px solid rgba(255,255,255,0.03)",
-                    borderRight: "1px solid rgba(255,255,255,0.03)",
+                      ? `rgba(167,139,250,0.08)`
+                      : "#111827",
+                    border: isToday
+                      ? `1px solid rgba(167,139,250,0.35)`
+                      : "1px solid rgba(255,255,255,0.06)",
                     boxShadow: isToday
-                      ? `inset 0 0 0 1px rgba(var(--ga-r400,167,139,250),0.22)`
+                      ? `inset 0 0 0 1px rgba(167,139,250,0.15)`
                       : undefined,
                     cursor: dayRaids.length > 0 ? "pointer" : "default",
                   }}
                 >
-                  {/* Today 글로우 */}
-                  {isToday && (
-                    <div className="pointer-events-none absolute right-2 top-2 h-12 w-12 rounded-full blur-2xl opacity-60"
-                      style={{ background: `rgba(var(--ga-r400,167,139,250),0.35)` }} />
+                  {/* 좌측 컬러 액센트 바 (이벤트 있을 때만, 오늘은 보더로 대체) */}
+                  {dayRaids.length > 0 && !isToday && (
+                    <div
+                      className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full"
+                      style={{
+                        background: hasMultiType
+                          ? "linear-gradient(180deg,#F0B429 50%,#22D3EE 50%)"
+                          : raidCount > 0
+                          ? "#F0B429"
+                          : "#22D3EE",
+                      }}
+                    />
                   )}
 
-                  {/* 이벤트 타입 컬러 바 (하단) */}
-                  {dayRaids.length > 0 && (
-                    <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden">
-                      {hasMultiType ? (
-                        <div className="h-full w-full" style={{ background: "linear-gradient(90deg,#F0B429 50%,#22D3EE 50%)" }} />
-                      ) : raidCount > 0 ? (
-                        <div className="h-full w-full" style={{ background: "linear-gradient(90deg,#F0B429,#FCD34D)" }} />
-                      ) : (
-                        <div className="h-full w-full" style={{ background: "linear-gradient(90deg,#22D3EE,#67E8F9)" }} />
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mb-2 sm:mb-3 flex items-start justify-between gap-1 sm:gap-2">
-                    <div className="min-w-0">
-                      {/* 날짜 숫자 */}
+                  <div className="mb-1.5 sm:mb-2 flex items-start justify-between gap-1 sm:gap-2">
+                    <div className="min-w-0 flex items-center gap-1.5">
+                      {/* 날짜 숫자 — 더 큰 폰트, 명확한 위계 */}
                       <div
-                        className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-0.5 text-[10px] font-semibold transition-all sm:h-9 sm:min-w-[36px] sm:rounded-xl sm:px-2 sm:text-sm"
+                        className="text-sm sm:text-base font-medium leading-none transition-all"
                         style={isToday ? {
-                          background: `rgba(var(--ga-r400,167,139,250),0.18)`,
-                          border: `1px solid rgba(var(--ga-r400,167,139,250),0.35)`,
-                          color: `var(--ga-200,#ddd6fe)`,
-                          boxShadow: `0 4px 16px rgba(var(--ga-r400,167,139,250),0.2)`,
+                          color: "#DDD6FE",
+                          fontWeight: 500,
                         } : {
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid transparent",
-                          color: "var(--guild-text-2,#A0AAC0)",
+                          color: "#E2E8F0",
                         }}
                       >
                         {day}
                       </div>
-                      <div className="hidden sm:block mt-1.5 text-[9px] uppercase tracking-[0.18em]" style={{ color: "var(--guild-text-4,#3A4560)" }}>
-                        {DAY_LABELS[new Date(year, month, day).getDay()]}
-                      </div>
+                      {/* TODAY 배지 */}
+                      {isToday && (
+                        <div
+                          className="hidden sm:inline-flex items-center rounded px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.1em]"
+                          style={{
+                            background: "rgba(167,139,250,0.2)",
+                            color: "#DDD6FE",
+                          }}
+                        >
+                          Today
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1">
                       {/* 일정 수 배지 — 타입별 컬러 */}
                       {dayRaids.length > 0 && (
                         <div
-                          className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1 sm:px-2 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-semibold"
+                          className="inline-flex items-center gap-0.5 sm:gap-1 rounded-md px-1 sm:px-1.5 py-0.5 text-[8px] sm:text-[10px] font-medium"
                           style={raidCount > 0 && animeCount === 0
-                            ? { background: "rgba(240,180,41,0.12)", border: "1px solid rgba(240,180,41,0.22)", color: "#FCD34D" }
+                            ? { background: "rgba(240,180,41,0.12)", color: "#FCD34D" }
                             : animeCount > 0 && raidCount === 0
-                            ? { background: "rgba(34,211,238,0.12)", border: "1px solid rgba(34,211,238,0.22)", color: "#67E8F9" }
-                            : { background: `rgba(var(--ga-r400,167,139,250),0.12)`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.22)`, color: `var(--ga-200,#ddd6fe)` }
+                            ? { background: "rgba(34,211,238,0.12)", color: "#67E8F9" }
+                            : { background: `rgba(167,139,250,0.12)`, color: `#DDD6FE` }
                           }
                         >
-                          <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full"
-                            style={{ background: raidCount > 0 && animeCount === 0 ? "#F0B429" : animeCount > 0 && raidCount === 0 ? "#22D3EE" : `var(--ga-300,#c4b5fd)` }} />
                           {dayRaids.length}
                         </div>
                       )}
@@ -7912,18 +8178,10 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                     </div>
                   </div>
 
-                  {/* 일정 수 텍스트 (데스크톱) */}
-                  <div className="hidden sm:flex mb-2 items-center gap-1.5 text-[10px]" style={{ color: "var(--guild-text-4,#3A4560)" }}>
-                    <span>{dayRaids.length}건</span>
-                    {dayParticipantCount > 0 && (
-                      <><span>·</span><span>{dayParticipantCount}명</span></>
-                    )}
-                  </div>
-
                   <div className="space-y-1 sm:space-y-1.5">
                     {dayRaids.length === 0 && (
-                      <div className="hidden sm:block rounded-xl border border-dashed px-2 py-2.5 text-center text-[10px]" style={{ borderColor: "rgba(255,255,255,0.05)", color: "var(--guild-text-4,#3A4560)" }}>
-                        {scheduleView === "mine" ? "내 일정 없음" : "일정 없음"}
+                      <div className="hidden sm:block px-1 py-1 text-[10px]" style={{ color: "#475569" }}>
+                        {scheduleView === "mine" ? "내 일정 없음" : "—"}
                       </div>
                     )}
 
@@ -7959,12 +8217,12 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                         <button
                           type="button"
                           onClick={() => setSelectedRaid(dayRaids[0])}
-                          className="w-full rounded-xl px-2.5 py-1.5 text-left text-[10px] font-medium transition-all"
-                          style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", color: "var(--guild-text-3,#5C6882)" }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-2,#A0AAC0)"; (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.05)"; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-3,#5C6882)"; (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.02)"; }}
+                          className="w-full px-1.5 py-1 text-left text-[10px] font-medium transition-all"
+                          style={{ color: "#64748B" }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color="#A78BFA"; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color="#64748B"; }}
                         >
-                          +{dayRaids.length - 2}개 더 보기
+                          + {dayRaids.length - 2}개 더
                         </button>
                       )}
                     </div>
@@ -8157,79 +8415,115 @@ const RaidCard = ({
   onOpen: () => void;
   compact?: boolean;
 }) => {
-  const colors = classNameByMode(raid.type);
   const capacity = getCapacity(raid);
   const percent = Math.min(100, (parts.length / capacity.maxParticipants) * 100);
   const isFull = parts.length >= capacity.maxParticipants;
-
   const tc = getRaidTypeColor(raid.type);
   const isAnimeType = raid.type === "anime";
 
+  // 통일된 액센트 컬러 결정
+  const accentHex = isFull ? "#475569" : tc.hex;
+  const accentRGB = isFull ? "71,85,105" : tc.r;
+
   return (
     <motion.button
-      whileHover={{ y: -1, scale: 1.005 }}
+      whileHover={{ y: -1 }}
       onClick={onOpen}
-      className={cn("relative w-full overflow-hidden rounded-xl text-left transition-all", compact ? "p-1.5 sm:p-2.5" : "p-2.5 sm:p-3")}
+      className={cn(
+        "relative w-full overflow-hidden rounded-xl text-left transition-all group/card",
+        compact ? "px-2 py-1.5 sm:px-2.5 sm:py-2" : "px-3 py-2.5"
+      )}
       style={{
-        background: isFull
-          ? "rgba(248,113,113,0.06)"
-          : isAnimeType
-          ? "rgba(34,211,238,0.05)"
-          : "rgba(240,180,41,0.05)",
-        border: isFull
-          ? "1px solid rgba(248,113,113,0.22)"
-          : isAnimeType
-          ? "1px solid rgba(34,211,238,0.18)"
-          : "1px solid rgba(240,180,41,0.16)",
+        background: isFull ? "#0E1726" : "#111827",
+        border: "1px solid rgba(255,255,255,0.06)",
+        opacity: isFull ? 0.7 : 1,
+      }}
+      onMouseEnter={(e) => {
+        if (!isFull) {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = `rgba(${accentRGB},0.25)`;
+          (e.currentTarget as HTMLButtonElement).style.background = "#131C2E";
+        }
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.06)";
+        (e.currentTarget as HTMLButtonElement).style.background = isFull ? "#0E1726" : "#111827";
       }}
     >
-      {/* 좌측 타입 컬러 바 */}
+      {/* 좌측 컬러 액센트 바 */}
       <div
-        className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full"
-        style={{ background: isFull ? "#F87171" : tc.hex }}
+        className="absolute left-0 top-0 bottom-0 w-[3px]"
+        style={{ background: accentHex }}
       />
 
-      <div className="pl-2 flex items-start justify-between gap-2">
+      <div className="pl-2 flex items-center justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 min-w-0 mb-1">
-            {raid.experience && !isAnimeType && (
+          {/* 타이틀 + 상태 배지 */}
+          <div className="flex items-center gap-1.5 min-w-0 mb-0.5">
+            <div
+              className={cn(
+                "truncate font-medium leading-tight",
+                compact ? "text-[11px] sm:text-[12px]" : "text-[13px]"
+              )}
+              style={{ color: isFull ? "#94A3B8" : "#F1F5F9" }}
+            >
+              {raid.raid_name}
+            </div>
+            {isFull && (
               <span
-                className="shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[8px] font-semibold leading-none"
-                style={{ background: `rgba(${tc.r},0.15)`, border: `1px solid rgba(${tc.r},0.25)`, color: tc.hex2 }}
+                className="shrink-0 rounded text-[8px] font-medium leading-none px-1 py-0.5"
+                style={{ background: "rgba(255,255,255,0.04)", color: "#64748B", letterSpacing: "0.06em" }}
               >
-                {raid.experience}
+                마감
               </span>
             )}
-            <span className="truncate text-[9px] font-medium uppercase tracking-[0.16em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>
-              {isAnimeType ? "시청" : compact ? raid.difficulty : `${raid.raid_type} · ${raid.difficulty}`}
-            </span>
           </div>
 
-          <div className="truncate text-[11px] sm:text-[12px] font-semibold leading-tight text-white">
-            {raid.raid_name}
-          </div>
-
-          <div className="mt-1.5 flex items-center gap-1.5 text-[10px]" style={{ color: "var(--guild-text-3,#5C6882)" }}>
+          {/* 메타 정보 — inline + 구분점 */}
+          <div className="flex items-center gap-1.5 text-[10px]" style={{ color: isFull ? "#475569" : "#64748B" }}>
             <Clock size={9} />
             <span>{raid.raid_time}</span>
+            {!compact && (
+              <>
+                <span>·</span>
+                <span className="truncate">
+                  {isAnimeType ? "시청" : raid.difficulty}
+                  {raid.experience && !isAnimeType && ` · ${raid.experience}`}
+                </span>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="shrink-0 text-right">
-          <div className="text-[11px] font-semibold" style={{ color: isFull ? "#F87171" : "var(--guild-text-2,#A0AAC0)" }}>
-            {parts.length}/{capacity.maxParticipants}
-          </div>
-          {parts.length > 0 && (
-            <div className="mt-1 h-1.5 w-1.5 rounded-full ml-auto" style={{ background: isFull ? "#F87171" : tc.hex }} />
+        {/* 우측 — 참여 현황 (아바타 스택 + 카운트) */}
+        <div className="shrink-0 text-right flex flex-col items-end gap-1">
+          {/* 참여자 아바타 스택 (full 모드 + 참여자 있을 때만) */}
+          {!compact && parts.length > 0 && (
+            <CharacterAvatarStack
+              characterNames={parts.map((p: any) => p.character_name).filter(Boolean)}
+              max={4}
+              size={22}
+              borderColor={isFull ? "#0E1726" : "#111827"}
+            />
           )}
+          <div
+            className="text-[11px] font-medium tabular-nums"
+            style={{ color: isFull ? "#64748B" : "#E2E8F0" }}
+          >
+            <span style={{ color: isFull ? "#64748B" : accentHex }}>{parts.length}</span>
+            <span style={{ color: "#475569" }}>/{capacity.maxParticipants}</span>
+          </div>
         </div>
       </div>
 
+      {/* 진행률 바 — full 모드에서만 */}
       {!compact && (
-        <div className="mt-2.5 h-1 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+        <div className="mt-2 ml-2 h-[2px] overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
           <div
-            style={{ width: `${percent}%`, background: isFull ? "#F87171" : `linear-gradient(90deg,${tc.hex},${tc.hex2})` }}
-            className="h-full rounded-full transition-all duration-500"
+            style={{
+              width: `${percent}%`,
+              background: accentHex,
+            }}
+            className="h-full transition-all duration-500"
           />
         </div>
       )}
