@@ -2579,18 +2579,34 @@ const UI_THEME_PRESETS: Record<UIThemeKey, {
 };
 
 const generateThemeCSS = (t: UIThemeKey): string => {
-  if (t === "amber") return "";
   const C: Record<UIThemeKey, { t50:string;t100:string;t200:string;t300:string;t400:string;t500:string;
     r400:string;r300:string;r200:string;r500:string; }> = {
-    amber:   { t50:"#fffbeb",t100:"#fef3c7",t200:"#fde68a",t300:"#fcd34d",t400:"#fbbf24",t500:"#f59e0b", r400:"251,191,36",r300:"252,211,77",r200:"253,230,138",r500:"245,158,11" },
-    violet:  { t50:"#f5f3ff",t100:"#ede9fe",t200:"#ddd6fe",t300:"#c4b5fd",t400:"#a78bfa",t500:"#8b5cf6", r400:"167,139,250",r300:"196,181,253",r200:"221,214,254",r500:"139,92,246" },
-    cyan:    { t50:"#ecfeff",t100:"#cffafe",t200:"#a5f3fc",t300:"#67e8f9",t400:"#22d3ee",t500:"#06b6d4", r400:"34,211,238",r300:"103,232,249",r200:"165,243,252",r500:"6,182,212" },
-    rose:    { t50:"#fff1f2",t100:"#ffe4e6",t200:"#fecdd3",t300:"#fda4af",t400:"#fb7185",t500:"#f43f5e", r400:"251,113,133",r300:"253,164,175",r200:"254,205,211",r500:"244,63,94" },
-    emerald: { t50:"#ecfdf5",t100:"#d1fae5",t200:"#a7f3d0",t300:"#6ee7b7",t400:"#34d399",t500:"#10b981", r400:"52,211,153",r300:"110,231,183",r200:"167,243,208",r500:"16,185,129" },
+    amber:   { t50:"#fffbeb",t100:"#fef3c7",t200:"#fde68a",t300:"#fcd34d",t400:"#fbbf24",t500:"#f59e0b", r400:"251,191,36",  r300:"252,211,77",  r200:"253,230,138", r500:"245,158,11"  },
+    violet:  { t50:"#f5f3ff",t100:"#ede9fe",t200:"#ddd6fe",t300:"#c4b5fd",t400:"#a78bfa",t500:"#8b5cf6", r400:"167,139,250", r300:"196,181,253", r200:"221,214,254", r500:"139,92,246"  },
+    cyan:    { t50:"#ecfeff",t100:"#cffafe",t200:"#a5f3fc",t300:"#67e8f9",t400:"#22d3ee",t500:"#06b6d4", r400:"34,211,238",  r300:"103,232,249", r200:"165,243,252", r500:"6,182,212"   },
+    rose:    { t50:"#fff1f2",t100:"#ffe4e6",t200:"#fecdd3",t300:"#fda4af",t400:"#fb7185",t500:"#f43f5e", r400:"251,113,133", r300:"253,164,175", r200:"254,205,211", r500:"244,63,94"   },
+    emerald: { t50:"#ecfdf5",t100:"#d1fae5",t200:"#a7f3d0",t300:"#6ee7b7",t400:"#34d399",t500:"#10b981", r400:"52,211,153",  r300:"110,231,183", r200:"167,243,208", r500:"16,185,129"  },
   };
   const c = C[t];
   const p = `[data-ui-theme="${t}"]`;
-  return `
+
+  // amber는 varBlock만 주입 (기본값이므로 override 불필요)
+  const varBlock = `
+  ${t === "amber" ? ":root" : p} {
+    --ga-50:  ${c.t50};  --ga-100: ${c.t100}; --ga-200: ${c.t200};
+    --ga-300: ${c.t300}; --ga-400: ${c.t400}; --ga-500: ${c.t500};
+    --ga-r400: ${c.r400}; --ga-r300: ${c.r300};
+    --ga-r200: ${c.r200}; --ga-r500: ${c.r500};
+    --ga-glow-sm:  0 0 12px rgba(${c.r400},0.35);
+    --ga-glow-md:  0 0 28px rgba(${c.r400},0.40);
+    --ga-glow-lg:  0 0 48px rgba(${c.r400},0.28);
+    --ga-shadow-btn:  0 4px 16px rgba(${c.r500},0.35);
+    --ga-shadow-card: 0 18px 48px rgba(${c.r400},0.12);
+  }`;
+
+  if (t === "amber") return varBlock;
+
+  return `${varBlock}
   /* ── ${t} theme overrides ── */
   ${p} .text-amber-50  { color: ${c.t50}  !important; }
   ${p} .text-amber-100 { color: ${c.t100} !important; }
@@ -2607,17 +2623,22 @@ const generateThemeCSS = (t: UIThemeKey): string => {
   ${p} .border-amber-200\/18  { border-color: rgba(${c.r200},0.18) !important; }
   ${p} .border-amber-200\/20  { border-color: rgba(${c.r200},0.20) !important; }
   ${p} .border-amber-200\/22  { border-color: rgba(${c.r200},0.22) !important; }
+  ${p} .border-amber-200\/24  { border-color: rgba(${c.r200},0.24) !important; }
   ${p} .border-amber-200\/25  { border-color: rgba(${c.r200},0.25) !important; }
   ${p} .border-amber-200\/30  { border-color: rgba(${c.r200},0.30) !important; }
   ${p} .border-amber-200\/35  { border-color: rgba(${c.r200},0.35) !important; }
+  ${p} .border-amber-400\/15  { border-color: rgba(${c.r400},0.15) !important; }
   ${p} .border-amber-400\/20  { border-color: rgba(${c.r400},0.20) !important; }
   ${p} .border-amber-400\/25  { border-color: rgba(${c.r400},0.25) !important; }
   ${p} .border-amber-400\/30  { border-color: rgba(${c.r400},0.30) !important; }
   ${p} .border-amber-400\/40  { border-color: rgba(${c.r400},0.40) !important; }
-  ${p} .border-amber-400\/15  { border-color: rgba(${c.r400},0.15) !important; }
+  ${p} .border-amber-400\/50  { border-color: rgba(${c.r400},0.50) !important; }
 
-  ${p} .bg-amber-500  { background-color: ${c.t500} !important; }
-  ${p} .bg-amber-400  { background-color: ${c.t400} !important; }
+  ${p} .bg-amber-500      { background-color: ${c.t500} !important; }
+  ${p} .bg-amber-400      { background-color: ${c.t400} !important; }
+  ${p} .bg-amber-300      { background-color: ${c.t300} !important; }
+  ${p} .bg-amber-200      { background-color: ${c.t200} !important; }
+  ${p} .bg-amber-100      { background-color: ${c.t100} !important; }
   ${p} .bg-amber-400\/6   { background-color: rgba(${c.r400},0.06) !important; }
   ${p} .bg-amber-400\/8   { background-color: rgba(${c.r400},0.08) !important; }
   ${p} .bg-amber-400\/10  { background-color: rgba(${c.r400},0.10) !important; }
@@ -2630,38 +2651,47 @@ const generateThemeCSS = (t: UIThemeKey): string => {
   ${p} .bg-amber-300\/10  { background-color: rgba(${c.r300},0.10) !important; }
   ${p} .bg-amber-300\/12  { background-color: rgba(${c.r300},0.12) !important; }
   ${p} .bg-amber-200\/15  { background-color: rgba(${c.r200},0.15) !important; }
+  ${p} .bg-amber-500\/15  { background-color: rgba(${c.r500},0.15) !important; }
+  ${p} .bg-amber-500\/20  { background-color: rgba(${c.r500},0.20) !important; }
 
+  ${p} .from-amber-300\/16 { --tw-gradient-from: rgba(${c.r300},0.16) !important; }
   ${p} .from-amber-400 { --tw-gradient-from: ${c.t400} !important; }
   ${p} .from-amber-500 { --tw-gradient-from: ${c.t500} !important; }
+  ${p} .from-amber-600 { --tw-gradient-from: ${c.t500} !important; }
   ${p} .to-amber-300   { --tw-gradient-to:   ${c.t300} !important; }
   ${p} .to-amber-400   { --tw-gradient-to:   ${c.t400} !important; }
+  ${p} .to-amber-600   { --tw-gradient-to:   ${c.t500} !important; }
   ${p} .via-amber-100  { --tw-gradient-via:  ${c.t100} !important; }
+  ${p} .via-amber-200  { --tw-gradient-via:  ${c.t200} !important; }
   ${p} .via-amber-300  { --tw-gradient-via:  ${c.t300} !important; }
 
-  ${p} .hover\:border-amber-200\/20:hover  { border-color: rgba(${c.r200},0.20) !important; }
-  ${p} .hover\:border-amber-200\/22:hover  { border-color: rgba(${c.r200},0.22) !important; }
-  ${p} .hover\:border-amber-200\/25:hover  { border-color: rgba(${c.r200},0.25) !important; }
-  ${p} .hover\:border-amber-200\/30:hover  { border-color: rgba(${c.r200},0.30) !important; }
+  ${p} .hover\:border-amber-200\/18:hover { border-color: rgba(${c.r200},0.18) !important; }
+  ${p} .hover\:border-amber-200\/20:hover { border-color: rgba(${c.r200},0.20) !important; }
+  ${p} .hover\:border-amber-200\/22:hover { border-color: rgba(${c.r200},0.22) !important; }
+  ${p} .hover\:border-amber-200\/25:hover { border-color: rgba(${c.r200},0.25) !important; }
+  ${p} .hover\:border-amber-200\/30:hover { border-color: rgba(${c.r200},0.30) !important; }
   ${p} .hover\:bg-amber-300\/\[0\.04\]:hover { background-color: rgba(${c.r300},0.04) !important; }
   ${p} .hover\:bg-amber-300\/\[0\.05\]:hover { background-color: rgba(${c.r300},0.05) !important; }
   ${p} .hover\:bg-amber-300\/\[0\.06\]:hover { background-color: rgba(${c.r300},0.06) !important; }
   ${p} .hover\:bg-amber-300\/\[0\.08\]:hover { background-color: rgba(${c.r300},0.08) !important; }
   ${p} .hover\:bg-amber-400:hover  { background-color: ${c.t400} !important; }
+  ${p} .hover\:bg-amber-400\/15:hover { background-color: rgba(${c.r400},0.15) !important; }
   ${p} .hover\:brightness-110:hover { filter: brightness(1.1); }
   ${p} .hover\:text-amber-100:hover { color: ${c.t100} !important; }
+  ${p} .hover\:text-amber-200:hover { color: ${c.t200} !important; }
+
   ${p} .focus\:border-amber-200\/25:focus  { border-color: rgba(${c.r200},0.25) !important; }
   ${p} .focus\:border-amber-200\/30:focus  { border-color: rgba(${c.r200},0.30) !important; }
+  ${p} .focus\:border-amber-400\/40:focus  { border-color: rgba(${c.r400},0.40) !important; }
+  ${p} .focus\:border-amber-400\/50:focus  { border-color: rgba(${c.r400},0.50) !important; }
   ${p} .focus\:ring-amber-400\/10:focus    { --tw-ring-color: rgba(${c.r400},0.10) !important; }
+  ${p} .focus\:ring-amber-400\/20:focus    { --tw-ring-color: rgba(${c.r400},0.20) !important; }
+
+  ${p} .shadow-amber-500\/20 { --tw-shadow-color: rgba(${c.r500},0.20) !important; }
 
   /* Navbar active indicator */
   ${p} nav .via-amber-200 { --tw-gradient-via: ${c.t200} !important; }
   ${p} .selection\:bg-amber-300\/25 ::selection { background-color: rgba(${c.r300},0.25) !important; }
-
-  /* Animate pulse glow */
-  ${p} .bg-amber-200 { background-color: ${c.t200} !important; }
-  ${p} .bg-amber-300 { background-color: ${c.t300} !important; }
-  ${p} .bg-amber-100 { background-color: ${c.t100} !important; }
-
   ${p} .text-amber-50\/80 { color: rgba(${c.r200},0.80) !important; }
   `;
 };
@@ -2675,7 +2705,7 @@ const useUITheme = () => React.useContext(UIThemeContext);
 
 const UIThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [uiTheme, setUIThemeState] = React.useState<UIThemeKey>(() => {
-    try { return (localStorage.getItem("guild_ui_theme") as UIThemeKey) || "amber"; } catch { return "amber"; }
+    try { return (localStorage.getItem("guild_ui_theme") as UIThemeKey) || "violet"; } catch { return "violet"; }
   });
   React.useEffect(() => {
     const root = document.documentElement;
@@ -2728,16 +2758,130 @@ const ThemeSwatchPicker = () => {
 };
 // ── End UI Theme System ──────────────────────────────────────
 
+const GLOBAL_BASE_CSS = `
+  /* ══════════════════════════════════════════════
+     전역 디자인 토큰 — 다크 모드 기준
+     모든 컴포넌트는 이 변수를 참조합니다
+  ══════════════════════════════════════════════ */
+  :root {
+    /* 배경 레이어 */
+    --guild-bg-base:    #050912;
+    --guild-bg-panel:   #080c16;
+    --guild-bg-surface: #0f1729;
+    --guild-bg-raised:  #141e30;
+    --guild-bg-input:   rgba(255,255,255,0.04);
+
+    /* 테두리 */
+    --guild-border-sub: rgba(255,255,255,0.06);
+    --guild-border-md:  rgba(255,255,255,0.10);
+    --guild-border-em:  rgba(255,255,255,0.16);
+
+    /* 텍스트 */
+    --guild-text-1: #F1F0FF;
+    --guild-text-2: #A0AAC0;
+    --guild-text-3: #5C6882;
+    --guild-text-4: #3A4560;
+
+    /* 보조 액센트 (레이드 타입 컬러 코딩) */
+    --guild-raid:    #F0B429;   /* raid — 골드  */
+    --guild-anime:   #22D3EE;   /* anime — 시안 */
+    --guild-success: #34D399;   /* 클경/숙련    */
+    --guild-danger:  #F87171;   /* 에러/경고    */
+    --guild-info:    #60A5FA;   /* 정보/공지    */
+    --guild-special: #F472B6;   /* 이벤트/스페셜*/
+
+    /* 레이아웃 */
+    --guild-radius-sm: 10px;
+    --guild-radius-md: 16px;
+    --guild-radius-lg: 20px;
+    --guild-radius-xl: 24px;
+    --guild-radius-2xl: 28px;
+
+    /* 애니메이션 */
+    --guild-transition: 150ms ease;
+    --guild-transition-md: 220ms ease;
+  }
+
+  /* 기본 배경: 갈색조 → 딥 네이비 */
+  body {
+    background: var(--guild-bg-base) !important;
+    color: var(--guild-text-1);
+  }
+
+  /* 패널/모달 배경 통일 */
+  .bg-\[\#070d1a\]\/95,
+  .bg-\[\#070d1a\]\/96 {
+    background: rgba(8,12,22,0.96) !important;
+  }
+  .bg-\[\#0a1632\] {
+    background: #0d1526 !important;
+  }
+  .bg-\[\#0d1525\] {
+    background: #0a1020 !important;
+  }
+
+  /* 스크롤바 */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.10);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,255,255,0.20);
+  }
+
+  /* 포커스 링 */
+  *:focus-visible {
+    outline: 2px solid rgba(var(--ga-r400, 167,139,250), 0.55);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* 선택 하이라이트 */
+  ::selection {
+    background: rgba(var(--ga-r400, 167,139,250), 0.22);
+  }
+
+  /* 인터랙티브 요소 기본 전환 */
+  button, a {
+    transition:
+      color var(--guild-transition),
+      background-color var(--guild-transition),
+      border-color var(--guild-transition),
+      box-shadow var(--guild-transition),
+      opacity var(--guild-transition),
+      transform var(--guild-transition);
+  }
+  input, select, textarea {
+    transition:
+      border-color var(--guild-transition),
+      background-color var(--guild-transition),
+      box-shadow var(--guild-transition);
+  }
+
+  /* 모달 오버레이 블러 개선 */
+  .backdrop-blur-xl  { backdrop-filter: blur(20px) !important; }
+  .backdrop-blur-2xl { backdrop-filter: blur(32px) !important; }
+
+  /* 레이드 타입별 색상 유틸 클래스 */
+  .guild-raid-bar    { background: var(--guild-raid)    !important; }
+  .guild-anime-bar   { background: var(--guild-anime)   !important; }
+  .guild-success-bar { background: var(--guild-success) !important; }
+  .guild-special-bar { background: var(--guild-special) !important; }
+  .guild-info-bar    { background: var(--guild-info)    !important; }
+`;
+
 const LIGHT_MODE_STYLES = `
   .light-mode {
-    --color-bg: #f5f0e8;
+    --color-bg: #eef0f8;
     --color-surface: rgba(255,255,255,0.85);
     --color-border: rgba(0,0,0,0.08);
     --color-text: #1a1208;
     --color-subtext: #6b5e4a;
     color-scheme: light;
   }
-  .light-mode body { background: #f5f0e8; }
+  .light-mode body { background: #eef0f8; }
 
   /* 네비게이션 */
   .light-mode nav {
@@ -2834,7 +2978,7 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
 
   return (
     <>
-      <style>{LIGHT_MODE_STYLES}</style>
+      <style>{GLOBAL_BASE_CSS}{generateThemeCSS("amber")}{LIGHT_MODE_STYLES}</style>
       <div
         className="relative min-h-screen overflow-hidden text-white selection:bg-amber-300/25"
         style={{
@@ -2842,7 +2986,7 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
             ? "#f5f0e8"
             : splineEnabled
             ? "transparent"
-            : "#090705",
+            : "#050912",
         }}
       >
       {/* ── Spline 3D 배경 (다크 모드 전용) ── */}
@@ -2853,7 +2997,7 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
             inset: 0,
             zIndex: -1,
             pointerEvents: "auto",
-            background: "#090705",
+            background: "#050912",
           }}
         >
           <SplineBackground sceneUrl={splineSceneUrl} />
@@ -2873,7 +3017,7 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
           ) : (
             <div
               className="absolute inset-0"
-              style={{ background: isLight ? "#f5f0e8" : "#090705" }}
+              style={{ background: isLight ? "#f5f0e8" : "#050912" }}
             />
           )}
 
@@ -2904,7 +3048,7 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
           {/* ambient glow */}
           {!isLight && (
             <motion.div
-              className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full bg-amber-200/12 blur-[148px]"
+              className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full blur-[148px]" style={{ background: `rgba(var(--ga-r400, 167,139,250), 0.09)` }}
               animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
               transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
             />
