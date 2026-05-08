@@ -1821,10 +1821,11 @@ const fetchInitialData = async () => {
                 <Hero
                   settings={settings}
                   posts={posts}
+                  user={user}
+                  profile={profile}
                   onOpenRaidCalendar={() => setIsRaidCalendarModalOpen(true)}
                   onNavigateToNotices={() => { setPostInitialTab("notice"); setActiveTab("posts"); }}
                   onRaidSearch={(raid: any) => {
-                    // MonthlyRaidCalendarModal을 먼저 열고, 마운트 후 이벤트 발행
                     setIsRaidCalendarModalOpen(true);
                     setTimeout(() => {
                       window.dispatchEvent(new CustomEvent("openRaidById", { detail: { raidId: raid.id } }));
@@ -3161,7 +3162,7 @@ const ProkyonWidget = () => {
 };
 // ── End ProkyonWidget ────────────────────────────────────────
 
-const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaidSearch }: any) => {
+const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateToNotices, onRaidSearch }: any) => {
   const [heroStats, setHeroStats] = useState({
     memberCount: 0,
     upcomingRaids: 0,
@@ -3171,6 +3172,9 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
   const [todayRaids, setTodayRaids] = useState<any[]>([]);
   const [upcomingRaids, setUpcomingRaids] = useState<any[]>([]);
   const [topRankers, setTopRankers] = useState<any[]>([]);
+  const [myWeekStats, setMyWeekStats] = useState<{
+    joined: number; total: number; pointsThisWeek: number; myRank: number | null;
+  }>({ joined: 0, total: 0, pointsThisWeek: 0, myRank: null });
   const [contentImgMap, setContentImgMap] = useState<Record<string, string>>({});
   const [participantCountMap, setParticipantCountMap] = useState<Record<string, number>>({});
   const [weeklySchedules, setWeeklySchedules] = useState<Record<string, any[]>>({});
@@ -3329,6 +3333,54 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
       });
   }, []);
 
+  // 내 이번 주 참여 현황 fetch
+  useEffect(() => {
+    if (!supabase || !user?.id) return;
+    const today = new Date();
+    const day = today.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const weekStart = fmt(monday);
+    const weekEnd = fmt(sunday);
+
+    Promise.all([
+      // 이번 주 전체 레이드 수
+      supabase.from("raid_schedules").select("id", { count: "exact", head: true })
+        .gte("raid_date", weekStart).lte("raid_date", weekEnd),
+      // 내가 참여한 레이드 수
+      supabase.from("raid_participants").select("schedule_id")
+        .eq("user_id", user.id),
+      // 내 포인트 및 랭킹
+      supabase.from("profiles").select("id, points").order("points", { ascending: false }),
+    ]).then(([totalRes, myPartRes, rankRes]) => {
+      const totalThisWeek = totalRes.count || 0;
+      // 이번 주 일정 id 목록
+      supabase.from("raid_schedules").select("id")
+        .gte("raid_date", weekStart).lte("raid_date", weekEnd)
+        .then(({ data: weekIds }) => {
+          const weekIdSet = new Set((weekIds || []).map((r: any) => String(r.id)));
+          const myJoined = (myPartRes.data || []).filter((p: any) =>
+            weekIdSet.has(String(p.schedule_id))
+          ).length;
+          const allProfiles = rankRes.data || [];
+          const myRankIdx = allProfiles.findIndex((p: any) => p.id === user.id);
+          const myPoints = Number(profile?.points || allProfiles.find((p: any) => p.id === user.id)?.points || 0);
+          setMyWeekStats({
+            joined: myJoined,
+            total: totalThisWeek,
+            pointsThisWeek: myPoints,
+            myRank: myRankIdx !== -1 ? myRankIdx + 1 : null,
+          });
+        });
+    });
+  }, [user?.id, profile?.points]);
+
   // 레이드 검색
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); setSearchOpen(false); return; }
@@ -3472,6 +3524,85 @@ const Hero = ({ settings, posts, onOpenRaidCalendar, onNavigateToNotices, onRaid
             </AnimatePresence>
           </div>
         </motion.div>
+
+        {/* ─── 내 이번 주 참여 현황 미니카드 ─── */}
+        {user && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.05 }}
+            className="mb-4 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[linear-gradient(90deg,rgba(251,191,36,0.06),rgba(139,92,246,0.04),rgba(52,211,153,0.04))] backdrop-blur-xl"
+          >
+            <div className="flex flex-wrap items-center gap-0 divide-x divide-white/[0.06]">
+              {/* 인삿말 */}
+              <div className="flex items-center gap-3 px-5 py-4 min-w-0">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-200/20 bg-amber-300/[0.1] text-base">
+                  ⚔️
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200/60">이번 주 나의 현황</div>
+                  <div className="mt-0.5 truncate text-sm font-semibold text-white">
+                    {profile?.nickname || profile?.character_name || "길드원"}
+                  </div>
+                </div>
+              </div>
+
+              {/* 레이드 참여 */}
+              <div className="flex flex-1 flex-col items-center justify-center px-5 py-4">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">레이드 참여</div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-xl font-bold text-white">{myWeekStats.joined}</span>
+                  <span className="text-xs text-slate-600">/ {myWeekStats.total}회</span>
+                </div>
+                {/* 참여율 바 */}
+                <div className="mt-1.5 h-1 w-full max-w-[80px] overflow-hidden rounded-full bg-white/[0.06]">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${myWeekStats.total > 0 ? Math.round((myWeekStats.joined / myWeekStats.total) * 100) : 0}%` }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                    className={cn(
+                      "h-full rounded-full",
+                      myWeekStats.total > 0 && myWeekStats.joined === myWeekStats.total
+                        ? "bg-emerald-400"
+                        : myWeekStats.joined > 0 ? "bg-amber-400" : "bg-slate-600"
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* 보유 포인트 */}
+              <div className="flex flex-1 flex-col items-center justify-center px-5 py-4">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">보유 포인트</div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-xl font-bold text-amber-300">
+                    {Number(profile?.points || myWeekStats.pointsThisWeek || 0).toLocaleString()}
+                  </span>
+                  <span className="text-xs text-slate-600">P</span>
+                </div>
+              </div>
+
+              {/* 랭킹 */}
+              <div className="flex flex-1 flex-col items-center justify-center px-5 py-4">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">포인트 랭킹</div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  {myWeekStats.myRank ? (
+                    <>
+                      <span className="text-xl font-bold text-violet-300">{myWeekStats.myRank}</span>
+                      <span className="text-xs text-slate-600">위</span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-slate-600">-</span>
+                  )}
+                </div>
+                {myWeekStats.myRank && myWeekStats.myRank <= 3 && (
+                  <div className="mt-0.5 text-sm">
+                    {myWeekStats.myRank === 1 ? "🥇" : myWeekStats.myRank === 2 ? "🥈" : "🥉"}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* ─── MAIN DASHBOARD GRID ─── */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
@@ -16102,14 +16233,14 @@ const SectionSelector = ({
       subtitle: "Guild Main",
       desc: "레이드 일정, 공지사항, 길드원 정보 등 메인 페이지로 입장합니다.",
       emoji: "⚔️",
-      bg: "from-[#0a0e18] to-[#0d1020]",
-      borderIdle: "border-amber-300/15",
-      borderHover: "hover:border-amber-200/50",
-      badgeCls: "bg-amber-400/12 text-amber-200 border-amber-400/22",
-      glowCls: "hover:shadow-[0_0_60px_rgba(251,191,36,0.12),0_24px_48px_rgba(0,0,0,0.4)]",
-      accentLine: "from-transparent via-amber-400/50 to-transparent",
-      iconBg: "bg-amber-300/10 border-amber-300/18",
-      descColor: "text-slate-500",
+      bgImage: "https://cdn2.unrealengine.com/loa-eternal-winter-fog-1920x1080-1920x1080-372377156.jpg",
+      overlayGradient: "from-black/70 via-black/40 to-amber-900/30",
+      borderIdle: "border-amber-300/20",
+      borderHover: "hover:border-amber-200/60",
+      badgeCls: "bg-amber-400/20 text-amber-200 border-amber-400/30",
+      glowCls: "hover:shadow-[0_0_70px_rgba(251,191,36,0.18),0_24px_48px_rgba(0,0,0,0.5)]",
+      accentLine: "from-transparent via-amber-400/60 to-transparent",
+      iconBg: "bg-black/40 border-amber-300/30 backdrop-blur-sm",
     },
     {
       key: "myroom",
@@ -16117,14 +16248,14 @@ const SectionSelector = ({
       subtitle: "My Room",
       desc: "나의 캐릭터, 레이드 기록, 포인트 현황 등 개인 공간으로 이동합니다.",
       emoji: "👑",
-      bg: "from-[#0a0e18] to-[#0d0e20]",
-      borderIdle: "border-violet-300/15",
-      borderHover: "hover:border-violet-200/50",
-      badgeCls: "bg-violet-400/12 text-violet-200 border-violet-400/22",
-      glowCls: "hover:shadow-[0_0_60px_rgba(139,92,246,0.12),0_24px_48px_rgba(0,0,0,0.4)]",
-      accentLine: "from-transparent via-violet-400/50 to-transparent",
-      iconBg: "bg-violet-300/10 border-violet-300/18",
-      descColor: "text-slate-500",
+      bgImage: "https://cdn2.unrealengine.com/lost-ark-wallpaper-1920x1080-1920x1080-609424283.jpg",
+      overlayGradient: "from-black/70 via-black/40 to-violet-900/30",
+      borderIdle: "border-violet-300/20",
+      borderHover: "hover:border-violet-200/60",
+      badgeCls: "bg-violet-400/20 text-violet-200 border-violet-400/30",
+      glowCls: "hover:shadow-[0_0_70px_rgba(139,92,246,0.18),0_24px_48px_rgba(0,0,0,0.5)]",
+      accentLine: "from-transparent via-violet-400/60 to-transparent",
+      iconBg: "bg-black/40 border-violet-300/30 backdrop-blur-sm",
     },
     {
       key: "note",
@@ -16132,14 +16263,14 @@ const SectionSelector = ({
       subtitle: "Personal Note",
       desc: "이벤트, 아이디어, 보스 패턴 등 나만의 메모 공간으로 이동합니다.",
       emoji: "📝",
-      bg: "from-[#0a0e18] to-[#0a1210]",
-      borderIdle: "border-emerald-300/15",
-      borderHover: "hover:border-emerald-200/50",
-      badgeCls: "bg-emerald-400/12 text-emerald-200 border-emerald-400/22",
-      glowCls: "hover:shadow-[0_0_60px_rgba(52,211,153,0.12),0_24px_48px_rgba(0,0,0,0.4)]",
-      accentLine: "from-transparent via-emerald-400/50 to-transparent",
-      iconBg: "bg-emerald-300/10 border-emerald-300/18",
-      descColor: "text-slate-500",
+      bgImage: "https://cdn2.unrealengine.com/loa-elgacia-1920x1080-1920x1080-1096686581.jpg",
+      overlayGradient: "from-black/70 via-black/40 to-emerald-900/30",
+      borderIdle: "border-emerald-300/20",
+      borderHover: "hover:border-emerald-200/60",
+      badgeCls: "bg-emerald-400/20 text-emerald-200 border-emerald-400/30",
+      glowCls: "hover:shadow-[0_0_70px_rgba(52,211,153,0.18),0_24px_48px_rgba(0,0,0,0.5)]",
+      accentLine: "from-transparent via-emerald-400/60 to-transparent",
+      iconBg: "bg-black/40 border-emerald-300/30 backdrop-blur-sm",
     },
   ];
 
@@ -16184,45 +16315,66 @@ const SectionSelector = ({
               transition={{ duration: 0.55, delay: 0.1 + idx * 0.1 }}
               onClick={() => onSelect(card.key)}
               className={cn(
-                "group relative flex flex-col items-center text-center rounded-[2rem] border bg-gradient-to-b p-8 transition-all duration-300 overflow-hidden",
-                card.bg,
+                "group relative flex flex-col items-center text-center rounded-[2rem] border transition-all duration-300 overflow-hidden",
                 card.borderIdle,
                 card.borderHover,
                 card.glowCls
               )}
+              style={{ minHeight: "340px" }}
             >
+              {/* 배경 이미지 */}
+              <div className="absolute inset-0 z-0">
+                <img
+                  src={card.bgImage}
+                  alt=""
+                  className="h-full w-full object-cover opacity-40 group-hover:opacity-55 group-hover:scale-105 transition-all duration-700"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+                {/* 오버레이 그라디언트 */}
+                <div className={cn("absolute inset-0 bg-gradient-to-b", card.overlayGradient)} />
+              </div>
+
               {/* Top accent line */}
-              <div className={cn("absolute top-0 inset-x-8 h-px bg-gradient-to-r", card.accentLine)} />
+              <div className={cn("absolute top-0 inset-x-8 h-px bg-gradient-to-r z-10", card.accentLine)} />
 
               {/* Hover shimmer */}
-              <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[linear-gradient(160deg,rgba(255,255,255,0.025),transparent_40%,rgba(255,255,255,0.01))]" />
+              <div className="pointer-events-none absolute inset-0 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[linear-gradient(160deg,rgba(255,255,255,0.04),transparent_40%,rgba(255,255,255,0.015))]" />
 
-              {/* Icon */}
-              <motion.div
-                whileHover={{ scale: 1.08 }}
-                transition={{ duration: 0.2 }}
-                className={cn(
-                  "flex h-20 w-20 items-center justify-center rounded-[1.5rem] border text-4xl mb-6 shadow-[0_8px_24px_rgba(0,0,0,0.3)]",
-                  card.iconBg
-                )}
-              >
-                {card.emoji}
-              </motion.div>
+              {/* Content */}
+              <div className="relative z-10 flex flex-col items-center p-8 h-full">
+                {/* Icon */}
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  transition={{ duration: 0.2 }}
+                  className={cn(
+                    "flex h-20 w-20 items-center justify-center rounded-[1.5rem] border text-4xl mb-6 shadow-[0_8px_32px_rgba(0,0,0,0.5)]",
+                    card.iconBg
+                  )}
+                >
+                  {card.emoji}
+                </motion.div>
 
-              {/* Badge */}
-              <span className={cn("mb-3 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider", card.badgeCls)}>
-                {card.subtitle}
-              </span>
+                {/* Badge */}
+                <span className={cn("mb-3 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider backdrop-blur-sm", card.badgeCls)}>
+                  {card.subtitle}
+                </span>
 
-              {/* Title */}
-              <h2 className="text-xl font-semibold text-white mb-3">{card.title}</h2>
+                {/* Title */}
+                <h2 className="text-xl font-semibold text-white mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
+                  {card.title}
+                </h2>
 
-              {/* Desc */}
-              <p className={cn("text-xs leading-relaxed", card.descColor)}>{card.desc}</p>
+                {/* Desc */}
+                <p className="text-xs leading-relaxed text-slate-400 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
+                  {card.desc}
+                </p>
 
-              {/* Enter arrow */}
-              <div className="mt-6 flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-400 group-hover:border-white/15 group-hover:text-white group-hover:bg-white/[0.07] transition-all">
-                입장하기 <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+                {/* Enter arrow */}
+                <div className="mt-auto pt-6">
+                  <div className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-xs font-semibold text-slate-300 backdrop-blur-sm group-hover:border-white/20 group-hover:text-white group-hover:bg-black/40 transition-all">
+                    입장하기 <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                </div>
               </div>
             </motion.button>
           ))}
