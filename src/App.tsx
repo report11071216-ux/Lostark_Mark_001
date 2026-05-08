@@ -4076,39 +4076,67 @@ const Hero = ({
 
   // ─── 포인트 랭킹 TOP5 ───────────────────────
   const [rankLoading, setRankLoading] = useState(true);
+  const [rankError, setRankError] = useState<string | null>(null);
   const [rankerCharMap, setRankerCharMap] = useState<Record<string, { avatar_url?: string; class_name?: string; character_name?: string; }>>({});
   useEffect(() => {
     if (!supabase) { setRankLoading(false); return; }
     let mounted = true;
     setRankLoading(true);
+    setRankError(null);
 
     (async () => {
       try {
-        // 1) 상위 5명 프로필 (profile_image_url 컬럼은 존재하지 않음 — 쿼리에서 제외)
+        // 1) 모든 프로필을 가져옴 — select("*")로 컬럼 누락 에러 회피
+        //    (profile_image_url, character_name, rank_name 등 컬럼 존재 여부 불확실)
+        //    .order()도 컬럼 참조이므로 빼고 클라이언트 사이드에서 정렬
         const { data: profs, error: pErr } = await supabase
           .from("profiles")
-          .select("id, nickname, character_name, points, rank_name")
-          .order("points", { ascending: false })
-          .limit(5);
-        if (pErr) throw pErr;
-        const list = profs || [];
+          .select("*")
+          .limit(50);
+
+        if (pErr) {
+          console.error("[Hero][Ranking] profiles 조회 에러:", pErr);
+          throw pErr;
+        }
+
+        const allProfiles = profs || [];
+        console.log(`[Hero][Ranking] profiles 조회: ${allProfiles.length}명`);
+
+        // 클라이언트 사이드 정렬 (null/undefined points 안전 처리)
+        const sorted = allProfiles
+          .map((p: any) => ({ ...p, _points: Number(p?.points ?? 0) }))
+          .sort((a: any, b: any) => b._points - a._points)
+          .slice(0, 5);
+
         if (!mounted) return;
-        setTopRankers(list);
+        setTopRankers(sorted);
 
-        // 2) 해당 user들의 대표 캐릭터(guild_members) 가져와서 avatar 매핑
-        const userIds = list.map((p: any) => p.id).filter(Boolean);
+        // 2) 해당 유저들의 대표 캐릭터를 guild_members에서 조회
+        //    user_id 또는 owner_id 둘 중 어느 쪽에 있을지 모름 → 두 번 조회 후 병합
+        const userIds = sorted.map((p: any) => p.id).filter(Boolean);
         if (userIds.length > 0) {
-          const { data: chars } = await supabase
-            .from("guild_members")
-            .select("user_id, owner_id, avatar_url, class_name, character_name, is_main")
-            .or(userIds.map((id: string) => `user_id.eq.${id},owner_id.eq.${id}`).join(","))
-            .order("is_main", { ascending: false });
+          const [byUser, byOwner] = await Promise.all([
+            supabase
+              .from("guild_members")
+              .select("user_id, owner_id, avatar_url, class_name, character_name, is_main")
+              .in("user_id", userIds)
+              .order("is_main", { ascending: false }),
+            supabase
+              .from("guild_members")
+              .select("user_id, owner_id, avatar_url, class_name, character_name, is_main")
+              .in("owner_id", userIds)
+              .order("is_main", { ascending: false }),
+          ]);
 
+          if (byUser.error) console.warn("[Hero][Ranking] guild_members(user_id) 경고:", byUser.error);
+          if (byOwner.error) console.warn("[Hero][Ranking] guild_members(owner_id) 경고:", byOwner.error);
+
+          const allChars = [...(byUser.data || []), ...(byOwner.data || [])];
           const map: Record<string, any> = {};
-          (chars || []).forEach((c: any) => {
+          allChars.forEach((c: any) => {
             const key = c.user_id || c.owner_id;
             if (!key) return;
-            // is_main=true인 행이 우선 (order로 보장됨)
+            // is_main=true 행이 정렬상 먼저 처리됨
             if (!map[key]) {
               map[key] = {
                 avatar_url: c.avatar_url || "",
@@ -4117,10 +4145,17 @@ const Hero = ({
               };
             }
           });
-          if (mounted) setRankerCharMap(map);
+          if (mounted) {
+            setRankerCharMap(map);
+            console.log(`[Hero][Ranking] 캐릭터 매핑: ${Object.keys(map).length}명`);
+          }
         }
-      } catch (err) {
-        console.error("Top rankers fetch error:", err);
+      } catch (err: any) {
+        console.error("[Hero][Ranking] 최종 에러:", err);
+        if (mounted) {
+          setRankError(String(err?.message || err || "데이터 조회 실패"));
+          setTopRankers([]);
+        }
       } finally {
         if (mounted) setRankLoading(false);
       }
@@ -4670,6 +4705,16 @@ const Hero = ({
                   <div className="text-center py-6 text-xs" style={{ color: "rgba(155,159,196,0.5)" }}>
                     데이터를 불러오는 중...
                   </div>
+                ) : rankError ? (
+                  <div className="text-center py-6 px-3" style={{ color: "rgba(248,113,113,0.85)" }}>
+                    <div className="text-xs font-semibold mb-1">랭킹을 불러올 수 없어요</div>
+                    <div className="text-[10px]" style={{ color: "rgba(155,159,196,0.5)" }}>
+                      {rankError}
+                    </div>
+                    <div className="text-[10px] mt-2" style={{ color: "rgba(155,159,196,0.4)" }}>
+                      브라우저 콘솔(F12)에서 자세한 로그를 확인하세요
+                    </div>
+                  </div>
                 ) : topRankers.length === 0 ? (
                   <div className="text-center py-6 text-xs" style={{ color: "rgba(155,159,196,0.5)" }}>
                     아직 포인트 데이터가 없습니다
@@ -4679,7 +4724,14 @@ const Hero = ({
                   const isMe = user?.id === r.id;
                   const charInfo = rankerCharMap[r.id] || {};
                   const avatar = charInfo.avatar_url || "";
-                  const displayName = charInfo.character_name || r.character_name || r.nickname || "—";
+                  // 닉네임 폴백: 캐릭터명 → 프로필 닉네임 → 프로필 캐릭터명 → 이메일 → "—"
+                  const displayName =
+                    charInfo.character_name ||
+                    r.nickname ||
+                    r.character_name ||
+                    r.username ||
+                    String(r.email || "").split("@")[0] ||
+                    "—";
 
                   // 1-3등 액센트 컬러
                   const podiumStyle: { ring: string; glow: string; numColor: string; numBg: string } =
