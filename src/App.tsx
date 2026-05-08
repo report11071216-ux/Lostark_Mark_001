@@ -16834,6 +16834,7 @@ const AdminPointShopManager = () => {
           )}
         </div>
       </div>
+      )} {/* end productAdminTab ternary */}
       </>)} {/* end shop tab */}
     </div>
 
