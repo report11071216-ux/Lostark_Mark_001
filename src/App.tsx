@@ -3349,36 +3349,56 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
     const weekStart = fmt(monday);
     const weekEnd = fmt(sunday);
 
-    Promise.all([
-      // 이번 주 전체 레이드 수
-      supabase.from("raid_schedules").select("id", { count: "exact", head: true })
-        .gte("raid_date", weekStart).lte("raid_date", weekEnd),
-      // 내가 참여한 레이드 수
-      supabase.from("raid_participants").select("schedule_id")
-        .eq("user_id", user.id),
-      // 내 포인트 및 랭킹
-      supabase.from("profiles").select("id, points").order("points", { ascending: false }),
-    ]).then(([totalRes, myPartRes, rankRes]) => {
-      const totalThisWeek = totalRes.count || 0;
-      // 이번 주 일정 id 목록
-      supabase.from("raid_schedules").select("id")
-        .gte("raid_date", weekStart).lte("raid_date", weekEnd)
-        .then(({ data: weekIds }) => {
-          const weekIdSet = new Set((weekIds || []).map((r: any) => String(r.id)));
-          const myJoined = (myPartRes.data || []).filter((p: any) =>
-            weekIdSet.has(String(p.schedule_id))
-          ).length;
-          const allProfiles = rankRes.data || [];
-          const myRankIdx = allProfiles.findIndex((p: any) => p.id === user.id);
-          const myPoints = Number(profile?.points || allProfiles.find((p: any) => p.id === user.id)?.points || 0);
-          setMyWeekStats({
-            joined: myJoined,
-            total: totalThisWeek,
-            pointsThisWeek: myPoints,
-            myRank: myRankIdx !== -1 ? myRankIdx + 1 : null,
-          });
+    const run = async () => {
+      try {
+        // 1. 내 캐릭터명 목록 (guild_members)
+        const { data: charData } = await supabase
+          .from("guild_members")
+          .select("character_name")
+          .or(`user_id.eq.${user.id},owner_id.eq.${user.id}`);
+        const myCharNames = (charData || [])
+          .map((c: any) => String(c.character_name || "").trim())
+          .filter(Boolean);
+
+        // 2. 이번 주 레이드 일정 ID 목록
+        const { data: weekIds, count: weekTotal } = await supabase
+          .from("raid_schedules")
+          .select("id", { count: "exact" })
+          .gte("raid_date", weekStart)
+          .lte("raid_date", weekEnd);
+        const weekIdList = (weekIds || []).map((r: any) => r.id);
+
+        // 3. 내 참여 수 — character_name으로 매칭
+        let myJoined = 0;
+        if (myCharNames.length > 0 && weekIdList.length > 0) {
+          const { data: partData } = await supabase
+            .from("raid_participants")
+            .select("schedule_id, character_name")
+            .in("schedule_id", weekIdList)
+            .in("character_name", myCharNames);
+          // schedule_id 중복 방지 (같은 레이드에 캐릭 여러 명 참여해도 1회)
+          const uniqueSchedules = new Set((partData || []).map((p: any) => String(p.schedule_id)));
+          myJoined = uniqueSchedules.size;
+        }
+
+        // 4. 전체 랭킹에서 내 순위
+        const { data: allProfiles } = await supabase
+          .from("profiles")
+          .select("id, points")
+          .order("points", { ascending: false });
+        const myRankIdx = (allProfiles || []).findIndex((p: any) => p.id === user.id);
+
+        setMyWeekStats({
+          joined: myJoined,
+          total: weekTotal || 0,
+          pointsThisWeek: Number(profile?.points || 0),
+          myRank: myRankIdx !== -1 ? myRankIdx + 1 : null,
         });
-    });
+      } catch (e) {
+        console.error("myWeekStats fetch error:", e);
+      }
+    };
+    void run();
   }, [user?.id, profile?.points]);
 
   // 레이드 검색
@@ -3531,74 +3551,75 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.05 }}
-            className="mb-4 overflow-hidden rounded-[1.6rem] border border-white/10 bg-[linear-gradient(90deg,rgba(251,191,36,0.06),rgba(139,92,246,0.04),rgba(52,211,153,0.04))] backdrop-blur-xl"
+            className="mb-4 overflow-hidden rounded-[1.4rem] border border-white/10 bg-[linear-gradient(90deg,rgba(251,191,36,0.07),rgba(139,92,246,0.05),rgba(52,211,153,0.05))] backdrop-blur-xl"
           >
-            <div className="flex flex-wrap items-center gap-0 divide-x divide-white/[0.06]">
+            <div className="flex flex-wrap items-center divide-x divide-white/[0.06]">
               {/* 인삿말 */}
-              <div className="flex items-center gap-3 px-5 py-4 min-w-0">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-200/20 bg-amber-300/[0.1] text-base">
+              <div className="flex items-center gap-2.5 px-4 py-2.5 min-w-0">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-200/20 bg-amber-300/[0.12] text-sm">
                   ⚔️
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200/60">이번 주 나의 현황</div>
-                  <div className="mt-0.5 truncate text-sm font-semibold text-white">
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.22em] text-amber-200/60">이번 주 나의 현황</div>
+                  <div className="truncate text-xs font-semibold text-white leading-tight mt-0.5">
                     {profile?.nickname || profile?.character_name || "길드원"}
                   </div>
                 </div>
               </div>
 
               {/* 레이드 참여 */}
-              <div className="flex flex-1 flex-col items-center justify-center px-5 py-4">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">레이드 참여</div>
-                <div className="mt-1 flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-white">{myWeekStats.joined}</span>
-                  <span className="text-xs text-slate-600">/ {myWeekStats.total}회</span>
+              <div className="flex flex-1 items-center justify-center gap-3 px-4 py-2.5">
+                <div className="text-center">
+                  <div className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">레이드 참여</div>
+                  <div className="mt-0.5 flex items-baseline gap-1">
+                    <span className="text-base font-bold text-white">{myWeekStats.joined}</span>
+                    <span className="text-[11px] text-slate-400">/ {myWeekStats.total}회</span>
+                  </div>
                 </div>
                 {/* 참여율 바 */}
-                <div className="mt-1.5 h-1 w-full max-w-[80px] overflow-hidden rounded-full bg-white/[0.06]">
+                <div className="h-1 w-16 overflow-hidden rounded-full bg-white/[0.08]">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${myWeekStats.total > 0 ? Math.round((myWeekStats.joined / myWeekStats.total) * 100) : 0}%` }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
                     className={cn(
                       "h-full rounded-full",
-                      myWeekStats.total > 0 && myWeekStats.joined === myWeekStats.total
-                        ? "bg-emerald-400"
-                        : myWeekStats.joined > 0 ? "bg-amber-400" : "bg-slate-600"
+                      myWeekStats.total > 0 && myWeekStats.joined >= myWeekStats.total
+                        ? "bg-emerald-400" : myWeekStats.joined > 0 ? "bg-amber-400" : "bg-slate-600"
                     )}
                   />
                 </div>
               </div>
 
               {/* 보유 포인트 */}
-              <div className="flex flex-1 flex-col items-center justify-center px-5 py-4">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">보유 포인트</div>
-                <div className="mt-1 flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-amber-300">
+              <div className="flex flex-1 flex-col items-center justify-center px-4 py-2.5">
+                <div className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">보유 포인트</div>
+                <div className="mt-0.5 flex items-baseline gap-0.5">
+                  <span className="text-base font-bold text-amber-300">
                     {Number(profile?.points || myWeekStats.pointsThisWeek || 0).toLocaleString()}
                   </span>
-                  <span className="text-xs text-slate-600">P</span>
+                  <span className="text-[11px] text-amber-400/70">P</span>
                 </div>
               </div>
 
-              {/* 랭킹 */}
-              <div className="flex flex-1 flex-col items-center justify-center px-5 py-4">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">포인트 랭킹</div>
-                <div className="mt-1 flex items-baseline gap-1">
+              {/* 포인트 랭킹 */}
+              <div className="flex flex-1 flex-col items-center justify-center px-4 py-2.5">
+                <div className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">포인트 랭킹</div>
+                <div className="mt-0.5 flex items-center gap-1">
                   {myWeekStats.myRank ? (
                     <>
-                      <span className="text-xl font-bold text-violet-300">{myWeekStats.myRank}</span>
-                      <span className="text-xs text-slate-600">위</span>
+                      {myWeekStats.myRank <= 3 && (
+                        <span className="text-sm leading-none">
+                          {myWeekStats.myRank === 1 ? "🥇" : myWeekStats.myRank === 2 ? "🥈" : "🥉"}
+                        </span>
+                      )}
+                      <span className="text-base font-bold text-violet-300">{myWeekStats.myRank}</span>
+                      <span className="text-[11px] text-slate-400">위</span>
                     </>
                   ) : (
-                    <span className="text-sm text-slate-600">-</span>
+                    <span className="text-sm text-slate-500">-</span>
                   )}
                 </div>
-                {myWeekStats.myRank && myWeekStats.myRank <= 3 && (
-                  <div className="mt-0.5 text-sm">
-                    {myWeekStats.myRank === 1 ? "🥇" : myWeekStats.myRank === 2 ? "🥈" : "🥉"}
-                  </div>
-                )}
               </div>
             </div>
           </motion.div>
