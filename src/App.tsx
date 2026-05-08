@@ -1836,8 +1836,35 @@ const fetchInitialData = async () => {
   if (loading) {
     return (
       <PageShell>
-        <div className="min-h-screen flex items-center justify-center text-amber-200 font-semibold">
-          INXX SYSTEM LOADING...
+        <div className="min-h-screen flex flex-col items-center justify-center gap-6">
+          {/* 스피너 */}
+          <div className="relative h-14 w-14">
+            <div
+              className="absolute inset-0 rounded-full animate-spin"
+              style={{
+                border: "2px solid rgba(255,255,255,0.06)",
+                borderTopColor: `var(--ga-400,#a78bfa)`,
+                animationDuration: "0.9s",
+              }}
+            />
+            <div
+              className="absolute inset-2 rounded-full flex items-center justify-center"
+              style={{ background: `rgba(var(--ga-r400,167,139,250),0.10)` }}
+            >
+              <Shield size={18} style={{ color: `var(--ga-300,#c4b5fd)` }} />
+            </div>
+          </div>
+          <div className="flex flex-col items-center gap-1.5">
+            <div
+              className="text-[11px] font-semibold uppercase tracking-[0.38em]"
+              style={{ color: `var(--ga-300,#c4b5fd)` }}
+            >
+              Guild System
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.28em]" style={{ color: "var(--guild-text-4,#3A4560)" }}>
+              initializing...
+            </div>
+          </div>
         </div>
       </PageShell>
     );
@@ -1924,7 +1951,7 @@ const fetchInitialData = async () => {
           }}
         />
 
-        <main className="pt-16">
+        <main className="pt-16 pb-16 md:pb-0">
           <AnimatePresence mode="wait">
             {activeTab === "home" && (
               <motion.div
@@ -2059,6 +2086,53 @@ const fetchInitialData = async () => {
 
       {/* 🗨️ 길드 실시간 채팅 플로팅 */}
       <GuildChat user={user} profile={profile} />
+
+      {/* 📱 모바일 하단 네비게이션 */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-40 flex md:hidden items-center justify-around px-2 pb-safe"
+        style={{
+          background: "rgba(8,12,22,0.96)",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          backdropFilter: "blur(20px)",
+          paddingTop: "10px",
+          paddingBottom: "max(10px, env(safe-area-inset-bottom))",
+        }}
+      >
+        {[
+          { id: "home",   icon: "🏠", label: "홈" },
+          { id: "posts",  icon: "📋", label: "게시판" },
+          { id: "guild",  icon: "⚔️", label: "길드" },
+          ...(user ? [{ id: "myroom", icon: "👤", label: "마이룸" }] : [{ id: "login", icon: "🔑", label: "로그인" }]),
+        ].map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className="flex flex-col items-center gap-1 px-4 py-1 rounded-xl transition-all"
+              style={isActive ? {
+                color: `var(--ga-200,#ddd6fe)`,
+              } : {
+                color: "var(--guild-text-4,#3A4560)",
+              }}
+            >
+              <span className="text-lg leading-none">{item.icon}</span>
+              <span
+                className="text-[9px] font-semibold uppercase tracking-[0.14em]"
+                style={{ color: isActive ? `var(--ga-300,#c4b5fd)` : "var(--guild-text-4,#3A4560)" }}
+              >
+                {item.label}
+              </span>
+              {isActive && (
+                <span
+                  className="absolute bottom-0 h-[2px] w-8 rounded-full"
+                  style={{ background: `linear-gradient(90deg,transparent,var(--ga-300,#c4b5fd),transparent)` }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </nav>
 
     </PageShell>
   );
@@ -2279,9 +2353,10 @@ const GuildChat = ({ user, profile }: { user: any; profile: any }) => {
   const bgHeader = isLight
     ? "bg-[#f5efe3] border-amber-200/30"
     : "bg-[#160f08]/90 border-white/8";
+  const bgMineStyle = { background: `linear-gradient(135deg,var(--ga-400,#a78bfa),var(--ga-500,#8b5cf6))` };
   const bgMsg = (isMine: boolean) =>
     isMine
-      ? "bg-amber-500 text-white"
+      ? "text-white"
       : isLight
       ? "bg-white border border-amber-200/30 text-[#1a1208]"
       : "bg-white/[0.08] border border-white/10 text-white";
@@ -2302,7 +2377,8 @@ const GuildChat = ({ user, profile }: { user: any; profile: any }) => {
               exit={{ scale: 0, opacity: 0 }}
               transition={{ type: "spring", stiffness: 360, damping: 28 }}
               onClick={() => setOpen(true)}
-              className="relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-[0_8px_32px_rgba(245,158,11,0.45)] hover:shadow-[0_12px_40px_rgba(245,158,11,0.55)] transition-all hover:scale-105 active:scale-95"
+              className="relative flex h-14 w-14 items-center justify-center rounded-full text-white transition-all hover:scale-105 active:scale-95"
+              style={{ background: `linear-gradient(135deg,var(--ga-400,#a78bfa),var(--ga-500,#8b5cf6))`, boxShadow: `var(--ga-shadow-btn,0 8px 32px rgba(139,92,246,0.45))` }}
               title="길드 채팅"
             >
               <MessageCircle size={24} />
@@ -2504,7 +2580,7 @@ const GuildChat = ({ user, profile }: { user: any; profile: any }) => {
                       className={cn(
                         "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all",
                         input.trim() && !sending
-                          ? "bg-amber-500 text-white shadow-[0_4px_14px_rgba(245,158,11,0.4)] hover:bg-amber-400 hover:shadow-[0_4px_18px_rgba(245,158,11,0.5)] active:scale-95"
+                          ? "text-white active:scale-95"
                           : isLight
                           ? "bg-amber-100 text-amber-300 cursor-not-allowed"
                           : "bg-white/5 text-stone-500 cursor-not-allowed"
@@ -2554,7 +2630,7 @@ const ToastViewport = () => {
   const toneClass = (type: ToastType) => {
     if (type === "success") return "border-emerald-400/20 bg-emerald-400/10 text-emerald-100";
     if (type === "error") return "border-rose-400/20 bg-rose-400/10 text-rose-100";
-    return "border-amber-300/20 bg-amber-300/10 text-amber-50";
+    return "text-white" + " border-[rgba(167,139,250,0.20)] bg-[rgba(167,139,250,0.10)]";
   };
 
   const labelText = (type: ToastType) => {
@@ -2970,6 +3046,56 @@ const GLOBAL_BASE_CSS = `
   .guild-success-bar { background: var(--guild-success) !important; }
   .guild-special-bar { background: var(--guild-special) !important; }
   .guild-info-bar    { background: var(--guild-info)    !important; }
+
+  /* 타이포그래피 시스템 — 섹션 레이블 통일 */
+  .guild-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+    color: var(--guild-text-3, #5C6882);
+  }
+  .guild-label-accent {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+    color: var(--ga-300, #c4b5fd);
+  }
+  .guild-heading {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #F1F0FF;
+  }
+  .guild-subtext {
+    font-size: 0.8125rem;
+    color: var(--guild-text-3, #5C6882);
+    line-height: 1.6;
+  }
+
+  /* 모바일 하단 safe-area */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  }
+
+  /* 빈 상태 카드 통일 */
+  .guild-empty {
+    border: 1px dashed rgba(255,255,255,0.07);
+    background: rgba(255,255,255,0.01);
+    border-radius: var(--guild-radius-md, 16px);
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--guild-text-4, #3A4560);
+    font-size: 0.8125rem;
+  }
+
+  /* 구분선 */
+  .guild-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.05);
+    margin: 0.75rem 0;
+  }
 `;
 
 const LIGHT_MODE_STYLES = `
@@ -3283,7 +3409,7 @@ const ProkyonWidget = () => {
                 <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
               </svg>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-[0.26em] text-amber-200/80">Procyon's Compass</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.26em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>Procyon's Compass</span>
             <span className="text-[10px] text-stone-500">프로키온의 나침반</span>
           </div>
           <div className="text-[10px] text-stone-500">
@@ -3723,17 +3849,28 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
           className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
         >
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-200/20 bg-[linear-gradient(180deg,rgba(251,191,36,0.18),rgba(120,53,15,0.08))] shadow-[0_12px_30px_rgba(214,164,78,0.18)]">
-              <Shield size={22} className="text-amber-200" />
+            <div
+              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl"
+              style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.28)`, background: `rgba(var(--ga-r400,167,139,250),0.12)`, boxShadow: `0 12px 30px rgba(var(--ga-r400,167,139,250),0.18)` }}
+            >
+              <Shield size={22} style={{ color: `var(--ga-200,#ddd6fe)` }} />
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/70">Guild Residence</div>
-              <h1 className="mt-0.5 bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-2xl font-semibold text-transparent md:text-3xl">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.28em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
+                Guild Residence
+              </div>
+              <h1
+                className="mt-0.5 text-2xl font-semibold md:text-3xl"
+                style={{ background: `linear-gradient(90deg, #fff 30%, var(--ga-200,#ddd6fe) 65%, var(--ga-300,#c4b5fd))`, WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}
+              >
                 {getDisplayGuildName(settings?.guild_name)}
               </h1>
             </div>
             <div className="hidden items-center gap-2 sm:flex">
-              <span className="flex items-center gap-1.5 rounded-full border border-amber-200/15 bg-amber-300/8 px-3 py-1.5 text-xs font-semibold text-amber-100">
+              <span
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+                style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.18)`, background: `rgba(var(--ga-r400,167,139,250),0.08)`, color: `var(--ga-200,#ddd6fe)` }}
+              >
                 <Users size={12} /> {heroStats.memberCount}명
               </span>
               <span className="flex items-center gap-1.5 rounded-full border border-blue-300/15 bg-blue-300/8 px-3 py-1.5 text-xs font-semibold text-blue-200">
@@ -3759,7 +3896,10 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
                 placeholder="레이드 검색..."
-                className="w-full rounded-2xl border border-white/10 bg-white/[0.05] py-2.5 pl-10 pr-10 text-sm text-white placeholder-slate-500 outline-none backdrop-blur-md transition-all focus:border-amber-200/30 focus:bg-white/[0.08]"
+                className="w-full rounded-2xl py-2.5 pl-10 pr-10 text-sm text-white placeholder-slate-500 outline-none backdrop-blur-md transition-all"
+                style={{ border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.05)" }}
+                onFocus={e => { e.currentTarget.style.borderColor=`rgba(var(--ga-r400,167,139,250),0.40)`; e.currentTarget.style.background="rgba(255,255,255,0.07)"; e.currentTarget.style.boxShadow=`0 0 0 3px rgba(var(--ga-r400,167,139,250),0.10)`; }}
+                onBlur={e => { e.currentTarget.style.borderColor="rgba(255,255,255,0.09)"; e.currentTarget.style.background="rgba(255,255,255,0.05)"; e.currentTarget.style.boxShadow="none"; }}
               />
               {searchLoading && (
                 <div className="absolute right-3.5">
@@ -3778,11 +3918,12 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
               {searchOpen && searchResults.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#070d1a]/96 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
+                  className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl backdrop-blur-2xl"
+                  style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.16)`, background: "rgba(8,12,22,0.97)", boxShadow: "0 20px 60px rgba(0,0,0,0.55)" }}>
                   {searchResults.map((raid, idx) => (
                     <button key={raid.id}
                       onClick={() => { onRaidSearch?.(raid); setSearchOpen(false); setSearchQuery(""); }}
-                      className={cn("flex w-full items-center justify-between px-4 py-3 text-left hover:bg-amber-400/[0.07]",
+                      className={cn("flex w-full items-center justify-between px-4 py-3 text-left transition-colors",
                         idx < searchResults.length - 1 && "border-b border-white/[0.05]")}>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -3795,7 +3936,7 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
                           <span>·</span><Clock size={10} /><span>{raid.raid_time}</span>
                         </div>
                       </div>
-                      <div className="ml-3 shrink-0 text-[10px] text-amber-400/60">→ 바로가기</div>
+                      <div className="ml-3 shrink-0 text-[10px]" style={{ color: `var(--ga-300,#c4b5fd)` }}>→ 바로가기</div>
                     </button>
                   ))}
                 </motion.div>
@@ -3817,16 +3958,16 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.05 }}
-            className="mb-4 overflow-hidden rounded-[1.4rem] border border-white/10 bg-[linear-gradient(90deg,rgba(251,191,36,0.07),rgba(139,92,246,0.05),rgba(52,211,153,0.05))] backdrop-blur-xl"
+            className="mb-4 overflow-hidden rounded-2xl backdrop-blur-xl" style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.12)`, background: `linear-gradient(90deg,rgba(var(--ga-r400,167,139,250),0.06),rgba(34,211,238,0.03),rgba(52,211,153,0.03))` }}
           >
             <div className="flex flex-wrap items-center divide-x divide-white/[0.06]">
               {/* 인삿말 */}
               <div className="flex items-center gap-2.5 px-4 py-2.5 min-w-0">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-200/20 bg-amber-300/[0.12] text-sm">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm" style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.20)`, background: `rgba(var(--ga-r400,167,139,250),0.10)` }}>
                   ⚔️
                 </div>
                 <div className="min-w-0">
-                  <div className="text-[9px] font-semibold uppercase tracking-[0.22em] text-amber-200/60">이번 주 나의 현황</div>
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.22em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>이번 주 나의 현황</div>
                   <div className="truncate text-xs font-semibold text-white leading-tight mt-0.5">
                     {profile?.nickname || profile?.character_name || "길드원"}
                   </div>
@@ -3905,7 +4046,7 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
             <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl shadow-[0_18px_50px_rgba(0,0,0,0.28)]">
               <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3.5">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">Weekly Raid Schedule</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>Weekly Raid Schedule</div>
                   <div className="mt-0.5 text-base font-semibold text-white">이번 주 레이드 일정</div>
                 </div>
                 <button onClick={onOpenRaidCalendar}
@@ -4014,7 +4155,7 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
             <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
               <div className="border-b border-white/[0.06] px-4 py-3.5 flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">Point Ranking</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>Point Ranking</div>
                   <div className="mt-0.5 text-base font-semibold text-white">포인트 랭킹 TOP 5</div>
                 </div>
                 <Trophy size={16} className="text-amber-300/60" />
@@ -4086,7 +4227,7 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
             {/* 빠른 실행 */}
             <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl shadow-[0_18px_50px_rgba(0,0,0,0.22)]">
               <div className="border-b border-white/[0.06] px-4 py-3.5">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">Quick Access</div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>Quick Access</div>
                 <div className="mt-0.5 text-base font-semibold text-white">빠른 실행</div>
               </div>
               <div className="grid grid-cols-3 gap-2 p-3">
@@ -4136,7 +4277,7 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
             {pinnedNotices.length > 0 && (
               <div className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] backdrop-blur-xl">
                 <div className="border-b border-white/[0.06] px-4 py-3.5">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-200/80">Notice</div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>Notice</div>
                   <div className="mt-0.5 text-base font-semibold text-white">최신 공지</div>
                 </div>
                 <div className="p-3 space-y-2">
@@ -4344,7 +4485,7 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
           {/* 관리자 전용: 테마 선택기 */}
           {profile?.role === "admin" && (
             <div className="hidden items-center gap-2 rounded-[1.1rem] border border-amber-200/10 bg-white/[0.03] px-3 py-2 md:flex">
-              <span className="text-[9px] font-bold uppercase tracking-[0.22em] text-amber-300/70">
+              <span className="text-[9px] font-bold uppercase tracking-[0.22em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
                 👑 Theme
               </span>
               <ThemeSwatchPicker />
@@ -5655,7 +5796,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
         >
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-200">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.3em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
                 {scheduleView === "mine" ? "My Schedule View" : "Monthly View"}
               </div>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight">{formatMonthLabel(year, month)}</h2>
@@ -10341,7 +10482,7 @@ const Auth = ({ mode, setMode }: any) => {
   return (
     <div className="max-w-md mx-auto py-32 px-4">
       <div className="p-12 rounded-[4rem] border border-white/10 bg-[#0f0f0f] shadow-2xl relative overflow-hidden text-center">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-amber-500 to-transparent" />
+        <div className="absolute top-0 left-0 w-full h-px" style={{ background: `linear-gradient(90deg,transparent,rgba(var(--ga-r400,167,139,250),0.65) 40%,rgba(240,180,41,0.35) 65%,transparent)` }} />
         <h2 className="text-5xl font-semibold mb-2 tracking-tight uppercase">
           {mode === "login" ? "Sign In" : "Join Us"}
         </h2>
@@ -17476,13 +17617,19 @@ const SectionSelector = ({
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-3 rounded-2xl border border-amber-200/15 bg-amber-300/[0.06] px-5 py-2.5 mb-6">
-            <Shield size={16} className="text-amber-300" />
-            <span className="text-sm font-semibold text-amber-200">
+          <div
+            className="inline-flex items-center gap-3 rounded-2xl px-5 py-2.5 mb-6"
+            style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.20)`, background: `rgba(var(--ga-r400,167,139,250),0.08)` }}
+          >
+            <Shield size={16} style={{ color: `var(--ga-300,#c4b5fd)` }} />
+            <span className="text-sm font-semibold" style={{ color: `var(--ga-200,#ddd6fe)` }}>
               {displayName}님, 환영합니다!
             </span>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-semibold bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent tracking-tight">
+          <h1
+            className="text-4xl sm:text-5xl font-semibold tracking-tight"
+            style={{ background: `linear-gradient(90deg,#fff 40%,var(--ga-200,#ddd6fe) 70%,var(--ga-300,#c4b5fd))`, WebkitBackgroundClip:"text", backgroundClip:"text", color:"transparent" }}
+          >
             어디로 이동할까요?
           </h1>
           <p className="mt-4 text-slate-500 text-sm">
@@ -17683,11 +17830,19 @@ const LandingPage = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
           transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center justify-center h-20 w-20 rounded-[1.75rem] border border-amber-200/20 bg-[linear-gradient(180deg,rgba(251,191,36,0.16),rgba(120,53,15,0.06))] shadow-[0_20px_48px_rgba(214,164,78,0.2)] mb-6">
-            <Shield size={34} className="text-amber-200" />
+          <div
+            className="inline-flex items-center justify-center h-20 w-20 rounded-[1.75rem] mb-6"
+            style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.28)`, background: `rgba(var(--ga-r400,167,139,250),0.12)`, boxShadow: `0 20px 48px rgba(var(--ga-r400,167,139,250),0.22)` }}
+          >
+            <Shield size={34} style={{ color: `var(--ga-200,#ddd6fe)` }} />
           </div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.5em] text-amber-200/50 mb-3">Guild Residence</div>
-          <h1 className="text-5xl sm:text-6xl font-semibold bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent tracking-tight">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.5em] mb-3" style={{ color: `var(--ga-300,#c4b5fd)` }}>
+            Guild Residence
+          </div>
+          <h1
+            className="text-5xl sm:text-6xl font-semibold tracking-tight"
+            style={{ background: `linear-gradient(90deg,#fff 30%,var(--ga-200,#ddd6fe) 65%,var(--ga-300,#c4b5fd))`, WebkitBackgroundClip:"text", backgroundClip:"text", color:"transparent" }}
+          >
             쁘밍
           </h1>
           <p className="mt-4 text-slate-500 text-sm max-w-xs mx-auto">
@@ -17702,12 +17857,12 @@ const LandingPage = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
             initial={{ opacity: 0, x: -24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.65, delay: 0.15 }}
-            className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.018))] p-8 backdrop-blur-xl shadow-[0_24px_60px_rgba(0,0,0,0.32)]"
+            className="relative rounded-[2rem] p-8 backdrop-blur-xl overflow-hidden" style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.15)`, background: "linear-gradient(180deg,rgba(13,21,38,0.92),rgba(8,12,22,0.95))", boxShadow: "0 24px 60px rgba(0,0,0,0.38)" }}
           >
             {/* Card top line accent */}
-            <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent rounded-full" />
+            <div className="absolute top-0 left-8 right-8 h-px rounded-full" style={{ background: `linear-gradient(90deg,transparent,rgba(var(--ga-r400,167,139,250),0.45),transparent)` }} />
 
-            <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.35em] text-amber-200/50">
+            <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.35em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
               Authentication
             </div>
             <h2 className="text-2xl font-semibold text-white mb-1">
