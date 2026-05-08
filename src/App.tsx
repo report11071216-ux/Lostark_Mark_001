@@ -934,7 +934,7 @@ const HomeFeaturePortal = ({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 max-w-[900px]">
         {cards.map((card) => {
           const active = contentView === card.key;
           return (
@@ -1632,6 +1632,19 @@ function AppInner() {
   const [showSelector, setShowSelector] = useState(false);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  // 프로필 드롭다운 (Topbar)
+  const [topbarMenuOpen, setTopbarMenuOpen] = useState(false);
+  const topbarMenuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!topbarMenuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (topbarMenuRef.current && !topbarMenuRef.current.contains(e.target as Node)) {
+        setTopbarMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [topbarMenuOpen]);
 
   const fetchUnreadMsgCount = useCallback(async (uid: string) => {
     if (!supabase || !uid) return;
@@ -2027,34 +2040,119 @@ const fetchInitialData = async () => {
                 )}
               </button>
 
-              {/* 프로필 */}
+              {/* 프로필 — 클릭 시 드롭다운 (마이룸 / 개인 노트 / 관리자 패널 / 로그아웃) */}
               {user ? (
-                <button
-                  onClick={() => setActiveTab("myroom")}
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-1.5 transition-all"
-                  style={{
-                    border: "1px solid rgba(124,58,237,0.20)",
-                    background: "rgba(124,58,237,0.08)",
-                  }}
-                  onMouseEnter={e => { (e.currentTarget).style.background = "rgba(124,58,237,0.15)"; }}
-                  onMouseLeave={e => { (e.currentTarget).style.background = "rgba(124,58,237,0.08)"; }}
-                >
-                  <div
-                    className="flex items-center justify-center w-8 h-8 rounded-xl text-sm font-bold shrink-0"
+                <div ref={topbarMenuRef} className="relative">
+                  <button
+                    onClick={() => setTopbarMenuOpen(o => !o)}
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-1.5 transition-all"
                     style={{
-                      background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-                      color: "#ede9fe",
-                      boxShadow: "0 0 0 2px rgba(124,58,237,0.25)",
+                      border: topbarMenuOpen ? "1px solid rgba(124,58,237,0.40)" : "1px solid rgba(124,58,237,0.20)",
+                      background: topbarMenuOpen ? "rgba(124,58,237,0.18)" : "rgba(124,58,237,0.08)",
                     }}
+                    onMouseEnter={e => { if (!topbarMenuOpen) (e.currentTarget).style.background = "rgba(124,58,237,0.15)"; }}
+                    onMouseLeave={e => { if (!topbarMenuOpen) (e.currentTarget).style.background = "rgba(124,58,237,0.08)"; }}
                   >
-                    {avatarText}
-                  </div>
-                  <div className="hidden sm:block text-left">
-                    <div className="text-xs font-semibold text-white leading-tight">{displayName}</div>
-                    <div className="text-[10px]" style={{ color: "rgba(196,181,253,0.6)" }}>{roleLabel}</div>
-                  </div>
-                  <ChevronDown size={13} style={{ color: "rgba(196,181,253,0.5)" }} />
-                </button>
+                    <div
+                      className="flex items-center justify-center w-8 h-8 rounded-xl text-sm font-bold shrink-0"
+                      style={{
+                        background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                        color: "#ede9fe",
+                        boxShadow: "0 0 0 2px rgba(124,58,237,0.25)",
+                      }}
+                    >
+                      {avatarText}
+                    </div>
+                    <div className="hidden sm:block text-left">
+                      <div className="text-xs font-semibold text-white leading-tight">{displayName}</div>
+                      <div className="text-[10px]" style={{ color: "rgba(196,181,253,0.6)" }}>{roleLabel}</div>
+                    </div>
+                    <ChevronDown
+                      size={13}
+                      style={{
+                        color: "rgba(196,181,253,0.7)",
+                        transform: topbarMenuOpen ? "rotate(180deg)" : "rotate(0)",
+                        transition: "transform 150ms ease",
+                      }}
+                    />
+                  </button>
+
+                  {/* 드롭다운 메뉴 패널 */}
+                  <AnimatePresence>
+                    {topbarMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                        transition={{ duration: 0.14, ease: "easeOut" }}
+                        className="absolute right-0 mt-2 w-[220px] rounded-2xl overflow-hidden z-50"
+                        style={{
+                          background: "linear-gradient(180deg, rgba(20,18,40,0.97) 0%, rgba(13,13,26,0.99) 100%)",
+                          border: "1px solid rgba(124,58,237,0.22)",
+                          boxShadow: "0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(124,58,237,0.08) inset",
+                          backdropFilter: "blur(20px)",
+                        }}
+                      >
+                        {/* 상단 사용자 정보 */}
+                        <div className="px-4 py-3.5 border-b" style={{ borderColor: "rgba(124,58,237,0.12)" }}>
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(196,181,253,0.55)" }}>
+                            Signed in as
+                          </div>
+                          <div className="mt-1 text-sm font-bold text-white truncate">{displayName}</div>
+                          <div className="text-[11px]" style={{ color: "rgba(196,181,253,0.65)" }}>{roleLabel}</div>
+                        </div>
+
+                        {/* 메뉴 항목 */}
+                        <div className="py-1.5">
+                          {[
+                            { id: "myroom", icon: <Crown size={14} />, label: "마이룸", color: "#c4b5fd" },
+                            { id: "note", icon: <Pencil size={14} />, label: "개인 노트", color: "#c4b5fd" },
+                            { id: "shop", icon: <ShoppingBag size={14} />, label: "포인트 상점", color: "#c4b5fd" },
+                            ...(profile?.role === "admin"
+                              ? [{ id: "admin", icon: <Settings size={14} />, label: "관리자 패널", color: "#fbbf24" }]
+                              : []),
+                          ].map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setActiveTab(item.id);
+                                setTopbarMenuOpen(false);
+                              }}
+                              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium transition-colors"
+                              style={{ color: item.color }}
+                              onMouseEnter={e => { (e.currentTarget).style.background = "rgba(124,58,237,0.12)"; }}
+                              onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+                            >
+                              <span className="opacity-80">{item.icon}</span>
+                              <span>{item.label}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* 로그아웃 */}
+                        <div className="border-t py-1.5" style={{ borderColor: "rgba(124,58,237,0.12)" }}>
+                          <button
+                            onClick={async () => {
+                              setTopbarMenuOpen(false);
+                              await handleLogout();
+                            }}
+                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium transition-colors"
+                            style={{ color: "#f87171" }}
+                            onMouseEnter={e => { (e.currentTarget).style.background = "rgba(248,113,113,0.10)"; }}
+                            onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-80">
+                              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                              <polyline points="16 17 21 12 16 7"/>
+                              <line x1="21" y1="12" x2="9" y2="12"/>
+                            </svg>
+                            <span>로그아웃</span>
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <button
@@ -10879,6 +10977,13 @@ const Auth = ({ mode, setMode }: any) => {
 
         if (error) throw error;
 
+        // 이메일 중복: signUp이 에러 없이 성공했지만 identities가 비어있는 경우
+        if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          showToast("이미 가입된 이메일입니다. 로그인 해주세요.", "error");
+          setMode("login");
+          return;
+        }
+
         await supabase.from("profiles").insert([
           {
             id: data.user?.id,
@@ -10895,7 +11000,22 @@ const Auth = ({ mode, setMode }: any) => {
         setMode("home");
       }
     } catch (err: any) {
-      showToast(err.message, "error");
+      // 가독성 좋은 한국어 에러 메시지
+      const raw = String(err?.message || "");
+      let friendly = raw;
+      if (/already registered|already exists|User already/i.test(raw)) {
+        friendly = "이미 가입된 이메일입니다. 로그인 해주세요.";
+        setMode("login");
+      } else if (/invalid login credentials|invalid_grant/i.test(raw)) {
+        friendly = "이메일 또는 비밀번호가 올바르지 않습니다.";
+      } else if (/email.*invalid|invalid.*email/i.test(raw)) {
+        friendly = "올바른 이메일 형식이 아닙니다.";
+      } else if (/password.*(short|6 characters|weak)/i.test(raw)) {
+        friendly = "비밀번호는 최소 6자 이상이어야 합니다.";
+      } else if (/rate limit|too many/i.test(raw)) {
+        friendly = "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+      }
+      showToast(friendly, "error");
     }
   };
 
@@ -18174,6 +18294,15 @@ const LandingPage = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
           options: { data: { nickname } },
         });
         if (error) throw error;
+
+        // 이메일 중복: signUp이 에러 없이 성공했지만 identities가 비어있는 경우
+        if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          showToast("이미 가입된 이메일입니다. 로그인 해주세요.", "error");
+          setAuthMode("login");
+          setAuthLoading(false);
+          return;
+        }
+
         await supabase.from("profiles").insert([{ id: data.user?.id, nickname, grade: "신입" }]);
         showToast("회원가입 성공! 이메일을 확인하세요.", "success");
         setAuthMode("login");
@@ -18184,7 +18313,21 @@ const LandingPage = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
         showToast("로그인 성공!", "success");
       }
     } catch (err: any) {
-      showToast(err.message, "error");
+      const raw = String(err?.message || "");
+      let friendly = raw;
+      if (/already registered|already exists|User already/i.test(raw)) {
+        friendly = "이미 가입된 이메일입니다. 로그인 해주세요.";
+        setAuthMode("login");
+      } else if (/invalid login credentials|invalid_grant/i.test(raw)) {
+        friendly = "이메일 또는 비밀번호가 올바르지 않습니다.";
+      } else if (/email.*invalid|invalid.*email/i.test(raw)) {
+        friendly = "올바른 이메일 형식이 아닙니다.";
+      } else if (/password.*(short|6 characters|weak)/i.test(raw)) {
+        friendly = "비밀번호는 최소 6자 이상이어야 합니다.";
+      } else if (/rate limit|too many/i.test(raw)) {
+        friendly = "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+      }
+      showToast(friendly, "error");
     }
     setAuthLoading(false);
   };
