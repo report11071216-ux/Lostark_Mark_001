@@ -1,13 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- ── PWA 기본 설정 ── -->
+    <meta name="theme-color" content="#0a0e18" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="쁘밍" />
+
+    <!-- ── SEO / 공유 미리보기 ── -->
+    <meta name="description" content="로스트아크 쁘밍 길드 전용 홈페이지" />
+    <meta property="og:title" content="쁘밍 길드" />
+    <meta property="og:description" content="레이드 일정, 포인트 랭킹, 개인노트까지 — 쁘밍 길드 홈페이지" />
+    <meta property="og:type" content="website" />
+
+    <!-- ── 파비콘 / 아이콘 ── -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.ico" />
+
+    <!-- iOS 홈 화면 아이콘 -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- iOS 스플래시 스크린 (선택 사항) -->
+    <!-- <link rel="apple-touch-startup-image" href="/splash.png" /> -->
+
+    <title>쁘밍 길드</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
