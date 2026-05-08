@@ -1056,13 +1056,12 @@ const HomeNoticeSection = ({ user, profile }: { user: UserLike; profile: Profile
   };
 
   return (
-    <section className="mx-auto max-w-7xl px-3 sm:px-6 pb-4 pt-2 md:pt-3">
+    <section className="pb-4 pt-2 md:pt-3">
       <div
-        className="relative overflow-hidden"
+        className="relative overflow-hidden rounded-3xl border"
         style={{
-          borderRadius: "var(--guild-radius-xl,24px)",
-          border: "1px solid rgba(255,255,255,0.07)",
-          background: "linear-gradient(180deg,rgba(13,21,38,0.92),rgba(8,12,22,0.95))",
+          borderColor: "rgba(139,92,246,0.14)",
+          background: "linear-gradient(180deg, rgba(28,23,51,0.55) 0%, rgba(15,13,32,0.75) 100%)",
           boxShadow: "0 28px 70px rgba(0,0,0,0.32)",
         }}
       >
@@ -4076,17 +4075,58 @@ const Hero = ({
   }, [calMonth.year, calMonth.month]);
 
   // ─── 포인트 랭킹 TOP5 ───────────────────────
+  const [rankLoading, setRankLoading] = useState(true);
+  const [rankerCharMap, setRankerCharMap] = useState<Record<string, { avatar_url?: string; class_name?: string; character_name?: string; }>>({});
   useEffect(() => {
-    if (!supabase) return;
-    supabase
-      .from("profiles")
-      .select("id, nickname, character_name, points, rank_name, profile_image_url")
-      .order("points", { ascending: false })
-      .limit(5)
-      .then(({ data, error }) => {
-        if (error) { console.error("Top rankers:", error); return; }
-        setTopRankers(data || []);
-      });
+    if (!supabase) { setRankLoading(false); return; }
+    let mounted = true;
+    setRankLoading(true);
+
+    (async () => {
+      try {
+        // 1) 상위 5명 프로필 (profile_image_url 컬럼은 존재하지 않음 — 쿼리에서 제외)
+        const { data: profs, error: pErr } = await supabase
+          .from("profiles")
+          .select("id, nickname, character_name, points, rank_name")
+          .order("points", { ascending: false })
+          .limit(5);
+        if (pErr) throw pErr;
+        const list = profs || [];
+        if (!mounted) return;
+        setTopRankers(list);
+
+        // 2) 해당 user들의 대표 캐릭터(guild_members) 가져와서 avatar 매핑
+        const userIds = list.map((p: any) => p.id).filter(Boolean);
+        if (userIds.length > 0) {
+          const { data: chars } = await supabase
+            .from("guild_members")
+            .select("user_id, owner_id, avatar_url, class_name, character_name, is_main")
+            .or(userIds.map((id: string) => `user_id.eq.${id},owner_id.eq.${id}`).join(","))
+            .order("is_main", { ascending: false });
+
+          const map: Record<string, any> = {};
+          (chars || []).forEach((c: any) => {
+            const key = c.user_id || c.owner_id;
+            if (!key) return;
+            // is_main=true인 행이 우선 (order로 보장됨)
+            if (!map[key]) {
+              map[key] = {
+                avatar_url: c.avatar_url || "",
+                class_name: c.class_name || "",
+                character_name: c.character_name || "",
+              };
+            }
+          });
+          if (mounted) setRankerCharMap(map);
+        }
+      } catch (err) {
+        console.error("Top rankers fetch error:", err);
+      } finally {
+        if (mounted) setRankLoading(false);
+      }
+    })();
+
+    return () => { mounted = false; };
   }, [rankPeriod]);
 
   // ─── 길드 활동 피드 (가입/레이드생성/게시글) ──
@@ -4097,16 +4137,16 @@ const Hero = ({
       const items: any[] = [];
 
       try {
-        // 1) 최근 가입
+        // 1) 최근 가입 (profile_image_url 컬럼 없음 — 제외)
         const { data: joinData } = await supabase
           .from("profiles")
-          .select("id, nickname, character_name, profile_image_url, created_at")
+          .select("id, nickname, character_name, created_at")
           .order("created_at", { ascending: false })
           .limit(3);
         (joinData || []).forEach((p: any) => {
           items.push({
             id: `join-${p.id}`,
-            avatar: p.profile_image_url,
+            avatar: null,
             name: p.nickname || p.character_name || "길드원",
             text: `님이 길드에 가입했습니다.`,
             ts: p.created_at,
@@ -4625,59 +4665,116 @@ const Hero = ({
                 </select>
               </div>
 
-              <div className="space-y-1">
-                {topRankers.length === 0 ? (
+              <div className="space-y-1.5">
+                {rankLoading ? (
                   <div className="text-center py-6 text-xs" style={{ color: "rgba(155,159,196,0.5)" }}>
                     데이터를 불러오는 중...
+                  </div>
+                ) : topRankers.length === 0 ? (
+                  <div className="text-center py-6 text-xs" style={{ color: "rgba(155,159,196,0.5)" }}>
+                    아직 포인트 데이터가 없습니다
                   </div>
                 ) : topRankers.map((r, idx) => {
                   const rank = idx + 1;
                   const isMe = user?.id === r.id;
+                  const charInfo = rankerCharMap[r.id] || {};
+                  const avatar = charInfo.avatar_url || "";
+                  const displayName = charInfo.character_name || r.character_name || r.nickname || "—";
+
+                  // 1-3등 액센트 컬러
+                  const podiumStyle: { ring: string; glow: string; numColor: string; numBg: string } =
+                    rank === 1 ? {
+                      ring: "rgba(251,191,36,0.55)",
+                      glow: "0 0 14px rgba(251,191,36,0.30)",
+                      numColor: "#fbbf24",
+                      numBg: "linear-gradient(135deg, rgba(251,191,36,0.20), rgba(251,191,36,0.05))",
+                    } : rank === 2 ? {
+                      ring: "rgba(203,213,225,0.45)",
+                      glow: "0 0 12px rgba(203,213,225,0.20)",
+                      numColor: "#cbd5e1",
+                      numBg: "linear-gradient(135deg, rgba(203,213,225,0.18), rgba(203,213,225,0.04))",
+                    } : rank === 3 ? {
+                      ring: "rgba(217,119,6,0.45)",
+                      glow: "0 0 12px rgba(217,119,6,0.22)",
+                      numColor: "#f59e0b",
+                      numBg: "linear-gradient(135deg, rgba(217,119,6,0.18), rgba(217,119,6,0.04))",
+                    } : {
+                      ring: "rgba(139,92,246,0.20)",
+                      glow: "none",
+                      numColor: "rgba(155,159,196,0.7)",
+                      numBg: "rgba(139,92,246,0.06)",
+                    };
+
                   return (
-                    <div key={r.id} className="flex items-center gap-3 py-2 px-2 rounded-xl transition-colors hover:bg-white/[0.03]">
-                      <div className="w-7 h-7 flex items-center justify-center flex-shrink-0">
-                        {rank === 1 ? (
-                          <Crown size={18} style={{ color: "#fbbf24", filter: "drop-shadow(0 0 6px rgba(251,191,36,0.5))" }} />
-                        ) : rank === 2 ? (
-                          <Crown size={17} style={{ color: "#cbd5e1", filter: "drop-shadow(0 0 5px rgba(203,213,225,0.4))" }} />
-                        ) : rank === 3 ? (
-                          <Crown size={17} style={{ color: "#d97706", filter: "drop-shadow(0 0 5px rgba(217,119,6,0.4))" }} />
-                        ) : (
-                          <span className="text-xs font-bold" style={{ color: "rgba(155,159,196,0.7)" }}>{rank}</span>
-                        )}
-                      </div>
-
-                      <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold flex-shrink-0"
+                    <div
+                      key={r.id}
+                      className="flex items-center gap-3 py-1.5 px-2 rounded-xl transition-colors"
+                      style={{
+                        background: isMe ? "rgba(139,92,246,0.08)" : "transparent",
+                        border: isMe ? "1px solid rgba(139,92,246,0.18)" : "1px solid transparent",
+                      }}
+                      onMouseEnter={(e) => { if (!isMe) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)"; }}
+                      onMouseLeave={(e) => { if (!isMe) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                    >
+                      {/* 순위 (1-3등 = 왕관, 그 외 = 숫자 박스) */}
+                      <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 rounded-lg"
                         style={{
-                          background: "linear-gradient(135deg, #6d28d9, #4c1d95)",
-                          color: "#ede9fe",
-                          border: "1px solid rgba(139,92,246,0.25)",
+                          background: podiumStyle.numBg,
+                          color: podiumStyle.numColor,
+                          fontWeight: 800,
+                          fontSize: rank <= 3 ? 13 : 14,
                         }}>
-                        {r.profile_image_url ? (
-                          <img src={r.profile_image_url} alt="" className="w-full h-full object-cover" />
+                        {rank <= 3 ? (
+                          <Crown size={rank === 1 ? 17 : 15} style={{ filter: `drop-shadow(${podiumStyle.glow})` }} />
                         ) : (
-                          String(r.nickname || r.character_name || "G").slice(0, 1).toUpperCase()
+                          rank
                         )}
                       </div>
 
-                      <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-white truncate">
-                          {r.nickname || r.character_name || "—"}
-                        </span>
-                        {isMe && (
-                          <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold flex-shrink-0"
-                            style={{
-                              background: "rgba(139,92,246,0.20)",
-                              color: "#c4b5fd",
-                              border: "1px solid rgba(139,92,246,0.30)",
-                            }}>
-                            나
+                      {/* 정사각형 캐릭터 이미지 */}
+                      <div
+                        className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style={{
+                          background: avatar
+                            ? `url(${avatar}) center/cover`
+                            : "linear-gradient(135deg, #6d28d9, #4c1d95)",
+                          color: "#ede9fe",
+                          border: `1.5px solid ${podiumStyle.ring}`,
+                          boxShadow: rank <= 3 ? podiumStyle.glow : "none",
+                        }}
+                      >
+                        {!avatar && String(displayName).slice(0, 1).toUpperCase()}
+                      </div>
+
+                      {/* 닉네임 + 클래스 */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-bold text-white truncate">
+                            {displayName}
                           </span>
+                          {isMe && (
+                            <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold flex-shrink-0"
+                              style={{
+                                background: "rgba(139,92,246,0.25)",
+                                color: "#c4b5fd",
+                                border: "1px solid rgba(139,92,246,0.35)",
+                              }}>
+                              나
+                            </span>
+                          )}
+                        </div>
+                        {charInfo.class_name && (
+                          <div className="text-[10px] truncate" style={{ color: "rgba(155,159,196,0.6)" }}>
+                            {charInfo.class_name}
+                          </div>
                         )}
                       </div>
 
-                      <div className="text-sm font-bold flex-shrink-0" style={{ color: "#fbbf24" }}>
-                        {Number(r.points || 0).toLocaleString()}P
+                      {/* 포인트 */}
+                      <div className="text-sm font-bold flex-shrink-0 flex items-baseline gap-0.5"
+                        style={{ color: "#fbbf24" }}>
+                        <span>{Number(r.points || 0).toLocaleString()}</span>
+                        <span className="text-[10px] opacity-70">P</span>
                       </div>
                     </div>
                   );
