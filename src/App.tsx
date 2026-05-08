@@ -16,7 +16,7 @@ import {
   Edit3,
   CalendarDays,
   Users,
-  Sparkles,
+  Sparkles,Q
   Swords,
   Trophy,
   BarChart3,
@@ -2240,12 +2240,6 @@ const fetchInitialData = async () => {
                 <HomeFeaturePortal contentView={contentView} setContentView={setContentView} />
                 <MainContentViewer type={contentView} />
                 <HomeNoticeSection user={user} profile={profile} />
-                <MonthlyRaidCalendarModal
-                  open={isRaidCalendarModalOpen}
-                  onClose={() => setIsRaidCalendarModalOpen(false)}
-                  user={user}
-                  profile={profile}
-                />
               </motion.div>
             )}
 
@@ -2377,6 +2371,14 @@ const fetchInitialData = async () => {
           </main>
         </div>{/* /guild-main */}
       </div>{/* /guild-layout */}
+
+      {/* 📅 레이드 캘린더 모달 — 모든 탭에서 사용 가능 */}
+      <MonthlyRaidCalendarModal
+        open={isRaidCalendarModalOpen}
+        onClose={() => setIsRaidCalendarModalOpen(false)}
+        user={user}
+        profile={profile}
+      />
 
       {/* 🗨️ 길드 실시간 채팅 플로팅 */}
       <GuildChat user={user} profile={profile} />
@@ -14961,18 +14963,35 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
   return (
     <div className="max-w-6xl mx-auto py-12 sm:py-24 px-3 sm:px-6">
 
+      {/* ── 신규 가입자/프로필 미로드 방어 가드 ── */}
+      {!profile ? (
+        <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] py-20 text-center">
+          <div className="text-amber-300/80 text-sm font-semibold mb-2">프로필을 불러오는 중...</div>
+          <div className="text-stone-500 text-xs mb-6">
+            처음 가입하셨다면 잠시만 기다려주세요. 자동으로 프로필이 생성됩니다.
+          </div>
+          <button
+            onClick={async () => { try { await fetchProfile?.(user?.id); } catch {} }}
+            className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-5 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-400/18 transition-all"
+          >
+            새로고침
+          </button>
+        </div>
+      ) : (
+      <>
+
       {/* ── 헤더 ── */}
       <div className="mb-6 sm:mb-10 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-300/70 mb-2">My Room</div>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white" style={getNicknameEffectStyle(profile)}>
-            {profile.nickname || "-"}
+            {profile?.nickname || profile?.character_name || "-"}
           </h2>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 sm:px-5 py-2 sm:py-3 text-center">
             <div className="text-[9px] uppercase tracking-widest text-stone-500">포인트</div>
-            <div className="text-base sm:text-lg font-bold text-amber-300">{myPoint || profile.points || 0}</div>
+            <div className="text-base sm:text-lg font-bold text-amber-300">{myPoint || profile?.points || 0}</div>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 sm:px-5 py-2 sm:py-3 text-center">
             <div className="text-[9px] uppercase tracking-widest text-stone-500">보유 뱃지</div>
@@ -15584,6 +15603,8 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
         </div>
       )} {/* end messages tab */}
 
+      </>
+      )}
     </div>
   );
 };
