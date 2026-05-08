@@ -169,21 +169,45 @@ const emptyRaidForm = {
 
 const difficultyOptions = ["노말", "하드", "나이트메어"];
 
+// 레이드 타입별 컬러 코딩
+// raid  → Gold  (#F0B429) — 레이드 콘텐츠
+// anime → Cyan  (#22D3EE) — 영화·애니 시청
+const RAID_TYPE_COLORS = {
+  raid: {
+    hex:    "#F0B429",
+    hex2:   "#FCD34D",
+    r:      "240,180,41",
+    r2:     "252,211,77",
+  },
+  anime: {
+    hex:    "#22D3EE",
+    hex2:   "#67E8F9",
+    r:      "34,211,238",
+    r2:     "103,232,249",
+  },
+} as const;
+
+const getRaidTypeColor = (type: string) =>
+  RAID_TYPE_COLORS[type as keyof typeof RAID_TYPE_COLORS] ?? RAID_TYPE_COLORS.raid;
+
 const classNameByMode = (mode: string) => {
   if (mode === "anime") {
     return {
-      card: "from-[#0a1632]/80 to-[#0a0e18]/90 border-amber-400/30 hover:border-amber-200",
-      badge: "text-amber-200",
-      bar: "bg-amber-400",
-      chip: "bg-amber-400/15 text-amber-200 border border-amber-400/20",
+      card: "from-[#071620]/80 to-[#050912]/90 border-cyan-400/25 hover:border-cyan-200/60",
+      badge: "text-cyan-200",
+      bar: "bg-cyan-400",
+      chip: "bg-cyan-400/12 text-cyan-200 border border-cyan-400/20",
+      dot: "#22D3EE",
+      barStyle: { background: "linear-gradient(90deg,#22D3EE,#67E8F9)" },
     };
   }
-
   return {
-    card: "from-[#0a1632]/80 to-[#0a0e18]/90 border-amber-400/30 hover:border-amber-200",
-    badge: "text-amber-200",
-    bar: "bg-amber-400",
-    chip: "bg-amber-400/15 text-amber-200 border border-amber-400/20",
+    card: "from-[#0f0d00]/80 to-[#050912]/90 border-yellow-400/20 hover:border-yellow-300/50",
+    badge: "text-yellow-200",
+    bar: "bg-yellow-400",
+    chip: "bg-yellow-400/12 text-yellow-200 border border-yellow-400/20",
+    dot: "#F0B429",
+    barStyle: { background: "linear-gradient(90deg,#F0B429,#FCD34D)" },
   };
 };
 
@@ -4127,6 +4151,25 @@ const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
 
             <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-1">
               <RaidCalendar user={user} profile={profile} embedded hideRanking />
+              {/* 컬러 범례 */}
+              <div className="flex flex-wrap items-center gap-4 px-4 py-3 sticky bottom-0" style={{ background: "rgba(8,12,22,0.92)", borderTop: "1px solid rgba(255,255,255,0.05)", backdropFilter: "blur(12px)" }}>
+                <div className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--guild-text-3,#5C6882)" }}>
+                  <div className="h-2 w-5 rounded-full flex-shrink-0" style={{ background: "linear-gradient(90deg,#F0B429,#FCD34D)" }} />
+                  레이드
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--guild-text-3,#5C6882)" }}>
+                  <div className="h-2 w-5 rounded-full flex-shrink-0" style={{ background: "linear-gradient(90deg,#22D3EE,#67E8F9)" }} />
+                  영화·애니
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--guild-text-3,#5C6882)" }}>
+                  <div className="h-2 w-5 rounded-full flex-shrink-0" style={{ background: "linear-gradient(90deg,var(--ga-400,#a78bfa),var(--ga-300,#c4b5fd))" }} />
+                  오늘
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px]" style={{ color: "var(--guild-text-3,#5C6882)" }}>
+                  <div className="h-2 w-5 rounded-full flex-shrink-0" style={{ background: "#F87171" }} />
+                  모집 완료
+                </div>
+              </div>
             </div>
           </motion.div>
         </motion.div>
@@ -5456,28 +5499,25 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
           description={scheduleView === "mine" ? "내 캐릭터가 참여한 일정만 확인." : "월별 레이드 일정."}
           action={
             <div className="flex flex-wrap items-center gap-2">
-              <div className="hidden sm:flex items-center gap-1 rounded-2xl border border-white/10 bg-white/[0.04] p-1.5 backdrop-blur-md">
+              <div className="hidden sm:flex items-center gap-1 rounded-2xl p-1.5 backdrop-blur-md" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
                 <button
                   onClick={() => setScheduleView("all")}
-                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
-                    scheduleView === "all"
-                      ? "bg-amber-400/12 text-amber-100 shadow-[inset_0_0_0_1px_rgba(246,205,127,0.12)]"
-                      : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
-                  }`}
+                  className="rounded-xl px-4 py-2 text-sm font-semibold transition-all"
+                  style={scheduleView === "all"
+                    ? { background: `rgba(var(--ga-r400,167,139,250),0.14)`, color: `var(--ga-100,#ede9fe)`, boxShadow: `inset 0 0 0 1px rgba(var(--ga-r400,167,139,250),0.2)` }
+                    : { color: "var(--guild-text-3,#5C6882)" }
+                  }
                 >
                   전체 일정
                 </button>
                 <button
-                  onClick={() => {
-                    if (!user) return;
-                    setScheduleView("mine");
-                  }}
+                  onClick={() => { if (!user) return; setScheduleView("mine"); }}
                   disabled={!user}
-                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
-                    scheduleView === "mine"
-                      ? "bg-amber-400/12 text-amber-100 shadow-[inset_0_0_0_1px_rgba(246,205,127,0.12)]"
-                      : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
-                  } disabled:cursor-not-allowed disabled:opacity-45`}
+                  className="rounded-xl px-4 py-2 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-45"
+                  style={scheduleView === "mine"
+                    ? { background: `rgba(var(--ga-r400,167,139,250),0.14)`, color: `var(--ga-100,#ede9fe)`, boxShadow: `inset 0 0 0 1px rgba(var(--ga-r400,167,139,250),0.2)` }
+                    : { color: "var(--guild-text-3,#5C6882)" }
+                  }
                 >
                   내 일정
                 </button>
@@ -5485,15 +5525,21 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
 
               <button
                 onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
-                className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-white hover:shadow-[0_12px_30px_rgba(214,164,78,0.14)]"
+                className="group flex h-10 w-10 items-center justify-center rounded-xl transition-all hover:-translate-y-0.5"
+                style={{ border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2,#A0AAC0)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.12)`; (e.currentTarget as HTMLButtonElement).style.borderColor=`rgba(var(--ga-r400,167,139,250),0.25)`; (e.currentTarget as HTMLButtonElement).style.color=`var(--ga-200,#ddd6fe)`; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.borderColor="rgba(255,255,255,0.09)"; (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-2,#A0AAC0)"; }}
               >
-                <ChevronLeft size={18} className="transition-transform group-hover:-translate-x-0.5" />
+                <ChevronLeft size={17} className="transition-transform group-hover:-translate-x-0.5" />
               </button>
               <button
                 onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
-                className="group flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-slate-300 transition-all hover:-translate-y-0.5 hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-white hover:shadow-[0_12px_30px_rgba(214,164,78,0.14)]"
+                className="group flex h-10 w-10 items-center justify-center rounded-xl transition-all hover:-translate-y-0.5"
+                style={{ border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2,#A0AAC0)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.12)`; (e.currentTarget as HTMLButtonElement).style.borderColor=`rgba(var(--ga-r400,167,139,250),0.25)`; (e.currentTarget as HTMLButtonElement).style.color=`var(--ga-200,#ddd6fe)`; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.borderColor="rgba(255,255,255,0.09)"; (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-2,#A0AAC0)"; }}
               >
-                <ChevronRight size={18} className="transition-transform group-hover:translate-x-0.5" />
+                <ChevronRight size={17} className="transition-transform group-hover:translate-x-0.5" />
               </button>
             </div>
           }
@@ -5578,10 +5624,20 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
       </div>
 
       <div className="grid xl:grid-cols-[1.35fr,0.65fr] gap-4 sm:gap-6">
-        <div className="overflow-hidden rounded-[2rem] md:rounded-[2.5rem] border border-white/10 bg-slate-950/50 backdrop-blur-xl shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
-          <div className="grid grid-cols-7 border-b border-white/5 bg-white/[0.03] text-center uppercase tracking-[0.1em] sm:tracking-[0.22em] text-slate-400">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel) => (
-              <div key={dayLabel} className="px-1 py-2 sm:px-2 sm:py-4 text-[8px] sm:text-[10px] md:text-xs">
+        <div
+          className="overflow-hidden backdrop-blur-xl"
+          style={{
+            borderRadius: "var(--guild-radius-xl,24px)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            background: "linear-gradient(180deg,rgba(13,21,38,0.95),rgba(8,12,22,0.98))",
+            boxShadow: "0 24px 80px rgba(2,6,23,0.45)",
+          }}
+        >
+          {/* 상단 액센트 라인 */}
+          <div className="h-px w-full" style={{ background: "linear-gradient(90deg,transparent,rgba(var(--ga-r400,167,139,250),0.35) 30%,rgba(240,180,41,0.25) 60%,transparent)" }} />
+          <div className="grid grid-cols-7 text-center uppercase tracking-[0.1em] sm:tracking-[0.22em]" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.02)" }}>
+            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel, di) => (
+              <div key={dayLabel} className="px-1 py-2 sm:px-2 sm:py-4 text-[8px] sm:text-[10px] md:text-xs font-semibold" style={{ color: di === 6 ? "rgba(var(--ga-r300,196,181,253),0.6)" : "var(--guild-text-3,#5C6882)" }}>
                 {dayLabel}
               </div>
             ))}
@@ -5591,7 +5647,8 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
             {Array.from({ length: firstDayOffset }).map((_, i) => (
               <div
                 key={`empty-${i}`}
-                className="min-h-[70px] sm:min-h-[110px] md:min-h-[156px] bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]"
+                className="min-h-[70px] sm:min-h-[110px] md:min-h-[156px]"
+                style={{ background: "rgba(255,255,255,0.008)", borderRight: "1px solid rgba(255,255,255,0.03)" }}
               />
             ))}
 
@@ -5604,111 +5661,158 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                 return sum + visibleParticipants.filter((p) => p.schedule_id === raid.id).length;
               }, 0);
 
+              // 레이드 타입별 컬러 집계 (하단 바용)
+              const raidCount  = dayRaids.filter(r => r.type !== "anime").length;
+              const animeCount = dayRaids.filter(r => r.type === "anime").length;
+              const hasMultiType = raidCount > 0 && animeCount > 0;
+
               return (
                 <div
                   key={day}
-                  className={cn(
-                    "group relative min-h-[70px] sm:min-h-[110px] md:min-h-[156px] overflow-hidden bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(255,255,255,0.012))] p-1 sm:p-3 transition-all duration-200 hover:z-[1] hover:bg-amber-300/[0.04] hover:shadow-[inset_0_0_0_1px_rgba(233,196,106,0.16)]",
-                    isToday && "bg-amber-400/[0.08] shadow-[inset_0_0_0_1px_rgba(245,197,92,0.28),0_0_0_1px_rgba(245,197,92,0.1)]"
-                  )}
+                  className="group relative min-h-[70px] sm:min-h-[110px] md:min-h-[156px] overflow-hidden p-1 sm:p-3 transition-all duration-150 hover:z-[1]"
+                  style={{
+                    background: isToday
+                      ? `rgba(var(--ga-r400,167,139,250),0.07)`
+                      : "rgba(255,255,255,0.015)",
+                    borderTop: "1px solid rgba(255,255,255,0.03)",
+                    borderRight: "1px solid rgba(255,255,255,0.03)",
+                    boxShadow: isToday
+                      ? `inset 0 0 0 1px rgba(var(--ga-r400,167,139,250),0.22)`
+                      : undefined,
+                    cursor: dayRaids.length > 0 ? "pointer" : "default",
+                  }}
                 >
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                  {isToday && <div className="pointer-events-none absolute right-3 top-3 h-10 w-10 rounded-full bg-amber-300/10 blur-xl" />}
+                  {/* Today 글로우 */}
+                  {isToday && (
+                    <div className="pointer-events-none absolute right-2 top-2 h-12 w-12 rounded-full blur-2xl opacity-60"
+                      style={{ background: `rgba(var(--ga-r400,167,139,250),0.35)` }} />
+                  )}
 
-                  <div className="mb-3 flex items-start justify-between gap-2">
+                  {/* 이벤트 타입 컬러 바 (하단) */}
+                  {dayRaids.length > 0 && (
+                    <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-[3px] overflow-hidden">
+                      {hasMultiType ? (
+                        <div className="h-full w-full" style={{ background: "linear-gradient(90deg,#F0B429 50%,#22D3EE 50%)" }} />
+                      ) : raidCount > 0 ? (
+                        <div className="h-full w-full" style={{ background: "linear-gradient(90deg,#F0B429,#FCD34D)" }} />
+                      ) : (
+                        <div className="h-full w-full" style={{ background: "linear-gradient(90deg,#22D3EE,#67E8F9)" }} />
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mb-2 sm:mb-3 flex items-start justify-between gap-1 sm:gap-2">
                     <div className="min-w-0">
+                      {/* 날짜 숫자 */}
                       <div
-                        className={cn(
-                          "inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-0.5 text-[10px] font-semibold transition-all sm:h-9 sm:min-w-[36px] sm:rounded-xl sm:px-2 sm:text-sm",
-                          isToday
-                            ? "border border-amber-200/25 bg-amber-300/10 text-amber-100 shadow-[0_8px_24px_rgba(214,164,78,0.18)]"
-                            : "border border-transparent bg-white/[0.03] text-slate-300 group-hover:border-white/10"
-                        )}
+                        className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-0.5 text-[10px] font-semibold transition-all sm:h-9 sm:min-w-[36px] sm:rounded-xl sm:px-2 sm:text-sm"
+                        style={isToday ? {
+                          background: `rgba(var(--ga-r400,167,139,250),0.18)`,
+                          border: `1px solid rgba(var(--ga-r400,167,139,250),0.35)`,
+                          color: `var(--ga-200,#ddd6fe)`,
+                          boxShadow: `0 4px 16px rgba(var(--ga-r400,167,139,250),0.2)`,
+                        } : {
+                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid transparent",
+                          color: "var(--guild-text-2,#A0AAC0)",
+                        }}
                       >
                         {day}
                       </div>
-                      <div className="hidden sm:block mt-2 text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                      <div className="hidden sm:block mt-1.5 text-[9px] uppercase tracking-[0.18em]" style={{ color: "var(--guild-text-4,#3A4560)" }}>
                         {DAY_LABELS[new Date(year, month, day).getDay()]}
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 sm:gap-2">
+                    <div className="flex items-center gap-1">
+                      {/* 일정 수 배지 — 타입별 컬러 */}
                       {dayRaids.length > 0 && (
-                        <div className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full border border-amber-200/15 bg-amber-300/10 px-1 sm:px-2 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-semibold text-amber-50">
-                          <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-amber-200" />
+                        <div
+                          className="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1 sm:px-2 py-0.5 sm:py-1 text-[8px] sm:text-[10px] font-semibold"
+                          style={raidCount > 0 && animeCount === 0
+                            ? { background: "rgba(240,180,41,0.12)", border: "1px solid rgba(240,180,41,0.22)", color: "#FCD34D" }
+                            : animeCount > 0 && raidCount === 0
+                            ? { background: "rgba(34,211,238,0.12)", border: "1px solid rgba(34,211,238,0.22)", color: "#67E8F9" }
+                            : { background: `rgba(var(--ga-r400,167,139,250),0.12)`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.22)`, color: `var(--ga-200,#ddd6fe)` }
+                          }
+                        >
+                          <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full"
+                            style={{ background: raidCount > 0 && animeCount === 0 ? "#F0B429" : animeCount > 0 && raidCount === 0 ? "#22D3EE" : `var(--ga-300,#c4b5fd)` }} />
                           {dayRaids.length}
                         </div>
                       )}
 
+                      {/* 레이드 추가 버튼 */}
                       {user && scheduleView === "all" && (
                         <button
-                          onClick={() => {
-                            setSelectedDate(dateStr);
-                            setIsCreateOpen(true);
-                          }}
-                          className="hidden sm:flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-amber-200 transition-all hover:-translate-y-0.5 hover:border-amber-200/25 hover:bg-amber-300/10 hover:text-white"
+                          onClick={() => { setSelectedDate(dateStr); setIsCreateOpen(true); }}
+                          className="hidden sm:flex h-7 w-7 items-center justify-center rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-3,#5C6882)" }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.12)`; (e.currentTarget as HTMLButtonElement).style.color=`var(--ga-200,#ddd6fe)`; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.04)"; (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-3,#5C6882)"; }}
                           title="레이드 생성"
                         >
-                          <Plus size={15} />
+                          <Plus size={13} />
                         </button>
                       )}
                     </div>
                   </div>
 
-                  <div className="hidden sm:flex mb-3 items-center gap-2 text-[11px] text-slate-500">
-                    <span>{dayRaids.length}개 일정</span>
+                  {/* 일정 수 텍스트 (데스크톱) */}
+                  <div className="hidden sm:flex mb-2 items-center gap-1.5 text-[10px]" style={{ color: "var(--guild-text-4,#3A4560)" }}>
+                    <span>{dayRaids.length}건</span>
                     {dayParticipantCount > 0 && (
-                      <>
-                        <span className="text-slate-600">•</span>
-                        <span>{dayParticipantCount}명 참여</span>
-                      </>
+                      <><span>·</span><span>{dayParticipantCount}명</span></>
                     )}
                   </div>
 
                   <div className="space-y-1 sm:space-y-1.5">
                     {dayRaids.length === 0 && (
-                      <div className="hidden sm:block rounded-2xl border border-dashed border-white/8 bg-white/[0.02] px-3 py-3 text-center text-[11px] font-medium text-slate-500">
+                      <div className="hidden sm:block rounded-xl border border-dashed px-2 py-2.5 text-center text-[10px]" style={{ borderColor: "rgba(255,255,255,0.05)", color: "var(--guild-text-4,#3A4560)" }}>
                         {scheduleView === "mine" ? "내 일정 없음" : "일정 없음"}
                       </div>
                     )}
 
-                    {/* Mobile: just show dot indicators */}
+                    {/* 모바일: 컬러 도트 */}
                     {dayRaids.length > 0 && (
                       <div className="flex sm:hidden flex-wrap gap-0.5 mt-0.5">
-                        {dayRaids.slice(0, 3).map((raid) => (
+                        {dayRaids.slice(0, 4).map((raid) => (
                           <button
                             key={raid.id}
                             onClick={() => setSelectedRaid(raid)}
-                            className="h-1.5 w-1.5 rounded-full bg-amber-300/70"
+                            className="h-1.5 w-1.5 rounded-full transition-transform hover:scale-125"
+                            style={{ background: raid.type === "anime" ? "#22D3EE" : "#F0B429" }}
                           />
                         ))}
-                        {dayRaids.length > 3 && (
-                          <div className="h-1.5 w-1.5 rounded-full bg-slate-500" />
+                        {dayRaids.length > 4 && (
+                          <div className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--guild-text-4,#3A4560)" }} />
                         )}
                       </div>
                     )}
 
-                    {/* Desktop: show raid cards */}
+                    {/* 데스크톱: RaidCard */}
                     <div className="hidden sm:block space-y-1.5">
-                    {dayRaids.slice(0, 2).map((raid) => (
-                      <RaidCard
-                        key={raid.id}
-                        raid={raid}
-                        parts={visibleParticipants.filter((p) => p.schedule_id === raid.id)}
-                        onOpen={() => setSelectedRaid(raid)}
-                        compact
-                      />
-                    ))}
-
-                    {dayRaids.length > 2 && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRaid(dayRaids[0])}
-                        className="w-full rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-left text-[11px] font-medium text-slate-400 transition-colors hover:border-amber-200/20 hover:bg-amber-300/[0.04] hover:text-slate-200"
-                      >
-                        +{dayRaids.length - 2}개 일정 더 보기
-                      </button>
-                    )}
+                      {dayRaids.slice(0, 2).map((raid) => (
+                        <RaidCard
+                          key={raid.id}
+                          raid={raid}
+                          parts={visibleParticipants.filter((p) => p.schedule_id === raid.id)}
+                          onOpen={() => setSelectedRaid(raid)}
+                          compact
+                        />
+                      ))}
+                      {dayRaids.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRaid(dayRaids[0])}
+                          className="w-full rounded-xl px-2.5 py-1.5 text-left text-[10px] font-medium transition-all"
+                          style={{ border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", color: "var(--guild-text-3,#5C6882)" }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-2,#A0AAC0)"; (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.05)"; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-3,#5C6882)"; (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.02)"; }}
+                        >
+                          +{dayRaids.length - 2}개 더 보기
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -5762,7 +5866,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                        <BarChart3 size={16} className="text-amber-200" />
+                        <BarChart3 size={16} style={{ color: "var(--ga-300,#c4b5fd)" }} />
                       </div>
                       <div className="min-w-0">
                         <div className="truncate font-semibold">
@@ -5775,20 +5879,17 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                     </div>
 
                     <div className="shrink-0 text-right">
-                      <div className="text-xl font-semibold text-amber-200">{item.raidCount}</div>
+                      <div className="text-xl font-semibold" style={{ color: "var(--ga-300,#c4b5fd)" }}>{item.raidCount}</div>
                       <div className="text-[11px] text-slate-500">raid count</div>
                     </div>
                   </div>
 
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.05]">
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.05)" }}>
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-200"
+                      className="h-full rounded-full transition-all duration-700"
                       style={{
-                        width: `${
-                          monthlyCharacterStats[0]?.raidCount
-                            ? (item.raidCount / monthlyCharacterStats[0].raidCount) * 100
-                            : 0
-                        }%`,
+                        width: `${monthlyCharacterStats[0]?.raidCount ? (item.raidCount / monthlyCharacterStats[0].raidCount) * 100 : 0}%`,
+                        background: `linear-gradient(90deg, var(--ga-400,#a78bfa), var(--ga-300,#c4b5fd))`,
                       }}
                     />
                   </div>
@@ -5875,54 +5976,75 @@ const RaidCard = ({
   const percent = Math.min(100, (parts.length / capacity.maxParticipants) * 100);
   const isFull = parts.length >= capacity.maxParticipants;
 
+  const tc = getRaidTypeColor(raid.type);
+  const isAnimeType = raid.type === "anime";
+
   return (
     <motion.button
-      whileHover={{ y: -1 }}
+      whileHover={{ y: -1, scale: 1.005 }}
       onClick={onOpen}
-      className={cn(
-        "relative w-full overflow-hidden rounded-[1.1rem] border text-left transition-all",
-        compact ? "p-1.5 sm:p-2.5" : "p-2.5 sm:p-3",
-        isFull
-          ? "border-rose-400/25 bg-[linear-gradient(135deg,rgba(214,164,78,0.12),rgba(15,23,42,0.88))]"
-          : "border-white/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] hover:border-amber-200/18 hover:bg-[linear-gradient(135deg,rgba(214,164,78,0.12),rgba(255,255,255,0.03))]"
-      )}
+      className={cn("relative w-full overflow-hidden rounded-xl text-left transition-all", compact ? "p-1.5 sm:p-2.5" : "p-2.5 sm:p-3")}
+      style={{
+        background: isFull
+          ? "rgba(248,113,113,0.06)"
+          : isAnimeType
+          ? "rgba(34,211,238,0.05)"
+          : "rgba(240,180,41,0.05)",
+        border: isFull
+          ? "1px solid rgba(248,113,113,0.22)"
+          : isAnimeType
+          ? "1px solid rgba(34,211,238,0.18)"
+          : "1px solid rgba(240,180,41,0.16)",
+      }}
     >
-      <div className="flex items-start justify-between gap-3">
+      {/* 좌측 타입 컬러 바 */}
+      <div
+        className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full"
+        style={{ background: isFull ? "#F87171" : tc.hex }}
+      />
+
+      <div className="pl-2 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 min-w-0">
-            {raid.experience && raid.type !== "anime" && (
-              <span className={cn(colors.chip, "shrink-0 whitespace-nowrap px-2 py-0.5 text-[9px] leading-none")}>
+          <div className="flex items-center gap-1.5 min-w-0 mb-1">
+            {raid.experience && !isAnimeType && (
+              <span
+                className="shrink-0 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[8px] font-semibold leading-none"
+                style={{ background: `rgba(${tc.r},0.15)`, border: `1px solid rgba(${tc.r},0.25)`, color: tc.hex2 }}
+              >
                 {raid.experience}
               </span>
             )}
-            <span className="truncate text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
-              {raid.type === "anime" ? "시청" : compact ? raid.difficulty : `${raid.raid_type} · ${raid.difficulty}`}
+            <span className="truncate text-[9px] font-medium uppercase tracking-[0.16em]" style={{ color: "var(--guild-text-3,#5C6882)" }}>
+              {isAnimeType ? "시청" : compact ? raid.difficulty : `${raid.raid_type} · ${raid.difficulty}`}
             </span>
           </div>
 
-          <div className="mt-1 sm:mt-2 truncate text-[11px] sm:text-[13px] font-semibold leading-tight text-white">
+          <div className="truncate text-[11px] sm:text-[12px] font-semibold leading-tight text-white">
             {raid.raid_name}
           </div>
 
-          <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
-            <span className="inline-flex items-center gap-1 rounded-full border border-white/8 bg-white/[0.04] px-2 py-1">
-              <Clock size={10} />
-              {raid.raid_time}
-            </span>
+          <div className="mt-1.5 flex items-center gap-1.5 text-[10px]" style={{ color: "var(--guild-text-3,#5C6882)" }}>
+            <Clock size={9} />
+            <span>{raid.raid_time}</span>
           </div>
         </div>
 
         <div className="shrink-0 text-right">
-          <div className={cn("text-[11px] font-semibold", isFull ? "text-rose-300" : "text-slate-300")}>
+          <div className="text-[11px] font-semibold" style={{ color: isFull ? "#F87171" : "var(--guild-text-2,#A0AAC0)" }}>
             {parts.length}/{capacity.maxParticipants}
           </div>
-          {parts.length > 0 && <div className="mt-1 h-2 w-2 rounded-full bg-amber-200" />}
+          {parts.length > 0 && (
+            <div className="mt-1 h-1.5 w-1.5 rounded-full ml-auto" style={{ background: isFull ? "#F87171" : tc.hex }} />
+          )}
         </div>
       </div>
 
       {!compact && (
-        <div className="mt-3 h-1 overflow-hidden rounded-full bg-black/30">
-          <div style={{ width: `${percent}%` }} className={cn("h-full rounded-full", isFull ? "bg-rose-400" : colors.bar)} />
+        <div className="mt-2.5 h-1 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+          <div
+            style={{ width: `${percent}%`, background: isFull ? "#F87171" : `linear-gradient(90deg,${tc.hex},${tc.hex2})` }}
+            className="h-full rounded-full transition-all duration-500"
+          />
         </div>
       )}
     </motion.button>
