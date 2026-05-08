@@ -915,20 +915,23 @@ const HomeFeaturePortal = ({
 
   return (
     <section className="relative z-10 mx-auto max-w-7xl px-3 sm:px-6 pb-3 md:pb-4">
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <div>
-          <div className="text-[11px] font-medium uppercase tracking-[0.28em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>Feature Gateway</div>
-          <h2 className="mt-2 text-xl font-semibold tracking-[0.02em] text-white md:text-2xl">
-            핵심 콘텐츠 바로가기
-          </h2>
-          <p className="mt-2 text-sm text-stone-400">
-            자주 보는 콘텐츠를 더 빠르고 선명하게 모아둔 구간이야.
-          </p>
+      {/* 좌측 정렬: 제목·설명 + "현재 선택" 인라인 핀 */}
+      <div className="mb-4">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="text-[11px] font-medium uppercase tracking-[0.28em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
+            Feature Gateway
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-100/15 bg-amber-100/[0.04] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-amber-100/85">
+            <span className="text-stone-500">현재</span>
+            <span>{contentView}</span>
+          </span>
         </div>
-        <div className="hidden rounded-[1.35rem] border border-amber-100/10 bg-white/[0.03] px-4 py-3 text-right shadow-[0_12px_30px_rgba(0,0,0,0.18)] md:block">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">현재 선택</div>
-          <div className="mt-1 text-base font-semibold text-amber-100">{contentView}</div>
-        </div>
+        <h2 className="mt-2 text-xl font-semibold tracking-[0.02em] text-white md:text-2xl">
+          핵심 콘텐츠 바로가기
+        </h2>
+        <p className="mt-2 text-sm text-stone-400">
+          자주 보는 콘텐츠를 더 빠르고 선명하게 모아둔 구간이야.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
@@ -4558,7 +4561,8 @@ const Hero = ({
         </div>
 
         {/* ╔══════════════════ 우측 사이드 영역 ══════════════════ */}
-        <div className="space-y-4 lg:space-y-5">
+        {/* xl 이상에서 flex-col + h-full로 좌측 컬럼 높이에 맞춰 늘어남 */}
+        <div className="flex flex-col gap-4 lg:gap-5 xl:h-full">
           {/* 다가오는 레이드 */}
           <motion.div
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
@@ -4658,11 +4662,11 @@ const Hero = ({
             </div>
           </motion.div>
 
-          {/* 내 길드 프로필 위젯 */}
+          {/* 내 길드 프로필 위젯 — xl: 남은 공간을 채워 좌측 컬럼과 바닥선 정렬 */}
           <motion.div
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="rounded-3xl p-5 relative overflow-hidden"
+            className="rounded-3xl p-5 relative overflow-hidden xl:flex-1 flex flex-col"
             style={{
               background: "linear-gradient(160deg, rgba(76,29,149,0.55) 0%, rgba(28,23,51,0.85) 65%, rgba(15,13,32,0.95) 100%)",
               border: "1px solid rgba(139,92,246,0.25)",
@@ -4673,7 +4677,7 @@ const Hero = ({
               background: "radial-gradient(ellipse at 50% 0%, rgba(167,139,250,0.18) 0%, transparent 60%)",
             }} />
 
-            <div className="relative">
+            <div className="relative flex-1 flex flex-col">
               <div className="flex flex-col items-center text-center mb-4">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3"
                   style={{
@@ -4729,7 +4733,7 @@ const Hero = ({
 
               <button
                 onClick={() => setActiveTab?.(isAdmin ? "admin" : "guild")}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-white transition-all mt-auto"
                 style={{
                   background: "rgba(139,92,246,0.14)",
                   border: "1px solid rgba(139,92,246,0.28)",
