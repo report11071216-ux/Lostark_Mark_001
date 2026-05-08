@@ -1843,7 +1843,7 @@ const fetchInitialData = async () => {
               className="absolute inset-0 rounded-full animate-spin"
               style={{
                 border: "2px solid rgba(255,255,255,0.06)",
-                borderTopColor: `var(--ga-400,#a78bfa)`,
+                borderTopColor: `#7c3aed`,
                 animationDuration: "0.9s",
               }}
             />
@@ -1927,11 +1927,34 @@ const fetchInitialData = async () => {
     );
   }
 
+  const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
+
+  const pageTitleMap: Record<string, string> = {
+    home: "홈",
+    posts: "게시판",
+    guild: "길드원",
+    ranking: "랭킹",
+    shop: "포인트 상점",
+    myroom: "마이룸",
+    note: "개인 노트",
+    admin: "관리자 패널",
+  };
+
+  const displayName =
+    profile?.nickname ||
+    profile?.display_name ||
+    profile?.character_name ||
+    (user?.email ? String(user.email).split("@")[0] : "Guest");
+  const avatarText = String(displayName || "G").slice(0, 1).toUpperCase();
+  const roleLabel = profile?.role === "admin" ? "Guild Master" : user ? "Guild Member" : "Guest";
+
   return (
     <PageShell settings={settings}>
       <ToastViewport />
-      <div className="relative z-10">
-        <Navbar
+      <div className="guild-layout">
+
+        {/* ── 사이드바 ── */}
+        <Sidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           user={user}
@@ -1939,19 +1962,128 @@ const fetchInitialData = async () => {
           onLogout={handleLogout}
           onShowSelector={() => setShowSelector(true)}
           unreadMsgCount={unreadMsgCount}
-          onMsgRead={() => fetchUnreadMsgCount(user?.id)}
+          settings={settings}
+          mobileOpen={mobileSidebarOpen}
+          onMobileClose={() => setMobileSidebarOpen(false)}
         />
 
-        <PassivePointBackgroundSync
-          userId={user?.id}
-          onProfileRefresh={async () => {
-            if (user?.id) {
-              await fetchProfile(user.id);
-            }
-          }}
-        />
+        {/* ── 메인 영역 ── */}
+        <div className="guild-main" style={{ background: "linear-gradient(180deg, #0d0d1a 0%, #0a0a16 100%)" }}>
 
-        <main className="pt-16 pb-16 md:pb-0">
+          {/* ── 상단 바 (Topbar) ── */}
+          <div className="guild-topbar">
+            {/* 왼쪽: 햄버거(모바일) + 페이지 제목 */}
+            <div className="flex items-center gap-3">
+              <button
+                className="flex md:hidden items-center justify-center w-9 h-9 rounded-xl transition-all"
+                style={{ border: "1px solid rgba(124,58,237,0.18)", background: "rgba(124,58,237,0.08)", color: "#c4b5fd" }}
+                onClick={() => setMobileSidebarOpen(true)}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+              </button>
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.22em]" style={{ color: "rgba(196,181,253,0.45)" }}>
+                  Guild Residence
+                </div>
+                <div className="text-sm font-semibold text-white">
+                  안녕하세요, {displayName}님!
+                </div>
+              </div>
+            </div>
+
+            {/* 오른쪽: 디스코드 버튼, 알림, 프로필 */}
+            <div className="flex items-center gap-2">
+              {/* 디스코드 버튼 */}
+              <button
+                className="hidden sm:flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all"
+                style={{
+                  background: "rgba(88,101,242,0.15)",
+                  border: "1px solid rgba(88,101,242,0.25)",
+                  color: "#818cf8",
+                }}
+                onMouseEnter={e => { (e.currentTarget).style.background = "rgba(88,101,242,0.25)"; }}
+                onMouseLeave={e => { (e.currentTarget).style.background = "rgba(88,101,242,0.15)"; }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.11 18.1.13 18.115a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+                길드 디스코드
+              </button>
+
+              {/* 알림 버튼 */}
+              <button
+                className="relative flex items-center justify-center w-9 h-9 rounded-xl transition-all"
+                style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2)" }}
+                onMouseEnter={e => { (e.currentTarget).style.background = "rgba(124,58,237,0.10)"; (e.currentTarget).style.color = "#c4b5fd"; }}
+                onMouseLeave={e => { (e.currentTarget).style.background = "rgba(255,255,255,0.04)"; (e.currentTarget).style.color = "var(--guild-text-2)"; }}
+              >
+                <Bell size={15} />
+                {unreadMsgCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 rounded-full bg-purple-500 text-[9px] font-bold text-white flex items-center justify-center px-1">
+                    {unreadMsgCount > 9 ? "9+" : unreadMsgCount}
+                  </span>
+                )}
+              </button>
+
+              {/* 프로필 */}
+              {user ? (
+                <button
+                  onClick={() => setActiveTab("myroom")}
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-1.5 transition-all"
+                  style={{
+                    border: "1px solid rgba(124,58,237,0.20)",
+                    background: "rgba(124,58,237,0.08)",
+                  }}
+                  onMouseEnter={e => { (e.currentTarget).style.background = "rgba(124,58,237,0.15)"; }}
+                  onMouseLeave={e => { (e.currentTarget).style.background = "rgba(124,58,237,0.08)"; }}
+                >
+                  <div
+                    className="flex items-center justify-center w-8 h-8 rounded-xl text-sm font-bold shrink-0"
+                    style={{
+                      background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                      color: "#ede9fe",
+                      boxShadow: "0 0 0 2px rgba(124,58,237,0.25)",
+                    }}
+                  >
+                    {avatarText}
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <div className="text-xs font-semibold text-white leading-tight">{displayName}</div>
+                    <div className="text-[10px]" style={{ color: "rgba(196,181,253,0.6)" }}>{roleLabel}</div>
+                  </div>
+                  <ChevronDown size={13} style={{ color: "rgba(196,181,253,0.5)" }} />
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setActiveTab("login")}
+                    className="rounded-xl px-3 py-2 text-xs font-medium transition-all"
+                    style={{ border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2)" }}
+                  >
+                    로그인
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("signup")}
+                    className="rounded-xl px-3 py-2 text-xs font-semibold text-white transition-all"
+                    style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)", border: "1px solid rgba(124,58,237,0.35)" }}
+                  >
+                    회원가입
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <PassivePointBackgroundSync
+            userId={user?.id}
+            onProfileRefresh={async () => {
+              if (user?.id) {
+                await fetchProfile(user.id);
+              }
+            }}
+          />
+
+          <main className="guild-content pb-16 md:pb-6">
           <AnimatePresence mode="wait">
             {activeTab === "home" && (
               <motion.div
@@ -2081,8 +2213,9 @@ const fetchInitialData = async () => {
               </motion.div>
             )}
           </AnimatePresence>
-        </main>
-      </div>
+          </main>
+        </div>{/* /guild-main */}
+      </div>{/* /guild-layout */}
 
       {/* 🗨️ 길드 실시간 채팅 플로팅 */}
       <GuildChat user={user} profile={profile} />
@@ -2091,8 +2224,8 @@ const fetchInitialData = async () => {
       <nav
         className="fixed bottom-0 left-0 right-0 z-40 flex md:hidden items-center justify-around px-2 pb-safe"
         style={{
-          background: "rgba(8,12,22,0.96)",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
+          background: "rgba(13,13,26,0.96)",
+          borderTop: "1px solid rgba(124,58,237,0.12)",
           backdropFilter: "blur(20px)",
           paddingTop: "10px",
           paddingBottom: "max(10px, env(safe-area-inset-bottom))",
@@ -2110,25 +2243,15 @@ const fetchInitialData = async () => {
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className="flex flex-col items-center gap-1 px-4 py-1 rounded-xl transition-all"
-              style={isActive ? {
-                color: `var(--ga-200,#ddd6fe)`,
-              } : {
-                color: "var(--guild-text-4,#3A4560)",
-              }}
+              style={isActive ? { color: "#c4b5fd" } : { color: "var(--guild-text-4,#363860)" }}
             >
               <span className="text-lg leading-none">{item.icon}</span>
               <span
                 className="text-[9px] font-semibold uppercase tracking-[0.14em]"
-                style={{ color: isActive ? `var(--ga-300,#c4b5fd)` : "var(--guild-text-4,#3A4560)" }}
+                style={{ color: isActive ? "#c4b5fd" : "var(--guild-text-4,#363860)" }}
               >
                 {item.label}
               </span>
-              {isActive && (
-                <span
-                  className="absolute bottom-0 h-[2px] w-8 rounded-full"
-                  style={{ background: `linear-gradient(90deg,transparent,var(--ga-300,#c4b5fd),transparent)` }}
-                />
-              )}
             </button>
           );
         })}
@@ -2936,41 +3059,54 @@ const ThemeSwatchPicker = () => {
 
 const GLOBAL_BASE_CSS = `
   /* ══════════════════════════════════════════════
-     전역 디자인 토큰 — 다크 모드 기준
-     모든 컴포넌트는 이 변수를 참조합니다
+     전역 디자인 토큰 — 보라색 사이드바 다크 테마
+     Guild Residence v2 — Sidebar Layout
   ══════════════════════════════════════════════ */
   :root {
-    /* 배경 레이어 */
-    --guild-bg-base:    #050912;
-    --guild-bg-panel:   #080c16;
-    --guild-bg-surface: #0f1729;
-    --guild-bg-raised:  #141e30;
+    /* 배경 레이어 — 딥 네이비/퍼플 */
+    --guild-bg-base:    #0d0d1a;
+    --guild-bg-panel:   #12121f;
+    --guild-bg-sidebar: #0e0e1c;
+    --guild-bg-surface: #1a1a2e;
+    --guild-bg-raised:  #1e1e32;
+    --guild-bg-card:    #16162a;
     --guild-bg-input:   rgba(255,255,255,0.04);
 
     /* 테두리 */
-    --guild-border-sub: rgba(255,255,255,0.06);
-    --guild-border-md:  rgba(255,255,255,0.10);
-    --guild-border-em:  rgba(255,255,255,0.16);
+    --guild-border-sub: rgba(139,92,246,0.08);
+    --guild-border-md:  rgba(139,92,246,0.14);
+    --guild-border-em:  rgba(139,92,246,0.25);
+    --guild-border-white: rgba(255,255,255,0.06);
 
     /* 텍스트 */
-    --guild-text-1: #F1F0FF;
-    --guild-text-2: #A0AAC0;
-    --guild-text-3: #5C6882;
-    --guild-text-4: #3A4560;
+    --guild-text-1: #f0eeff;
+    --guild-text-2: #9b9fc4;
+    --guild-text-3: #5a5e82;
+    --guild-text-4: #363860;
+
+    /* 사이드바 레이아웃 */
+    --sidebar-width: 220px;
+    --topbar-height: 60px;
+
+    /* 보라색 메인 액센트 */
+    --accent-purple:      #7c3aed;
+    --accent-purple-light: #a78bfa;
+    --accent-purple-glow:  rgba(124,58,237,0.35);
+    --accent-purple-bg:    rgba(124,58,237,0.12);
 
     /* 보조 액센트 (레이드 타입 컬러 코딩) */
-    --guild-raid:    #F0B429;   /* raid — 골드  */
-    --guild-anime:   #22D3EE;   /* anime — 시안 */
-    --guild-success: #34D399;   /* 클경/숙련    */
-    --guild-danger:  #F87171;   /* 에러/경고    */
-    --guild-info:    #60A5FA;   /* 정보/공지    */
-    --guild-special: #F472B6;   /* 이벤트/스페셜*/
+    --guild-raid:    #F0B429;
+    --guild-anime:   #22D3EE;
+    --guild-success: #34D399;
+    --guild-danger:  #F87171;
+    --guild-info:    #818cf8;
+    --guild-special: #F472B6;
 
     /* 레이아웃 */
     --guild-radius-sm: 10px;
-    --guild-radius-md: 16px;
-    --guild-radius-lg: 20px;
-    --guild-radius-xl: 24px;
+    --guild-radius-md: 14px;
+    --guild-radius-lg: 18px;
+    --guild-radius-xl: 22px;
     --guild-radius-2xl: 28px;
 
     /* 애니메이션 */
@@ -2984,16 +3120,125 @@ const GLOBAL_BASE_CSS = `
     color: var(--guild-text-1);
   }
 
-  /* 패널/모달 배경 통일 */
+  /* ── 사이드바 레이아웃 시스템 ── */
+  .guild-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+  .guild-sidebar {
+    width: var(--sidebar-width);
+    min-height: 100vh;
+    background: var(--guild-bg-sidebar);
+    border-right: 1px solid rgba(124,58,237,0.12);
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .guild-main {
+    margin-left: var(--sidebar-width);
+    flex: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .guild-topbar {
+    height: var(--topbar-height);
+    background: rgba(13,13,26,0.85);
+    border-bottom: 1px solid rgba(124,58,237,0.10);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    padding: 0 1.5rem;
+    justify-content: space-between;
+  }
+  .guild-content {
+    flex: 1;
+    padding: 1.5rem;
+  }
+  @media (max-width: 768px) {
+    .guild-sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+    }
+    .guild-sidebar.open {
+      transform: translateX(0);
+    }
+    .guild-main {
+      margin-left: 0;
+    }
+  }
+
+  /* ── 사이드바 네비 아이템 ── */
+  .sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--guild-text-3);
+    transition: all 0.15s ease;
+    cursor: pointer;
+    margin: 1px 0.5rem;
+    border: 1px solid transparent;
+    text-align: left;
+    width: calc(100% - 1rem);
+    background: transparent;
+  }
+  .sidebar-nav-item:hover {
+    color: var(--guild-text-1);
+    background: rgba(124,58,237,0.08);
+    border-color: rgba(124,58,237,0.12);
+  }
+  .sidebar-nav-item.active {
+    color: #c4b5fd;
+    background: rgba(124,58,237,0.16);
+    border-color: rgba(124,58,237,0.22);
+    box-shadow: 0 0 0 1px rgba(124,58,237,0.08) inset;
+  }
+  .sidebar-nav-item .nav-badge {
+    margin-left: auto;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background: rgba(124,58,237,0.25);
+    color: #c4b5fd;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+  }
+  .sidebar-section-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--guild-text-4);
+    padding: 1.25rem 1.25rem 0.375rem;
+  }
+
+  /* ── 패널/카드 새 배경 ── */
   .bg-\[\#070d1a\]\/95,
   .bg-\[\#070d1a\]\/96 {
-    background: rgba(8,12,22,0.96) !important;
+    background: rgba(18,18,31,0.96) !important;
   }
   .bg-\[\#0a1632\] {
-    background: #0d1526 !important;
+    background: #16162a !important;
   }
   .bg-\[\#0d1525\] {
-    background: #0a1020 !important;
+    background: #12121f !important;
   }
 
   /* 스크롤바 */
@@ -3206,13 +3451,13 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
     <>
       <style>{GLOBAL_BASE_CSS}{generateThemeCSS("amber")}{LIGHT_MODE_STYLES}</style>
       <div
-        className="relative min-h-screen overflow-hidden text-white selection:bg-amber-300/25"
+        className="relative min-h-screen overflow-hidden text-white selection:bg-purple-300/20"
         style={{
           background: isLight
             ? "#f5f0e8"
             : splineEnabled
             ? "transparent"
-            : "#050912",
+            : "#0d0d1a",
         }}
       >
       {/* ── Spline 3D 배경 (다크 모드 전용) ── */}
@@ -3274,7 +3519,7 @@ const PageShell = ({ children, settings: settingsProp }: { children: React.React
           {/* ambient glow */}
           {!isLight && (
             <motion.div
-              className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full blur-[148px]" style={{ background: `rgba(var(--ga-r400, 167,139,250), 0.09)` }}
+              className="absolute left-1/2 top-[-220px] h-[520px] w-[980px] -translate-x-1/2 rounded-full blur-[148px]" style={{ background: `rgba(124,58,237, 0.07)` }}
               animate={{ opacity: [0.28, 0.46, 0.28], scale: [0.98, 1.04, 0.98] }}
               transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
             />
@@ -3837,7 +4082,7 @@ const Hero = ({ settings, posts, user, profile, onOpenRaidCalendar, onNavigateTo
   return (
     <div className="relative overflow-hidden">
       {/* 배경 */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.07),transparent_40%),radial-gradient(ellipse_at_top_right,rgba(245,194,105,0.08),transparent_36%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(124,58,237,0.09),transparent_40%),radial-gradient(ellipse_at_top_right,rgba(109,40,217,0.07),transparent_36%)]" />
 
       <div className="relative z-10 mx-auto w-full max-w-7xl px-3 sm:px-6 pb-4 pt-6">
 
@@ -4381,30 +4626,91 @@ const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
   );
 };
 
+// ═══════════════════════════════════════════════════════════
+// ── Sidebar — 새 사이드바 네비게이션 (구 Navbar 대체)
+// ═══════════════════════════════════════════════════════════
+
+// 구 Navbar를 사이드바 호환용으로 유지 (내부에서 사이드바로 렌더)
 const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelector, unreadMsgCount, onMsgRead }: any) => {
+  // 빈 컴포넌트 — 사이드바가 직접 렌더됨
+  return null;
+};
+
+const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelector, unreadMsgCount, settings, mobileOpen, onMobileClose }: any) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const navItems = [
-    { id: "home", label: "홈" },
-    { id: "posts", label: "게시판" },
-    { id: "ranking", label: "랭킹" },
-    { id: "guild", label: "길드" },
-    ...(user ? [{ id: "shop", label: "포인트샵" }, { id: "myroom", label: "마이룸" }, { id: "note", label: "개인노트" }] : []),
-    ...(profile?.role === "admin" ? [{ id: "admin", label: "관리자" }] : []),
-    ...(user ? [] : [{ id: "login", label: "로그인" }, { id: "signup", label: "회원가입" }]),
-  ];
-
+  const guildName = (settings?.guild_name || "쁘밍").trim() || "쁘밍";
   const displayName =
     profile?.nickname ||
     profile?.display_name ||
     profile?.character_name ||
-    profile?.email ||
     (user?.email ? String(user.email).split("@")[0] : "Guest");
+  const avatarText = String(displayName || "G").slice(0, 1).toUpperCase();
+  const isAdmin = profile?.role === "admin";
 
-  const roleLabel = profile?.role === "admin" ? "Administrator" : user ? "Guild Member" : "Guest";
-  const avatarSeed = String(displayName || "G").trim();
-  const avatarText = avatarSeed.slice(0, 1).toUpperCase();
+  const handleMove = (tab: string) => {
+    setActiveTab(tab);
+    onMobileClose?.();
+    setIsProfileMenuOpen(false);
+  };
+
+  // 사이드바 섹션 구성 — 이미지의 레이아웃 그대로
+  const sections = [
+    {
+      label: null,
+      items: [
+        { id: "home", icon: "🏠", label: "홈" },
+      ],
+    },
+    {
+      label: "길드",
+      items: [
+        { id: "guild", icon: "ℹ️", label: "길드 정보" },
+        { id: "guild", icon: "👥", label: "길드원", badge: null },
+        { id: "ranking", icon: "🏆", label: "길드 랭킹" },
+        { id: "shop", icon: "🛡️", label: "길드 혜택" },
+      ],
+    },
+    {
+      label: "레이드",
+      items: [
+        { id: "home", icon: "📅", label: "레이드 일정", isRaidCalendar: true },
+        { id: "home", icon: "📋", label: "레이드 기록" },
+        { id: "posts", icon: "👫", label: "파티 모집" },
+      ],
+    },
+    {
+      label: "커뮤니티",
+      items: [
+        { id: "posts", icon: "📢", label: "공지사항" },
+        { id: "posts", icon: "💬", label: "자유 게시판" },
+        { id: "posts", icon: "❓", label: "질문 게시판" },
+        { id: "posts", icon: "📖", label: "공략 노트" },
+      ],
+    },
+    {
+      label: "기록실",
+      items: [
+        { id: "guild", icon: "🗂️", label: "길드 히스토리" },
+        { id: "ranking", icon: "🥇", label: "업적" },
+      ],
+    },
+    ...(user ? [{
+      label: "개인",
+      items: [
+        { id: "myroom", icon: "👤", label: "마이룸" },
+        { id: "note", icon: "📝", label: "개인 노트" },
+        { id: "shop", icon: "🛒", label: "포인트 상점" },
+      ],
+    }] : []),
+    ...(isAdmin ? [{
+      label: "관리",
+      items: [
+        { id: "admin", icon: "⚙️", label: "관리자 패널" },
+      ],
+    }] : []),
+  ];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -4412,239 +4718,144 @@ const Navbar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelect
         setIsProfileMenuOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleMove = (tab: string) => {
-    setActiveTab(tab);
-    setIsProfileMenuOpen(false);
-  };
-
   return (
-    <nav className="fixed left-0 right-0 top-0 z-50 backdrop-blur-2xl" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "linear-gradient(180deg,rgba(8,12,22,0.94),rgba(5,9,18,0.88))", boxShadow: "0 4px 32px rgba(0,0,0,0.28)" }}>
-      <div className="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between px-3 sm:px-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => handleMove("home")}
-            className="group flex items-center gap-3 px-3 py-2 transition-all rounded-2xl"
-            style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.08)`; (e.currentTarget as HTMLButtonElement).style.borderColor=`rgba(var(--ga-r400,167,139,250),0.22)`; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.03)"; (e.currentTarget as HTMLButtonElement).style.borderColor="rgba(255,255,255,0.08)"; }}
+    <>
+      {/* 모바일 오버레이 */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 z-30 md:hidden"
+          onClick={onMobileClose}
+        />
+      )}
+
+      <aside
+        className={cn(
+          "guild-sidebar",
+          mobileOpen ? "open" : ""
+        )}
+        style={{ background: "linear-gradient(180deg, #0e0e1c 0%, #0b0b18 100%)" }}
+      >
+        {/* ── 로고 영역 ── */}
+        <div className="flex flex-col items-center py-6 px-4 border-b border-purple-900/20">
+          <div
+            className="flex items-center justify-center w-12 h-12 rounded-2xl mb-3"
+            style={{
+              background: "linear-gradient(135deg, rgba(124,58,237,0.25), rgba(109,40,217,0.15))",
+              border: "1px solid rgba(124,58,237,0.30)",
+              boxShadow: "0 8px 24px rgba(124,58,237,0.20)",
+            }}
           >
+            <Shield size={22} style={{ color: "#c4b5fd" }} />
+          </div>
+          <div
+            className="text-[9px] font-semibold uppercase tracking-[0.32em] mb-0.5"
+            style={{ color: "rgba(196,181,253,0.55)" }}
+          >
+            Guild Residence
+          </div>
+          <div
+            className="text-lg font-bold tracking-tight"
+            style={{
+              background: "linear-gradient(90deg, #fff 20%, #c4b5fd 70%, #a78bfa)",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            {guildName}
+          </div>
+        </div>
+
+        {/* ── 네비게이션 ── */}
+        <nav className="flex-1 py-3 overflow-y-auto">
+          {sections.map((section, sIdx) => (
+            <div key={sIdx}>
+              {section.label && (
+                <div className="sidebar-section-label">{section.label}</div>
+              )}
+              {section.items.map((item: any, iIdx) => {
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={`${sIdx}-${iIdx}`}
+                    onClick={() => handleMove(item.id)}
+                    className={cn("sidebar-nav-item", isActive ? "active" : "")}
+                  >
+                    <span className="text-[14px] leading-none shrink-0">{item.icon}</span>
+                    <span className="truncate">{item.label}</span>
+                    {item.badge != null && item.badge > 0 && (
+                      <span className="nav-badge">{item.badge}</span>
+                    )}
+                    {item.id === "posts" && item.label === "공지사항" && (
+                      <span className="nav-badge" style={{ background: "rgba(248,113,113,0.2)", color: "#f87171" }}>
+                        3
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {/* ── 접속 중인 길드원 ── */}
+        <div
+          className="mx-3 mb-3 rounded-xl p-3"
+          style={{
+            background: "rgba(124,58,237,0.06)",
+            border: "1px solid rgba(124,58,237,0.12)",
+          }}
+        >
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--guild-text-4)" }}>
+              접속 중인 길드원
+            </span>
+            <span className="text-[10px] font-semibold" style={{ color: "#c4b5fd" }}>12 / 38</span>
+          </div>
+          <div className="flex -space-x-1.5">
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
+                style={{
+                  borderColor: "#0e0e1c",
+                  background: `linear-gradient(135deg, hsl(${260 + i * 30}, 60%, 45%), hsl(${280 + i * 30}, 50%, 35%))`,
+                  color: "#fff",
+                  zIndex: 4 - i,
+                }}
+              >
+                {["수", "알", "반", "농"][i]}
+              </div>
+            ))}
             <div
-              className="flex h-9 w-9 items-center justify-center rounded-xl transition-all"
-              style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.25)`, background: `rgba(var(--ga-r400,167,139,250),0.12)`, color: `var(--ga-200,#ddd6fe)` }}
+              className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-[9px] font-bold"
+              style={{ borderColor: "#0e0e1c", background: "rgba(124,58,237,0.25)", color: "#c4b5fd" }}
             >
-              <Shield size={16} />
+              +9
             </div>
-            <div className="hidden text-left sm:block">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.28em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
-                {profile?.role === "admin" ? "👑 Admin Console" : "Guild Service"}
-              </div>
-              <div className="text-sm font-semibold tracking-[0.02em] text-white">
-                {profile?.role === "admin" ? "Control Center" : "Guild Workspace"}
-              </div>
-            </div>
+          </div>
+          <button
+            className="w-full mt-2.5 rounded-lg py-1.5 text-[10px] font-semibold transition-all"
+            style={{
+              background: "rgba(124,58,237,0.14)",
+              border: "1px solid rgba(124,58,237,0.22)",
+              color: "#c4b5fd",
+            }}
+            onMouseEnter={e => { (e.currentTarget).style.background = "rgba(124,58,237,0.22)"; }}
+            onMouseLeave={e => { (e.currentTarget).style.background = "rgba(124,58,237,0.14)"; }}
+          >
+            전체 보기
           </button>
         </div>
-
-        <div
-          className="hidden items-center gap-1 p-1.5 backdrop-blur-md md:flex"
-          style={{ borderRadius: "var(--guild-radius-md,16px)", border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.025)" }}
-        >
-          {navItems.map((item) => {
-            const active = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleMove(item.id)}
-                className="relative rounded-xl px-4 py-2 text-sm font-semibold transition-all"
-                style={active ? {
-                  background: `rgba(var(--ga-r400,167,139,250),0.14)`,
-                  color: `var(--ga-100,#ede9fe)`,
-                  boxShadow: `inset 0 0 0 1px rgba(var(--ga-r400,167,139,250),0.18), 0 4px 16px rgba(var(--ga-r400,167,139,250),0.12)`,
-                } : { color: "var(--guild-text-3,#5C6882)" }}
-                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = "var(--guild-text-1,#F1F0FF)"; }}
-                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = "var(--guild-text-3,#5C6882)"; }}
-              >
-                <span className="relative z-10">{item.label}</span>
-                {active && (
-                  <span
-                    className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full"
-                    style={{ background: `linear-gradient(90deg,transparent,var(--ga-300,#c4b5fd),transparent)` }}
-                  />
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* 관리자 전용: 테마 선택기 */}
-          {profile?.role === "admin" && (
-            <div className="hidden items-center gap-2 rounded-[1.1rem] border border-amber-200/10 bg-white/[0.03] px-3 py-2 md:flex">
-              <span className="text-[9px] font-bold uppercase tracking-[0.22em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
-                👑 Theme
-              </span>
-              <ThemeSwatchPicker />
-            </div>
-          )}
-          <ThemeToggleButton />
-          {user ? (
-            <>
-              <button
-                className="hidden h-10 w-10 items-center justify-center rounded-xl transition-all hover:-translate-y-0.5 md:flex"
-                style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "var(--guild-text-2,#A0AAC0)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.10)`; (e.currentTarget as HTMLButtonElement).style.color=`var(--ga-200,#ddd6fe)`; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.03)"; (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-2,#A0AAC0)"; }}
-                title="알림"
-              >
-                <Bell size={16} />
-              </button>
-
-              <div className="relative" ref={profileMenuRef}>
-                <button
-                  onClick={() => setIsProfileMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-3 rounded-2xl px-3 py-2 transition-all"
-                  style={{ border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.08)`; (e.currentTarget as HTMLButtonElement).style.borderColor=`rgba(var(--ga-r400,167,139,250),0.22)`; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.03)"; (e.currentTarget as HTMLButtonElement).style.borderColor="rgba(255,255,255,0.08)"; }}
-                >
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-semibold"
-                    style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.25)`, background: `rgba(var(--ga-r400,167,139,250),0.14)`, color: `var(--ga-100,#ede9fe)` }}
-                  >
-                    {avatarText}
-                  </div>
-                  <div className="hidden text-left sm:block">
-                    <div className="max-w-[140px] truncate text-sm font-semibold text-white">
-                      {displayName}
-                    </div>
-                    <div className="text-[11px] text-stone-400">
-                      {roleLabel}
-                    </div>
-                  </div>
-                  <ChevronRight
-                    size={16}
-                    className={`text-stone-500 transition-transform ${
-                      isProfileMenuOpen ? "rotate-90 text-amber-200" : ""
-                    }`}
-                  />
-                </button>
-
-                <AnimatePresence>
-                  {isProfileMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                      transition={{ duration: 0.16 }}
-                      className="absolute right-0 top-[calc(100%+8px)] sm:top-[calc(100%+12px)] z-[80] w-56 sm:w-64 overflow-hidden p-2 backdrop-blur-2xl"
-                      style={{ borderRadius: "var(--guild-radius-lg,20px)", border: "1px solid rgba(255,255,255,0.10)", background: "linear-gradient(180deg,rgba(13,21,38,0.98),rgba(8,12,22,0.96))", boxShadow: "0 24px_80px rgba(0,0,0,0.55), 0 0 0 1px rgba(var(--ga-r400,167,139,250),0.08) inset" }}
-                    >
-                      <div className="rounded-2xl p-3" style={{ border: `1px solid rgba(var(--ga-r400,167,139,250),0.14)`, background: `rgba(var(--ga-r400,167,139,250),0.07)` }}>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
-                          Signed In
-                        </div>
-                        <div className="mt-2 text-base font-semibold text-white">{displayName}</div>
-                        <div className="mt-1 text-xs text-stone-400">{roleLabel}</div>
-                      </div>
-
-                      <div className="mt-2 space-y-1">
-                        <button
-                          onClick={() => { onShowSelector?.(); setIsProfileMenuOpen(false); }}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-all"
-                          style={{ color: `var(--ga-300,#c4b5fd)` }}
-                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background=`rgba(var(--ga-r400,167,139,250),0.08)`; }}
-                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background="transparent"; }}
-                        >
-                          <span>🏠 섹션 선택으로</span>
-                          <ChevronRight size={15} />
-                        </button>
-
-                        <button
-                          onClick={() => handleMove("myroom")}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
-                        >
-                          <span className="flex items-center gap-2">
-                            마이룸 이동
-                            {unreadMsgCount > 0 && (
-                              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                                {unreadMsgCount > 9 ? "9+" : unreadMsgCount}
-                              </span>
-                            )}
-                          </span>
-                          <ChevronRight size={15} />
-                        </button>
-
-                        <button
-                          onClick={() => handleMove("note")}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
-                        >
-                          <span>📝 개인노트</span>
-                          <ChevronRight size={15} />
-                        </button>
-
-                        <button
-                          onClick={() => handleMove("home")}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
-                        >
-                          <span>홈으로 이동</span>
-                          <ChevronRight size={15} />
-                        </button>
-
-                        {profile?.role === "admin" && (
-                          <button
-                            onClick={() => handleMove("admin")}
-                            className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-stone-300 transition-all hover:bg-white/[0.05] hover:text-white"
-                          >
-                            <span>관리자 패널</span>
-                            <ChevronRight size={15} />
-                          </button>
-                        )}
-
-                        <div className="my-1 h-px bg-white/8" />
-
-                        <button
-                          onClick={onLogout}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-rose-300 transition-all hover:bg-rose-400/10 hover:text-rose-200"
-                        >
-                          <span>로그아웃</span>
-                          <ChevronRight size={15} />
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </>
-          ) : (
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <button
-                onClick={() => handleMove("login")}
-                className="rounded-xl px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-all"
-                style={{ border: "1px solid rgba(255,255,255,0.09)", background: "rgba(255,255,255,0.04)", color: "var(--guild-text-2,#A0AAC0)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color="#fff"; (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.08)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color="var(--guild-text-2,#A0AAC0)"; (e.currentTarget as HTMLButtonElement).style.background="rgba(255,255,255,0.04)"; }}
-              >
-                로그인
-              </button>
-              <button
-                onClick={() => handleMove("signup")}
-                className="rounded-xl px-3 py-2 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold text-white transition-all"
-                style={{ background: `linear-gradient(135deg,var(--ga-400,#a78bfa),var(--ga-500,#8b5cf6))`, border: `1px solid rgba(var(--ga-r400,167,139,250),0.30)`, boxShadow: `var(--ga-shadow-btn,0 4px 16px rgba(139,92,246,0.35))` }}
-              >
-                회원가입
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </nav>
+      </aside>
+    </>
   );
 };
+
 
 const ImageUploader = ({
   onUpload,
