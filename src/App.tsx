@@ -1628,6 +1628,7 @@ function AppInner() {
   const pendingTabRef = useRef<string | null>(null);
   const [showSelector, setShowSelector] = useState(false);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const fetchUnreadMsgCount = useCallback(async (uid: string) => {
     if (!supabase || !uid) return;
@@ -1926,8 +1927,6 @@ const fetchInitialData = async () => {
       </PageShell>
     );
   }
-
-  const [mobileSidebarOpen, setMobileSidebarOpen] = React.useState(false);
 
   const pageTitleMap: Record<string, string> = {
     home: "홈",
