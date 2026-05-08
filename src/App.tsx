@@ -16,7 +16,7 @@ import {
   Edit3,
   CalendarDays,
   Users,
-  Sparkles,Q
+  Sparkles,
   Swords,
   Trophy,
   BarChart3,
