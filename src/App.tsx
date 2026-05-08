@@ -12522,6 +12522,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
           <RaidMemoPanel user={user} />
         </div>
       </div>
+      )} {/* end characters tab */}
 
       {/* ══════════════════════════════════════════════
           캐릭터 전투정보실 모달
@@ -12783,9 +12784,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
         )}
       </AnimatePresence>
 
-    </div>
-    )} {/* end characters tab */}
-
       {/* ── 쪽지 탭 ── */}
       {myRoomTab === "messages" && (
         <div className="space-y-4">
@@ -12961,6 +12959,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
         </div>
       )} {/* end messages tab */}
 
+    </div>
   );
 };
 const RankingPage = ({ user, profile }: any) => {
