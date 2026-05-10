@@ -16997,7 +16997,7 @@ const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
   const classAvgs = Object.entries(classMap)
     .map(([cls, lvs]) => ({ cls, avg: lvs.reduce((a, b) => a + b, 0) / lvs.length, count: lvs.length }))
     .sort((a, b) => b.avg - a.avg)
-    .slice(0, 6);
+    .slice(0, 10);
 
   const barMax = classAvgs.length > 0 ? Math.max(...classAvgs.map(c => c.avg)) : 1;
   const totalForBand = bandCounts.reduce((s, b) => s + b.count, 0);
@@ -17108,27 +17108,27 @@ const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
 
           {/* ── 구간 분포 ── */}
           <div>
-            <div className="text-[10px] uppercase tracking-[0.2em] font-semibold mb-2.5" style={{ color: "rgba(155,159,196,0.65)" }}>레벨 구간 분포</div>
-            <div className="space-y-2">
+            <div className="text-[10px] uppercase tracking-[0.2em] font-semibold mb-3" style={{ color: "rgba(155,159,196,0.65)" }}>레벨 구간 분포</div>
+            <div className="space-y-2.5">
               {bandCounts.map(b => {
                 const pct = totalForBand > 0 ? (b.count / totalForBand) * 100 : 0;
                 return (
                   <div key={b.label} className="flex items-center gap-2.5">
-                    <div className="w-12 text-right text-[10px] font-bold shrink-0" style={{ color: b.color }}>{b.label}</div>
-                    <div className="flex-1 h-4 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+                    <div className="w-14 text-right text-[12px] font-bold shrink-0" style={{ color: b.color }}>{b.label}</div>
+                    <div className="flex-1 h-6 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
                       <div
-                        className="h-full rounded-full flex items-center justify-end pr-1.5 transition-all duration-700"
+                        className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
                         style={{
                           width: `${Math.max(pct, pct > 0 ? 4 : 0)}%`,
                           background: `linear-gradient(90deg, ${b.color}55, ${b.color}cc)`,
                         }}
                       >
                         {pct >= 8 && (
-                          <span className="text-[8px] font-bold text-white/90">{b.count}</span>
+                          <span className="text-[10px] font-bold text-white/95">{b.count}</span>
                         )}
                       </div>
                     </div>
-                    <div className="w-10 text-[10px] shrink-0" style={{ color: "rgba(155,159,196,0.7)" }}>
+                    <div className="w-12 text-[11px] shrink-0" style={{ color: "rgba(155,159,196,0.7)" }}>
                       {b.count}명
                     </div>
                   </div>
@@ -17140,29 +17140,29 @@ const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
           {/* ── 직업별 평균 레벨 ── */}
           {classAvgs.length > 0 && (
             <div>
-              <div className="text-[10px] uppercase tracking-[0.2em] font-semibold mb-2.5" style={{ color: "rgba(155,159,196,0.65)" }}>직업별 평균 (상위 6)</div>
-              <div className="space-y-2">
+              <div className="text-[10px] uppercase tracking-[0.2em] font-semibold mb-3" style={{ color: "rgba(155,159,196,0.65)" }}>직업별 평균 (상위 10)</div>
+              <div className="space-y-2.5">
                 {classAvgs.map(({ cls, avg: cavg, count }) => {
                   const pct = barMax > 0 ? (cavg / barMax) * 100 : 0;
                   return (
                     <div key={cls} className="flex items-center gap-2.5">
-                      <div className="w-16 text-[10px] truncate shrink-0" style={{ color: "rgba(196,181,253,0.85)" }}>{cls}</div>
-                      <div className="flex-1 h-4 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
+                      <div className="w-20 text-[11px] font-medium truncate shrink-0" style={{ color: "rgba(196,181,253,0.9)" }}>{cls}</div>
+                      <div className="flex-1 h-6 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
                         <div
-                          className="h-full rounded-full flex items-center justify-end pr-1.5 transition-all duration-700"
+                          className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
                           style={{
                             width: `${pct}%`,
-                            background: "linear-gradient(90deg, rgba(167,139,250,0.35), rgba(167,139,250,0.85))",
+                            background: "linear-gradient(90deg, rgba(167,139,250,0.4), rgba(167,139,250,0.9))",
                           }}
                         >
                           {pct >= 20 && (
-                            <span className="text-[8px] font-bold" style={{ color: "#ede9fe" }}>{cavg.toFixed(0)}</span>
+                            <span className="text-[10px] font-bold" style={{ color: "#ede9fe" }}>{cavg.toFixed(0)}</span>
                           )}
                         </div>
                       </div>
-                      <div className="w-16 text-right text-[10px] shrink-0">
+                      <div className="w-16 text-right text-[11px] shrink-0">
                         <span className="font-bold" style={{ color: "#c4b5fd" }}>{cavg.toFixed(2)}</span>
-                        <span className="ml-1" style={{ color: "rgba(155,159,196,0.5)" }}>({count})</span>
+                        <span className="ml-1" style={{ color: "rgba(155,159,196,0.55)" }}>({count})</span>
                       </div>
                     </div>
                   );
@@ -17490,7 +17490,7 @@ const GuildMembersPage = () => {
   }, [members]);
 
   return (
-    <div className="max-w-[1500px] mx-auto px-3 sm:px-5 py-4 sm:py-5">
+    <div className="w-full px-3 lg:pl-0 lg:pr-4 py-3 sm:py-4">
       {/* ── 컴팩트 헤더 ── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <div>
@@ -17623,9 +17623,9 @@ const GuildMembersPage = () => {
       {loading ? (
         <div className="text-center py-10" style={{ color: "rgba(155,159,196,0.6)" }}>길드원 불러오는 중...</div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5">
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-4">
           {/* ◀ 좌측: 캐릭터 카드 (정사각형 헤더) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
             {filteredMembers.map((member: any) => {
               const { theme } = getPrimaryBadgeTheme(member);
               const armory     = armoryCache[member.character_name];
