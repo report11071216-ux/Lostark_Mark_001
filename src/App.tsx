@@ -9039,7 +9039,7 @@ const RaidDetailModal = ({
   const [myCharacterNames, setMyCharacterNames] = useState<string[]>([]);
   const [allDetails, setAllDetails] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
-  const [activeTab, setActiveTab] = useState<"info" | "participants">("info");
+  const [activeTab, setActiveTab] = useState<"info" | "participants">("participants");
   const [expandedGates, setExpandedGates] = useState<Set<number>>(new Set());
   const [allExpanded, setAllExpanded] = useState(false);
 
@@ -9332,7 +9332,7 @@ const RaidDetailModal = ({
         {/* ── 탭 ── */}
         {!isAnime && (
           <div className="relative flex gap-1 border-b border-white/[0.07] px-4 sm:px-6 pt-3 pb-0">
-            {([["info", "레이드 정보"], ["participants", "참가자 목록"]] as const).map(([id, label]) => (
+            {([["participants", "참가자 목록"], ["info", "레이드 정보"]] as const).map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
@@ -9860,30 +9860,78 @@ const ParticipantItem = ({
 
   const showCancel = canCancel || isMine;
 
+  // 캐릭터 아바타 (guild_members.avatar_url → /api/lostark 순)
+  const avatarInfo = useCharacterAvatar(participant.character_name);
+  const avatarUrl = avatarInfo?.avatar_url || null;
+  const fallbackBg = getCharacterFallbackColor(participant.character_name || "?");
+  const initial = getCharacterInitial(participant.character_name);
+  const isSupport = String(participant.position || "").trim() === "서포터";
+
   return (
-    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div>
-        <div className="font-bold text-white">{participant.character_name}</div>
-        <div className="text-sm text-slate-400 mt-1">
-          {participant.class_name} · {participant.item_level}
+    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-3.5">
+      {/* ── 아바타 (정사각형 라운드) ── */}
+      <div
+        className="relative h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-2xl"
+        style={{
+          background: fallbackBg,
+          border: isSupport
+            ? "1px solid rgba(34,211,238,0.35)"
+            : "1px solid rgba(167,139,250,0.30)",
+          boxShadow: isSupport
+            ? "0 6px 18px rgba(14,116,144,0.30)"
+            : "0 6px 18px rgba(76,29,149,0.30)",
+        }}
+      >
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={participant.character_name}
+            loading="lazy"
+            className="h-full w-full object-cover"
+            style={{ objectPosition: "top center" }}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-base sm:text-lg font-bold text-white/85">
+            {initial}
+          </div>
+        )}
+        {isMine && (
+          <div
+            className="absolute bottom-0.5 right-0.5 rounded-md px-1 py-0.5 text-[8px] font-bold leading-none text-white shadow"
+            style={{ background: "rgba(167,139,250,0.92)", border: "1px solid rgba(196,181,253,0.5)" }}
+          >
+            나
+          </div>
+        )}
+      </div>
+
+      {/* ── 이름 / 직업+템렙 ── */}
+      <div className="flex-1 min-w-0">
+        <div className="font-bold text-white truncate">{participant.character_name}</div>
+        <div className="text-xs mt-0.5 truncate" style={{ color: "rgba(155,159,196,0.75)" }}>
+          {participant.class_name} <span style={{ color: "rgba(155,159,196,0.4)" }}>·</span> <span style={{ color: "#fbbf24" }}>{participant.item_level}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className={`text-xs px-3 py-1 rounded-full ${
-          participant.position === "서포터"
-            ? "bg-amber-400/15 text-amber-200 border border-amber-400/20"
-            : "bg-amber-400/15 text-amber-200 border border-amber-400/20"
-        }`}>
+      {/* ── 포지션 / 취소 ── */}
+      <div className="flex items-center gap-2 shrink-0">
+        <span
+          className="text-[11px] font-semibold px-2.5 py-1 rounded-full"
+          style={
+            isSupport
+              ? { background: "rgba(34,211,238,0.12)", color: "#67e8f9", border: "1px solid rgba(34,211,238,0.28)" }
+              : { background: "rgba(167,139,250,0.12)", color: "#c4b5fd", border: "1px solid rgba(167,139,250,0.28)" }
+          }
+        >
           {participant.position || "참가"}
         </span>
 
         {showCancel && (
           <button
             onClick={handleLeave}
-            className="text-xs text-red-300 hover:text-red-200 font-bold"
+            className="text-[11px] text-rose-300 hover:text-rose-200 font-bold px-1.5"
           >
-            취소{isMine && !canCancel ? " (내 캐릭터)" : ""}
+            취소
           </button>
         )}
       </div>
@@ -17461,8 +17509,8 @@ const GuildMembersPage = () => {
 
   const filteredMembers = useMemo(() => {
     let result = members;
-    if (filter === "main") result = result.filter((m: any) => m.is_main);
-    if (filter === "support") result = result.filter((m: any) => m.role_hint === "서포터");
+    if (filter === "dealer") result = result.filter((m: any) => String(m.role_hint || "").trim() !== "서포터");
+    if (filter === "support") result = result.filter((m: any) => String(m.role_hint || "").trim() === "서포터");
     if (classFilter !== "all") {
       result = result.filter((m: any) => String(m.class_name || "").trim() === classFilter);
     }
@@ -17503,8 +17551,8 @@ const GuildMembersPage = () => {
         <div className="flex flex-wrap gap-1.5">
           {[
             ["all", "전체"],
-            ["main", "메인캐"],
-            ["support", "서폿"],
+            ["dealer", "딜러"],
+            ["support", "서포터"],
           ].map(([key, label]) => (
             <button
               key={key}
