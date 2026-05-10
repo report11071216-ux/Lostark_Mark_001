@@ -1159,7 +1159,7 @@ const HomeFeaturePortal = ({
       title: "레이드",
       subtitle: "주간 레이드 공략과 콘텐츠 정보를 한눈에 확인",
       badge: "Core Content",
-      icon: <Swords size={22} />,
+      icon: <Swords size={28} />,
       stats: "주요 레이드 콘텐츠",
       accentR: "167,139,250",
       accentHex: "#a78bfa",
@@ -1169,7 +1169,7 @@ const HomeFeaturePortal = ({
       title: "가디언 토벌",
       subtitle: "토벌 루트와 보상 흐름을 빠르게 확인",
       badge: "Field Hunt",
-      icon: <Shield size={22} />,
+      icon: <Shield size={28} />,
       stats: "토벌 정보 바로가기",
       accentR: "34,211,238",
       accentHex: "#22d3ee",
@@ -1179,7 +1179,7 @@ const HomeFeaturePortal = ({
       title: "클래스",
       subtitle: "직업별 특징과 세팅 정보를 정돈된 구조로 탐색",
       badge: "Class Index",
-      icon: <Sparkles size={22} />,
+      icon: <Sparkles size={28} />,
       stats: "캐릭터 빌드 탐색",
       accentR: "244,114,182",
       accentHex: "#f472b6",
@@ -1187,9 +1187,9 @@ const HomeFeaturePortal = ({
   ];
 
   return (
-    <section className="relative z-10 pb-3 md:pb-4">
+    <section className="relative z-10 pb-4 md:pb-6">
       {/* 좌측 정렬: 제목·설명 + "현재 선택" 인라인 핀 */}
-      <div className="mb-4">
+      <div className="mb-5">
         <div className="flex items-center gap-2.5 flex-wrap">
           <div className="text-[11px] font-medium uppercase tracking-[0.28em]" style={{ color: `var(--ga-300,#c4b5fd)` }}>
             Feature Gateway
@@ -1199,55 +1199,55 @@ const HomeFeaturePortal = ({
             <span>{contentView}</span>
           </span>
         </div>
-        <h2 className="mt-2 text-xl font-semibold tracking-[0.02em] text-white md:text-2xl">
+        <h2 className="mt-2 text-2xl font-semibold tracking-[0.02em] text-white md:text-3xl">
           핵심 콘텐츠 바로가기
         </h2>
-        <p className="mt-2 text-sm text-stone-400">
+        <p className="mt-2 text-sm md:text-base text-stone-400">
           자주 보는 콘텐츠를 더 빠르고 선명하게 모아둔 구간이야.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 max-w-[900px]">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((card) => {
           const active = contentView === card.key;
           return (
             <motion.button
               key={card.key}
-              whileHover={{ y: -4, scale: 1.008 }}
+              whileHover={{ y: -6, scale: 1.012 }}
               onClick={() => setContentView(card.key)}
-              className="group relative overflow-hidden p-4 text-left backdrop-blur-xl transition-all"
+              className="group relative overflow-hidden p-6 md:p-7 text-left backdrop-blur-xl transition-all min-h-[200px] md:min-h-[220px]"
               style={{
-                borderRadius: "1.5rem",
+                borderRadius: "1.75rem",
                 border: active
                   ? `1px solid rgba(${card.accentR},0.42)`
                   : "1px solid rgba(139,92,246,0.14)",
                 background: active
-                  ? `linear-gradient(160deg, rgba(${card.accentR},0.14) 0%, rgba(28,23,51,0.85) 55%, rgba(15,13,32,0.95) 100%)`
+                  ? `linear-gradient(160deg, rgba(${card.accentR},0.18) 0%, rgba(28,23,51,0.85) 55%, rgba(15,13,32,0.95) 100%)`
                   : "linear-gradient(180deg, rgba(28,23,51,0.55) 0%, rgba(15,13,32,0.75) 100%)",
                 boxShadow: active
-                  ? `0 18px 40px rgba(${card.accentR},0.18), inset 0 0 0 1px rgba(${card.accentR},0.10)`
-                  : "0 12px 32px rgba(0,0,0,0.22)",
+                  ? `0 22px 48px rgba(${card.accentR},0.22), inset 0 0 0 1px rgba(${card.accentR},0.10)`
+                  : "0 14px 36px rgba(0,0,0,0.24)",
               }}
             >
               {/* 상단 액센트 라인 */}
               <div
                 className="absolute top-0 left-0 right-0 h-px transition-opacity"
                 style={{
-                  background: `linear-gradient(90deg,transparent,rgba(${card.accentR},${active ? "0.65" : "0.25"}) 50%,transparent)`,
+                  background: `linear-gradient(90deg,transparent,rgba(${card.accentR},${active ? "0.7" : "0.28"}) 50%,transparent)`,
                 }}
               />
               {/* 배경 글로우 */}
               {active && (
                 <div
-                  className="pointer-events-none absolute top-0 right-0 h-24 w-24 opacity-60"
-                  style={{ background: `radial-gradient(circle, rgba(${card.accentR},0.22) 0%, transparent 70%)` }}
+                  className="pointer-events-none absolute -top-6 -right-6 h-36 w-36 opacity-70"
+                  style={{ background: `radial-gradient(circle, rgba(${card.accentR},0.26) 0%, transparent 70%)` }}
                 />
               )}
 
-              <div className="relative z-10">
+              <div className="relative z-10 flex h-full flex-col">
                 <div className="flex items-start justify-between gap-4">
                   <div
-                    className="flex h-11 w-11 items-center justify-center rounded-2xl transition-all"
+                    className="flex h-14 w-14 items-center justify-center rounded-2xl transition-all"
                     style={{
                       border: `1px solid rgba(${card.accentR},0.30)`,
                       background: `rgba(${card.accentR},0.14)`,
@@ -1268,23 +1268,23 @@ const HomeFeaturePortal = ({
                   </div>
                 </div>
 
-                <div className="mt-4">
-                  <div className="text-lg font-semibold text-white">{card.title}</div>
-                  <div className="mt-1.5 text-sm leading-6" style={{ color: "rgba(155,159,196,0.85)" }}>
+                <div className="mt-5">
+                  <div className="text-xl md:text-2xl font-semibold text-white">{card.title}</div>
+                  <div className="mt-2 text-sm md:text-[15px] leading-6" style={{ color: "rgba(155,159,196,0.85)" }}>
                     {card.subtitle}
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between gap-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div className="text-xs font-medium" style={{ color: "rgba(155,159,196,0.65)" }}>{card.stats}</div>
+                <div className="mt-auto flex items-center justify-between gap-3 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div className="text-xs md:text-sm font-medium" style={{ color: "rgba(155,159,196,0.7)" }}>{card.stats}</div>
                   <div
-                    className="rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all"
+                    className="rounded-xl px-3 py-1.5 text-[11px] md:text-xs font-semibold transition-all"
                     style={active
                       ? { border: `1px solid rgba(${card.accentR},0.35)`, background: `rgba(${card.accentR},0.18)`, color: card.accentHex }
                       : { border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "rgba(196,181,253,0.85)" }
                     }
                   >
-                    {active ? "현재 선택됨" : "열기"}
+                    {active ? "현재 선택됨" : "열기 ›"}
                   </div>
                 </div>
               </div>
@@ -2481,6 +2481,11 @@ const fetchInitialData = async () => {
           />
 
           <main className="guild-content pb-16 md:pb-6">
+          <GuildManageFAB
+            profile={profile}
+            setActiveTab={setActiveTab}
+            activeTab={activeTab}
+          />
           <AnimatePresence mode="wait">
             {activeTab === "home" && (
               <motion.div
@@ -5335,6 +5340,96 @@ const Hero = ({
   );
 };
 
+// ════════════════════════════════════════════════════════════
+// GuildManageFAB — 우측 하단 고정 길드관리/내정보 바로가기
+//   - 데스크톱(lg+)에서만 표시 (모바일은 하단 네비와 충돌 방지)
+//   - 홈 탭에서만 노출
+//   - admin이면 "길드 관리"(보라), 아니면 "내 정보"(시안)로 자동 분기
+//   - X 버튼으로 숨길 수 있고, 세션 동안 localStorage에 기억
+// ════════════════════════════════════════════════════════════
+const GuildManageFAB = ({
+  profile,
+  setActiveTab,
+  activeTab,
+}: {
+  profile: ProfileLike;
+  setActiveTab: (tab: string) => void;
+  activeTab: string;
+}) => {
+  const [hidden, setHidden] = useState<boolean>(() => {
+    try { return localStorage.getItem("guild_fab_hidden") === "1"; } catch { return false; }
+  });
+
+  if (activeTab !== "home" || hidden) return null;
+
+  const isAdmin = profile?.role === "admin";
+  const targetTab = isAdmin ? "admin" : "myroom";
+  const label = isAdmin ? "길드 관리" : "내 정보";
+  const sub = isAdmin ? "Admin Console" : "My Room";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 30, scale: 0.9 }}
+      transition={{ duration: 0.4, ease: "easeOut", delay: 0.2 }}
+      className="fixed bottom-6 right-6 z-40 hidden lg:flex flex-col items-end gap-2"
+    >
+      <button
+        onClick={() => {
+          setHidden(true);
+          try { localStorage.setItem("guild_fab_hidden", "1"); } catch {}
+        }}
+        className="h-6 w-6 flex items-center justify-center rounded-full bg-black/40 border border-white/10 text-slate-400 hover:text-white hover:bg-black/60 transition-all opacity-60 hover:opacity-100"
+        aria-label="고정 버튼 숨기기"
+        title="이 세션에서 숨기기"
+      >
+        <X size={12} />
+      </button>
+
+      <motion.button
+        whileHover={{ scale: 1.04, y: -2 }}
+        whileTap={{ scale: 0.97 }}
+        onClick={() => setActiveTab(targetTab)}
+        className="group relative overflow-hidden flex flex-col items-center justify-center gap-2 h-[120px] w-[120px] rounded-3xl text-white transition-all"
+        style={{
+          background: isAdmin
+            ? "linear-gradient(160deg, rgba(167,139,250,0.92) 0%, rgba(124,58,237,0.95) 50%, rgba(76,29,149,0.95) 100%)"
+            : "linear-gradient(160deg, rgba(34,211,238,0.92) 0%, rgba(14,165,233,0.95) 50%, rgba(15,118,110,0.95) 100%)",
+          border: isAdmin
+            ? "1px solid rgba(196,181,253,0.45)"
+            : "1px solid rgba(103,232,249,0.45)",
+          boxShadow: isAdmin
+            ? "0 18px 44px rgba(76,29,149,0.45), inset 0 0 0 1px rgba(255,255,255,0.08)"
+            : "0 18px 44px rgba(14,116,144,0.45), inset 0 0 0 1px rgba(255,255,255,0.08)",
+        }}
+      >
+        <div
+          className="pointer-events-none absolute -top-8 -right-8 h-28 w-28 opacity-60 group-hover:opacity-90 transition-opacity"
+          style={{
+            background: isAdmin
+              ? "radial-gradient(circle, rgba(196,181,253,0.45) 0%, transparent 70%)"
+              : "radial-gradient(circle, rgba(103,232,249,0.45) 0%, transparent 70%)",
+          }}
+        />
+
+        <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-2xl"
+          style={{
+            background: "rgba(255,255,255,0.14)",
+            border: "1px solid rgba(255,255,255,0.22)",
+          }}
+        >
+          {isAdmin ? <Settings size={22} /> : <Crown size={22} />}
+        </div>
+        <div className="relative z-10 text-center">
+          <div className="text-[13px] font-bold tracking-tight">{label}</div>
+          <div className="text-[9px] mt-0.5 uppercase tracking-[0.18em] opacity-80">{sub}</div>
+        </div>
+      </motion.button>
+    </motion.div>
+  );
+};
+
 const MonthlyRaidCalendarModal = ({ open, onClose, user, profile }: any) => {
   useEffect(() => {
     if (!open) return;
@@ -6992,7 +7087,7 @@ const MainContentViewer = ({ type }: { type: string }) => {
   }, [type]);
 
   return (
-    <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 pt-1 pb-8 max-w-[900px]">
+    <section className="grid grid-cols-2 gap-4 pt-1 pb-8 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {items.length === 0 && (
         <div className="col-span-full text-center text-slate-600 font-semibold py-10 uppercase">
           No Contents Registered.
@@ -7001,24 +7096,24 @@ const MainContentViewer = ({ type }: { type: string }) => {
 
       {items.map((item) => (
         <motion.div
-          whileHover={{ y: -5 }}
+          whileHover={{ y: -6 }}
           key={item.id ?? item.sub_class}
           onClick={() => setSelectedItem(item)}
-          className="group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950/70 aspect-[0.95/1] cursor-pointer shadow-[0_18px_40px_rgba(2,6,23,0.3)] backdrop-blur-md"
+          className="group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-slate-950/70 aspect-square cursor-pointer shadow-[0_20px_44px_rgba(2,6,23,0.32)] backdrop-blur-md transition-all hover:border-amber-300/40"
         >
           <img
             src={
               item.image_url ||
               "https://images.unsplash.com/photo-1542751371-adc38448a05e"
             }
-            className="absolute inset-0 h-full w-full object-cover opacity-55 transition-transform duration-1000 group-hover:scale-110"
+            className="absolute inset-0 h-full w-full object-cover opacity-60 transition-transform duration-1000 group-hover:scale-110"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07111f] via-[#07111f]/35 to-transparent" />
-          <div className="absolute bottom-4 left-4 right-4 text-left">
+          <div className="absolute inset-0 bg-gradient-to-t from-[#07111f] via-[#07111f]/40 to-transparent" />
+          <div className="absolute bottom-5 left-5 right-5 text-left">
             <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.22em] text-amber-200">
               {type}
             </span>
-            <h3 className="text-base font-semibold tracking-tight leading-tight truncate text-white">
+            <h3 className="text-lg font-semibold tracking-tight leading-tight truncate text-white">
               {item.name || item.sub_class}
             </h3>
           </div>
