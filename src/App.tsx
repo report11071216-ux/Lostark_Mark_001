@@ -2501,7 +2501,7 @@ const fetchInitialData = async () => {
                   profile={profile}
                   setActiveTab={setActiveTab}
                   onOpenRaidCalendar={() => setIsRaidCalendarModalOpen(true)}
-                  onNavigateToNotices={() => { setPostInitialTab("notice"); setActiveTab("posts"); }}
+                  onNavigateToNotices={() => setActiveTab("notice")}
                   onRaidSearch={(raid: any) => {
                     setIsRaidCalendarModalOpen(true);
                     setTimeout(() => {
@@ -2523,6 +2523,50 @@ const fetchInitialData = async () => {
                 exit={{ opacity: 0 }}
               >
                 <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} initialTab={postInitialTab} />
+              </motion.div>
+            )}
+
+            {activeTab === "notice" && (
+              <motion.div
+                key="notice"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} lockedCategory="notice" />
+              </motion.div>
+            )}
+
+            {activeTab === "freeboard" && (
+              <motion.div
+                key="freeboard"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} lockedCategory="자유" />
+              </motion.div>
+            )}
+
+            {activeTab === "question" && (
+              <motion.div
+                key="question"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} lockedCategory="질문" />
+              </motion.div>
+            )}
+
+            {activeTab === "guide" && (
+              <motion.div
+                key="guide"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <PostBoard posts={posts} user={user} profile={profile} onRefresh={fetchInitialData} lockedCategory="공략" />
               </motion.div>
             )}
 
@@ -2668,7 +2712,7 @@ const fetchInitialData = async () => {
       >
         {[
           { id: "home",   icon: "🏠", label: "홈" },
-          { id: "posts",  icon: "📋", label: "게시판" },
+          { id: "freeboard",  icon: "📋", label: "게시판" },
           { id: "guild",  icon: "⚔️", label: "길드" },
           ...(user ? [{ id: "myroom", icon: "👤", label: "마이룸" }] : [{ id: "login", icon: "🔑", label: "로그인" }]),
         ].map((item) => {
@@ -4937,7 +4981,7 @@ const Hero = ({
               <div className="flex items-center justify-between mb-3.5">
                 <h3 className="text-base font-bold text-white">길드 활동</h3>
                 <button
-                  onClick={() => setActiveTab?.("posts")}
+                  onClick={() => setActiveTab?.("freeboard")}
                   className="text-[11px] font-medium hover:text-white transition-colors"
                   style={{ color: "rgba(155,159,196,0.7)" }}
                 >
@@ -6735,10 +6779,10 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
     {
       label: "커뮤니티",
       items: [
-        { id: "posts", icon: "📢", label: "공지사항" },
-        { id: "posts", icon: "💬", label: "자유 게시판" },
-        { id: "posts", icon: "❓", label: "질문 게시판" },
-        { id: "posts", icon: "📖", label: "공략 노트" },
+        { id: "notice",    icon: "📢", label: "공지사항" },
+        { id: "freeboard", icon: "💬", label: "자유 게시판" },
+        { id: "question",  icon: "❓", label: "질문 게시판" },
+        { id: "guide",     icon: "📖", label: "공략 노트" },
       ],
     },
     {
@@ -6842,7 +6886,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
                     {item.badge != null && item.badge > 0 && (
                       <span className="nav-badge">{item.badge}</span>
                     )}
-                    {item.id === "posts" && item.label === "공지사항" && (
+                    {item.id === "notice" && (
                       <span className="nav-badge" style={{ background: "rgba(248,113,113,0.2)", color: "#f87171" }}>
                         3
                       </span>
@@ -12365,20 +12409,28 @@ const PostDetailModal = ({ post, comments, user, profile, onClose, onDelete, onT
 };
 
 // ── PostBoard ──────────────────────────────────────────────
-const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
-  const [tab, setTab] = useState(initialTab || "all");
+const PostBoard = ({ posts, user, profile, onRefresh, initialTab, lockedCategory }: any) => {
+  // lockedCategory: "notice" | "자유" | "질문" | "공략" | undefined
+  // 지정되면 카테고리 탭 UI 숨김 + 해당 카테고리만 표시 + 헤더 타이틀 자동 변경
+  const [tab, setTab] = useState(lockedCategory || initialTab || "all");
   const [search, setSearch] = useState("");
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, any[]>>({});
   const [commentsEnabled, setCommentsEnabled] = useState(true);
 
+  // lockedCategory가 바뀌면 tab도 자동 동기화 (라우팅 시)
+  useEffect(() => {
+    if (lockedCategory) setTab(lockedCategory);
+  }, [lockedCategory]);
+
   const visiblePosts = useMemo(() => {
     const pinned = posts.filter((p: any) => p.is_pinned).sort((a: any, b: any) => +new Date(b.created_at) - +new Date(a.created_at));
     const normal = posts.filter((p: any) => !p.is_pinned).sort((a: any, b: any) => +new Date(b.created_at) - +new Date(a.created_at));
     let merged = [...pinned, ...normal];
-    if (tab === "notice") merged = merged.filter((p: any) => p.is_notice);
-    else if (tab !== "all") merged = merged.filter((p: any) => !p.is_notice && p.category === tab);
+    const effectiveTab = lockedCategory || tab;
+    if (effectiveTab === "notice") merged = merged.filter((p: any) => p.is_notice);
+    else if (effectiveTab !== "all") merged = merged.filter((p: any) => !p.is_notice && p.category === effectiveTab);
     if (search.trim()) {
       const q = search.toLowerCase();
       merged = merged.filter((p: any) =>
@@ -12388,7 +12440,7 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
       );
     }
     return merged;
-  }, [posts, tab, search]);
+  }, [posts, tab, search, lockedCategory]);
 
   const fetchComments = useCallback(async () => {
     if (!posts || posts.length === 0) { setCommentsByPost({}); return; }
@@ -12461,23 +12513,56 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
     </div>
   );
 
+  // 페이지별 메타 (lockedCategory 기준)
+  const pageMeta = useMemo(() => {
+    switch (lockedCategory) {
+      case "notice":
+        return { title: "공지사항", sub: "운영 공지 · 길드 알림", accent: "#fbbf24", accentR: "251,191,36", icon: "📢" };
+      case "자유":
+        return { title: "자유 게시판", sub: "잡담 · 일상 · 게시글 +5P · 댓글 +5P", accent: "#a78bfa", accentR: "167,139,250", icon: "💬" };
+      case "질문":
+        return { title: "질문 게시판", sub: "공략 · 세팅 · 운영 관련 질문", accent: "#22d3ee", accentR: "34,211,238", icon: "❓" };
+      case "공략":
+        return { title: "공략 노트", sub: "레이드 · 세팅 · 빌드 노하우", accent: "#34d399", accentR: "52,211,153", icon: "📖" };
+      default:
+        return { title: "Bulletin Board", sub: "게시글 +5P · 댓글 +5P", accent: "#a78bfa", accentR: "167,139,250", icon: "📋" };
+    }
+  }, [lockedCategory]);
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-6xl mx-auto px-4 py-8 md:px-12 md:py-12 text-left">
       {/* 헤더 */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-semibold uppercase tracking-tight md:text-4xl">Bulletin Board</h2>
-          <p className="text-slate-500 text-sm mt-2">게시글 +5P · 댓글 +5P</p>
+        <div className="flex items-start gap-3">
+          {lockedCategory && (
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-2xl text-2xl shrink-0 mt-1"
+              style={{
+                background: `rgba(${pageMeta.accentR},0.12)`,
+                border: `1px solid rgba(${pageMeta.accentR},0.28)`,
+              }}
+            >
+              {pageMeta.icon}
+            </div>
+          )}
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight md:text-4xl">{pageMeta.title}</h2>
+            <p className="text-slate-500 text-sm mt-2">{pageMeta.sub}</p>
+          </div>
         </div>
         <button
           onClick={() => setShowWriteModal(true)}
-          className="flex items-center gap-2 rounded-2xl bg-amber-500 hover:bg-amber-400 transition px-5 py-3 font-semibold text-sm text-black shadow-lg shadow-amber-500/20"
+          className="flex items-center gap-2 rounded-2xl px-5 py-3 font-semibold text-sm text-black shadow-lg transition"
+          style={{
+            background: `linear-gradient(160deg, ${pageMeta.accent}, ${pageMeta.accent}dd)`,
+            boxShadow: `0 4px 20px rgba(${pageMeta.accentR},0.30)`,
+          }}
         >
           <Plus size={17} /> 글 작성
         </button>
       </div>
 
-      {/* 검색 + 카테고리 필터 */}
+      {/* 검색 + 카테고리 필터 (lockedCategory 없을 때만 카테고리 칩 표시) */}
       <div className="mb-6 space-y-3">
         <div className="relative">
           <input
@@ -12492,29 +12577,31 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
             </button>
           )}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {POST_CATEGORIES.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={cn(
-                "rounded-full border px-4 py-2 text-[11px] font-semibold transition-all",
-                tab === key
-                  ? "border-amber-400/40 bg-amber-400/15 text-amber-200"
-                  : "border-white/10 bg-white/[0.04] text-slate-500 hover:border-white/20 hover:text-slate-300"
-              )}
-            >
-              {label}
-              {key !== "all" && (
-                <span className="ml-1.5 text-[10px] opacity-60">
-                  {key === "notice"
-                    ? posts.filter((p: any) => p.is_notice).length
-                    : posts.filter((p: any) => !p.is_notice && p.category === key).length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        {!lockedCategory && (
+          <div className="flex flex-wrap gap-2">
+            {POST_CATEGORIES.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={cn(
+                  "rounded-full border px-4 py-2 text-[11px] font-semibold transition-all",
+                  tab === key
+                    ? "border-amber-400/40 bg-amber-400/15 text-amber-200"
+                    : "border-white/10 bg-white/[0.04] text-slate-500 hover:border-white/20 hover:text-slate-300"
+                )}
+              >
+                {label}
+                {key !== "all" && (
+                  <span className="ml-1.5 text-[10px] opacity-60">
+                    {key === "notice"
+                      ? posts.filter((p: any) => p.is_notice).length
+                      : posts.filter((p: any) => !p.is_notice && p.category === key).length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 게시글 목록 */}
@@ -12588,6 +12675,8 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
             profile={profile}
             onRefresh={async () => { await onRefresh(); await fetchComments(); }}
             onClose={() => setShowWriteModal(false)}
+            defaultCategory={lockedCategory && lockedCategory !== "notice" ? lockedCategory : undefined}
+            forceNotice={lockedCategory === "notice"}
           />
         )}
       </AnimatePresence>
@@ -12614,13 +12703,13 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab }: any) => {
 };
 
 // ── PostWriteModal ─────────────────────────────────────────
-const PostWriteModal = ({ user, profile, onRefresh, onClose }: any) => {
+const PostWriteModal = ({ user, profile, onRefresh, onClose, defaultCategory, forceNotice }: any) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [category, setCategory] = useState("자유");
+  const [category, setCategory] = useState(defaultCategory || "자유");
   const [imgUrl, setImgUrl] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [isNotice, setIsNotice] = useState(false);
+  const [isNotice, setIsNotice] = useState(Boolean(forceNotice));
   const [isPinned, setIsPinned] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
