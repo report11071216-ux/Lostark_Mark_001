@@ -17003,104 +17003,133 @@ const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
   const totalForBand = bandCounts.reduce((s, b) => s + b.count, 0);
 
   return (
-    <div className="mb-10 rounded-[2rem] border border-amber-400/15 bg-gradient-to-br from-[#070d1a]/95 to-[#0a0807]/95 overflow-hidden">
+    <div
+      className="rounded-[2rem] overflow-hidden"
+      style={{
+        border: "1px solid rgba(139,92,246,0.18)",
+        background: "linear-gradient(160deg, rgba(28,23,51,0.85) 0%, rgba(15,13,32,0.95) 100%)",
+        boxShadow: "0 14px 36px rgba(0,0,0,0.24)",
+      }}
+    >
       {/* 헤더 */}
       <button
-        className="w-full flex items-center justify-between px-4 sm:px-6 py-4 hover:bg-white/[0.02] transition-all"
+        className="w-full flex items-center justify-between px-4 sm:px-5 py-4 hover:bg-white/[0.03] transition-all"
         onClick={() => setOpen(p => !p)}
       >
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400/15 border border-amber-400/20">
-            <BarChart3 size={15} className="text-amber-300" />
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-xl"
+            style={{ background: "rgba(167,139,250,0.14)", border: "1px solid rgba(167,139,250,0.28)" }}
+          >
+            <BarChart3 size={16} style={{ color: "#c4b5fd" }} />
           </div>
-          <span className="text-sm font-bold text-white">길드 아이템 레벨 대시보드</span>
-          <span className="text-[10px] text-slate-500 font-normal">
-            {mainMembers.length > 0 ? `메인캐 ${mainMembers.length}명 기준` : `전체 ${members.length}명 기준`}
-          </span>
+          <div className="text-left">
+            <div className="text-sm font-bold text-white">길드 아이템 레벨</div>
+            <div className="text-[10px]" style={{ color: "rgba(155,159,196,0.7)" }}>
+              {mainMembers.length > 0 ? `메인캐 ${mainMembers.length}명 기준` : `전체 ${members.length}명 기준`}
+            </div>
+          </div>
         </div>
         <ChevronDown
           size={16}
-          className={cn("text-slate-400 transition-transform duration-200", open ? "rotate-180" : "")}
+          className={cn("transition-transform duration-200", open ? "rotate-180" : "")}
+          style={{ color: "rgba(155,159,196,0.7)" }}
         />
       </button>
 
       {open && (
-        <div className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-6 border-t border-white/6">
+        <div
+          className="px-4 sm:px-5 pb-5 space-y-5"
+          style={{ borderTop: "1px solid rgba(139,92,246,0.10)" }}
+        >
 
           {/* ── 핵심 지표 3개 ── */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 pt-6">
+          <div className="grid grid-cols-3 gap-2 pt-5">
             {[
               {
-                label: "평균 아이템 레벨",
+                label: "평균 레벨",
                 value: avg.toFixed(2),
                 sub: `${base.length}명 평균`,
-                color: "#fbbf24",
+                color: "#a78bfa",
+                accentR: "167,139,250",
                 icon: (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
                   </svg>
                 ),
               },
               {
-                label: "최고 아이템 레벨",
+                label: "최고 레벨",
                 value: highest.toFixed(2),
                 sub: base.find((m: any) => parseFloat(String(m.item_level || "0").replace(/,/g, "")) === highest)?.character_name || "",
-                color: "#00CCFF",
+                color: "#22d3ee",
+                accentR: "34,211,238",
                 icon: (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="18 15 12 9 6 15"/>
                   </svg>
                 ),
               },
               {
-                label: "최저 아이템 레벨",
+                label: "최저 레벨",
                 value: lowest.toFixed(2),
                 sub: base.find((m: any) => parseFloat(String(m.item_level || "0").replace(/,/g, "")) === lowest)?.character_name || "",
-                color: "#B44BE1",
+                color: "#f472b6",
+                accentR: "244,114,182",
                 icon: (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="6 9 12 15 18 9"/>
                   </svg>
                 ),
               },
-            ].map(({ label, value, sub, color, icon }) => (
-              <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] p-2 sm:p-4 flex flex-col gap-1 sm:gap-2">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <div className="flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded-lg" style={{ background: `${color}20`, color }}>
+            ].map(({ label, value, sub, color, accentR, icon }) => (
+              <div
+                key={label}
+                className="rounded-2xl p-2.5 sm:p-3 flex flex-col gap-1.5"
+                style={{
+                  border: `1px solid rgba(${accentR},0.18)`,
+                  background: `rgba(${accentR},0.06)`,
+                }}
+              >
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="flex h-5 w-5 items-center justify-center rounded-md"
+                    style={{ background: `rgba(${accentR},0.18)`, color }}
+                  >
                     {icon}
                   </div>
-                  <span className="text-[9px] sm:text-[10px] text-slate-400 font-medium leading-tight">{label}</span>
+                  <span className="text-[9px] font-medium leading-tight" style={{ color: "rgba(155,159,196,0.85)" }}>{label}</span>
                 </div>
-                <div className="text-base sm:text-2xl font-bold" style={{ color }}>{value}</div>
-                <div className="text-[9px] sm:text-[10px] text-slate-500 truncate">{sub}</div>
+                <div className="text-base sm:text-xl font-bold" style={{ color }}>{value}</div>
+                <div className="text-[9px] truncate" style={{ color: "rgba(155,159,196,0.55)" }}>{sub}</div>
               </div>
             ))}
           </div>
 
           {/* ── 구간 분포 ── */}
           <div>
-            <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-semibold mb-3">레벨 구간 분포</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] font-semibold mb-2.5" style={{ color: "rgba(155,159,196,0.65)" }}>레벨 구간 분포</div>
             <div className="space-y-2">
               {bandCounts.map(b => {
                 const pct = totalForBand > 0 ? (b.count / totalForBand) * 100 : 0;
                 return (
-                  <div key={b.label} className="flex items-center gap-3">
-                    <div className="w-14 text-right text-[11px] font-bold shrink-0" style={{ color: b.color }}>{b.label}</div>
-                    <div className="flex-1 h-5 rounded-full bg-white/[0.05] overflow-hidden">
+                  <div key={b.label} className="flex items-center gap-2.5">
+                    <div className="w-12 text-right text-[10px] font-bold shrink-0" style={{ color: b.color }}>{b.label}</div>
+                    <div className="flex-1 h-4 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
                       <div
-                        className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
+                        className="h-full rounded-full flex items-center justify-end pr-1.5 transition-all duration-700"
                         style={{
                           width: `${Math.max(pct, pct > 0 ? 4 : 0)}%`,
                           background: `linear-gradient(90deg, ${b.color}55, ${b.color}cc)`,
                         }}
                       >
                         {pct >= 8 && (
-                          <span className="text-[9px] font-bold text-white/90">{b.count}명</span>
+                          <span className="text-[8px] font-bold text-white/90">{b.count}</span>
                         )}
                       </div>
                     </div>
-                    <div className="w-12 text-[11px] text-slate-400 shrink-0">
-                      {b.count}명 <span className="text-slate-600">({pct.toFixed(0)}%)</span>
+                    <div className="w-10 text-[10px] shrink-0" style={{ color: "rgba(155,159,196,0.7)" }}>
+                      {b.count}명
                     </div>
                   </div>
                 );
@@ -17111,29 +17140,29 @@ const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
           {/* ── 직업별 평균 레벨 ── */}
           {classAvgs.length > 0 && (
             <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-semibold mb-3">직업별 평균 레벨 (상위 6)</div>
+              <div className="text-[10px] uppercase tracking-[0.2em] font-semibold mb-2.5" style={{ color: "rgba(155,159,196,0.65)" }}>직업별 평균 (상위 6)</div>
               <div className="space-y-2">
                 {classAvgs.map(({ cls, avg: cavg, count }) => {
                   const pct = barMax > 0 ? (cavg / barMax) * 100 : 0;
                   return (
-                    <div key={cls} className="flex items-center gap-3">
-                      <div className="w-20 text-[11px] text-slate-300 truncate shrink-0">{cls}</div>
-                      <div className="flex-1 h-5 rounded-full bg-white/[0.05] overflow-hidden">
+                    <div key={cls} className="flex items-center gap-2.5">
+                      <div className="w-16 text-[10px] truncate shrink-0" style={{ color: "rgba(196,181,253,0.85)" }}>{cls}</div>
+                      <div className="flex-1 h-4 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
                         <div
-                          className="h-full rounded-full flex items-center justify-end pr-2 transition-all duration-700"
+                          className="h-full rounded-full flex items-center justify-end pr-1.5 transition-all duration-700"
                           style={{
                             width: `${pct}%`,
-                            background: "linear-gradient(90deg, rgba(251,191,36,0.3), rgba(251,191,36,0.7))",
+                            background: "linear-gradient(90deg, rgba(167,139,250,0.35), rgba(167,139,250,0.85))",
                           }}
                         >
                           {pct >= 20 && (
-                            <span className="text-[9px] font-bold text-amber-100">{cavg.toFixed(0)}</span>
+                            <span className="text-[8px] font-bold" style={{ color: "#ede9fe" }}>{cavg.toFixed(0)}</span>
                           )}
                         </div>
                       </div>
-                      <div className="w-20 text-right text-[11px] shrink-0">
-                        <span className="text-amber-300 font-bold">{cavg.toFixed(2)}</span>
-                        <span className="text-slate-600 ml-1">({count}명)</span>
+                      <div className="w-16 text-right text-[10px] shrink-0">
+                        <span className="font-bold" style={{ color: "#c4b5fd" }}>{cavg.toFixed(2)}</span>
+                        <span className="ml-1" style={{ color: "rgba(155,159,196,0.5)" }}>({count})</span>
                       </div>
                     </div>
                   );
@@ -17143,20 +17172,20 @@ const GuildItemLevelDashboard = ({ members }: { members: any[] }) => {
           )}
 
           {/* ── 하단 요약 칩 ── */}
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="flex flex-wrap gap-1.5 pt-1">
             {[
-              { label: "1800+ 달성",  count: bandCounts[0].count, color: "#00CCFF" },
-              { label: "1700+ 달성",  count: bandCounts[0].count + bandCounts[1].count, color: "#E6C97A" },
-              { label: "1600+ 달성",  count: bandCounts[0].count + bandCounts[1].count + bandCounts[2].count, color: "#FF8C00" },
-              { label: "메인캐 등록", count: mainMembers.length, color: "#fbbf24" },
+              { label: "1800+", count: bandCounts[0].count, color: "#00CCFF" },
+              { label: "1700+", count: bandCounts[0].count + bandCounts[1].count, color: "#E6C97A" },
+              { label: "1600+", count: bandCounts[0].count + bandCounts[1].count + bandCounts[2].count, color: "#FF8C00" },
+              { label: "메인캐", count: mainMembers.length, color: "#a78bfa" },
             ].map(({ label, count, color }) => (
               <div
                 key={label}
-                className="flex items-center gap-2 rounded-xl border px-3 py-1.5"
-                style={{ borderColor: `${color}30`, background: `${color}10` }}
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1"
+                style={{ borderColor: `${color}30`, background: `${color}10`, border: `1px solid ${color}30` }}
               >
-                <span className="text-[10px] text-slate-400">{label}</span>
-                <span className="text-xs font-bold" style={{ color }}>{count}명</span>
+                <span className="text-[9px]" style={{ color: "rgba(155,159,196,0.85)" }}>{label}</span>
+                <span className="text-[11px] font-bold" style={{ color }}>{count}</span>
               </div>
             ))}
           </div>
@@ -17448,15 +17477,30 @@ const GuildMembersPage = () => {
     return result;
   }, [members, filter, classFilter, searchQuery]);
 
+  // 직업별 카운트 (검색 칩용)
+  const classCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    members.forEach((m: any) => {
+      const cls = String(m.class_name || "").trim();
+      if (cls) map[cls] = (map[cls] || 0) + 1;
+    });
+    return Object.entries(map)
+      .map(([cls, count]) => ({ cls, count }))
+      .sort((a, b) => b.count - a.count || a.cls.localeCompare(b.cls, "ko"));
+  }, [members]);
+
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-10 sm:py-20">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
+    <div className="max-w-[1500px] mx-auto px-3 sm:px-5 py-4 sm:py-5">
+      {/* ── 컴팩트 헤더 ── */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold">길드 캐릭터</h1>
-          <p className="text-slate-400 mt-2">메인캐, 템렙, 캐릭터 레벨, 전투력, 생일, MBTI, 장착 뱃지와 장비 파츠 [무기]까지 한 번에 볼 수 있습니다.</p>
+          <h1 className="text-xl sm:text-2xl font-semibold text-white">길드 캐릭터</h1>
+          <p className="text-xs sm:text-sm mt-1" style={{ color: "rgba(155,159,196,0.7)" }}>
+            메인캐 · 템렙 · 레벨 · 전투력 · 생일 · MBTI · 뱃지 · 장비 한눈에
+          </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {[
             ["all", "전체"],
             ["main", "메인캐"],
@@ -17465,10 +17509,20 @@ const GuildMembersPage = () => {
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={cn(
-                "px-4 py-2 rounded-full text-sm font-semibold border transition",
-                filter === key ? "bg-amber-500 border-amber-400 text-white" : "bg-white/5 border-white/10 text-slate-400"
-              )}
+              className="px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={
+                filter === key
+                  ? {
+                      background: "rgba(167,139,250,0.18)",
+                      border: "1px solid rgba(167,139,250,0.42)",
+                      color: "#fff",
+                    }
+                  : {
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      color: "rgba(155,159,196,0.75)",
+                    }
+              }
             >
               {label}
             </button>
@@ -17476,78 +17530,123 @@ const GuildMembersPage = () => {
         </div>
       </div>
 
-      {/* ── 아이템 레벨 대시보드 ── */}
-      <GuildItemLevelDashboard members={members} />
+      {/* ── 직업 칩 (가로 스크롤) ── */}
+      {classCounts.length > 0 && (
+        <div className="mb-3 -mx-3 sm:mx-0 overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+          <div className="flex gap-1.5 px-3 sm:px-0 pb-2 min-w-min">
+            <button
+              onClick={() => setClassFilter("all")}
+              className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap"
+              style={
+                classFilter === "all"
+                  ? {
+                      background: "rgba(167,139,250,0.18)",
+                      border: "1px solid rgba(167,139,250,0.42)",
+                      color: "#fff",
+                    }
+                  : {
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      color: "rgba(155,159,196,0.75)",
+                    }
+              }
+            >
+              직업 전체 <span style={{ opacity: 0.6 }}>· {members.length}</span>
+            </button>
+            {classCounts.map(({ cls, count }) => {
+              const active = classFilter === cls;
+              return (
+                <button
+                  key={cls}
+                  onClick={() => setClassFilter(active ? "all" : cls)}
+                  className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all whitespace-nowrap"
+                  style={
+                    active
+                      ? {
+                          background: "rgba(167,139,250,0.18)",
+                          border: "1px solid rgba(167,139,250,0.42)",
+                          color: "#fff",
+                        }
+                      : {
+                          background: "rgba(255,255,255,0.03)",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          color: "rgba(196,181,253,0.75)",
+                        }
+                  }
+                >
+                  {cls} <span style={{ opacity: 0.55 }}>· {count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
-
-      {/* 검색 & 직업 필터 */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      {/* ── 검색 ── */}
+      <div className="mb-4">
+        <div className="relative">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="캐릭터명 또는 직업으로 검색..."
-            className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 pl-10 text-sm text-white placeholder-stone-500 outline-none focus:border-amber-200/30 focus:bg-white/[0.06] transition-all"
+            className="w-full rounded-2xl px-4 py-2.5 pl-10 text-sm text-white placeholder-stone-500 outline-none transition-all"
+            style={{
+              border: "1px solid rgba(139,92,246,0.18)",
+              background: "rgba(28,23,51,0.55)",
+            }}
           />
-          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500">
-            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-            </svg>
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: "rgba(155,159,196,0.55)" }}>
+            <Search size={15} />
           </div>
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-500 hover:text-white transition-colors"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
+              style={{ color: "rgba(155,159,196,0.55)" }}
             >
               <X size={14} />
             </button>
           )}
         </div>
-        {availableClasses.length > 0 && (
-          <select
-            value={classFilter}
-            onChange={(e) => setClassFilter(e.target.value)}
-            className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-amber-200/30 transition-all appearance-none cursor-pointer min-w-[140px]"
-          >
-            <option value="all" className="bg-[#070d1a]">직업 전체</option>
-            {availableClasses.map((cls) => (
-              <option key={cls} value={cls} className="bg-[#070d1a]">{cls}</option>
-            ))}
-          </select>
+      </div>
+
+      {/* ── 결과 카운트 ── */}
+      <div className="mb-3 text-[11px] font-medium" style={{ color: "rgba(155,159,196,0.55)" }}>
+        {filteredMembers.length}명 표시 중 <span style={{ opacity: 0.6 }}>(전체 {members.length}명)</span>
+        {classFilter !== "all" && (
+          <span className="ml-2" style={{ color: "#c4b5fd" }}>· {classFilter}</span>
         )}
       </div>
 
-      {/* 결과 카운트 */}
-      <div className="mb-4 text-xs text-stone-500 font-medium">
-        {filteredMembers.length}명 표시 중 (전체 {members.length}명)
-      </div>
-
+      {/* ── 메인 2-열 레이아웃: 좌측 캐릭터 / 우측 대시보드(sticky) ── */}
       {loading ? (
-        <div className="text-center text-slate-500 py-10">길드원 불러오는 중...</div>
+        <div className="text-center py-10" style={{ color: "rgba(155,159,196,0.6)" }}>길드원 불러오는 중...</div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {filteredMembers.map((member: any) => {
-            const { theme } = getPrimaryBadgeTheme(member);
-            const armory     = armoryCache[member.character_name];
-            const activeTab  = cardTabs[member.character_name] || "profile";
-            const profState  = armory?.profile;
-            const equipState = armory?.equipment;
-            const engState   = armory?.engravings;
-            const gemState   = armory?.gems;
-            const sibState   = armory?.siblings;
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-5">
+          {/* ◀ 좌측: 캐릭터 카드 (정사각형 헤더) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {filteredMembers.map((member: any) => {
+              const { theme } = getPrimaryBadgeTheme(member);
+              const armory     = armoryCache[member.character_name];
+              const activeTab  = cardTabs[member.character_name] || "profile";
+              const profState  = armory?.profile;
+              const equipState = armory?.equipment;
+              const engState   = armory?.engravings;
+              const gemState   = armory?.gems;
+              const sibState   = armory?.siblings;
 
-            const armoryProfile  = profState?.data;
-            const armoryEquip    = equipState?.data || [];
-            const armoryEngrav   = engState?.data   || [];
-            const armoryGems     = gemState?.data   || [];
-            const armorySiblings = sibState?.data   || [];
+              const armoryProfile  = profState?.data;
+              const armoryEquip    = equipState?.data || [];
+              const armoryEngrav   = engState?.data   || [];
+              const armoryGems     = gemState?.data   || [];
+              const armorySiblings = sibState?.data   || [];
 
-            const CARD_TABS = [
-              { id: "profile",    label: "프로필" },
-              { id: "equipment",  label: "장비" },
-              { id: "engravings", label: "각인" },
-              { id: "gems",       label: "보석" },
+              const CARD_TABS = [
+                { id: "profile",    label: "프로필" },
+                { id: "equipment",  label: "장비" },
+                { id: "engravings", label: "각인" },
+                { id: "gems",       label: "보석" },
               { id: "siblings",   label: `원정대${armorySiblings.length ? ` (${armorySiblings.length})` : ""}` },
             ] as const;
 
@@ -17576,8 +17675,8 @@ const GuildMembersPage = () => {
               >
                 <div className="relative z-10">
 
-                  {/* ══ 상단 헤더: 캐릭터 이미지 전체 배경 ══ */}
-                  <div className="relative overflow-hidden" style={{ minHeight: 200 }}>
+                  {/* ══ 상단 헤더: 캐릭터 이미지 정사각형 배경 ══ */}
+                  <div className="relative overflow-hidden aspect-square">
 
                     {/* 전체 배경 이미지 */}
                     {(armoryProfile?.CharacterImage || member.avatar_url || member.image_url) && (
@@ -17594,7 +17693,7 @@ const GuildMembersPage = () => {
                     )}
 
                     {/* 텍스트 오버레이 */}
-                    <div className="relative z-10 p-5 flex flex-col justify-between" style={{ minHeight: 200 }}>
+                    <div className="absolute inset-0 z-10 p-5 flex flex-col justify-between">
                       <div>
                         {/* 서버 뱃지만 유지 */}
                         {(armoryProfile?.ServerName || member.server_name) && (
@@ -17925,6 +18024,11 @@ const GuildMembersPage = () => {
               </div>
             );
           })}
+          </div>
+          {/* ▶ 우측: 길드 아이템 레벨 대시보드 (xl 이상 sticky) */}
+          <aside className="xl:sticky xl:top-4 xl:self-start xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+            <GuildItemLevelDashboard members={members} />
+          </aside>
         </div>
       )}
 
