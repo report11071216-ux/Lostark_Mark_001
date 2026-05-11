@@ -9309,6 +9309,23 @@ const RaidDetailModal = ({
               p_type: "raid_complete",
             });
             if (!ptErr) awardCount++;
+
+            // ── 업적 자동 부여 ──
+            try {
+              const hour = Number(String(raid.raid_time || "20:00").split(":")[0] || 20);
+              const part = parts.find((p: any) => String(p.character_name).trim() === charName);
+              await client.rpc("check_and_grant_achievements", {
+                p_user_id: userId,
+                p_context: {
+                  event: "raid",
+                  difficulty: raid.difficulty,
+                  hour,
+                  position: part?.position,
+                },
+              });
+            } catch (e) {
+              console.error("achievement trigger error for", charName, e);
+            }
           }
         } catch (e) {
           console.error("point award error for", charName, e);
@@ -12565,6 +12582,9 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab, lockedCategory
       const { error } = await client.from("post_comments").insert([{ post_id: postId, content, user_id: user.id, author: profile?.nickname || "Anonymous", author_name: profile?.nickname || "Anonymous" }]);
       if (error) { showToast(error.message, "error"); return; }
       await client.rpc("add_points", { p_user_id: user.id, p_points: 5, p_type: "comment" });
+      // ── 업적 자동 부여 ──
+      try { await client.rpc("check_and_grant_achievements", { p_user_id: user.id, p_context: { event: "comment" } }); }
+      catch (e) { console.error("achievement trigger error (comment)", e); }
       await fetchComments();
       // 선택된 게시글 댓글 갱신
       setSelectedPost((prev: any) => prev ? { ...prev } : prev);
@@ -12814,6 +12834,11 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose, defaultCategory, fo
         await client.from("posts").update({ is_pinned: false }).neq("id", data.id).eq("is_notice", true).eq("is_pinned", true);
       }
       if (!isNotice) await client.rpc("add_points", { p_user_id: user.id, p_points: 5, p_type: "post" });
+      // ── 업적 자동 부여 ──
+      if (!isNotice) {
+        try { await client.rpc("check_and_grant_achievements", { p_user_id: user.id, p_context: { event: "post" } }); }
+        catch (e) { console.error("achievement trigger error (post)", e); }
+      }
       showToast(isNotice ? "공지 작성 완료!" : "게시글 작성 완료! +5P 🎉");
       await onRefresh(); onClose();
     } catch (err: any) { showToast(err?.message || "작성 중 오류 발생", "error"); }
@@ -14315,6 +14340,21 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
     }
 
     await supabase.from("profiles").update({ last_attendance: today }).eq("id", user.id);
+
+    // ── 업적 자동 부여 (연속 출석 streak 계산) ──
+    try {
+      const prev = profile.last_attendance;
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+      const currentStreak = Number(profile?.attendance_streak || 0);
+      const newStreak = prev === yesterday ? currentStreak + 1 : 1;
+      try { await supabase.from("profiles").update({ attendance_streak: newStreak }).eq("id", user.id); } catch {}
+      await supabase.rpc("check_and_grant_achievements", {
+        p_user_id: user.id,
+        p_context: { event: "attendance", streak_days: newStreak },
+      });
+    } catch (e) {
+      console.error("achievement trigger error (attendance)", e);
+    }
 
     showToast("출석 완료! +10 포인트 🎉", "success");
     window.location.reload();
