@@ -2408,7 +2408,7 @@ const fetchInitialData = async () => {
                           {[
                             { id: "myroom", icon: <Crown size={14} />, label: "마이룸", color: "#c4b5fd" },
                             { id: "note", icon: <Pencil size={14} />, label: "개인 노트", color: "#c4b5fd" },
-                            { id: "expense", icon: <ShoppingBag size={14} />, label: "법인카드 사용내역", color: "#fde68a" },
+                            { id: "expense", icon: <ShoppingBag size={14} />, label: "사용내역 조회", color: "#fde68a" },
                             { id: "education", icon: <Sparkles size={14} />, label: "교육자료 메모", color: "#67e8f9" },
                             { id: "shop", icon: <ShoppingBag size={14} />, label: "포인트 상점", color: "#c4b5fd" },
                             ...(profile?.role === "admin"
