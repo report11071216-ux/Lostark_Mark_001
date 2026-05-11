@@ -1956,6 +1956,43 @@ function AppInner() {
   const [isRaidCalendarModalOpen, setIsRaidCalendarModalOpen] = useState(false);
   const [postInitialTab, setPostInitialTab] = useState("all");
 
+  // ────────────────────────────────────────────────
+  // last_seen heartbeat
+  //   - 30초마다 본인 last_seen을 현재 시각으로 갱신
+  //   - 탭 포커스 회복 시 즉시 1회 호출
+  //   - 탭 가시성 숨김 시 호출 중단 (서버 부하 절감)
+  // ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user?.id || !supabase) return;
+    let mounted = true;
+
+    const beat = async () => {
+      try { await supabase.rpc("update_last_seen"); } catch { /* ignore */ }
+    };
+
+    // 첫 호출
+    beat();
+
+    // 30초 주기
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible" && mounted) beat();
+    }, 30_000);
+
+    // 포커스 복귀 시 즉시 1회
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && mounted) beat();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
+    return () => {
+      mounted = false;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [user?.id]);
+
 
 useEffect(() => {
   let mounted = true;
@@ -5472,84 +5509,110 @@ const OnlinePlayersCard = () => {
   const [loading, setLoading] = useState(true);
   const [expand, setExpand] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!supabase) {
-        console.warn("[OnlinePlayersCard] supabase not initialized");
+  const fetchMembers = useCallback(async () => {
+    if (!supabase) {
+      console.warn("[OnlinePlayersCard] supabase not initialized");
+      setLoading(false);
+      return;
+    }
+    try {
+      // 1) profiles 단순 조회 (조인 시도 안 함)
+      const { data: profilesData, error: profilesErr } = await supabase
+        .from("profiles")
+        .select("id, nickname, last_attendance, last_seen, points, role, equipped_title_id")
+        .order("last_seen", { ascending: false, nullsFirst: false });
+
+      if (profilesErr) {
+        console.error("[OnlinePlayersCard] profiles fetch error:", profilesErr);
         setLoading(false);
         return;
       }
-      try {
-        // 1) profiles 단순 조회 (조인 시도 안 함)
-        const { data: profilesData, error: profilesErr } = await supabase
-          .from("profiles")
-          .select("id, nickname, last_attendance, points, role, equipped_title_id")
-          .order("last_attendance", { ascending: false, nullsFirst: false });
 
-        if (profilesErr) {
-          console.error("[OnlinePlayersCard] profiles fetch error:", profilesErr);
-          if (!cancelled) setLoading(false);
-          return;
-        }
-
-        const profilesList = profilesData || [];
-        console.log(`[OnlinePlayersCard] loaded ${profilesList.length} profiles`);
-        if (profilesList.length === 0) {
-          console.warn("[OnlinePlayersCard] profiles empty — RLS 정책으로 가려졌거나 데이터가 없어요");
-        }
-
-        // 2) 장착 칭호가 있는 행이 있으면 칭호 별도 조회
-        const titleIds = Array.from(
-          new Set(profilesList.map((m: any) => m.equipped_title_id).filter(Boolean))
-        );
-        let titleMap: Record<string, any> = {};
-        if (titleIds.length > 0) {
-          const { data: titlesData, error: titlesErr } = await supabase
-            .from("titles")
-            .select("id, name, rarity, color")
-            .in("id", titleIds as string[]);
-          if (titlesErr) {
-            console.warn("[OnlinePlayersCard] titles fetch error:", titlesErr);
-          }
-          for (const t of (titlesData || [])) titleMap[t.id] = t;
-          console.log(`[OnlinePlayersCard] loaded ${Object.keys(titleMap).length} titles`);
-        }
-
-        // 3) 병합
-        const merged = profilesList.map((m: any) => ({
-          ...m,
-          equipped_title: m.equipped_title_id ? titleMap[m.equipped_title_id] : null,
-        }));
-
-        if (!cancelled) setMembers(merged);
-      } catch (e) {
-        console.error("[OnlinePlayersCard] unexpected error:", e);
-      } finally {
-        if (!cancelled) setLoading(false);
+      const profilesList = profilesData || [];
+      if (profilesList.length === 0) {
+        console.warn("[OnlinePlayersCard] profiles empty — RLS 정책으로 가려졌거나 데이터가 없어요");
       }
-    })();
-    return () => { cancelled = true; };
+
+      // 2) 장착 칭호가 있는 행이 있으면 칭호 별도 조회
+      const titleIds = Array.from(
+        new Set(profilesList.map((m: any) => m.equipped_title_id).filter(Boolean))
+      );
+      let titleMap: Record<string, any> = {};
+      if (titleIds.length > 0) {
+        const { data: titlesData, error: titlesErr } = await supabase
+          .from("titles")
+          .select("id, name, rarity, color")
+          .in("id", titleIds as string[]);
+        if (titlesErr) console.warn("[OnlinePlayersCard] titles fetch error:", titlesErr);
+        for (const t of (titlesData || [])) titleMap[t.id] = t;
+      }
+
+      // 3) 병합
+      const merged = profilesList.map((m: any) => ({
+        ...m,
+        equipped_title: m.equipped_title_id ? titleMap[m.equipped_title_id] : null,
+      }));
+
+      setMembers(merged);
+    } catch (e) {
+      console.error("[OnlinePlayersCard] unexpected error:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 초기 로드 + 2분 주기 자동 새로고침
+  useEffect(() => {
+    fetchMembers();
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") fetchMembers();
+    }, 120_000); // 2분
+    return () => window.clearInterval(id);
+  }, [fetchMembers]);
+
+  // 1분마다 상태 재평가 (실시간 표시용)
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((v) => v + 1), 60_000);
+    return () => window.clearInterval(id);
   }, []);
 
   const today = new Date().toISOString().split("T")[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-  const getStatus = (lastAtt: string | null) => {
-    if (!lastAtt) return "offline";
-    if (lastAtt === today) return "online";
-    if (lastAtt === yesterday) return "recent";
+  // 상태 판정 (last_seen 우선, 없으면 last_attendance fallback)
+  //  - 5분 이내   : 🟢 online (실시간)
+  //  - 30분 이내  : 🟡 recent (자리비움)
+  //  - 오늘 출석  : 🟡 recent
+  //  - 어제 출석  : ⚫ offline (단, 카드에는 회색 표시)
+  //  - 그 외      : ⚫ offline
+  const getStatus = (m: any): "online" | "recent" | "offline" => {
+    const seenAt = m.last_seen ? new Date(m.last_seen).getTime() : 0;
+    const now = Date.now();
+    const diff = now - seenAt;
+    if (seenAt > 0) {
+      if (diff <= 5 * 60_000)  return "online";
+      if (diff <= 30 * 60_000) return "recent";
+    }
+    // fallback: 오늘 출석체크 한 사람도 recent
+    if (m.last_attendance === today) return "recent";
     return "offline";
   };
 
-  // 정렬: 온라인 → 최근 → 오프라인
+  // 정렬: 온라인 → 최근 → 오프라인 (같은 그룹 내에서는 last_seen 최신순)
   const sorted = [...members].sort((a, b) => {
+    const sa = getStatus(a);
+    const sb = getStatus(b);
     const order = { online: 0, recent: 1, offline: 2 };
-    return order[getStatus(a.last_attendance) as keyof typeof order] - order[getStatus(b.last_attendance) as keyof typeof order];
+    if (order[sa] !== order[sb]) return order[sa] - order[sb];
+    const ta = a.last_seen ? new Date(a.last_seen).getTime() : 0;
+    const tb = b.last_seen ? new Date(b.last_seen).getTime() : 0;
+    return tb - ta;
   });
 
-  const onlineCount = members.filter((m) => getStatus(m.last_attendance) === "online").length;
+  const onlineCount = members.filter((m) => getStatus(m) === "online").length;
   const displayCount = expand ? sorted.length : 8;
+  // tick 값을 의존성에 노출 (1분마다 재계산 트리거)
+  void tick;
 
   const rarityStyle: Record<string, { color: string; bg: string; border: string }> = {
     common:    { color: "#CBD5E1", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.30)" },
@@ -5593,7 +5656,7 @@ const OnlinePlayersCard = () => {
         <>
           <div className="space-y-1.5 max-h-[440px] overflow-y-auto pr-1">
             {sorted.slice(0, displayCount).map((m) => {
-              const status = getStatus(m.last_attendance);
+              const status = getStatus(m);
               const title = m.equipped_title;
               const rs = title ? rarityStyle[title.rarity] || rarityStyle.common : null;
               const initial = (m.nickname || "?").slice(0, 1);
