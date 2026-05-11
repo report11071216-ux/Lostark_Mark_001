@@ -5541,7 +5541,7 @@ const OnlinePlayersCard = () => {
       if (titleIds.length > 0) {
         const { data: titlesData, error: titlesErr } = await supabase
           .from("titles")
-          .select("id, name, rarity, color")
+          .select("id, name, rarity, color, icon_url")
           .in("id", titleIds as string[]);
         if (titlesErr) console.warn("[OnlinePlayersCard] titles fetch error:", titlesErr);
         for (const t of (titlesData || [])) titleMap[t.id] = t;
@@ -5668,18 +5668,28 @@ const OnlinePlayersCard = () => {
                     background: status === "online" ? "rgba(52,211,153,0.04)" : "transparent",
                   }}
                 >
-                  {/* 캐릭터 아바타 (닉네임 이니셜로 자동 생성) */}
+                  {/* 캐릭터 아바타 (칭호 이미지 → 닉네임 이니셜) */}
                   <div className="relative flex-shrink-0">
-                    <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2"
-                      style={{
-                        background: `linear-gradient(135deg, hsl(${(m.nickname || "").charCodeAt(0) * 7 % 360}, 50%, 45%), hsl(${(m.nickname || "").charCodeAt(0) * 7 % 360 + 30}, 40%, 30%))`,
-                        color: "#fff",
-                        borderColor: status === "online" ? "#34d399" : status === "recent" ? "#fbbf24" : "rgba(255,255,255,0.08)",
-                      }}
-                    >
-                      {initial}
-                    </div>
+                    {title?.icon_url ? (
+                      <img
+                        src={title.icon_url}
+                        alt={title.name}
+                        className="w-9 h-9 rounded-full object-cover border-2"
+                        style={{ borderColor: status === "online" ? "#34d399" : status === "recent" ? "#fbbf24" : "rgba(255,255,255,0.08)" }}
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2"
+                        style={{
+                          background: `linear-gradient(135deg, hsl(${(m.nickname || "").charCodeAt(0) * 7 % 360}, 50%, 45%), hsl(${(m.nickname || "").charCodeAt(0) * 7 % 360 + 30}, 40%, 30%))`,
+                          color: "#fff",
+                          borderColor: status === "online" ? "#34d399" : status === "recent" ? "#fbbf24" : "rgba(255,255,255,0.08)",
+                        }}
+                      >
+                        {initial}
+                      </div>
+                    )}
                     {/* 온라인 점 */}
                     {status === "online" && (
                       <div
@@ -14530,14 +14540,24 @@ const TitlesPanel = ({ user, profile, onProfileChanged }: any) => {
         </div>
         {equippedTitle ? (
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div>
-              <div
-                className="text-xl sm:text-2xl font-bold mb-1"
-                style={{ color: equippedTitle.color || rarityStyle[equippedTitle.rarity]?.text || "#FFFFFF" }}
-              >
-                ✦ {equippedTitle.name}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              {equippedTitle.icon_url && (
+                <img
+                  src={equippedTitle.icon_url}
+                  alt={equippedTitle.name}
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 flex-shrink-0"
+                  style={{ borderColor: equippedTitle.color || rarityStyle[equippedTitle.rarity]?.text || "rgba(255,255,255,0.2)" }}
+                />
+              )}
+              <div className="min-w-0">
+                <div
+                  className="text-xl sm:text-2xl font-bold mb-1 truncate"
+                  style={{ color: equippedTitle.color || rarityStyle[equippedTitle.rarity]?.text || "#FFFFFF" }}
+                >
+                  ✦ {equippedTitle.name}
+                </div>
+                <div className="text-sm text-slate-400">{equippedTitle.description}</div>
               </div>
-              <div className="text-sm text-slate-400">{equippedTitle.description}</div>
             </div>
             <button
               onClick={() => equip(null)}
@@ -14593,13 +14613,25 @@ const TitlesPanel = ({ user, profile, onProfileChanged }: any) => {
                       </span>
                     )}
                   </div>
-                  <div
-                    className="text-lg font-bold mb-1"
-                    style={{ color: t.color || r.text }}
-                  >
-                    ✦ {t.name}
+                  <div className="flex items-center gap-3">
+                    {t.icon_url && (
+                      <img
+                        src={t.icon_url}
+                        alt={t.name}
+                        className="w-10 h-10 rounded-full object-cover border flex-shrink-0"
+                        style={{ borderColor: r.border }}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div
+                        className="text-lg font-bold mb-1 truncate"
+                        style={{ color: t.color || r.text }}
+                      >
+                        ✦ {t.name}
+                      </div>
+                      <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{t.description}</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{t.description}</p>
                   {!isEquipped && (
                     <div className="mt-3 text-[10px] uppercase tracking-wider text-amber-300/80 font-semibold">
                       클릭해서 장착 →
