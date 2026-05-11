@@ -14488,10 +14488,17 @@ const TitlesPanel = ({ user, profile, onProfileChanged }: any) => {
       .eq("id", user.id);
     setEquipping(null);
     if (error) {
-      alert("칭호 변경 실패: " + error.message);
+      showToast("칭호 변경 실패: " + error.message, "error");
       return;
     }
     if (onProfileChanged) await onProfileChanged();
+    // 성공 토스트
+    if (titleId === null) {
+      showToast("칭호를 해제했어요", "info");
+    } else {
+      const t = allTitles.find((x: any) => x.id === titleId);
+      showToast(`✦ "${t?.name || "칭호"}" 장착 완료`, "success");
+    }
   };
 
   // 레어도 스타일
