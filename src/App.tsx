@@ -5360,11 +5360,11 @@ const Hero = ({
             </div>
           </motion.div>
 
-          {/* 내 길드 프로필 위젯 — xl: 남은 공간을 채워 좌측 컬럼과 바닥선 정렬 */}
+          {/* 내 길드 프로필 위젯 — 크기 고정 (아래에 접속 플레이어 카드 추가됨) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="rounded-3xl p-5 relative overflow-hidden xl:flex-1 flex flex-col"
+            className="rounded-3xl p-5 relative overflow-hidden flex flex-col"
             style={{
               background: "linear-gradient(160deg, rgba(76,29,149,0.55) 0%, rgba(28,23,51,0.85) 65%, rgba(15,13,32,0.95) 100%)",
               border: "1px solid rgba(139,92,246,0.25)",
@@ -5450,9 +5450,223 @@ const Hero = ({
               </button>
             </div>
           </motion.div>
+
+          {/* ─────────────────────────────────────────
+              접속한 플레이어 카드 (캐릭터 이미지 / 닉네임 / 칭호)
+              ───────────────────────────────────────── */}
+          <OnlinePlayersCard />
         </div>
       </div>
     </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════
+// 접속한 플레이어 카드 — 우측 사이드바
+//   - 오늘 접속(last_attendance = today) 우선 정렬
+//   - 각 행: [캐릭터 이미지] [닉네임 + 온라인 점] [장착한 칭호]
+//   - 칭호는 레어도 컬러로 표시
+// ════════════════════════════════════════════════════════════
+const OnlinePlayersCard = () => {
+  const [members, setMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expand, setExpand] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!supabase) { setLoading(false); return; }
+      try {
+        // profiles + 장착 칭호 정보 조인
+        const { data, error } = await supabase
+          .from("profiles")
+          .select(`
+            id, nickname, profile_image_url, last_attendance, points, role,
+            equipped_title:titles!profiles_equipped_title_id_fkey ( id, name, rarity, color )
+          `)
+          .order("last_attendance", { ascending: false, nullsFirst: false });
+
+        if (error) {
+          // 조인 실패 시 fallback (외래키 이름 다를 수 있음)
+          const fb = await supabase
+            .from("profiles")
+            .select("id, nickname, profile_image_url, last_attendance, points, role, equipped_title_id")
+            .order("last_attendance", { ascending: false, nullsFirst: false });
+          if (fb.data && !cancelled) {
+            // 칭호 별도 조회
+            const titleIds = Array.from(new Set(fb.data.map((m: any) => m.equipped_title_id).filter(Boolean)));
+            let titleMap: Record<string, any> = {};
+            if (titleIds.length > 0) {
+              const { data: titlesData } = await supabase
+                .from("titles")
+                .select("id, name, rarity, color")
+                .in("id", titleIds);
+              for (const t of (titlesData || [])) titleMap[t.id] = t;
+            }
+            setMembers(fb.data.map((m: any) => ({ ...m, equipped_title: m.equipped_title_id ? titleMap[m.equipped_title_id] : null })));
+          }
+        } else if (data && !cancelled) {
+          setMembers(data);
+        }
+      } catch (e) {
+        console.error("[OnlinePlayersCard] error:", e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const today = new Date().toISOString().split("T")[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+  const getStatus = (lastAtt: string | null) => {
+    if (!lastAtt) return "offline";
+    if (lastAtt === today) return "online";
+    if (lastAtt === yesterday) return "recent";
+    return "offline";
+  };
+
+  // 정렬: 온라인 → 최근 → 오프라인
+  const sorted = [...members].sort((a, b) => {
+    const order = { online: 0, recent: 1, offline: 2 };
+    return order[getStatus(a.last_attendance) as keyof typeof order] - order[getStatus(b.last_attendance) as keyof typeof order];
+  });
+
+  const onlineCount = members.filter((m) => getStatus(m.last_attendance) === "online").length;
+  const displayCount = expand ? sorted.length : 8;
+
+  const rarityStyle: Record<string, { color: string; bg: string; border: string }> = {
+    common:    { color: "#CBD5E1", bg: "rgba(148,163,184,0.10)", border: "rgba(148,163,184,0.30)" },
+    rare:      { color: "#7DD3FC", bg: "rgba(56,189,248,0.10)",  border: "rgba(56,189,248,0.30)" },
+    epic:      { color: "#C4B5FD", bg: "rgba(167,139,250,0.10)", border: "rgba(167,139,250,0.30)" },
+    legendary: { color: "#FCD34D", bg: "rgba(252,211,77,0.10)",  border: "rgba(252,211,77,0.30)" },
+    mythic:    { color: "#F9A8D4", bg: "rgba(244,114,182,0.10)", border: "rgba(244,114,182,0.30)" },
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.2 }}
+      className="rounded-3xl p-5 relative overflow-hidden flex flex-col"
+      style={{
+        background: "linear-gradient(160deg, rgba(15,13,32,0.95) 0%, rgba(28,23,51,0.85) 100%)",
+        border: "1px solid rgba(139,92,246,0.20)",
+        boxShadow: "0 16px 32px rgba(0,0,0,0.25)",
+      }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-60" />
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--guild-text-4)" }}>
+            접속한 플레이어
+          </span>
+        </div>
+        <span className="text-[10px] font-semibold" style={{ color: "#c4b5fd" }}>
+          {onlineCount} / {members.length}
+        </span>
+      </div>
+
+      {loading ? (
+        <div className="py-6 text-center text-[11px] text-slate-500">불러오는 중...</div>
+      ) : sorted.length === 0 ? (
+        <div className="py-6 text-center text-[11px] text-slate-500">길드원이 없어요.</div>
+      ) : (
+        <>
+          <div className="space-y-1.5 max-h-[440px] overflow-y-auto pr-1">
+            {sorted.slice(0, displayCount).map((m) => {
+              const status = getStatus(m.last_attendance);
+              const title = m.equipped_title;
+              const rs = title ? rarityStyle[title.rarity] || rarityStyle.common : null;
+              const initial = (m.nickname || "?").slice(0, 1);
+              return (
+                <div
+                  key={m.id}
+                  className="flex items-center gap-2.5 p-2 rounded-xl transition-all"
+                  style={{
+                    background: status === "online" ? "rgba(52,211,153,0.04)" : "transparent",
+                  }}
+                >
+                  {/* 캐릭터 이미지 */}
+                  <div className="relative flex-shrink-0">
+                    {m.profile_image_url ? (
+                      <img
+                        src={m.profile_image_url}
+                        alt={m.nickname}
+                        className="w-9 h-9 rounded-full object-cover border-2"
+                        style={{ borderColor: status === "online" ? "#34d399" : status === "recent" ? "#fbbf24" : "rgba(255,255,255,0.08)" }}
+                      />
+                    ) : (
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2"
+                        style={{
+                          background: `linear-gradient(135deg, hsl(${(m.nickname || "").charCodeAt(0) * 7 % 360}, 50%, 45%), hsl(${(m.nickname || "").charCodeAt(0) * 7 % 360 + 30}, 40%, 30%))`,
+                          color: "#fff",
+                          borderColor: status === "online" ? "#34d399" : status === "recent" ? "#fbbf24" : "rgba(255,255,255,0.08)",
+                        }}
+                      >
+                        {initial}
+                      </div>
+                    )}
+                    {/* 온라인 점 */}
+                    {status === "online" && (
+                      <div
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
+                        style={{ background: "#34d399", borderColor: "#0e0e1c" }}
+                      />
+                    )}
+                  </div>
+
+                  {/* 닉네임 + 칭호 */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className={cn(
+                        "text-xs font-bold truncate",
+                        status === "online" ? "text-white" : "text-slate-400"
+                      )}>
+                        {m.nickname || "Unknown"}
+                      </span>
+                      {m.role === "admin" && <span className="text-[9px] flex-shrink-0">👑</span>}
+                    </div>
+                    {title && rs ? (
+                      <div
+                        className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider border max-w-full truncate"
+                        style={{
+                          color: title.color || rs.color,
+                          background: rs.bg,
+                          borderColor: rs.border,
+                        }}
+                      >
+                        ✦ {title.name}
+                      </div>
+                    ) : (
+                      <div className="text-[9px] text-slate-600 mt-0.5">— 칭호 없음</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {sorted.length > 8 && (
+            <button
+              onClick={() => setExpand(!expand)}
+              className="w-full mt-3 rounded-lg py-1.5 text-[10px] font-semibold transition-all"
+              style={{
+                background: "rgba(124,58,237,0.14)",
+                border: "1px solid rgba(124,58,237,0.22)",
+                color: "#c4b5fd",
+              }}
+            >
+              {expand ? "접기" : `+${sorted.length - 8}명 더보기`}
+            </button>
+          )}
+        </>
+      )}
+    </motion.div>
   );
 };
 
@@ -9309,23 +9523,6 @@ const RaidDetailModal = ({
               p_type: "raid_complete",
             });
             if (!ptErr) awardCount++;
-
-            // ── 업적 자동 부여 ──
-            try {
-              const hour = Number(String(raid.raid_time || "20:00").split(":")[0] || 20);
-              const part = parts.find((p: any) => String(p.character_name).trim() === charName);
-              await client.rpc("check_and_grant_achievements", {
-                p_user_id: userId,
-                p_context: {
-                  event: "raid",
-                  difficulty: raid.difficulty,
-                  hour,
-                  position: part?.position,
-                },
-              });
-            } catch (e) {
-              console.error("achievement trigger error for", charName, e);
-            }
           }
         } catch (e) {
           console.error("point award error for", charName, e);
@@ -12582,9 +12779,6 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab, lockedCategory
       const { error } = await client.from("post_comments").insert([{ post_id: postId, content, user_id: user.id, author: profile?.nickname || "Anonymous", author_name: profile?.nickname || "Anonymous" }]);
       if (error) { showToast(error.message, "error"); return; }
       await client.rpc("add_points", { p_user_id: user.id, p_points: 5, p_type: "comment" });
-      // ── 업적 자동 부여 ──
-      try { await client.rpc("check_and_grant_achievements", { p_user_id: user.id, p_context: { event: "comment" } }); }
-      catch (e) { console.error("achievement trigger error (comment)", e); }
       await fetchComments();
       // 선택된 게시글 댓글 갱신
       setSelectedPost((prev: any) => prev ? { ...prev } : prev);
@@ -12834,11 +13028,6 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose, defaultCategory, fo
         await client.from("posts").update({ is_pinned: false }).neq("id", data.id).eq("is_notice", true).eq("is_pinned", true);
       }
       if (!isNotice) await client.rpc("add_points", { p_user_id: user.id, p_points: 5, p_type: "post" });
-      // ── 업적 자동 부여 ──
-      if (!isNotice) {
-        try { await client.rpc("check_and_grant_achievements", { p_user_id: user.id, p_context: { event: "post" } }); }
-        catch (e) { console.error("achievement trigger error (post)", e); }
-      }
       showToast(isNotice ? "공지 작성 완료!" : "게시글 작성 완료! +5P 🎉");
       await onRefresh(); onClose();
     } catch (err: any) { showToast(err?.message || "작성 중 오류 발생", "error"); }
@@ -14340,21 +14529,6 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
     }
 
     await supabase.from("profiles").update({ last_attendance: today }).eq("id", user.id);
-
-    // ── 업적 자동 부여 (연속 출석 streak 계산) ──
-    try {
-      const prev = profile.last_attendance;
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
-      const currentStreak = Number(profile?.attendance_streak || 0);
-      const newStreak = prev === yesterday ? currentStreak + 1 : 1;
-      try { await supabase.from("profiles").update({ attendance_streak: newStreak }).eq("id", user.id); } catch {}
-      await supabase.rpc("check_and_grant_achievements", {
-        p_user_id: user.id,
-        p_context: { event: "attendance", streak_days: newStreak },
-      });
-    } catch (e) {
-      console.error("achievement trigger error (attendance)", e);
-    }
 
     showToast("출석 완료! +10 포인트 🎉", "success");
     window.location.reload();
