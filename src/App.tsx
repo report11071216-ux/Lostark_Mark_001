@@ -5484,7 +5484,7 @@ const OnlinePlayersCard = () => {
         // 1) profiles 단순 조회 (조인 시도 안 함)
         const { data: profilesData, error: profilesErr } = await supabase
           .from("profiles")
-          .select("id, nickname, profile_image_url, last_attendance, points, role, equipped_title_id")
+          .select("id, nickname, last_attendance, points, role, equipped_title_id")
           .order("last_attendance", { ascending: false, nullsFirst: false });
 
         if (profilesErr) {
@@ -5605,27 +5605,18 @@ const OnlinePlayersCard = () => {
                     background: status === "online" ? "rgba(52,211,153,0.04)" : "transparent",
                   }}
                 >
-                  {/* 캐릭터 이미지 */}
+                  {/* 캐릭터 아바타 (닉네임 이니셜로 자동 생성) */}
                   <div className="relative flex-shrink-0">
-                    {m.profile_image_url ? (
-                      <img
-                        src={m.profile_image_url}
-                        alt={m.nickname}
-                        className="w-9 h-9 rounded-full object-cover border-2"
-                        style={{ borderColor: status === "online" ? "#34d399" : status === "recent" ? "#fbbf24" : "rgba(255,255,255,0.08)" }}
-                      />
-                    ) : (
-                      <div
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2"
-                        style={{
-                          background: `linear-gradient(135deg, hsl(${(m.nickname || "").charCodeAt(0) * 7 % 360}, 50%, 45%), hsl(${(m.nickname || "").charCodeAt(0) * 7 % 360 + 30}, 40%, 30%))`,
-                          color: "#fff",
-                          borderColor: status === "online" ? "#34d399" : status === "recent" ? "#fbbf24" : "rgba(255,255,255,0.08)",
-                        }}
-                      >
-                        {initial}
-                      </div>
-                    )}
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border-2"
+                      style={{
+                        background: `linear-gradient(135deg, hsl(${(m.nickname || "").charCodeAt(0) * 7 % 360}, 50%, 45%), hsl(${(m.nickname || "").charCodeAt(0) * 7 % 360 + 30}, 40%, 30%))`,
+                        color: "#fff",
+                        borderColor: status === "online" ? "#34d399" : status === "recent" ? "#fbbf24" : "rgba(255,255,255,0.08)",
+                      }}
+                    >
+                      {initial}
+                    </div>
                     {/* 온라인 점 */}
                     {status === "online" && (
                       <div
