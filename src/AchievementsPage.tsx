@@ -1,9 +1,8 @@
 /* ────────────────────────────────────────────────────────────────────
- *  AchievementsPage.tsx
- *  ─ MMORPG 스타일 업적 / 티어 / 칭호 / 명예의 전당 시스템
- *  ─ app.tsx 의 기존 `RankingPage` 를 대체합니다
- *  ─ 의존성: framer-motion, lucide-react, @supabase/supabase-js, tailwindcss
- *  ─ 동일 파일 안의 supabase / cn / safeSingle 등은 부모 스코프 그대로 사용
+ *  AchievementsPage.tsx  (v2 — DB 연동 버전)
+ *  ─ 모든 텍스트/티어/레어도 컬러를 Supabase에서 읽어옴
+ *  ─ 관리자 패널에서 변경하면 즉시 반영
+ *  ─ DB 로드 실패 시 폴백 값으로 안정 동작
  * ──────────────────────────────────────────────────────────────────── */
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";
@@ -11,18 +10,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Trophy,
   Crown,
-  Shield,
   Sparkles,
   Lock,
   Check,
   Star,
   Flame,
-  Moon,
-  Sun,
   Swords,
   Heart,
   MessageCircle,
-  Calendar,
   Target,
   Award,
   ChevronRight,
@@ -33,105 +28,72 @@ import {
 } from "lucide-react";
 
 /* ════════════════════════════════════════════════════════════
- *  ❶  티어 시스템 (포인트 기반, 자동 산출)
- *      평균 길드원이 주 50P → 시즌(12주) 600P
- *      티어가 너무 빨리 끝나지도, 너무 멀어지지도 않게 배분
- * ════════════════════════════════════════════════════════════ */
-
-type TierKey =
-  | "iron"
-  | "bronze"
-  | "silver"
-  | "gold"
-  | "platinum"
-  | "diamond"
-  | "master"
-  | "grandmaster"
-  | "legend"
-  | "mythic";
-
-type TierDef = {
-  key: TierKey;
-  name: string;          // 표시명
-  min: number;           // 최소 포인트
-  /** 메탈 그라데이션 (텍스트 / 보더) */
-  gradient: string;
-  /** 글로우 컬러 */
-  glow: string;
-  /** 보조 색 (chip 등) */
-  accent: string;
-  icon: string;          // emoji
-  flavor: string;        // 영문 캐치프레이즈
-};
-
-const TIERS: TierDef[] = [
-  { key: "iron",        name: "강철",     min: 0,    gradient: "from-stone-500 to-stone-300",     glow: "rgba(168,162,158,0.35)", accent: "#A8A29E", icon: "⚙️", flavor: "The First Step" },
-  { key: "bronze",      name: "동",       min: 100,  gradient: "from-amber-700 to-amber-400",     glow: "rgba(217,119,6,0.45)",   accent: "#D97706", icon: "🛡️", flavor: "Hardened by Battle" },
-  { key: "silver",      name: "은",       min: 300,  gradient: "from-slate-400 to-slate-100",     glow: "rgba(203,213,225,0.45)", accent: "#CBD5E1", icon: "⚔️", flavor: "Steel and Will" },
-  { key: "gold",        name: "금",       min: 600,  gradient: "from-amber-400 to-yellow-200",    glow: "rgba(252,211,77,0.55)",  accent: "#FCD34D", icon: "🏅", flavor: "Marked with Glory" },
-  { key: "platinum",    name: "플래티넘",  min: 1000, gradient: "from-cyan-300 to-teal-100",       glow: "rgba(103,232,249,0.55)", accent: "#67E8F9", icon: "💠", flavor: "Beyond the Veil" },
-  { key: "diamond",     name: "다이아",    min: 1600, gradient: "from-indigo-400 to-sky-200",      glow: "rgba(129,140,248,0.6)",  accent: "#818CF8", icon: "💎", flavor: "Brilliance Forged" },
-  { key: "master",      name: "마스터",    min: 2400, gradient: "from-violet-400 to-fuchsia-200", glow: "rgba(167,139,250,0.65)", accent: "#A78BFA", icon: "🔮", flavor: "Wielder of the Arts" },
-  { key: "grandmaster", name: "그랜드마스터", min: 3600, gradient: "from-fuchsia-500 to-pink-300", glow: "rgba(232,121,249,0.7)",  accent: "#E879F9", icon: "👑", flavor: "Beyond Mastery" },
-  { key: "legend",      name: "전설",      min: 5200, gradient: "from-orange-500 via-red-400 to-yellow-300", glow: "rgba(248,113,113,0.8)", accent: "#F87171", icon: "🔥", flavor: "Etched in Legend" },
-  { key: "mythic",      name: "신화",      min: 7500, gradient: "from-yellow-300 via-pink-400 to-cyan-300", glow: "rgba(244,114,182,0.9)", accent: "#F472B6", icon: "✨", flavor: "Born of Myth" },
-];
-
-const getTierByPoints = (points: number): TierDef => {
-  let current = TIERS[0];
-  for (const t of TIERS) if (points >= t.min) current = t;
-  return current;
-};
-
-const getNextTier = (points: number): TierDef | null => {
-  const idx = TIERS.findIndex((t) => t.min > points);
-  return idx === -1 ? null : TIERS[idx];
-};
-
-/* ════════════════════════════════════════════════════════════
- *  ❷  레어도 / 카테고리 (UI 컬러 매핑)
+ *  타입
  * ════════════════════════════════════════════════════════════ */
 
 type Rarity = "common" | "rare" | "epic" | "legendary" | "mythic";
 
-const RARITY_STYLE: Record<Rarity, {
-  text: string; border: string; bg: string; chip: string; glow: string; label: string;
-}> = {
-  common:    { text: "text-slate-300",   border: "border-slate-500/30",  bg: "from-slate-800/60 to-slate-900/60",    chip: "bg-slate-500/15 text-slate-300 border-slate-500/30",   glow: "rgba(148,163,184,0.15)", label: "COMMON"    },
-  rare:      { text: "text-sky-300",     border: "border-sky-400/40",    bg: "from-sky-900/40 to-slate-900/60",      chip: "bg-sky-500/15 text-sky-200 border-sky-500/30",         glow: "rgba(56,189,248,0.3)",   label: "RARE"      },
-  epic:      { text: "text-violet-300",  border: "border-violet-400/50", bg: "from-violet-900/40 to-slate-900/60",   chip: "bg-violet-500/15 text-violet-200 border-violet-500/30", glow: "rgba(167,139,250,0.4)", label: "EPIC"      },
-  legendary: { text: "text-amber-300",   border: "border-amber-400/60",  bg: "from-amber-900/40 to-slate-900/70",    chip: "bg-amber-500/15 text-amber-200 border-amber-500/40",   glow: "rgba(252,211,77,0.5)",   label: "LEGENDARY" },
-  mythic:    { text: "text-pink-300",    border: "border-pink-400/60",   bg: "from-pink-900/40 via-purple-900/40 to-cyan-900/40", chip: "bg-pink-500/15 text-pink-200 border-pink-500/40", glow: "rgba(244,114,182,0.6)", label: "MYTHIC" },
+type Category = "all" | "raid" | "social" | "dedication" | "support" | "hidden";
+
+type TierRow = {
+  id: string;
+  key: string;
+  name: string;
+  min_points: number;
+  gradient_from: string;
+  gradient_to: string;
+  glow_color: string;
+  accent_color: string;
+  icon: string;
+  flavor: string;
+  sort_order: number;
+  enabled: boolean;
 };
 
-type Category =
-  | "all"
-  | "raid"
-  | "social"
-  | "dedication"
-  | "support"
-  | "hidden";
+type RarityRow = {
+  id: string;
+  key: Rarity;
+  label: string;
+  label_ko: string;
+  text_color: string;
+  border_color: string;
+  bg_from: string;
+  bg_to: string;
+  glow_color: string;
+  sort_order: number;
+};
 
-const CATEGORIES: { key: Category; label: string; icon: any }[] = [
-  { key: "all",        label: "전체",     icon: Sparkles },
-  { key: "raid",       label: "레이드",   icon: Swords },
-  { key: "social",     label: "소셜",     icon: MessageCircle },
-  { key: "dedication", label: "헌신",     icon: Flame },
-  { key: "support",    label: "서포트",   icon: Heart },
-  { key: "hidden",     label: "비밀",     icon: Lock },
-];
-
-/* ════════════════════════════════════════════════════════════
- *  ❸  공통 유틸
- * ════════════════════════════════════════════════════════════ */
-
-const cn = (...a: any[]) => a.filter(Boolean).join(" ");
-
-const formatNum = (n: number) => new Intl.NumberFormat("ko-KR").format(n);
-
-/* ════════════════════════════════════════════════════════════
- *  ❹  타입 정의 (DB 매핑)
- * ════════════════════════════════════════════════════════════ */
+type PageConfig = {
+  header_eyebrow: string;
+  header_title: string;
+  header_subtitle: string;
+  tab_overview: string;
+  tab_achievements: string;
+  tab_titles: string;
+  tab_hall: string;
+  tab_mvp: string;
+  hero_card_label: string;
+  tier_roadmap_title: string;
+  tier_roadmap_subtitle: string;
+  recent_title: string;
+  recent_subtitle: string;
+  hall_title: string;
+  hall_subtitle: string;
+  mvp_title: string;
+  mvp_subtitle: string;
+  empty_achievements: string;
+  empty_hall: string;
+  empty_titles_owned: string;
+  empty_titles_all: string;
+  loading_text: string;
+  primary_accent: string;
+  secondary_accent: string;
+  background_glow_1: string;
+  background_glow_2: string;
+  noise_enabled: boolean;
+  ornament_enabled: boolean;
+  medallion_animation: boolean;
+};
 
 type Achievement = {
   id: string;
@@ -141,10 +103,10 @@ type Achievement = {
   category: Exclude<Category, "all">;
   rarity: Rarity;
   hidden: boolean;
-  icon: string;          // emoji 또는 lucide name (여기선 emoji 사용)
+  icon: string;
   reward_title_id?: string | null;
-  /** 클라이언트 진척도 계산용 (선택) */
   threshold?: number | null;
+  sort_order?: number;
 };
 
 type Title = {
@@ -153,8 +115,8 @@ type Title = {
   name: string;
   description: string;
   rarity: Rarity;
-  /** 칭호 표시용 컬러 (선택) */
   color?: string | null;
+  sort_order?: number;
 };
 
 type UserAchievement = {
@@ -171,7 +133,7 @@ type UserTitle = {
 type HallEntry = {
   id: string;
   season_name: string;
-  category: string;     // points / weekly / support / participation
+  category: string;
   rank: number;
   profile_id: string;
   nickname: string;
@@ -188,19 +150,93 @@ type MVPRow = {
 };
 
 /* ════════════════════════════════════════════════════════════
- *  ❺  메인 컴포넌트
- *
+ *  폴백 데이터 (DB 로드 실패 / 첫 렌더 시 사용)
+ * ════════════════════════════════════════════════════════════ */
+
+const FALLBACK_CONFIG: PageConfig = {
+  header_eyebrow: "Halls of Renown",
+  header_title: "명예의 전당",
+  header_subtitle: "길드의 전사들이 새긴 발자국. 그대의 이름도 여기에 기록될 것이다.",
+  tab_overview: "개요",
+  tab_achievements: "업적",
+  tab_titles: "칭호",
+  tab_hall: "명예의 전당",
+  tab_mvp: "시즌 MVP",
+  hero_card_label: "Current Tier",
+  tier_roadmap_title: "Tier Roadmap",
+  tier_roadmap_subtitle: "모든 티어의 정점을 향해",
+  recent_title: "Recent Achievements",
+  recent_subtitle: "최근 새겨진 위업",
+  hall_title: "Hall of Fame",
+  hall_subtitle: "지난 시즌의 영웅들",
+  mvp_title: "Season MVP",
+  mvp_subtitle: "이번 시즌의 선두주자들",
+  empty_achievements: "아직 달성한 업적이 없어요. 첫 발자국을 새겨보세요.",
+  empty_hall: "아직 기록된 시즌이 없습니다.",
+  empty_titles_owned: "아직 획득한 칭호가 없습니다.",
+  empty_titles_all: "모든 칭호를 수집했습니다! 🎉",
+  loading_text: "Loading Halls of Glory",
+  primary_accent: "#F0B429",
+  secondary_accent: "#A78BFA",
+  background_glow_1: "#F0B429",
+  background_glow_2: "#A78BFA",
+  noise_enabled: true,
+  ornament_enabled: true,
+  medallion_animation: true,
+};
+
+const FALLBACK_TIERS: TierRow[] = [
+  { id: "f1",  key: "iron",        name: "강철",         min_points: 0,    gradient_from: "#78716C", gradient_to: "#D6D3D1", glow_color: "rgba(168,162,158,0.35)", accent_color: "#A8A29E", icon: "⚙️",  flavor: "The First Step",      sort_order: 0, enabled: true },
+  { id: "f2",  key: "bronze",      name: "동",           min_points: 100,  gradient_from: "#B45309", gradient_to: "#FBBF24", glow_color: "rgba(217,119,6,0.45)",   accent_color: "#D97706", icon: "🛡️",  flavor: "Hardened by Battle",  sort_order: 1, enabled: true },
+  { id: "f3",  key: "silver",      name: "은",           min_points: 300,  gradient_from: "#94A3B8", gradient_to: "#F1F5F9", glow_color: "rgba(203,213,225,0.45)", accent_color: "#CBD5E1", icon: "⚔️",  flavor: "Steel and Will",      sort_order: 2, enabled: true },
+  { id: "f4",  key: "gold",        name: "금",           min_points: 600,  gradient_from: "#F59E0B", gradient_to: "#FEF3C7", glow_color: "rgba(252,211,77,0.55)",  accent_color: "#FCD34D", icon: "🏅",  flavor: "Marked with Glory",   sort_order: 3, enabled: true },
+  { id: "f5",  key: "platinum",    name: "플래티넘",     min_points: 1000, gradient_from: "#22D3EE", gradient_to: "#CFFAFE", glow_color: "rgba(103,232,249,0.55)", accent_color: "#67E8F9", icon: "💠",  flavor: "Beyond the Veil",     sort_order: 4, enabled: true },
+  { id: "f6",  key: "diamond",     name: "다이아",       min_points: 1600, gradient_from: "#6366F1", gradient_to: "#E0F2FE", glow_color: "rgba(129,140,248,0.6)",  accent_color: "#818CF8", icon: "💎",  flavor: "Brilliance Forged",   sort_order: 5, enabled: true },
+  { id: "f7",  key: "master",      name: "마스터",       min_points: 2400, gradient_from: "#8B5CF6", gradient_to: "#F5F3FF", glow_color: "rgba(167,139,250,0.65)", accent_color: "#A78BFA", icon: "🔮",  flavor: "Wielder of the Arts", sort_order: 6, enabled: true },
+  { id: "f8",  key: "grandmaster", name: "그랜드마스터", min_points: 3600, gradient_from: "#D946EF", gradient_to: "#FCE7F3", glow_color: "rgba(232,121,249,0.7)",  accent_color: "#E879F9", icon: "👑",  flavor: "Beyond Mastery",      sort_order: 7, enabled: true },
+  { id: "f9",  key: "legend",      name: "전설",         min_points: 5200, gradient_from: "#F97316", gradient_to: "#FCD34D", glow_color: "rgba(248,113,113,0.8)",  accent_color: "#F87171", icon: "🔥",  flavor: "Etched in Legend",    sort_order: 8, enabled: true },
+  { id: "f10", key: "mythic",      name: "신화",         min_points: 7500, gradient_from: "#FDE047", gradient_to: "#67E8F9", glow_color: "rgba(244,114,182,0.9)",  accent_color: "#F472B6", icon: "✨",  flavor: "Born of Myth",        sort_order: 9, enabled: true },
+];
+
+const FALLBACK_RARITIES: Record<Rarity, RarityRow> = {
+  common:    { id: "fr1", key: "common",    label: "COMMON",    label_ko: "일반", text_color: "#CBD5E1", border_color: "rgba(148,163,184,0.3)", bg_from: "rgba(30,41,59,0.6)",  bg_to: "rgba(15,23,42,0.6)",   glow_color: "rgba(148,163,184,0.15)", sort_order: 0 },
+  rare:      { id: "fr2", key: "rare",      label: "RARE",      label_ko: "레어", text_color: "#7DD3FC", border_color: "rgba(56,189,248,0.4)",  bg_from: "rgba(12,74,110,0.4)", bg_to: "rgba(15,23,42,0.6)",   glow_color: "rgba(56,189,248,0.3)",   sort_order: 1 },
+  epic:      { id: "fr3", key: "epic",      label: "EPIC",      label_ko: "에픽", text_color: "#C4B5FD", border_color: "rgba(167,139,250,0.5)", bg_from: "rgba(76,29,149,0.4)", bg_to: "rgba(15,23,42,0.6)",   glow_color: "rgba(167,139,250,0.4)",  sort_order: 2 },
+  legendary: { id: "fr4", key: "legendary", label: "LEGENDARY", label_ko: "전설", text_color: "#FCD34D", border_color: "rgba(252,211,77,0.6)",  bg_from: "rgba(120,53,15,0.4)", bg_to: "rgba(15,23,42,0.7)",   glow_color: "rgba(252,211,77,0.5)",   sort_order: 3 },
+  mythic:    { id: "fr5", key: "mythic",    label: "MYTHIC",    label_ko: "신화", text_color: "#F9A8D4", border_color: "rgba(244,114,182,0.6)", bg_from: "rgba(131,24,67,0.4)", bg_to: "rgba(76,29,149,0.4)",  glow_color: "rgba(244,114,182,0.6)",  sort_order: 4 },
+};
+
+/* ════════════════════════════════════════════════════════════
+ *  Helpers
+ * ════════════════════════════════════════════════════════════ */
+
+const cn = (...a: any[]) => a.filter(Boolean).join(" ");
+
+const formatNum = (n: number) => new Intl.NumberFormat("ko-KR").format(n);
+
+const buildGradient = (from: string, to: string) =>
+  `linear-gradient(135deg, ${from} 0%, ${to} 100%)`;
+
+const buildGradientH = (from: string, to: string) =>
+  `linear-gradient(90deg, ${from} 0%, ${to} 100%)`;
+
+const CATEGORIES_META: { key: Category; label: string; icon: any }[] = [
+  { key: "all",        label: "전체",   icon: Sparkles },
+  { key: "raid",       label: "레이드", icon: Swords },
+  { key: "social",     label: "소셜",   icon: MessageCircle },
+  { key: "dedication", label: "헌신",   icon: Flame },
+  { key: "support",    label: "서포트", icon: Heart },
+  { key: "hidden",     label: "비밀",   icon: Lock },
+];
+
+/* ════════════════════════════════════════════════════════════
  *  Props
- *    user     : Supabase auth user
- *    profile  : profiles row (points, nickname, rank_name, equipped_title_id 등)
- *    supabase : 부모에서 export 된 클라이언트 (또는 props 로 받기)
  * ════════════════════════════════════════════════════════════ */
 
 type Props = {
   user: any;
   profile: any;
-  supabase: any;             // 부모의 createClient 결과
-  /** 프로필 업데이트 후 부모 갱신용 (선택) */
+  supabase: any;
   onProfileChanged?: () => void;
 };
 
@@ -209,7 +245,10 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
   type View = "overview" | "achievements" | "titles" | "hall" | "mvp";
   const [view, setView] = useState<View>("overview");
 
-  /* ─ Data ─ */
+  /* ─ DB Data ─ */
+  const [config, setConfig] = useState<PageConfig>(FALLBACK_CONFIG);
+  const [tiers, setTiers] = useState<TierRow[]>(FALLBACK_TIERS);
+  const [rarities, setRarities] = useState<Record<Rarity, RarityRow>>(FALLBACK_RARITIES);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [titles, setTitles] = useState<Title[]>([]);
   const [myAchievements, setMyAchievements] = useState<UserAchievement[]>([]);
@@ -222,15 +261,30 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
   const [category, setCategory] = useState<Category>("all");
   const [search, setSearch] = useState("");
 
-  /* ─ Stats ─ */
+  /* ─ Derived: Tier 계산 ─ */
   const myPoints = Number(profile?.points || 0);
-  const myTier = useMemo(() => getTierByPoints(myPoints), [myPoints]);
-  const nextTier = useMemo(() => getNextTier(myPoints), [myPoints]);
+  const sortedTiers = useMemo(
+    () => tiers.filter((t) => t.enabled).sort((a, b) => a.min_points - b.min_points),
+    [tiers]
+  );
+
+  const myTier = useMemo(() => {
+    let current = sortedTiers[0] || FALLBACK_TIERS[0];
+    for (const t of sortedTiers) {
+      if (myPoints >= t.min_points) current = t;
+    }
+    return current;
+  }, [myPoints, sortedTiers]);
+
+  const nextTier = useMemo(() => {
+    return sortedTiers.find((t) => t.min_points > myPoints) || null;
+  }, [myPoints, sortedTiers]);
+
   const tierProgress = useMemo(() => {
     if (!nextTier) return 1;
-    const span = nextTier.min - myTier.min;
-    const have = myPoints - myTier.min;
-    return Math.max(0, Math.min(1, have / span));
+    const span = nextTier.min_points - myTier.min_points;
+    const have = myPoints - myTier.min_points;
+    return Math.max(0, Math.min(1, span > 0 ? have / span : 0));
   }, [myPoints, myTier, nextTier]);
 
   /* ─ 대표 칭호 ─ */
@@ -240,18 +294,32 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
     [titles, equippedTitleId]
   );
 
-  /* ════════ 데이터 로드 ════════ */
+  /* ════════ DB 로드 ════════ */
   const fetchAll = useCallback(async () => {
     if (!supabase) return;
     setLoading(true);
     try {
-      const [aRes, tRes, uaRes, utRes, hRes] = await Promise.all([
-        supabase.from("achievements").select("*").order("category").order("rarity").order("title"),
-        supabase.from("titles").select("*").order("rarity").order("name"),
+      const [
+        cfgRes, tierRes, rarityRes,
+        aRes, tRes, uaRes, utRes, hRes,
+      ] = await Promise.all([
+        supabase.from("achievement_page_config").select("*").eq("id", 1).maybeSingle(),
+        supabase.from("tiers").select("*").order("sort_order"),
+        supabase.from("rarities").select("*").order("sort_order"),
+        supabase.from("achievements").select("*").order("sort_order").order("category").order("title"),
+        supabase.from("titles").select("*").order("sort_order").order("name"),
         user ? supabase.from("user_achievements").select("achievement_id, achieved_at, progress").eq("user_id", user.id) : Promise.resolve({ data: [] }),
         user ? supabase.from("user_titles").select("title_id, acquired_at").eq("user_id", user.id) : Promise.resolve({ data: [] }),
         supabase.from("season_results").select("id, season_name, category, rank, profile_id, nickname, value, achieved_at").order("achieved_at", { ascending: false }).limit(60),
       ]);
+
+      if (cfgRes.data) setConfig({ ...FALLBACK_CONFIG, ...cfgRes.data });
+      if (tierRes.data && tierRes.data.length > 0) setTiers(tierRes.data as TierRow[]);
+      if (rarityRes.data && rarityRes.data.length > 0) {
+        const map: Record<string, RarityRow> = {};
+        for (const r of rarityRes.data as RarityRow[]) map[r.key] = r;
+        setRarities({ ...FALLBACK_RARITIES, ...map } as Record<Rarity, RarityRow>);
+      }
       setAchievements((aRes.data || []) as Achievement[]);
       setTitles((tRes.data || []) as Title[]);
       setMyAchievements((uaRes.data || []) as UserAchievement[]);
@@ -264,7 +332,7 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
     }
   }, [supabase, user]);
 
-  /* ════════ 현재 시즌 MVP (실시간) ════════ */
+  /* ════════ 현재 시즌 MVP ════════ */
   const fetchMVP = useCallback(async () => {
     if (!supabase) return;
     try {
@@ -303,27 +371,17 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
   };
 
   /* ════════ 파생 데이터 ════════ */
-
-  const achievementSet = useMemo(() => {
-    const s = new Set(myAchievements.map((m) => m.achievement_id));
-    return s;
-  }, [myAchievements]);
-
-  const titleSet = useMemo(() => {
-    const s = new Set(myTitles.map((m) => m.title_id));
-    return s;
-  }, [myTitles]);
+  const achievementSet = useMemo(() => new Set(myAchievements.map((m) => m.achievement_id)), [myAchievements]);
+  const titleSet = useMemo(() => new Set(myTitles.map((m) => m.title_id)), [myTitles]);
 
   const visibleAchievements = useMemo(() => {
     const q = search.trim().toLowerCase();
     return achievements.filter((a) => {
-      // 카테고리
       if (category === "hidden") {
         if (!a.hidden) return false;
       } else if (category !== "all" && a.category !== category) {
         return false;
       }
-      // 검색 (숨겨진 미달성은 검색 안 됨)
       if (q) {
         const isHidden = a.hidden && !achievementSet.has(a.id);
         if (isHidden) return false;
@@ -352,7 +410,7 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
           >
             ⚜️
           </motion.div>
-          <div className="text-amber-200/70 text-xs tracking-[0.4em] uppercase">Loading Halls of Glory</div>
+          <div className="text-amber-200/70 text-xs tracking-[0.4em] uppercase">{config.loading_text}</div>
         </div>
       </div>
     );
@@ -362,26 +420,42 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
     <div className="relative max-w-6xl mx-auto px-3 sm:px-6 py-8 sm:py-16">
       {/* 배경 장식 */}
       <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-[900px] h-[600px] rounded-full opacity-[0.12] blur-[120px]" style={{ background: "radial-gradient(circle, #F0B429 0%, transparent 60%)" }} />
-        <div className="absolute -bottom-40 right-0 w-[600px] h-[600px] rounded-full opacity-[0.08] blur-[100px]" style={{ background: "radial-gradient(circle, #A78BFA 0%, transparent 60%)" }} />
-        <NoiseOverlay />
+        <div
+          className="absolute top-10 left-1/2 -translate-x-1/2 w-[900px] h-[600px] rounded-full opacity-[0.12] blur-[120px]"
+          style={{ background: `radial-gradient(circle, ${config.background_glow_1} 0%, transparent 60%)` }}
+        />
+        <div
+          className="absolute -bottom-40 right-0 w-[600px] h-[600px] rounded-full opacity-[0.08] blur-[100px]"
+          style={{ background: `radial-gradient(circle, ${config.background_glow_2} 0%, transparent 60%)` }}
+        />
+        {config.noise_enabled && <NoiseOverlay />}
       </div>
 
       {/* 페이지 헤더 */}
       <header className="text-center mb-10 sm:mb-14">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-400/30 bg-amber-500/5 mb-4">
-          <Crown className="w-3.5 h-3.5 text-amber-300" />
-          <span className="text-[10px] sm:text-xs uppercase tracking-[0.4em] text-amber-200/80 font-semibold">Halls of Renown</span>
+        <div
+          className="inline-flex items-center gap-2 px-3 py-1 rounded-full border mb-4"
+          style={{ borderColor: `${config.primary_accent}50`, background: `${config.primary_accent}10` }}
+        >
+          <Crown className="w-3.5 h-3.5" style={{ color: config.primary_accent }} />
+          <span className="text-[10px] sm:text-xs uppercase tracking-[0.4em] font-semibold" style={{ color: `${config.primary_accent}cc` }}>
+            {config.header_eyebrow}
+          </span>
         </div>
         <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight">
-          <span className="bg-gradient-to-b from-amber-100 to-amber-400 bg-clip-text text-transparent">명예의 전당</span>
+          <span
+            className="bg-clip-text text-transparent"
+            style={{ backgroundImage: `linear-gradient(to bottom, ${config.primary_accent}, ${config.primary_accent}99)` }}
+          >
+            {config.header_title}
+          </span>
         </h1>
-        <p className="mt-3 text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
-          길드의 전사들이 새긴 발자국. 그대의 이름도 여기에 기록될 것이다.
+        <p className="mt-3 text-slate-400 text-sm sm:text-base max-w-xl mx-auto whitespace-pre-line">
+          {config.header_subtitle}
         </p>
       </header>
 
-      {/* 내 프로필 카드 */}
+      {/* 내 영웅 카드 */}
       <MyHeroCard
         nickname={profile?.nickname || "Adventurer"}
         points={myPoints}
@@ -392,10 +466,12 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
         totalCount={totalCount}
         titlesCount={myTitles.length}
         equippedTitle={equippedTitle}
+        rarities={rarities}
+        config={config}
       />
 
-      {/* 탭 네비게이션 */}
-      <ViewTabs view={view} setView={setView} />
+      {/* 뷰 탭 */}
+      <ViewTabs view={view} setView={setView} config={config} accent={config.primary_accent} />
 
       {/* 본문 */}
       <AnimatePresence mode="wait">
@@ -427,6 +503,9 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
               }
               hall={hall.slice(0, 3)}
               onJump={setView}
+              sortedTiers={sortedTiers}
+              rarities={rarities}
+              config={config}
             />
           )}
 
@@ -439,6 +518,8 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
               setCategory={setCategory}
               search={search}
               setSearch={setSearch}
+              rarities={rarities}
+              config={config}
             />
           )}
 
@@ -448,12 +529,14 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
               titleSet={titleSet}
               equippedTitleId={equippedTitleId}
               onEquip={equipTitle}
+              rarities={rarities}
+              config={config}
             />
           )}
 
-          {view === "hall" && <HallOfFameSection entries={hall} />}
+          {view === "hall" && <HallOfFameSection entries={hall} config={config} />}
 
-          {view === "mvp" && <MVPSection rows={mvp} />}
+          {view === "mvp" && <MVPSection rows={mvp} config={config} />}
         </motion.div>
       </AnimatePresence>
     </div>
@@ -461,20 +544,22 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
 };
 
 /* ════════════════════════════════════════════════════════════
- *  ⓐ 내 영웅 카드 (Hero Card)
+ *  영웅 카드
  * ════════════════════════════════════════════════════════════ */
 
 const MyHeroCard: React.FC<{
   nickname: string;
   points: number;
-  tier: TierDef;
-  nextTier: TierDef | null;
+  tier: TierRow;
+  nextTier: TierRow | null;
   progress: number;
   completedCount: number;
   totalCount: number;
   titlesCount: number;
   equippedTitle: Title | null;
-}> = ({ nickname, points, tier, nextTier, progress, completedCount, totalCount, titlesCount, equippedTitle }) => {
+  rarities: Record<Rarity, RarityRow>;
+  config: PageConfig;
+}> = ({ nickname, points, tier, nextTier, progress, completedCount, totalCount, titlesCount, equippedTitle, rarities, config }) => {
   return (
     <motion.section
       initial={{ opacity: 0, y: 20 }}
@@ -482,34 +567,34 @@ const MyHeroCard: React.FC<{
       transition={{ duration: 0.5 }}
       className="relative mb-10 sm:mb-12"
     >
-      {/* 글로우 */}
-      <div className="absolute -inset-1 rounded-3xl opacity-60 blur-2xl" style={{ background: `radial-gradient(ellipse at center, ${tier.glow}, transparent 70%)` }} />
-
+      <div
+        className="absolute -inset-1 rounded-3xl opacity-60 blur-2xl"
+        style={{ background: `radial-gradient(ellipse at center, ${tier.glow_color}, transparent 70%)` }}
+      />
       <div className="relative rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-br from-[#0a0d1a]/95 via-[#0d1018]/95 to-[#070912]/95 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
-        {/* Ornament corner */}
-        <CornerOrnaments accent={tier.accent} />
+        {config.ornament_enabled && <CornerOrnaments accent={tier.accent_color} />}
 
-        {/* 메탈 그라데이션 상단 라인 */}
-        <div className={cn("h-[2px] w-full bg-gradient-to-r", tier.gradient)} />
+        {/* 상단 라인 */}
+        <div className="h-[2px] w-full" style={{ background: buildGradientH(tier.gradient_from, tier.gradient_to) }} />
 
         <div className="p-5 sm:p-8 md:p-10">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-10">
-            {/* 좌측: 티어 메달 */}
+            {/* 좌측: 메달 */}
             <div className="relative flex-shrink-0 mx-auto md:mx-0">
-              <TierMedallion tier={tier} />
+              <TierMedallion tier={tier} animated={config.medallion_animation} noise={config.noise_enabled} />
             </div>
 
-            {/* 우측: 정보 */}
+            {/* 우측 정보 */}
             <div className="flex-1 min-w-0 w-full">
-              {/* 칭호 */}
               {equippedTitle ? (
                 <div className="mb-2">
                   <span
-                    className={cn(
-                      "inline-flex items-center gap-1 px-2.5 py-1 rounded-md border text-[11px] sm:text-xs font-semibold tracking-wider uppercase",
-                      RARITY_STYLE[equippedTitle.rarity].chip
-                    )}
-                    style={equippedTitle.color ? { color: equippedTitle.color } : undefined}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md border text-[11px] sm:text-xs font-semibold tracking-wider uppercase"
+                    style={{
+                      borderColor: rarities[equippedTitle.rarity].border_color,
+                      background: `linear-gradient(135deg, ${rarities[equippedTitle.rarity].bg_from}, ${rarities[equippedTitle.rarity].bg_to})`,
+                      color: equippedTitle.color || rarities[equippedTitle.rarity].text_color,
+                    }}
                   >
                     <Sparkles className="w-3 h-3" />
                     {equippedTitle.name}
@@ -519,40 +604,45 @@ const MyHeroCard: React.FC<{
                 <div className="mb-2 text-[10px] text-slate-600 uppercase tracking-[0.3em]">No Title Equipped</div>
               )}
 
-              {/* 닉네임 */}
               <h2 className="font-serif text-2xl sm:text-4xl font-bold text-white truncate">{nickname}</h2>
 
-              {/* 티어 배지 */}
               <div className="mt-3 flex items-center gap-2 flex-wrap">
-                <span className="text-xs uppercase tracking-[0.3em] text-slate-500">Current Tier</span>
-                <span className={cn("font-serif text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r", tier.gradient)}>
+                <span className="text-xs uppercase tracking-[0.3em] text-slate-500">{config.hero_card_label}</span>
+                <span
+                  className="font-serif text-lg sm:text-xl font-bold bg-clip-text text-transparent"
+                  style={{ backgroundImage: buildGradientH(tier.gradient_from, tier.gradient_to) }}
+                >
                   {tier.name}
                 </span>
                 <span className="text-slate-600">·</span>
-                <span className="text-amber-300 font-mono text-sm">{formatNum(points)} P</span>
+                <span className="font-mono text-sm" style={{ color: config.primary_accent }}>
+                  {formatNum(points)} P
+                </span>
               </div>
 
-              {/* 다음 티어까지 게이지 */}
+              {/* 진척 게이지 */}
               <div className="mt-5">
                 <div className="flex items-center justify-between text-[11px] uppercase tracking-wider mb-1.5">
                   {nextTier ? (
                     <>
                       <span className="text-slate-500">to {nextTier.name}</span>
-                      <span className="text-slate-400 font-mono">{formatNum(nextTier.min - points)} P</span>
+                      <span className="text-slate-400 font-mono">{formatNum(nextTier.min_points - points)} P</span>
                     </>
                   ) : (
-                    <span className="text-amber-300/80">최고 티어 달성</span>
+                    <span style={{ color: `${config.primary_accent}cc` }}>최고 티어 달성</span>
                   )}
                 </div>
                 <div className="h-2 rounded-full bg-black/40 border border-white/5 overflow-hidden relative">
                   <motion.div
-                    className={cn("h-full bg-gradient-to-r", tier.gradient)}
+                    className="h-full"
                     initial={{ width: 0 }}
                     animate={{ width: `${progress * 100}%` }}
                     transition={{ duration: 1, ease: "easeOut" }}
-                    style={{ boxShadow: `0 0 16px ${tier.glow}` }}
+                    style={{
+                      background: buildGradientH(tier.gradient_from, tier.gradient_to),
+                      boxShadow: `0 0 16px ${tier.glow_color}`,
+                    }}
                   />
-                  {/* 광택 애니 */}
                   <motion.div
                     className="absolute inset-y-0 w-12 bg-gradient-to-r from-transparent via-white/40 to-transparent"
                     animate={{ x: ["-100%", "400%"] }}
@@ -562,11 +652,10 @@ const MyHeroCard: React.FC<{
                 </div>
               </div>
 
-              {/* 미니 스탯 */}
               <div className="mt-6 grid grid-cols-3 gap-3 sm:gap-5">
-                <MiniStat icon={Award}   label="업적"  value={`${completedCount}/${totalCount}`} accent="#FCD34D" />
-                <MiniStat icon={Trophy}  label="칭호"  value={`${titlesCount}`}                  accent="#A78BFA" />
-                <MiniStat icon={Gem}     label="포인트" value={formatNum(points)}                accent="#67E8F9" />
+                <MiniStat icon={Award}  label="업적"   value={`${completedCount}/${totalCount}`} accent={config.primary_accent} />
+                <MiniStat icon={Trophy} label="칭호"   value={`${titlesCount}`}                  accent={config.secondary_accent} />
+                <MiniStat icon={Gem}    label="포인트" value={formatNum(points)}                  accent="#67E8F9" />
               </div>
             </div>
           </div>
@@ -576,35 +665,30 @@ const MyHeroCard: React.FC<{
   );
 };
 
-/* ════════ 메달 (티어 아이콘) ════════ */
-const TierMedallion: React.FC<{ tier: TierDef }> = ({ tier }) => {
+const TierMedallion: React.FC<{ tier: TierRow; animated: boolean; noise: boolean }> = ({ tier, animated, noise }) => {
   return (
     <div className="relative h-28 w-28 sm:h-32 sm:w-32">
-      {/* 회전 광 */}
-      <motion.div
-        className="absolute inset-0 rounded-full opacity-70"
-        style={{ background: `conic-gradient(from 0deg, transparent 0deg, ${tier.glow} 120deg, transparent 240deg)` }}
-        animate={{ rotate: 360 }}
-        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-      />
-      {/* 외곽 */}
-      <div className={cn("absolute inset-1 rounded-full bg-gradient-to-br p-[2px]", tier.gradient)}>
+      {animated && (
+        <motion.div
+          className="absolute inset-0 rounded-full opacity-70"
+          style={{ background: `conic-gradient(from 0deg, transparent 0deg, ${tier.glow_color} 120deg, transparent 240deg)` }}
+          animate={{ rotate: 360 }}
+          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+        />
+      )}
+      <div className="absolute inset-1 rounded-full p-[2px]" style={{ background: buildGradient(tier.gradient_from, tier.gradient_to) }}>
         <div className="h-full w-full rounded-full bg-[#0a0d1a] flex items-center justify-center relative overflow-hidden">
-          {/* 내부 스파클 배경 */}
-          <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 30% 30%, ${tier.glow}, transparent 60%)` }} />
-          {/* 아이콘 */}
+          <div className="absolute inset-0 opacity-20" style={{ background: `radial-gradient(circle at 30% 30%, ${tier.glow_color}, transparent 60%)` }} />
           <span className="text-4xl sm:text-5xl drop-shadow-[0_0_12px_rgba(252,211,77,0.6)]">{tier.icon}</span>
-          {/* 노이즈 */}
-          <NoiseOverlay opacity={0.3} />
+          {noise && <NoiseOverlay opacity={0.3} />}
         </div>
       </div>
     </div>
   );
 };
 
-/* ════════ 미니 스탯 ════════ */
 const MiniStat: React.FC<{ icon: any; label: string; value: string; accent: string }> = ({ icon: Icon, label, value, accent }) => (
-  <div className="relative rounded-xl border border-white/10 bg-white/[0.02] p-3 sm:p-4 group hover:bg-white/[0.05] transition-all">
+  <div className="relative rounded-xl border border-white/10 bg-white/[0.02] p-3 sm:p-4 hover:bg-white/[0.05] transition-all">
     <div className="flex items-center gap-2 mb-1">
       <Icon className="w-3.5 h-3.5" style={{ color: accent }} />
       <span className="text-[10px] uppercase tracking-[0.25em] text-slate-500">{label}</span>
@@ -614,16 +698,16 @@ const MiniStat: React.FC<{ icon: any; label: string; value: string; accent: stri
 );
 
 /* ════════════════════════════════════════════════════════════
- *  ⓑ 뷰 탭
+ *  탭
  * ════════════════════════════════════════════════════════════ */
 
-const ViewTabs: React.FC<{ view: string; setView: (v: any) => void }> = ({ view, setView }) => {
+const ViewTabs: React.FC<{ view: string; setView: (v: any) => void; config: PageConfig; accent: string }> = ({ view, setView, config, accent }) => {
   const tabs = [
-    { key: "overview",     label: "개요",        icon: Star },
-    { key: "achievements", label: "업적",        icon: Award },
-    { key: "titles",       label: "칭호",        icon: Crown },
-    { key: "hall",         label: "명예의 전당",  icon: Trophy },
-    { key: "mvp",          label: "시즌 MVP",    icon: Zap },
+    { key: "overview",     label: config.tab_overview,     icon: Star },
+    { key: "achievements", label: config.tab_achievements, icon: Award },
+    { key: "titles",       label: config.tab_titles,       icon: Crown },
+    { key: "hall",         label: config.tab_hall,         icon: Trophy },
+    { key: "mvp",          label: config.tab_mvp,          icon: Zap },
   ];
   return (
     <div className="mb-8 overflow-x-auto scrollbar-none -mx-3 sm:mx-0 px-3 sm:px-0">
@@ -643,7 +727,12 @@ const ViewTabs: React.FC<{ view: string; setView: (v: any) => void }> = ({ view,
               {active && (
                 <motion.div
                   layoutId="active-tab"
-                  className="absolute inset-0 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-400/40 shadow-[0_4px_24px_rgba(252,211,77,0.15)]"
+                  className="absolute inset-0 rounded-xl border"
+                  style={{
+                    background: `linear-gradient(135deg, ${accent}30, ${accent}10)`,
+                    borderColor: `${accent}60`,
+                    boxShadow: `0 4px 24px ${accent}25`,
+                  }}
                   transition={{ type: "spring", duration: 0.5 }}
                 />
               )}
@@ -658,12 +747,12 @@ const ViewTabs: React.FC<{ view: string; setView: (v: any) => void }> = ({ view,
 };
 
 /* ════════════════════════════════════════════════════════════
- *  ⓒ Overview Section
+ *  Overview
  * ════════════════════════════════════════════════════════════ */
 
 const OverviewSection: React.FC<{
-  tier: TierDef;
-  nextTier: TierDef | null;
+  tier: TierRow;
+  nextTier: TierRow | null;
   points: number;
   progress: number;
   completionPct: number;
@@ -674,25 +763,29 @@ const OverviewSection: React.FC<{
   recentAchievements: Achievement[];
   hall: HallEntry[];
   onJump: (v: any) => void;
-}> = ({ tier, nextTier, points, completionPct, completed, total, myTitles, totalTitles, recentAchievements, hall, onJump }) => {
+  sortedTiers: TierRow[];
+  rarities: Record<Rarity, RarityRow>;
+  config: PageConfig;
+}> = ({ tier, completionPct, completed, total, myTitles, totalTitles, recentAchievements, hall, onJump, sortedTiers, rarities, config }) => {
   return (
     <div className="space-y-8">
-      {/* 티어 로드맵 */}
-      <Panel title="Tier Roadmap" subtitle="모든 티어의 정점을 향해">
-        <TierRoadmap currentPoints={points} />
+      <Panel title={config.tier_roadmap_title} subtitle={config.tier_roadmap_subtitle}>
+        <TierRoadmap currentTier={tier} sortedTiers={sortedTiers} />
       </Panel>
 
-      {/* 진척도 그리드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <Panel title="Achievement Progress" subtitle="업적 수집율">
           <div className="flex items-center gap-6">
-            <RingProgress value={completionPct} accent="#FCD34D" />
+            <RingProgress value={completionPct} accent={config.primary_accent} />
             <div className="flex-1">
-              <div className="text-3xl font-bold text-white font-serif">{completed}<span className="text-slate-600 text-xl">/{total}</span></div>
+              <div className="text-3xl font-bold text-white font-serif">
+                {completed}<span className="text-slate-600 text-xl">/{total}</span>
+              </div>
               <div className="text-xs uppercase tracking-wider text-slate-500 mt-1">unlocked</div>
               <button
                 onClick={() => onJump("achievements")}
-                className="mt-3 inline-flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200"
+                className="mt-3 inline-flex items-center gap-1 text-xs hover:opacity-80"
+                style={{ color: config.primary_accent }}
               >
                 업적 보러가기 <ChevronRight className="w-3 h-3" />
               </button>
@@ -702,13 +795,16 @@ const OverviewSection: React.FC<{
 
         <Panel title="Title Collection" subtitle="수집한 칭호">
           <div className="flex items-center gap-6">
-            <RingProgress value={totalTitles === 0 ? 0 : (myTitles / totalTitles) * 100} accent="#A78BFA" />
+            <RingProgress value={totalTitles === 0 ? 0 : (myTitles / totalTitles) * 100} accent={config.secondary_accent} />
             <div className="flex-1">
-              <div className="text-3xl font-bold text-white font-serif">{myTitles}<span className="text-slate-600 text-xl">/{totalTitles}</span></div>
+              <div className="text-3xl font-bold text-white font-serif">
+                {myTitles}<span className="text-slate-600 text-xl">/{totalTitles}</span>
+              </div>
               <div className="text-xs uppercase tracking-wider text-slate-500 mt-1">acquired</div>
               <button
                 onClick={() => onJump("titles")}
-                className="mt-3 inline-flex items-center gap-1 text-xs text-violet-300 hover:text-violet-200"
+                className="mt-3 inline-flex items-center gap-1 text-xs hover:opacity-80"
+                style={{ color: config.secondary_accent }}
               >
                 칭호 보러가기 <ChevronRight className="w-3 h-3" />
               </button>
@@ -717,28 +813,24 @@ const OverviewSection: React.FC<{
         </Panel>
       </div>
 
-      {/* 최근 달성 */}
-      <Panel title="Recent Achievements" subtitle="최근 새겨진 위업">
+      <Panel title={config.recent_title} subtitle={config.recent_subtitle}>
         {recentAchievements.length === 0 ? (
-          <div className="py-10 text-center text-slate-600 text-sm">
-            아직 달성한 업적이 없어요. 첫 발자국을 새겨보세요.
-          </div>
+          <div className="py-10 text-center text-slate-600 text-sm">{config.empty_achievements}</div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {recentAchievements.map((a) => (
-              <AchievementCard key={a.id} achievement={a} unlocked unlockedAt={null} compact />
+              <AchievementCard key={a.id} achievement={a} unlocked unlockedAt={null} compact rarities={rarities} />
             ))}
           </div>
         )}
       </Panel>
 
-      {/* 명예의 전당 미리보기 */}
-      <Panel title="Hall of Fame" subtitle="지난 시즌의 영웅들">
+      <Panel title={config.hall_title} subtitle={config.hall_subtitle}>
         {hall.length === 0 ? (
-          <div className="py-10 text-center text-slate-600 text-sm">아직 기록된 시즌이 없습니다.</div>
+          <div className="py-10 text-center text-slate-600 text-sm">{config.empty_hall}</div>
         ) : (
           <div className="space-y-2">
-            {hall.map((h) => <HallRow key={h.id} entry={h} />)}
+            {hall.map((h) => <HallRow key={h.id} entry={h} accent={config.primary_accent} />)}
             <button
               onClick={() => onJump("hall")}
               className="w-full mt-2 py-2.5 rounded-xl border border-white/10 text-xs uppercase tracking-[0.3em] text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-all"
@@ -752,42 +844,40 @@ const OverviewSection: React.FC<{
   );
 };
 
-/* ════════ Tier Roadmap ════════ */
-const TierRoadmap: React.FC<{ currentPoints: number }> = ({ currentPoints }) => {
+const TierRoadmap: React.FC<{ currentTier: TierRow; sortedTiers: TierRow[] }> = ({ currentTier, sortedTiers }) => {
+  const count = sortedTiers.length;
+  const cols = count <= 5 ? "grid-cols-5" : "grid-cols-5 sm:grid-cols-10";
   return (
     <div className="relative">
-      {/* 라인 */}
       <div className="absolute left-0 right-0 top-7 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent hidden sm:block" />
-      <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 sm:gap-3">
-        {TIERS.map((t) => {
-          const reached = currentPoints >= t.min;
-          const isCurrent = getTierByPoints(currentPoints).key === t.key;
+      <div className={`grid ${cols} gap-2 sm:gap-3`}>
+        {sortedTiers.map((t) => {
+          const isCurrent = t.key === currentTier.key;
+          const reached = currentTier.min_points >= t.min_points;
           return (
-            <div key={t.key} className="flex flex-col items-center gap-2 group">
+            <div key={t.id} className="flex flex-col items-center gap-2 group">
               <div className={cn(
                 "relative h-12 w-12 sm:h-14 sm:w-14 rounded-full transition-all",
                 reached ? "scale-100" : "scale-90 grayscale opacity-40",
                 isCurrent && "scale-110"
               )}>
-                <div className={cn("absolute inset-0 rounded-full bg-gradient-to-br p-[1.5px]", t.gradient)}>
+                <div className="absolute inset-0 rounded-full p-[1.5px]" style={{ background: buildGradient(t.gradient_from, t.gradient_to) }}>
                   <div className="h-full w-full rounded-full bg-[#0a0d1a] flex items-center justify-center text-lg sm:text-xl">
                     {t.icon}
                   </div>
                 </div>
                 {isCurrent && (
                   <motion.div
-                    className="absolute -inset-1 rounded-full border-2 border-amber-300/60"
+                    className="absolute -inset-1 rounded-full border-2"
+                    style={{ borderColor: `${t.accent_color}99` }}
                     animate={{ scale: [1, 1.15, 1], opacity: [0.7, 0.3, 0.7] }}
                     transition={{ duration: 2, repeat: Infinity }}
                   />
                 )}
               </div>
               <div className="text-center">
-                <div className={cn(
-                  "text-[10px] sm:text-xs font-semibold leading-tight",
-                  reached ? "text-white" : "text-slate-600"
-                )}>{t.name}</div>
-                <div className="text-[9px] text-slate-500 font-mono">{t.min}P</div>
+                <div className={cn("text-[10px] sm:text-xs font-semibold leading-tight", reached ? "text-white" : "text-slate-600")}>{t.name}</div>
+                <div className="text-[9px] text-slate-500 font-mono">{t.min_points}P</div>
               </div>
             </div>
           );
@@ -797,7 +887,6 @@ const TierRoadmap: React.FC<{ currentPoints: number }> = ({ currentPoints }) => 
   );
 };
 
-/* ════════ Ring Progress ════════ */
 const RingProgress: React.FC<{ value: number; accent: string }> = ({ value, accent }) => {
   const radius = 30;
   const circ = 2 * Math.PI * radius;
@@ -828,7 +917,7 @@ const RingProgress: React.FC<{ value: number; accent: string }> = ({ value, acce
 };
 
 /* ════════════════════════════════════════════════════════════
- *  ⓓ Achievements Section
+ *  Achievements
  * ════════════════════════════════════════════════════════════ */
 
 const AchievementsSection: React.FC<{
@@ -839,25 +928,26 @@ const AchievementsSection: React.FC<{
   setCategory: (c: Category) => void;
   search: string;
   setSearch: (s: string) => void;
-}> = ({ achievements, achievementSet, myAchievements, category, setCategory, search, setSearch }) => {
+  rarities: Record<Rarity, RarityRow>;
+  config: PageConfig;
+}> = ({ achievements, achievementSet, myAchievements, category, setCategory, search, setSearch, rarities, config }) => {
   return (
     <div className="space-y-5">
-      {/* 필터 */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          {CATEGORIES.map((c) => {
+          {CATEGORIES_META.map((c) => {
             const Icon = c.icon;
             const active = category === c.key;
             return (
               <button
                 key={c.key}
                 onClick={() => setCategory(c.key)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all",
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+                style={
                   active
-                    ? "bg-amber-500/15 border-amber-400/40 text-amber-200"
-                    : "bg-white/[0.02] border-white/10 text-slate-400 hover:text-slate-200 hover:border-white/20"
-                )}
+                    ? { background: `${config.primary_accent}25`, borderColor: `${config.primary_accent}60`, color: config.primary_accent }
+                    : { background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.1)", color: "rgb(148,163,184)" }
+                }
               >
                 <Icon className="w-3 h-3" /> {c.label}
               </button>
@@ -876,7 +966,6 @@ const AchievementsSection: React.FC<{
         </div>
       </div>
 
-      {/* 그리드 */}
       {achievements.length === 0 ? (
         <div className="py-16 text-center text-slate-600 text-sm">조건에 맞는 업적이 없습니다.</div>
       ) : (
@@ -891,7 +980,7 @@ const AchievementsSection: React.FC<{
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
               >
-                <AchievementCard achievement={a} unlocked={unlocked} unlockedAt={at} />
+                <AchievementCard achievement={a} unlocked={unlocked} unlockedAt={at} rarities={rarities} />
               </motion.div>
             );
           })}
@@ -901,33 +990,41 @@ const AchievementsSection: React.FC<{
   );
 };
 
-/* ════════ 업적 카드 ════════ */
 const AchievementCard: React.FC<{
   achievement: Achievement;
   unlocked: boolean;
   unlockedAt: string | null;
   compact?: boolean;
-}> = ({ achievement, unlocked, unlockedAt, compact }) => {
+  rarities: Record<Rarity, RarityRow>;
+}> = ({ achievement, unlocked, unlockedAt, compact, rarities }) => {
   const isHidden = achievement.hidden && !unlocked;
-  const rarity = RARITY_STYLE[achievement.rarity];
+  const rarity = rarities[achievement.rarity] || rarities.common;
 
   return (
     <div
       className={cn(
         "group relative rounded-2xl border overflow-hidden transition-all",
-        unlocked
-          ? cn("bg-gradient-to-br", rarity.bg, rarity.border, "hover:scale-[1.02]")
-          : "bg-black/40 border-white/5 hover:border-white/15",
+        unlocked ? "hover:scale-[1.02]" : "hover:border-white/15",
         compact ? "p-3" : "p-4"
       )}
-      style={unlocked ? { boxShadow: `0 0 24px ${rarity.glow}` } : {}}
+      style={
+        unlocked
+          ? {
+              borderColor: rarity.border_color,
+              background: `linear-gradient(135deg, ${rarity.bg_from}, ${rarity.bg_to})`,
+              boxShadow: `0 0 24px ${rarity.glow_color}`,
+            }
+          : { borderColor: "rgba(255,255,255,0.05)", background: "rgba(0,0,0,0.4)" }
+      }
     >
-      {/* 레어도 모서리 표시 */}
       {unlocked && (
         <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden pointer-events-none">
           <div
-            className={cn("absolute -right-8 top-3 rotate-45 w-24 text-center text-[8px] font-bold tracking-widest py-0.5", rarity.text)}
-            style={{ background: `linear-gradient(90deg, transparent, ${rarity.glow}, transparent)` }}
+            className="absolute -right-8 top-3 rotate-45 w-24 text-center text-[8px] font-bold tracking-widest py-0.5"
+            style={{
+              color: rarity.text_color,
+              background: `linear-gradient(90deg, transparent, ${rarity.glow_color}, transparent)`,
+            }}
           >
             {rarity.label}
           </div>
@@ -935,19 +1032,21 @@ const AchievementCard: React.FC<{
       )}
 
       <div className={cn("flex gap-3", compact ? "flex-col items-center text-center" : "items-start")}>
-        {/* 아이콘 */}
         <div
           className={cn(
             "flex-shrink-0 flex items-center justify-center rounded-xl border",
-            unlocked ? rarity.border : "border-white/10 grayscale",
+            unlocked ? "" : "grayscale",
             compact ? "h-12 w-12 text-2xl" : "h-14 w-14 text-3xl"
           )}
-          style={unlocked ? { background: `radial-gradient(circle, ${rarity.glow}, transparent 70%)` } : { background: "rgba(0,0,0,0.4)" }}
+          style={
+            unlocked
+              ? { borderColor: rarity.border_color, background: `radial-gradient(circle, ${rarity.glow_color}, transparent 70%)` }
+              : { borderColor: "rgba(255,255,255,0.1)", background: "rgba(0,0,0,0.4)" }
+          }
         >
           {isHidden ? <Lock className="w-5 h-5 text-slate-600" /> : achievement.icon}
         </div>
 
-        {/* 텍스트 */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             <h3 className={cn(
@@ -959,15 +1058,12 @@ const AchievementCard: React.FC<{
             </h3>
             {unlocked && <Check className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />}
           </div>
-          <p className={cn(
-            "mt-1 text-xs leading-relaxed line-clamp-2",
-            unlocked ? "text-slate-400" : "text-slate-600"
-          )}>
+          <p className={cn("mt-1 text-xs leading-relaxed line-clamp-2", unlocked ? "text-slate-400" : "text-slate-600")}>
             {isHidden ? "조건을 만족하면 공개됩니다." : achievement.description}
           </p>
           {!compact && (
             <div className="mt-2.5 flex items-center justify-between text-[10px] uppercase tracking-wider">
-              <span className={cn("font-semibold", unlocked ? rarity.text : "text-slate-700")}>
+              <span className="font-semibold" style={unlocked ? { color: rarity.text_color } : { color: "rgb(51,65,85)" }}>
                 {unlocked ? rarity.label : "LOCKED"}
               </span>
               {unlocked && unlockedAt && (
@@ -982,7 +1078,7 @@ const AchievementCard: React.FC<{
 };
 
 /* ════════════════════════════════════════════════════════════
- *  ⓔ Titles Section
+ *  Titles
  * ════════════════════════════════════════════════════════════ */
 
 const TitlesSection: React.FC<{
@@ -990,53 +1086,48 @@ const TitlesSection: React.FC<{
   titleSet: Set<string>;
   equippedTitleId: string | null;
   onEquip: (id: string | null) => void;
-}> = ({ titles, titleSet, equippedTitleId, onEquip }) => {
+  rarities: Record<Rarity, RarityRow>;
+  config: PageConfig;
+}> = ({ titles, titleSet, equippedTitleId, onEquip, rarities, config }) => {
   const owned = titles.filter((t) => titleSet.has(t.id));
   const locked = titles.filter((t) => !titleSet.has(t.id));
 
   return (
     <div className="space-y-8">
-      {/* 보유 */}
       <Panel title="보유 칭호" subtitle="대표 칭호로 설정해 프로필에 새기세요">
         {owned.length === 0 ? (
-          <div className="py-10 text-center text-slate-600 text-sm">아직 획득한 칭호가 없습니다.</div>
+          <div className="py-10 text-center text-slate-600 text-sm">{config.empty_titles_owned}</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {/* 미장착 옵션 */}
             <button
               onClick={() => onEquip(null)}
               className={cn(
                 "rounded-2xl border-2 border-dashed p-4 text-left transition-all",
                 !equippedTitleId
-                  ? "border-amber-400/50 bg-amber-500/5"
+                  ? "bg-white/5"
                   : "border-white/10 hover:border-white/20 bg-white/[0.02]"
               )}
+              style={!equippedTitleId ? { borderColor: `${config.primary_accent}80`, background: `${config.primary_accent}10` } : {}}
             >
               <div className="text-xs uppercase tracking-[0.3em] text-slate-500 mb-1">no title</div>
               <div className="text-sm text-slate-300">칭호 표시 안함</div>
-              {!equippedTitleId && <div className="mt-2 text-[10px] text-amber-300 uppercase tracking-wider">● 선택됨</div>}
+              {!equippedTitleId && (
+                <div className="mt-2 text-[10px] uppercase tracking-wider" style={{ color: config.primary_accent }}>● 선택됨</div>
+              )}
             </button>
-
             {owned.map((t) => (
-              <TitleCard
-                key={t.id}
-                title={t}
-                owned
-                equipped={equippedTitleId === t.id}
-                onClick={() => onEquip(t.id)}
-              />
+              <TitleCard key={t.id} title={t} owned equipped={equippedTitleId === t.id} onClick={() => onEquip(t.id)} rarities={rarities} accent={config.primary_accent} />
             ))}
           </div>
         )}
       </Panel>
 
-      {/* 잠긴 */}
       <Panel title="미획득 칭호" subtitle="다음 위업을 향해">
         {locked.length === 0 ? (
-          <div className="py-10 text-center text-emerald-400/70 text-sm">모든 칭호를 수집했습니다! 🎉</div>
+          <div className="py-10 text-center text-emerald-400/70 text-sm">{config.empty_titles_all}</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {locked.map((t) => <TitleCard key={t.id} title={t} owned={false} />)}
+            {locked.map((t) => <TitleCard key={t.id} title={t} owned={false} rarities={rarities} accent={config.primary_accent} />)}
           </div>
         )}
       </Panel>
@@ -1049,34 +1140,39 @@ const TitleCard: React.FC<{
   owned: boolean;
   equipped?: boolean;
   onClick?: () => void;
-}> = ({ title, owned, equipped, onClick }) => {
-  const r = RARITY_STYLE[title.rarity];
+  rarities: Record<Rarity, RarityRow>;
+  accent: string;
+}> = ({ title, owned, equipped, onClick, rarities, accent }) => {
+  const r = rarities[title.rarity] || rarities.common;
   return (
     <button
       onClick={onClick}
       disabled={!owned}
       className={cn(
-        "relative rounded-2xl border p-4 text-left transition-all overflow-hidden group",
-        owned ? cn("bg-gradient-to-br", r.bg, r.border, "hover:scale-[1.02] cursor-pointer") : "bg-black/40 border-white/5 cursor-not-allowed",
-        equipped && "ring-2 ring-amber-400/60"
+        "relative rounded-2xl border p-4 text-left transition-all overflow-hidden",
+        owned ? "hover:scale-[1.02] cursor-pointer" : "cursor-not-allowed"
       )}
-      style={owned ? { boxShadow: `0 0 18px ${r.glow}` } : {}}
+      style={{
+        borderColor: owned ? r.border_color : "rgba(255,255,255,0.05)",
+        background: owned ? `linear-gradient(135deg, ${r.bg_from}, ${r.bg_to})` : "rgba(0,0,0,0.4)",
+        boxShadow: owned ? `0 0 18px ${r.glow_color}` : "none",
+        outline: equipped ? `2px solid ${accent}80` : "none",
+        outlineOffset: equipped ? "2px" : 0,
+      }}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className={cn("text-[10px] font-bold tracking-widest uppercase", owned ? r.text : "text-slate-700")}>
+        <span className="text-[10px] font-bold tracking-widest uppercase" style={owned ? { color: r.text_color } : { color: "rgb(51,65,85)" }}>
           {r.label}
         </span>
         {equipped && (
-          <span className="text-[9px] uppercase tracking-wider text-amber-300 bg-amber-500/15 border border-amber-400/30 rounded-full px-2 py-0.5">
+          <span className="text-[9px] uppercase tracking-wider rounded-full px-2 py-0.5 border" style={{ color: accent, background: `${accent}25`, borderColor: `${accent}60` }}>
             장착 중
           </span>
         )}
       </div>
-      <div className={cn(
-        "font-serif text-lg font-bold mb-1",
-        owned ? "text-white" : "text-slate-600"
-      )}
-        style={owned && title.color ? { color: title.color } : undefined}
+      <div
+        className={cn("font-serif text-lg font-bold mb-1", owned ? "" : "text-slate-600")}
+        style={owned ? { color: title.color || "#FFFFFF" } : {}}
       >
         {owned ? title.name : "???"}
       </div>
@@ -1088,11 +1184,10 @@ const TitleCard: React.FC<{
 };
 
 /* ════════════════════════════════════════════════════════════
- *  ⓕ Hall of Fame Section
+ *  Hall of Fame
  * ════════════════════════════════════════════════════════════ */
 
-const HallOfFameSection: React.FC<{ entries: HallEntry[] }> = ({ entries }) => {
-  // 시즌별 그룹
+const HallOfFameSection: React.FC<{ entries: HallEntry[]; config: PageConfig }> = ({ entries, config }) => {
   const grouped = useMemo(() => {
     const map = new Map<string, HallEntry[]>();
     for (const e of entries) {
@@ -1105,7 +1200,7 @@ const HallOfFameSection: React.FC<{ entries: HallEntry[] }> = ({ entries }) => {
 
   if (entries.length === 0) {
     return (
-      <Panel title="Hall of Fame" subtitle="아직 기록된 시즌이 없습니다">
+      <Panel title={config.hall_title} subtitle={config.empty_hall}>
         <div className="py-16 text-center">
           <Trophy className="w-12 h-12 text-slate-700 mx-auto mb-3" />
           <div className="text-slate-600 text-sm">첫 시즌이 끝나면 영웅들의 이름이 새겨집니다.</div>
@@ -1117,9 +1212,9 @@ const HallOfFameSection: React.FC<{ entries: HallEntry[] }> = ({ entries }) => {
   return (
     <div className="space-y-6">
       {grouped.map(([season, list]) => (
-        <Panel key={season} title={season} subtitle="Season Champions" ornate>
+        <Panel key={season} title={season} subtitle="Season Champions" ornate accent={config.primary_accent}>
           <div className="space-y-2">
-            {list.sort((a, b) => a.rank - b.rank).map((e) => <HallRow key={e.id} entry={e} />)}
+            {list.sort((a, b) => a.rank - b.rank).map((e) => <HallRow key={e.id} entry={e} accent={config.primary_accent} />)}
           </div>
         </Panel>
       ))}
@@ -1127,19 +1222,23 @@ const HallOfFameSection: React.FC<{ entries: HallEntry[] }> = ({ entries }) => {
   );
 };
 
-const HallRow: React.FC<{ entry: HallEntry }> = ({ entry }) => {
+const HallRow: React.FC<{ entry: HallEntry; accent: string }> = ({ entry, accent }) => {
   const medal = entry.rank === 1 ? "🥇" : entry.rank === 2 ? "🥈" : entry.rank === 3 ? "🥉" : `#${entry.rank}`;
   const cat = entry.category === "points" ? "포인트" : entry.category === "weekly" ? "주간 활동" : entry.category === "support" ? "서폿 기여" : "참여율";
   const isFirst = entry.rank === 1;
 
   return (
     <div
-      className={cn(
-        "flex items-center gap-3 p-3 sm:p-4 rounded-xl border transition-all",
+      className="flex items-center gap-3 p-3 sm:p-4 rounded-xl border transition-all"
+      style={
         isFirst
-          ? "bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-transparent border-amber-400/30 shadow-[0_0_24px_rgba(252,211,77,0.15)]"
-          : "bg-white/[0.02] border-white/10 hover:bg-white/5"
-      )}
+          ? {
+              background: `linear-gradient(90deg, ${accent}18, ${accent}05 60%, transparent)`,
+              borderColor: `${accent}50`,
+              boxShadow: `0 0 24px ${accent}25`,
+            }
+          : { background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,255,255,0.1)" }
+      }
     >
       <div className={cn("text-2xl sm:text-3xl w-10 text-center flex-shrink-0", isFirst && "drop-shadow-[0_0_8px_rgba(252,211,77,0.6)]")}>
         {medal}
@@ -1148,7 +1247,7 @@ const HallRow: React.FC<{ entry: HallEntry }> = ({ entry }) => {
         <div className={cn("font-semibold truncate", isFirst ? "text-amber-100" : "text-white")}>{entry.nickname}</div>
         <div className="text-[10px] uppercase tracking-[0.25em] text-slate-500 mt-0.5">{cat}</div>
       </div>
-      <div className={cn("font-mono text-sm sm:text-base tabular-nums", isFirst ? "text-amber-300" : "text-slate-300")}>
+      <div className="font-mono text-sm sm:text-base tabular-nums" style={isFirst ? { color: accent } : { color: "rgb(203,213,225)" }}>
         {entry.category === "participation" ? `${entry.value}%` : formatNum(entry.value)}
       </div>
     </div>
@@ -1156,20 +1255,20 @@ const HallRow: React.FC<{ entry: HallEntry }> = ({ entry }) => {
 };
 
 /* ════════════════════════════════════════════════════════════
- *  ⓖ MVP Section (current season)
+ *  MVP
  * ════════════════════════════════════════════════════════════ */
 
-const MVPSection: React.FC<{ rows: MVPRow[] }> = ({ rows }) => {
+const MVPSection: React.FC<{ rows: MVPRow[]; config: PageConfig }> = ({ rows, config }) => {
   const meta: Record<string, { label: string; icon: any; accent: string }> = {
-    points:        { label: "포인트 챔피언",   icon: Gem,        accent: "#FCD34D" },
-    weekly:        { label: "주간 활동왕",     icon: TrendingUp, accent: "#67E8F9" },
-    support:       { label: "서폿의 정수",      icon: Heart,      accent: "#F472B6" },
-    participation: { label: "출석의 화신",      icon: Target,     accent: "#A78BFA" },
+    points:        { label: "포인트 챔피언", icon: Gem,        accent: config.primary_accent },
+    weekly:        { label: "주간 활동왕",   icon: TrendingUp, accent: "#67E8F9" },
+    support:       { label: "서폿의 정수",   icon: Heart,      accent: "#F472B6" },
+    participation: { label: "출석의 화신",   icon: Target,     accent: config.secondary_accent },
   };
 
   return (
     <div className="space-y-5">
-      <Panel title="Season MVP" subtitle="이번 시즌의 선두주자들" ornate>
+      <Panel title={config.mvp_title} subtitle={config.mvp_subtitle} ornate accent={config.primary_accent}>
         {rows.length === 0 ? (
           <div className="py-10 text-center text-slate-600 text-sm">시즌 데이터를 불러오는 중...</div>
         ) : (
@@ -1184,10 +1283,9 @@ const MVPSection: React.FC<{ rows: MVPRow[] }> = ({ rows }) => {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.08 }}
-                  className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-[#0d1018]/80 to-[#070912]/80 p-5 overflow-hidden group"
+                  className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-[#0d1018]/80 to-[#070912]/80 p-5 overflow-hidden"
                   style={{ boxShadow: `0 0 30px ${m.accent}20` }}
                 >
-                  {/* 글로우 */}
                   <div className="absolute -top-20 -right-20 w-40 h-40 rounded-full blur-3xl opacity-30" style={{ background: m.accent }} />
                   <div className="relative">
                     <div className="flex items-center justify-between mb-3">
@@ -1219,12 +1317,17 @@ const MVPSection: React.FC<{ rows: MVPRow[] }> = ({ rows }) => {
 };
 
 /* ════════════════════════════════════════════════════════════
- *  ⓗ 공통 Panel
+ *  공통
  * ════════════════════════════════════════════════════════════ */
 
-const Panel: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; ornate?: boolean }> = ({ title, subtitle, children, ornate }) => (
+const Panel: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; ornate?: boolean; accent?: string }> = ({ title, subtitle, children, ornate, accent }) => (
   <div className="relative rounded-2xl border border-white/10 bg-gradient-to-br from-[#0a0d1a]/80 to-[#070912]/80 backdrop-blur-md overflow-hidden">
-    {ornate && <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />}
+    {ornate && (
+      <div
+        className="absolute inset-x-0 top-0 h-px"
+        style={{ background: `linear-gradient(90deg, transparent, ${accent || "#F0B429"}99, transparent)` }}
+      />
+    )}
     <div className="p-5 sm:p-6">
       <header className="mb-5">
         <h3 className="font-serif text-lg sm:text-xl font-bold text-white">{title}</h3>
@@ -1235,7 +1338,6 @@ const Panel: React.FC<{ title: string; subtitle?: string; children: React.ReactN
   </div>
 );
 
-/* ════════ Corner Ornaments ════════ */
 const CornerOrnaments: React.FC<{ accent: string }> = ({ accent }) => (
   <>
     {(["top-3 left-3", "top-3 right-3 rotate-90", "bottom-3 left-3 -rotate-90", "bottom-3 right-3 rotate-180"]).map((cls, i) => (
@@ -1255,7 +1357,6 @@ const CornerOrnaments: React.FC<{ accent: string }> = ({ accent }) => (
   </>
 );
 
-/* ════════ Noise Overlay (SVG fract noise) ════════ */
 const NoiseOverlay: React.FC<{ opacity?: number }> = ({ opacity = 0.4 }) => (
   <svg className="absolute inset-0 w-full h-full pointer-events-none mix-blend-overlay" style={{ opacity }}>
     <filter id="noiseFilter">
