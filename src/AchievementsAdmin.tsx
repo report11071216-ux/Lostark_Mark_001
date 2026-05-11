@@ -938,10 +938,35 @@ const TitleEditorModal: React.FC<{
   const [form, setForm] = useState<Title>(title || {
     code: "", name: "", description: "",
     rarity: "common", color: "", sort_order: 0,
+    icon_url: "",
   });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const update = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+
+  // ── 칭호 이미지 업로드 (Supabase Storage)
+  const uploadIcon = async (file: File) => {
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      onError("이미지 크기는 2MB 이하여야 합니다");
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `title_icons/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("images").upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from("images").getPublicUrl(path);
+      update("icon_url", publicUrl);
+    } catch (e: any) {
+      onError("이미지 업로드 실패: " + (e?.message || ""));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const save = async () => {
     if (!form.code || !form.name) { onError("code와 name은 필수입니다"); return; }
@@ -962,6 +987,60 @@ const TitleEditorModal: React.FC<{
   return (
     <Modal onClose={onClose} title={title ? "칭호 편집" : "새 칭호"}>
       <div className="space-y-4">
+        {/* ── 칭호 아이콘 업로드 ── */}
+        <Field label="칭호 아이콘 (사이드바 아바타로 사용)">
+          <div className="flex items-center gap-3">
+            {/* 미리보기 */}
+            <div
+              className="w-16 h-16 rounded-full border-2 flex items-center justify-center flex-shrink-0 overflow-hidden bg-black/40"
+              style={{ borderColor: "rgba(255,255,255,0.15)" }}
+            >
+              {form.icon_url ? (
+                <img src={form.icon_url} alt="icon" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xs text-slate-600">없음</span>
+              )}
+            </div>
+
+            <div className="flex-1 space-y-2">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex-1 px-3 py-2 rounded-xl border border-amber-400/40 bg-amber-500/15 text-amber-100 text-xs font-semibold hover:bg-amber-500/25 disabled:opacity-50 transition-all"
+                >
+                  {uploading ? "업로드 중..." : (form.icon_url ? "이미지 변경" : "이미지 업로드")}
+                </button>
+                {form.icon_url && (
+                  <button
+                    type="button"
+                    onClick={() => update("icon_url", "")}
+                    className="px-3 py-2 rounded-xl border border-rose-400/30 bg-rose-500/10 text-rose-200 text-xs font-semibold hover:bg-rose-500/20 transition-all"
+                  >
+                    제거
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) uploadIcon(f);
+                  e.target.value = "";
+                }}
+              />
+              <div className="text-[10px] text-slate-500 leading-relaxed">
+                PNG/JPG, 2MB 이하 권장 · 정사각형 이미지<br/>
+                업로드 안 하면 닉네임 첫 글자가 표시됩니다
+              </div>
+            </div>
+          </div>
+        </Field>
+
         <Field label="code (영문 식별자)">
           <Input value={form.code} onChange={(v) => update("code", v)} placeholder="title_veteran" />
         </Field>
