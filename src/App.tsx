@@ -5475,41 +5475,56 @@ const OnlinePlayersCard = () => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!supabase) { setLoading(false); return; }
+      if (!supabase) {
+        console.warn("[OnlinePlayersCard] supabase not initialized");
+        setLoading(false);
+        return;
+      }
       try {
-        // profiles + 장착 칭호 정보 조인
-        const { data, error } = await supabase
+        // 1) profiles 단순 조회 (조인 시도 안 함)
+        const { data: profilesData, error: profilesErr } = await supabase
           .from("profiles")
-          .select(`
-            id, nickname, profile_image_url, last_attendance, points, role,
-            equipped_title:titles!profiles_equipped_title_id_fkey ( id, name, rarity, color )
-          `)
+          .select("id, nickname, profile_image_url, last_attendance, points, role, equipped_title_id")
           .order("last_attendance", { ascending: false, nullsFirst: false });
 
-        if (error) {
-          // 조인 실패 시 fallback (외래키 이름 다를 수 있음)
-          const fb = await supabase
-            .from("profiles")
-            .select("id, nickname, profile_image_url, last_attendance, points, role, equipped_title_id")
-            .order("last_attendance", { ascending: false, nullsFirst: false });
-          if (fb.data && !cancelled) {
-            // 칭호 별도 조회
-            const titleIds = Array.from(new Set(fb.data.map((m: any) => m.equipped_title_id).filter(Boolean)));
-            let titleMap: Record<string, any> = {};
-            if (titleIds.length > 0) {
-              const { data: titlesData } = await supabase
-                .from("titles")
-                .select("id, name, rarity, color")
-                .in("id", titleIds);
-              for (const t of (titlesData || [])) titleMap[t.id] = t;
-            }
-            setMembers(fb.data.map((m: any) => ({ ...m, equipped_title: m.equipped_title_id ? titleMap[m.equipped_title_id] : null })));
-          }
-        } else if (data && !cancelled) {
-          setMembers(data);
+        if (profilesErr) {
+          console.error("[OnlinePlayersCard] profiles fetch error:", profilesErr);
+          if (!cancelled) setLoading(false);
+          return;
         }
+
+        const profilesList = profilesData || [];
+        console.log(`[OnlinePlayersCard] loaded ${profilesList.length} profiles`);
+        if (profilesList.length === 0) {
+          console.warn("[OnlinePlayersCard] profiles empty — RLS 정책으로 가려졌거나 데이터가 없어요");
+        }
+
+        // 2) 장착 칭호가 있는 행이 있으면 칭호 별도 조회
+        const titleIds = Array.from(
+          new Set(profilesList.map((m: any) => m.equipped_title_id).filter(Boolean))
+        );
+        let titleMap: Record<string, any> = {};
+        if (titleIds.length > 0) {
+          const { data: titlesData, error: titlesErr } = await supabase
+            .from("titles")
+            .select("id, name, rarity, color")
+            .in("id", titleIds as string[]);
+          if (titlesErr) {
+            console.warn("[OnlinePlayersCard] titles fetch error:", titlesErr);
+          }
+          for (const t of (titlesData || [])) titleMap[t.id] = t;
+          console.log(`[OnlinePlayersCard] loaded ${Object.keys(titleMap).length} titles`);
+        }
+
+        // 3) 병합
+        const merged = profilesList.map((m: any) => ({
+          ...m,
+          equipped_title: m.equipped_title_id ? titleMap[m.equipped_title_id] : null,
+        }));
+
+        if (!cancelled) setMembers(merged);
       } catch (e) {
-        console.error("[OnlinePlayersCard] error:", e);
+        console.error("[OnlinePlayersCard] unexpected error:", e);
       } finally {
         if (!cancelled) setLoading(false);
       }
