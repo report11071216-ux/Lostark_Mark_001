@@ -37,6 +37,7 @@ import {
 import { createClient } from "@supabase/supabase-js";
 import { GuildHistory } from "./GuildHistory";
 import AchievementsPage from "./AchievementsPage";
+import AchievementsAdmin from "./AchievementsAdmin";
 
 // ── Theme System ───────────────────────────────────────────
 type Theme = "dark" | "light";
@@ -2679,6 +2680,17 @@ const fetchInitialData = async () => {
                 exit={{ opacity: 0 }}
               >
                 <AdminPanel settings={settings} setSettings={setSettings} user={user} profile={profile} />
+              </motion.div>
+            )}
+
+            {activeTab === "achievements_admin" && profile?.role === "admin" && (
+              <motion.div
+                key="achievements_admin"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <AchievementsAdmin supabase={supabase} user={user} profile={profile} />
               </motion.div>
             )}
 
@@ -6866,6 +6878,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
       label: "관리",
       items: [
         { id: "admin", icon: "⚙️", label: "관리자 패널" },
+        { id: "achievements_admin", icon: "🏆", label: "업적 시스템" },
       ],
     }] : []),
   ];
