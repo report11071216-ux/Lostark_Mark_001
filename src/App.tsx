@@ -35,6 +35,7 @@ import {
   Search,
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
+import { GuildHistory } from "./GuildHistory";
 
 // ── Theme System ───────────────────────────────────────────
 type Theme = "dark" | "light";
@@ -2234,6 +2235,7 @@ const fetchInitialData = async () => {
     home: "홈",
     posts: "게시판",
     guild: "길드원",
+    guild_history: "길드 히스토리",
     ranking: "랭킹",
     shop: "포인트 상점",
     myroom: "마이룸",
@@ -2603,6 +2605,17 @@ const fetchInitialData = async () => {
                   profile={profile}
                   onOpenCalendar={() => setIsRaidCalendarModalOpen(true)}
                 />
+              </motion.div>
+            )}
+
+            {activeTab === "guild_history" && (
+              <motion.div
+                key="guild_history"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <GuildHistory user={user} profile={profile} />
               </motion.div>
             )}
 
@@ -6834,7 +6847,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
     {
       label: "기록실",
       items: [
-        { id: "guild", icon: "🗂️", label: "길드 히스토리" },
+        { id: "guild_history", icon: "🏛️", label: "길드 히스토리" },
         { id: "ranking", icon: "🥇", label: "업적" },
       ],
     },
