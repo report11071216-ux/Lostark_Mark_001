@@ -137,6 +137,8 @@ const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const defaultSettings = {
   guild_name: "쁘밍",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
+  private_note_password: "",
+  education_note_password: "",
   point_rate_settings: {
     enabled: true,
     cycle_minutes: 60,
@@ -1704,6 +1706,8 @@ const normalizeAppSettings = (value: any) => {
   return {
     ...defaultSettings,
     ...raw,
+    private_note_password: raw?.private_note_password ?? "",
+    education_note_password: raw?.education_note_password ?? "",
     point_rate_settings: normalizePointRateSettings(raw?.point_rate_settings),
   };
 };
@@ -2404,6 +2408,8 @@ const fetchInitialData = async () => {
                           {[
                             { id: "myroom", icon: <Crown size={14} />, label: "마이룸", color: "#c4b5fd" },
                             { id: "note", icon: <Pencil size={14} />, label: "개인 노트", color: "#c4b5fd" },
+                            { id: "expense", icon: <ShoppingBag size={14} />, label: "법인카드 사용내역", color: "#fde68a" },
+                            { id: "education", icon: <Sparkles size={14} />, label: "교육자료 메모", color: "#67e8f9" },
                             { id: "shop", icon: <ShoppingBag size={14} />, label: "포인트 상점", color: "#c4b5fd" },
                             ...(profile?.role === "admin"
                               ? [{ id: "admin", icon: <Settings size={14} />, label: "관리자 패널", color: "#fbbf24" }]
@@ -2670,6 +2676,46 @@ const fetchInitialData = async () => {
                 exit={{ opacity: 0 }}
               >
                 <PersonalNoteRoom user={user} profile={profile} />
+              </motion.div>
+            )}
+
+            {activeTab === "expense" && (
+              <motion.div
+                key="expense"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <LockedRoom
+                  password={settings?.private_note_password || ""}
+                  storageKey="expense_unlocked"
+                  title="법인카드 사용내역"
+                  subtitle="Corporate Expense"
+                  icon="💳"
+                  description="법인카드 사용 내역을 기록하고 관리합니다."
+                >
+                  <ExpenseNoteRoom user={user} profile={profile} />
+                </LockedRoom>
+              </motion.div>
+            )}
+
+            {activeTab === "education" && (
+              <motion.div
+                key="education"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <LockedRoom
+                  password={settings?.education_note_password || ""}
+                  storageKey="education_unlocked"
+                  title="교육자료 메모"
+                  subtitle="Education Notes"
+                  icon="🎓"
+                  description="교육 내용과 학습 자료를 체계적으로 메모합니다."
+                >
+                  <EducationNoteRoom user={user} profile={profile} />
+                </LockedRoom>
               </motion.div>
             )}
 
@@ -6797,6 +6843,8 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
       items: [
         { id: "myroom", icon: "👤", label: "마이룸" },
         { id: "note", icon: "📝", label: "개인 노트" },
+        { id: "expense", icon: "💳", label: "법인카드 사용내역" },
+        { id: "education", icon: "🎓", label: "교육자료 메모" },
         { id: "shop", icon: "🛒", label: "포인트 상점" },
       ],
     }] : []),
@@ -10671,6 +10719,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
         { id: "guild_settings", icon: "⚙️",  label: "길드 설정" },
         { id: "point_economy",  icon: "💰", label: "포인트 경제" },
         { id: "point_shop",     icon: "🛒", label: "포인트샵" },
+        { id: "private_passwords", icon: "🔐", label: "개인 탭 패스워드" },
       ],
     },
   ];
@@ -10729,6 +10778,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
           {adminTab === "users"          && <AdminUserManager />}
           {adminTab === "point_economy"  && <PointEconomyManager settings={settings} setSettings={setSettings} />}
           {adminTab === "point_shop"     && <AdminPointShopManager />}
+          {adminTab === "private_passwords" && <PrivatePasswordSettings settings={settings} setSettings={setSettings} />}
         </div>
       </div>
     </div>
@@ -20584,6 +20634,762 @@ const LandingPage = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
 };
 
 // ═══════════════════════════════════════════════════════════
+// ── LockedRoom — 패스워드 잠금 래퍼 ──────────────────────────
+const LockedRoom = ({
+  password,
+  storageKey,
+  title,
+  subtitle,
+  icon,
+  description,
+  children,
+}: {
+  password: string;
+  storageKey: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  description: string;
+  children: React.ReactNode;
+}) => {
+  const sessionKey = `locked_${storageKey}`;
+  const [unlocked, setUnlocked] = useState(() => {
+    try { return sessionStorage.getItem(sessionKey) === "1"; } catch { return false; }
+  });
+  const [input, setInput] = useState("");
+  const [error, setError] = useState("");
+  const [shake, setShake] = useState(false);
+
+  // 패스워드가 설정되지 않으면 바로 접근 허용
+  if (!password || password.trim() === "") return <>{children}</>;
+  if (unlocked) return <>{children}</>;
+
+  const handleUnlock = () => {
+    if (input === password) {
+      try { sessionStorage.setItem(sessionKey, "1"); } catch {}
+      setUnlocked(true);
+      setError("");
+    } else {
+      setError("패스워드가 올바르지 않습니다.");
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+      setInput("");
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-[60vh] px-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className={cn(
+          "w-full max-w-sm rounded-[2rem] border border-white/10 bg-[#090d18] p-8 shadow-[0_32px_80px_rgba(0,0,0,0.5)] text-center",
+          shake ? "animate-[shake_0.4s_ease-in-out]" : ""
+        )}
+        style={shake ? { animation: "shake 0.4s ease-in-out" } : {}}
+      >
+        <style>{`@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}`}</style>
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent rounded-t-[2rem]" />
+        <div className="text-5xl mb-4">{icon}</div>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/60 mb-1">{subtitle}</div>
+        <h2 className="text-xl font-bold text-white mb-2">{title}</h2>
+        <p className="text-sm text-slate-500 mb-6">{description}</p>
+        <div className="space-y-3">
+          <input
+            type="password"
+            placeholder="패스워드 입력..."
+            value={input}
+            onChange={(e) => { setInput(e.target.value); setError(""); }}
+            onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
+            className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white text-center focus:outline-none focus:border-amber-400/50 placeholder:text-slate-600 tracking-[0.2em]"
+            autoFocus
+          />
+          {error && <p className="text-xs text-red-400">{error}</p>}
+          <button
+            onClick={handleUnlock}
+            className="w-full py-3 rounded-2xl bg-amber-500 font-semibold text-sm text-white hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 active:scale-[0.98]"
+          >
+            🔓 잠금 해제
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// ── PrivatePasswordSettings — 관리자패널 패스워드 관리 ──────
+const PrivatePasswordSettings = ({ settings, setSettings }: any) => {
+  const [expensePass, setExpensePass] = useState(settings?.private_note_password || "");
+  const [eduPass, setEduPass] = useState(settings?.education_note_password || "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const next = {
+      ...settings,
+      private_note_password: expensePass,
+      education_note_password: eduPass,
+    };
+    const { error, payload } = await saveSingletonSettings(next);
+    if (error) {
+      showToast(error.message, "error");
+    } else {
+      const nextSettings = normalizeAppSettings(payload);
+      setSettings(nextSettings);
+      writeCache(CACHE_KEYS.settings, nextSettings);
+      showToast("패스워드 설정이 저장되었습니다.", "success");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-8 max-w-lg">
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.28em] text-amber-200 font-semibold">Private Tab Passwords</div>
+        <div className="mt-1 text-2xl font-semibold text-white">개인 탭 패스워드 설정</div>
+        <p className="mt-1 text-sm text-slate-400">패스워드를 비워두면 잠금이 해제됩니다.</p>
+      </div>
+
+      <div className="space-y-5 rounded-[2rem] border border-white/8 bg-[#0a0e18] p-6">
+        {[
+          { label: "💳 법인카드 사용내역", sub: "expense", value: expensePass, set: setExpensePass },
+          { label: "🎓 교육자료 메모", sub: "education", value: eduPass, set: setEduPass },
+        ].map((item) => (
+          <div key={item.sub} className="space-y-2">
+            <label className="text-sm font-semibold text-slate-300">{item.label}</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="패스워드 (비어있으면 잠금 없음)"
+                value={item.value}
+                onChange={(e) => item.set(e.target.value)}
+                className="flex-1 bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-400/50 placeholder:text-slate-600"
+              />
+              <button
+                type="button"
+                onClick={() => item.set("")}
+                className="px-4 py-3 rounded-2xl border border-white/10 bg-white/5 text-slate-400 text-xs hover:text-red-300 hover:border-red-400/20 transition-all"
+              >
+                초기화
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="px-8 py-3.5 rounded-2xl bg-amber-500 font-semibold text-white hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-60"
+      >
+        {saving ? "저장 중..." : "💾 저장하기"}
+      </button>
+    </div>
+  );
+};
+
+// ── ExpenseNoteRoom — 법인카드 사용내역 ──────────────────────
+type ExpenseNote = {
+  id: string;
+  user_id: string;
+  use_date: string;
+  merchant: string;
+  amount: number;
+  category: string;
+  memo: string;
+  created_at: string;
+};
+
+const EXPENSE_CATEGORY_OPTIONS = [
+  { label: "🍽️ 식비", value: "food", color: "bg-orange-400/15 text-orange-200 border-orange-400/25" },
+  { label: "🚗 교통", value: "transport", color: "bg-blue-400/15 text-blue-200 border-blue-400/25" },
+  { label: "🏨 숙박", value: "lodging", color: "bg-purple-400/15 text-purple-200 border-purple-400/25" },
+  { label: "📦 물품구매", value: "purchase", color: "bg-green-400/15 text-green-200 border-green-400/25" },
+  { label: "🎓 교육", value: "education", color: "bg-cyan-400/15 text-cyan-200 border-cyan-400/25" },
+  { label: "🔧 기타", value: "etc", color: "bg-slate-400/15 text-slate-200 border-slate-400/25" },
+];
+
+const ExpenseNoteRoom = ({ user, profile }: { user: any; profile: any }) => {
+  const [expenses, setExpenses] = useState<ExpenseNote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editItem, setEditItem] = useState<ExpenseNote | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [filterCat, setFilterCat] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [formMerchant, setFormMerchant] = useState("");
+  const [formAmount, setFormAmount] = useState("");
+  const [formCategory, setFormCategory] = useState("food");
+  const [formMemo, setFormMemo] = useState("");
+
+  useEffect(() => { if (user?.id) fetchExpenses(); }, [user?.id]);
+
+  const fetchExpenses = async () => {
+    if (!supabase || !user?.id) return;
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from("expense_notes")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("use_date", { ascending: false });
+      setExpenses(data || []);
+    } catch {}
+    setLoading(false);
+  };
+
+  const openNew = () => {
+    setEditItem(null);
+    setFormDate(new Date().toISOString().slice(0, 10));
+    setFormMerchant("");
+    setFormAmount("");
+    setFormCategory("food");
+    setFormMemo("");
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (item: ExpenseNote) => {
+    setEditItem(item);
+    setFormDate(item.use_date);
+    setFormMerchant(item.merchant);
+    setFormAmount(String(item.amount));
+    setFormCategory(item.category);
+    setFormMemo(item.memo || "");
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!supabase || !user?.id) return;
+    if (!formMerchant.trim()) { showToast("사용처를 입력해주세요.", "error"); return; }
+    if (!formAmount || isNaN(Number(formAmount.replace(/,/g, "")))) { showToast("금액을 올바르게 입력해주세요.", "error"); return; }
+    setSaving(true);
+    const payload = {
+      use_date: formDate,
+      merchant: formMerchant.trim(),
+      amount: Number(formAmount.replace(/,/g, "")),
+      category: formCategory,
+      memo: formMemo.trim(),
+    };
+    try {
+      if (editItem) {
+        await supabase.from("expense_notes").update(payload).eq("id", editItem.id).eq("user_id", user.id);
+      } else {
+        await supabase.from("expense_notes").insert({ ...payload, user_id: user.id });
+      }
+      showToast("저장되었습니다.", "success");
+      setIsModalOpen(false);
+      fetchExpenses();
+    } catch { showToast("저장 실패", "error"); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!supabase || !user?.id) return;
+    if (!window.confirm("삭제하시겠습니까?")) return;
+    await supabase.from("expense_notes").delete().eq("id", id).eq("user_id", user.id);
+    showToast("삭제되었습니다.", "info");
+    fetchExpenses();
+  };
+
+  const getCatInfo = (cat: string) => EXPENSE_CATEGORY_OPTIONS.find(c => c.value === cat) || EXPENSE_CATEGORY_OPTIONS[5];
+
+  const filtered = expenses.filter(e => {
+    const matchCat = filterCat === "all" || e.category === filterCat;
+    const q = searchQuery.toLowerCase();
+    const matchSearch = !q || e.merchant.toLowerCase().includes(q) || (e.memo || "").toLowerCase().includes(q);
+    return matchCat && matchSearch;
+  });
+
+  const totalAmount = filtered.reduce((sum, e) => sum + e.amount, 0);
+
+  return (
+    <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 py-8">
+      {/* Header */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200/60">Corporate Expense</div>
+          <h1 className="mt-1 text-2xl font-semibold bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent">💳 법인카드 사용내역</h1>
+          <p className="mt-1 text-sm text-slate-500">법인카드 사용 내역을 날짜별로 기록하고 관리합니다.</p>
+        </div>
+        <button onClick={openNew} className="flex items-center gap-2 rounded-2xl bg-amber-500 px-5 py-3 font-semibold text-sm text-white hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 active:scale-95 shrink-0">
+          <Plus size={18} /> 내역 추가
+        </button>
+      </div>
+
+      {/* Summary */}
+      <div className="mb-6 flex flex-wrap gap-3">
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-5 py-3 flex items-center gap-3">
+          <span className="text-slate-400 text-sm">조회 건수</span>
+          <span className="text-white font-bold text-lg">{filtered.length}건</span>
+        </div>
+        <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 px-5 py-3 flex items-center gap-3">
+          <span className="text-amber-300/70 text-sm">합계 금액</span>
+          <span className="text-amber-200 font-bold text-lg">{totalAmount.toLocaleString()}원</span>
+        </div>
+      </div>
+
+      {/* Filter */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        <input type="text" placeholder="사용처, 메모 검색..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          className="flex-1 bg-black/30 border border-white/10 rounded-2xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400/50 placeholder:text-slate-600" />
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setFilterCat("all")}
+            className={cn("rounded-xl border px-3 py-2 text-xs font-semibold transition-all", filterCat === "all" ? "border-amber-400/30 bg-amber-400/15 text-amber-200" : "border-white/10 bg-white/5 text-slate-400 hover:text-white")}>전체</button>
+          {EXPENSE_CATEGORY_OPTIONS.map(cat => (
+            <button key={cat.value} onClick={() => setFilterCat(cat.value)}
+              className={cn("rounded-xl border px-3 py-2 text-xs font-semibold transition-all", filterCat === cat.value ? cn("border", cat.color) : "border-white/10 bg-white/5 text-slate-400 hover:text-white")}>
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="text-center py-20 text-slate-500">불러오는 중...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-24 rounded-[2rem] border border-dashed border-white/8 bg-white/[0.015]">
+          <div className="text-5xl mb-5">💳</div>
+          <div className="text-slate-400 font-semibold">{searchQuery || filterCat !== "all" ? "검색 결과가 없습니다." : "아직 사용내역이 없습니다."}</div>
+          <div className="text-slate-600 text-sm mt-2">+ 버튼을 눌러 첫 내역을 추가해보세요!</div>
+        </div>
+      ) : (
+        <div className="rounded-[2rem] border border-white/8 bg-[#0a0e18] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/8">
+                  {["날짜", "카테고리", "사용처", "금액", "메모", ""].map(h => (
+                    <th key={h} className="px-4 py-3.5 text-left text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((e, i) => {
+                  const catInfo = getCatInfo(e.category);
+                  return (
+                    <tr key={e.id} className={cn("border-b border-white/5 hover:bg-white/[0.03] transition-colors cursor-pointer", i % 2 === 0 ? "" : "bg-white/[0.015]")} onClick={() => openEdit(e)}>
+                      <td className="px-4 py-3.5 text-slate-300 whitespace-nowrap">{e.use_date}</td>
+                      <td className="px-4 py-3.5">
+                        <span className={cn("inline-flex items-center rounded-lg border px-2 py-0.5 text-xs font-semibold", catInfo.color)}>{catInfo.label}</span>
+                      </td>
+                      <td className="px-4 py-3.5 text-white font-semibold">{e.merchant}</td>
+                      <td className="px-4 py-3.5 text-amber-200 font-bold whitespace-nowrap">{e.amount.toLocaleString()}원</td>
+                      <td className="px-4 py-3.5 text-slate-400 max-w-[200px] truncate">{e.memo || "-"}</td>
+                      <td className="px-4 py-3.5" onClick={ev => ev.stopPropagation()}>
+                        <button onClick={() => handleDelete(e.id)} className="h-7 w-7 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-500 hover:text-red-300 hover:border-red-400/20 transition-all">
+                          <Trash2 size={11} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }} transition={{ duration: 0.22 }}
+              className="relative w-full max-w-md rounded-[2rem] border border-white/10 bg-[#090d18] shadow-[0_32px_80px_rgba(0,0,0,0.6)] overflow-hidden"
+              onClick={e => e.stopPropagation()}>
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/60">{editItem ? "내역 수정" : "새 내역 추가"}</div>
+                    <div className="mt-0.5 text-lg font-semibold text-white">💳 법인카드 사용내역</div>
+                  </div>
+                  <button onClick={() => setIsModalOpen(false)} className="h-9 w-9 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"><X size={16} /></button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2 space-y-1.5">
+                    <label className="text-xs text-slate-400">날짜</label>
+                    <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400/50" />
+                  </div>
+                  <div className="col-span-2 space-y-1.5">
+                    <label className="text-xs text-slate-400">카테고리</label>
+                    <div className="flex flex-wrap gap-2">
+                      {EXPENSE_CATEGORY_OPTIONS.map(cat => (
+                        <button key={cat.value} type="button" onClick={() => setFormCategory(cat.value)}
+                          className={cn("rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all", formCategory === cat.value ? cn("border", cat.color) : "border-white/10 bg-white/5 text-slate-400")}>
+                          {cat.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="col-span-2 space-y-1.5">
+                    <label className="text-xs text-slate-400">사용처 *</label>
+                    <input type="text" placeholder="예: 강남 한정식" value={formMerchant} onChange={e => setFormMerchant(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400/50 placeholder:text-slate-600" />
+                  </div>
+                  <div className="col-span-2 space-y-1.5">
+                    <label className="text-xs text-slate-400">금액 (원) *</label>
+                    <input type="text" placeholder="예: 45000" value={formAmount} onChange={e => setFormAmount(e.target.value.replace(/[^0-9,]/g, ""))} className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400/50 placeholder:text-slate-600" />
+                  </div>
+                  <div className="col-span-2 space-y-1.5">
+                    <label className="text-xs text-slate-400">메모</label>
+                    <textarea placeholder="참석자, 목적 등 추가 메모..." value={formMemo} onChange={e => setFormMemo(e.target.value)} rows={3}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400/50 placeholder:text-slate-600 resize-none" />
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3.5 rounded-2xl border border-white/10 bg-white/5 font-semibold text-slate-300 hover:bg-white/8 transition-all">취소</button>
+                  <button type="button" onClick={handleSave} disabled={saving} className="flex-[2] py-3.5 rounded-2xl bg-amber-500 font-semibold text-white hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 active:scale-[0.98] disabled:opacity-60">
+                    {saving ? "저장 중..." : "저장하기"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ── EducationNoteRoom — 교육자료 메모 ────────────────────────
+type EducationNote = {
+  id: string;
+  user_id: string;
+  title: string;
+  subject: string;
+  content: string;
+  edu_date: string;
+  tags: string[];
+  pinned: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+const EDU_SUBJECT_OPTIONS = [
+  { label: "💻 IT/개발", value: "it", color: "bg-blue-400/15 text-blue-200 border-blue-400/25" },
+  { label: "🔧 인프라/시스템", value: "infra", color: "bg-cyan-400/15 text-cyan-200 border-cyan-400/25" },
+  { label: "☁️ 클라우드", value: "cloud", color: "bg-sky-400/15 text-sky-200 border-sky-400/25" },
+  { label: "🔒 보안", value: "security", color: "bg-red-400/15 text-red-200 border-red-400/25" },
+  { label: "📊 데이터/AI", value: "data", color: "bg-purple-400/15 text-purple-200 border-purple-400/25" },
+  { label: "📋 프로젝트관리", value: "pm", color: "bg-green-400/15 text-green-200 border-green-400/25" },
+  { label: "🗒️ 기타", value: "etc", color: "bg-slate-400/15 text-slate-200 border-slate-400/25" },
+];
+
+const EDU_FONT_SIZE_OPTIONS = [10, 12, 13, 14, 15, 16, 18, 20, 24, 28, 32];
+const EDU_FONT_COLOR_PRESETS = [
+  "#ffffff", "#f1f5f9", "#fde68a", "#86efac", "#93c5fd",
+  "#f9a8d4", "#c4b5fd", "#fb923c", "#f87171", "#a3e635",
+];
+
+const EducationNoteRoom = ({ user, profile }: { user: any; profile: any }) => {
+  const [notes, setNotes] = useState<EducationNote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editItem, setEditItem] = useState<EducationNote | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [filterSubject, setFilterSubject] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [formTitle, setFormTitle] = useState("");
+  const [formSubject, setFormSubject] = useState("it");
+  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [formTags, setFormTags] = useState("");
+  const [formFontSize, setFormFontSize] = useState(14);
+  const [formFontColor, setFormFontColor] = useState("#ffffff");
+
+  const contentEditableRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (user?.id) fetchNotes(); }, [user?.id]);
+
+  const fetchNotes = async () => {
+    if (!supabase || !user?.id) return;
+    setLoading(true);
+    try {
+      const { data } = await supabase
+        .from("education_notes")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("pinned", { ascending: false })
+        .order("edu_date", { ascending: false });
+      setNotes(data || []);
+    } catch {}
+    setLoading(false);
+  };
+
+  const openNew = () => {
+    setEditItem(null);
+    setFormTitle("");
+    setFormSubject("it");
+    setFormDate(new Date().toISOString().slice(0, 10));
+    setFormTags("");
+    setFormFontSize(14);
+    setFormFontColor("#ffffff");
+    setIsModalOpen(true);
+    setTimeout(() => { if (contentEditableRef.current) contentEditableRef.current.innerHTML = ""; }, 60);
+  };
+
+  const openEdit = (note: EducationNote) => {
+    setEditItem(note);
+    setFormTitle(note.title);
+    setFormSubject(note.subject || "it");
+    setFormDate(note.edu_date || new Date().toISOString().slice(0, 10));
+    setFormTags((note.tags || []).join(", "));
+    setFormFontSize(14);
+    setFormFontColor("#ffffff");
+    setIsModalOpen(true);
+    setTimeout(() => { if (contentEditableRef.current) contentEditableRef.current.innerHTML = note.content || ""; }, 60);
+  };
+
+  const applyFormat = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+    contentEditableRef.current?.focus();
+  };
+
+  const handleSave = async () => {
+    if (!supabase || !user?.id) return;
+    if (!formTitle.trim()) { showToast("제목을 입력해주세요.", "error"); return; }
+    const content = contentEditableRef.current?.innerHTML || "";
+    setSaving(true);
+    const tags = formTags.split(",").map(t => t.trim()).filter(Boolean);
+    const payload = {
+      title: formTitle.trim(),
+      subject: formSubject,
+      content,
+      edu_date: formDate,
+      tags,
+      updated_at: new Date().toISOString(),
+    };
+    try {
+      if (editItem) {
+        await supabase.from("education_notes").update(payload).eq("id", editItem.id).eq("user_id", user.id);
+      } else {
+        await supabase.from("education_notes").insert({ ...payload, user_id: user.id, pinned: false });
+      }
+      showToast("교육자료가 저장되었습니다.", "success");
+      setIsModalOpen(false);
+      fetchNotes();
+    } catch { showToast("저장 실패", "error"); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!supabase || !user?.id) return;
+    if (!window.confirm("삭제하시겠습니까?")) return;
+    await supabase.from("education_notes").delete().eq("id", id).eq("user_id", user.id);
+    showToast("삭제되었습니다.", "info");
+    fetchNotes();
+  };
+
+  const handleTogglePin = async (e: React.MouseEvent, note: EducationNote) => {
+    e.stopPropagation();
+    if (!supabase || !user?.id) return;
+    await supabase.from("education_notes").update({ pinned: !note.pinned }).eq("id", note.id).eq("user_id", user.id);
+    fetchNotes();
+  };
+
+  const getSubjectInfo = (sub: string) => EDU_SUBJECT_OPTIONS.find(s => s.value === sub) || EDU_SUBJECT_OPTIONS[6];
+  const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+
+  const filtered = notes.filter(n => {
+    const matchSub = filterSubject === "all" || n.subject === filterSubject;
+    const q = searchQuery.toLowerCase();
+    const matchSearch = !q || n.title.toLowerCase().includes(q) || stripHtml(n.content).toLowerCase().includes(q) || (n.tags || []).some(t => t.toLowerCase().includes(q));
+    return matchSub && matchSearch;
+  });
+
+  const pinned = filtered.filter(n => n.pinned);
+  const unpinned = filtered.filter(n => !n.pinned);
+
+  const EduCard = ({ note }: { note: EducationNote }) => {
+    const subInfo = getSubjectInfo(note.subject);
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+        className="group relative rounded-[1.6rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] p-5 hover:border-cyan-200/20 transition-all cursor-pointer hover:shadow-[0_8px_32px_rgba(0,0,0,0.24)]"
+        onClick={() => openEdit(note)}>
+        {note.pinned && <div className="absolute top-3.5 right-3.5"><Pin size={11} className="text-cyan-400" /></div>}
+        <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+          <span className={cn("inline-flex items-center rounded-lg border px-2 py-0.5 text-[10px] font-semibold", subInfo.color)}>{subInfo.label}</span>
+          <span className="text-[10px] text-slate-600">{note.edu_date}</span>
+        </div>
+        <div className="text-[13px] font-semibold text-white mb-1.5 line-clamp-1">{note.title}</div>
+        <p className="text-[11px] text-slate-400 leading-relaxed" style={{ display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {stripHtml(note.content) || "내용 없음"}
+        </p>
+        {note.tags && note.tags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {note.tags.slice(0, 3).map(tag => (
+              <span key={tag} className="rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] text-slate-400">#{tag}</span>
+            ))}
+            {note.tags.length > 3 && <span className="text-[9px] text-slate-600">+{note.tags.length - 3}</span>}
+          </div>
+        )}
+        <div className="mt-3.5 flex items-center justify-between">
+          <span className="text-[10px] text-slate-600">{new Date(note.updated_at || note.created_at).toLocaleDateString("ko-KR")}</span>
+          <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+            <button onClick={e => handleTogglePin(e, note)} title={note.pinned ? "핀 해제" : "핀 고정"}
+              className={cn("h-7 w-7 flex items-center justify-center rounded-xl border transition-all", note.pinned ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-300" : "border-white/10 bg-white/5 text-slate-500 hover:text-cyan-300")}>
+              <Pin size={11} />
+            </button>
+            <button onClick={e => { e.stopPropagation(); handleDelete(note.id); }} className="h-7 w-7 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-500 hover:text-red-300 hover:border-red-400/20 transition-all">
+              <Trash2 size={11} />
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 py-8">
+      {/* Header */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-cyan-200/60">Education Notes</div>
+          <h1 className="mt-1 text-2xl font-semibold bg-gradient-to-r from-white via-cyan-100 to-cyan-300 bg-clip-text text-transparent">🎓 교육자료 메모</h1>
+          <p className="mt-1 text-sm text-slate-500">SI 엔지니어 교육 내용과 학습 자료를 체계적으로 기록합니다.</p>
+        </div>
+        <button onClick={openNew} className="flex items-center gap-2 rounded-2xl bg-cyan-500 px-5 py-3 font-semibold text-sm text-white hover:bg-cyan-400 transition-all shadow-lg shadow-cyan-500/20 active:scale-95 shrink-0">
+          <Plus size={18} /> 노트 추가
+        </button>
+      </div>
+
+      {/* Filter */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-3">
+        <input type="text" placeholder="제목, 내용, 태그 검색..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+          className="flex-1 bg-black/30 border border-white/10 rounded-2xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400/50 placeholder:text-slate-600" />
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setFilterSubject("all")}
+            className={cn("rounded-xl border px-3 py-2 text-xs font-semibold transition-all", filterSubject === "all" ? "border-cyan-400/30 bg-cyan-400/15 text-cyan-200" : "border-white/10 bg-white/5 text-slate-400 hover:text-white")}>전체</button>
+          {EDU_SUBJECT_OPTIONS.map(sub => (
+            <button key={sub.value} onClick={() => setFilterSubject(sub.value)}
+              className={cn("rounded-xl border px-3 py-2 text-xs font-semibold transition-all", filterSubject === sub.value ? cn("border", sub.color) : "border-white/10 bg-white/5 text-slate-400 hover:text-white")}>
+              {sub.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Notes */}
+      {loading ? (
+        <div className="text-center py-20 text-slate-500">불러오는 중...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-24 rounded-[2rem] border border-dashed border-white/8 bg-white/[0.015]">
+          <div className="text-5xl mb-5">🎓</div>
+          <div className="text-slate-400 font-semibold">{searchQuery || filterSubject !== "all" ? "검색 결과가 없습니다." : "아직 교육자료가 없습니다."}</div>
+          <div className="text-slate-600 text-sm mt-2">+ 버튼을 눌러 첫 교육자료를 작성해보세요!</div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {pinned.length > 0 && (
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-200/50 mb-3 flex items-center gap-2"><Pin size={10} /> 고정된 노트</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">{pinned.map(n => <EduCard key={n.id} note={n} />)}</div>
+            </div>
+          )}
+          {unpinned.length > 0 && (
+            <div>
+              {pinned.length > 0 && <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500/60 mb-3">모든 노트</div>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">{unpinned.map(n => <EduCard key={n.id} note={n} />)}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md overflow-y-auto">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }} transition={{ duration: 0.22 }}
+              className="relative w-full max-w-2xl rounded-[2rem] border border-white/10 bg-[#090d18] shadow-[0_32px_80px_rgba(0,0,0,0.6)] overflow-hidden my-auto"
+              onClick={e => e.stopPropagation()}>
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
+              <div className="p-6 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-cyan-200/60">{editItem ? "노트 편집" : "새 교육자료"}</div>
+                    <div className="mt-0.5 text-lg font-semibold text-white">{editItem ? "내용을 수정합니다" : "새 교육자료를 작성합니다"}</div>
+                  </div>
+                  <button onClick={() => setIsModalOpen(false)} className="h-9 w-9 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"><X size={16} /></button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs text-slate-400">제목 *</label>
+                  <input type="text" placeholder="교육 제목 입력..." value={formTitle} onChange={e => setFormTitle(e.target.value)}
+                    className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400/50 placeholder:text-slate-600" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-slate-400">교육 날짜</label>
+                    <input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400/50" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-slate-400">태그 (쉼표로 구분)</label>
+                    <input type="text" placeholder="예: AWS, Kubernetes" value={formTags} onChange={e => setFormTags(e.target.value)}
+                      className="w-full bg-black/40 border border-white/10 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400/50 placeholder:text-slate-600" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs text-slate-400">분야</label>
+                  <div className="flex flex-wrap gap-2">
+                    {EDU_SUBJECT_OPTIONS.map(sub => (
+                      <button key={sub.value} type="button" onClick={() => setFormSubject(sub.value)}
+                        className={cn("rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all", formSubject === sub.value ? cn("border", sub.color) : "border-white/10 bg-white/5 text-slate-400")}>
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rich Text Toolbar */}
+                <div className="flex flex-wrap items-center gap-1.5 p-3 rounded-2xl border border-white/8 bg-black/20">
+                  {[{ cmd: "bold", label: "B", cls: "font-bold" }, { cmd: "italic", label: "I", cls: "italic" }, { cmd: "underline", label: "U", cls: "underline" }].map(btn => (
+                    <button key={btn.cmd} type="button" onClick={() => applyFormat(btn.cmd)}
+                      className={cn("h-8 w-8 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-white transition-all", btn.cls)}>{btn.label}</button>
+                  ))}
+                  <div className="w-px h-5 bg-white/10 mx-0.5" />
+                  <select value={formFontSize} onChange={e => { const sz = Number(e.target.value); setFormFontSize(sz); const htmlSize = sz <= 10 ? "1" : sz <= 13 ? "2" : sz <= 16 ? "3" : sz <= 18 ? "4" : sz <= 24 ? "5" : sz <= 32 ? "6" : "7"; applyFormat("fontSize", htmlSize); }}
+                    className="bg-black/40 border border-white/10 rounded-xl px-2 py-1 text-xs text-white">
+                    {EDU_FONT_SIZE_OPTIONS.map(s => <option key={s} value={s}>{s}px</option>)}
+                  </select>
+                  <div className="flex items-center gap-1">
+                    {EDU_FONT_COLOR_PRESETS.map(color => (
+                      <button key={color} type="button" onClick={() => { setFormFontColor(color); applyFormat("foreColor", color); }}
+                        className={cn("h-5 w-5 rounded-full border-2 transition-all hover:scale-110", formFontColor === color ? "border-white/60 scale-110" : "border-transparent")} style={{ backgroundColor: color }} />
+                    ))}
+                  </div>
+                  <div className="w-px h-5 bg-white/10 mx-0.5" />
+                  <button type="button" onClick={() => applyFormat("insertUnorderedList")} className="h-8 px-2.5 flex items-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-slate-300 transition-all">• 목록</button>
+                  <button type="button" onClick={() => applyFormat("insertOrderedList")} className="h-8 px-2.5 flex items-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-slate-300 transition-all">1. 번호</button>
+                  <button type="button" onClick={() => applyFormat("removeFormat")} className="h-8 px-2.5 flex items-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs text-slate-400 transition-all">✕ 초기화</button>
+                </div>
+
+                <div ref={contentEditableRef} contentEditable suppressContentEditableWarning
+                  style={{ fontSize: `${formFontSize}px`, color: formFontColor, minHeight: "180px" }}
+                  className="w-full bg-black/30 border border-white/10 rounded-2xl px-4 py-3.5 focus:outline-none focus:border-cyan-400/50 leading-relaxed text-white transition-colors"
+                  data-placeholder="교육 내용을 입력하세요..." />
+
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3.5 rounded-2xl border border-white/10 bg-white/5 font-semibold text-slate-300 hover:bg-white/8 transition-all">취소</button>
+                  <button type="button" onClick={handleSave} disabled={saving} className="flex-[2] py-3.5 rounded-2xl bg-cyan-500 font-semibold text-white hover:bg-cyan-400 transition-all shadow-lg shadow-cyan-500/20 active:scale-[0.98] disabled:opacity-60">
+                    {saving ? "저장 중..." : "저장하기"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 // ── PersonalNoteRoom — 개인 노트 공간 ────────────────────────
 // ═══════════════════════════════════════════════════════════
 type PersonalNote = {
@@ -20977,7 +21783,6 @@ const PersonalNoteRoom = ({ user, profile }: { user: any; profile: any }) => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="fixed inset-0 z-[60] flex items-start sm:items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md overflow-y-auto"
-            onClick={(e) => { if (e.target === e.currentTarget) setIsModalOpen(false); }}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
