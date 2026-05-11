@@ -442,7 +442,7 @@ export const AchievementsPage: React.FC<Props> = ({ user, profile, supabase, onP
             {config.header_eyebrow}
           </span>
         </div>
-        <h1 className="font-serif text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight">
           <span
             className="bg-clip-text text-transparent"
             style={{ backgroundImage: `linear-gradient(to bottom, ${config.primary_accent}, ${config.primary_accent}99)` }}
@@ -604,12 +604,12 @@ const MyHeroCard: React.FC<{
                 <div className="mb-2 text-[10px] text-slate-600 uppercase tracking-[0.3em]">No Title Equipped</div>
               )}
 
-              <h2 className="font-serif text-2xl sm:text-4xl font-bold text-white truncate">{nickname}</h2>
+              <h2 className="text-2xl sm:text-4xl font-bold text-white truncate">{nickname}</h2>
 
               <div className="mt-3 flex items-center gap-2 flex-wrap">
                 <span className="text-xs uppercase tracking-[0.3em] text-slate-500">{config.hero_card_label}</span>
                 <span
-                  className="font-serif text-lg sm:text-xl font-bold bg-clip-text text-transparent"
+                  className="text-lg sm:text-xl font-bold bg-clip-text text-transparent"
                   style={{ backgroundImage: buildGradientH(tier.gradient_from, tier.gradient_to) }}
                 >
                   {tier.name}
@@ -778,7 +778,7 @@ const OverviewSection: React.FC<{
           <div className="flex items-center gap-6">
             <RingProgress value={completionPct} accent={config.primary_accent} />
             <div className="flex-1">
-              <div className="text-3xl font-bold text-white font-serif">
+              <div className="text-3xl font-bold text-white">
                 {completed}<span className="text-slate-600 text-xl">/{total}</span>
               </div>
               <div className="text-xs uppercase tracking-wider text-slate-500 mt-1">unlocked</div>
@@ -797,7 +797,7 @@ const OverviewSection: React.FC<{
           <div className="flex items-center gap-6">
             <RingProgress value={totalTitles === 0 ? 0 : (myTitles / totalTitles) * 100} accent={config.secondary_accent} />
             <div className="flex-1">
-              <div className="text-3xl font-bold text-white font-serif">
+              <div className="text-3xl font-bold text-white">
                 {myTitles}<span className="text-slate-600 text-xl">/{totalTitles}</span>
               </div>
               <div className="text-xs uppercase tracking-wider text-slate-500 mt-1">acquired</div>
@@ -1171,7 +1171,7 @@ const TitleCard: React.FC<{
         )}
       </div>
       <div
-        className={cn("font-serif text-lg font-bold mb-1", owned ? "" : "text-slate-600")}
+        className={cn("text-lg font-bold mb-1", owned ? "" : "text-slate-600")}
         style={owned ? { color: title.color || "#FFFFFF" } : {}}
       >
         {owned ? title.name : "???"}
@@ -1300,7 +1300,7 @@ const MVPSection: React.FC<{ rows: MVPRow[]; config: PageConfig }> = ({ rows, co
                       </div>
                       <span className="text-3xl drop-shadow-[0_0_8px_rgba(252,211,77,0.5)]">🥇</span>
                     </div>
-                    <div className="font-serif text-2xl font-bold text-white truncate">{r.nickname}</div>
+                    <div className="text-2xl font-bold text-white truncate">{r.nickname}</div>
                     {r.rank_name && <div className="text-xs text-slate-500 uppercase tracking-wider mt-0.5">{r.rank_name}</div>}
                     <div className="mt-3 text-xl font-mono tabular-nums" style={{ color: m.accent }}>
                       {r.category === "participation" ? `${r.value}%` : `${formatNum(r.value)}${r.category === "points" ? " P" : r.category === "weekly" ? " 회" : " 점"}`}
@@ -1330,7 +1330,7 @@ const Panel: React.FC<{ title: string; subtitle?: string; children: React.ReactN
     )}
     <div className="p-5 sm:p-6">
       <header className="mb-5">
-        <h3 className="font-serif text-lg sm:text-xl font-bold text-white">{title}</h3>
+        <h3 className="text-lg sm:text-xl font-bold text-white">{title}</h3>
         {subtitle && <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500 mt-1">{subtitle}</p>}
       </header>
       {children}
