@@ -2689,10 +2689,10 @@ const fetchInitialData = async () => {
                 <LockedRoom
                   password={settings?.private_note_password || ""}
                   storageKey="expense_unlocked"
-                  title="법인카드 사용내역"
-                  subtitle="Corporate Expense"
+                  title="사용내역 조회"
+                  subtitle="Usage History"
                   icon="💳"
-                  description="법인카드 사용 내역을 기록하고 관리합니다."
+                  description="사용내역을 기록하고 관리합니다."
                 >
                   <ExpenseNoteRoom user={user} profile={profile} />
                 </LockedRoom>
@@ -6843,7 +6843,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
       items: [
         { id: "myroom", icon: "👤", label: "마이룸" },
         { id: "note", icon: "📝", label: "개인 노트" },
-        { id: "expense", icon: "💳", label: "법인카드 사용내역" },
+        { id: "expense", icon: "💳", label: "사용내역 조회" },
         { id: "education", icon: "🎓", label: "교육자료 메모" },
         { id: "shop", icon: "🛒", label: "포인트 상점" },
       ],
@@ -20752,7 +20752,7 @@ const PrivatePasswordSettings = ({ settings, setSettings }: any) => {
 
       <div className="space-y-5 rounded-[2rem] border border-white/8 bg-[#0a0e18] p-6">
         {[
-          { label: "💳 법인카드 사용내역", sub: "expense", value: expensePass, set: setExpensePass },
+          { label: "💳 사용내역 조회", sub: "expense", value: expensePass, set: setExpensePass },
           { label: "🎓 교육자료 메모", sub: "education", value: eduPass, set: setEduPass },
         ].map((item) => (
           <div key={item.sub} className="space-y-2">
@@ -20788,7 +20788,7 @@ const PrivatePasswordSettings = ({ settings, setSettings }: any) => {
   );
 };
 
-// ── ExpenseNoteRoom — 법인카드 사용내역 ──────────────────────
+// ── ExpenseNoteRoom — 사용내역 조회 ──────────────────────
 type ExpenseNote = {
   id: string;
   user_id: string;
@@ -20909,9 +20909,9 @@ const ExpenseNoteRoom = ({ user, profile }: { user: any; profile: any }) => {
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200/60">Corporate Expense</div>
-          <h1 className="mt-1 text-2xl font-semibold bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent">💳 법인카드 사용내역</h1>
-          <p className="mt-1 text-sm text-slate-500">법인카드 사용 내역을 날짜별로 기록하고 관리합니다.</p>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-200/60">Usage History</div>
+          <h1 className="mt-1 text-2xl font-semibold bg-gradient-to-r from-white via-amber-100 to-amber-300 bg-clip-text text-transparent">💳 사용내역 조회</h1>
+          <p className="mt-1 text-sm text-slate-500">사용내역을 날짜별로 기록하고 관리합니다.</p>
         </div>
         <button onClick={openNew} className="flex items-center gap-2 rounded-2xl bg-amber-500 px-5 py-3 font-semibold text-sm text-white hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 active:scale-95 shrink-0">
           <Plus size={18} /> 내역 추가
@@ -21005,7 +21005,7 @@ const ExpenseNoteRoom = ({ user, profile }: { user: any; profile: any }) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-200/60">{editItem ? "내역 수정" : "새 내역 추가"}</div>
-                    <div className="mt-0.5 text-lg font-semibold text-white">💳 법인카드 사용내역</div>
+                    <div className="mt-0.5 text-lg font-semibold text-white">💳 사용내역 조회</div>
                   </div>
                   <button onClick={() => setIsModalOpen(false)} className="h-9 w-9 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-all"><X size={16} /></button>
                 </div>
