@@ -14381,8 +14381,202 @@ const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClo
 };
 // ── End ArmoryViewModal ──────────────────────────────────────
 
+// ════════════════════════════════════════════════════════════
+// TitlesPanel — 마이룸 칭호 탭
+//   - 보유 칭호 목록 + 장착/해제
+//   - 미보유 칭호 (잠긴 상태 표시)
+//   - 장착 중인 칭호 강조
+// ════════════════════════════════════════════════════════════
+const TitlesPanel = ({ user, profile, onProfileChanged }: any) => {
+  const [allTitles, setAllTitles] = useState<any[]>([]);
+  const [myTitleIds, setMyTitleIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [equipping, setEquipping] = useState<string | null>(null);
+
+  const equippedId: string | null = profile?.equipped_title_id || null;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!supabase || !user) { setLoading(false); return; }
+      try {
+        const [tRes, utRes] = await Promise.all([
+          supabase.from("titles").select("*").order("rarity").order("name"),
+          supabase.from("user_titles").select("title_id").eq("user_id", user.id),
+        ]);
+        if (cancelled) return;
+        setAllTitles(tRes.data || []);
+        setMyTitleIds(new Set((utRes.data || []).map((r: any) => r.title_id)));
+      } catch (e) {
+        console.error("[TitlesPanel] fetch error:", e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const equip = async (titleId: string | null) => {
+    if (!user || !supabase) return;
+    setEquipping(titleId || "none");
+    const { error } = await supabase
+      .from("profiles")
+      .update({ equipped_title_id: titleId })
+      .eq("id", user.id);
+    setEquipping(null);
+    if (error) {
+      alert("칭호 변경 실패: " + error.message);
+      return;
+    }
+    if (onProfileChanged) await onProfileChanged();
+  };
+
+  // 레어도 스타일
+  const rarityStyle: Record<string, { text: string; border: string; bgFrom: string; bgTo: string; glow: string; label: string }> = {
+    common:    { text: "#CBD5E1", border: "rgba(148,163,184,0.30)", bgFrom: "rgba(30,41,59,0.6)",   bgTo: "rgba(15,23,42,0.6)",  glow: "rgba(148,163,184,0.15)", label: "COMMON" },
+    rare:      { text: "#7DD3FC", border: "rgba(56,189,248,0.40)",  bgFrom: "rgba(12,74,110,0.4)",  bgTo: "rgba(15,23,42,0.6)",  glow: "rgba(56,189,248,0.30)",  label: "RARE" },
+    epic:      { text: "#C4B5FD", border: "rgba(167,139,250,0.50)", bgFrom: "rgba(76,29,149,0.4)",  bgTo: "rgba(15,23,42,0.6)",  glow: "rgba(167,139,250,0.40)", label: "EPIC" },
+    legendary: { text: "#FCD34D", border: "rgba(252,211,77,0.60)",  bgFrom: "rgba(120,53,15,0.4)",  bgTo: "rgba(15,23,42,0.7)",  glow: "rgba(252,211,77,0.50)",  label: "LEGENDARY" },
+    mythic:    { text: "#F9A8D4", border: "rgba(244,114,182,0.60)", bgFrom: "rgba(131,24,67,0.4)",  bgTo: "rgba(76,29,149,0.4)", glow: "rgba(244,114,182,0.60)", label: "MYTHIC" },
+  };
+
+  if (loading) {
+    return (
+      <div className="py-16 text-center text-slate-500 text-sm">불러오는 중...</div>
+    );
+  }
+
+  const owned = allTitles.filter((t: any) => myTitleIds.has(t.id));
+  const locked = allTitles.filter((t: any) => !myTitleIds.has(t.id));
+  const equippedTitle = owned.find((t: any) => t.id === equippedId);
+
+  return (
+    <div className="space-y-6">
+      {/* 현재 장착 중인 칭호 (큰 카드) */}
+      <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-[#1a1530]/80 to-[#0d0a20]/90 p-5 sm:p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Crown size={14} className="text-amber-300" />
+          <span className="text-[10px] uppercase tracking-[0.3em] text-amber-300/80 font-bold">현재 장착 중</span>
+        </div>
+        {equippedTitle ? (
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <div
+                className="text-xl sm:text-2xl font-bold mb-1"
+                style={{ color: equippedTitle.color || rarityStyle[equippedTitle.rarity]?.text || "#FFFFFF" }}
+              >
+                ✦ {equippedTitle.name}
+              </div>
+              <div className="text-sm text-slate-400">{equippedTitle.description}</div>
+            </div>
+            <button
+              onClick={() => equip(null)}
+              disabled={equipping !== null}
+              className="px-4 py-2 rounded-xl border border-rose-400/30 bg-rose-500/10 text-rose-200 text-xs font-semibold hover:bg-rose-500/20 transition-all disabled:opacity-50"
+            >
+              {equipping === "none" ? "해제 중..." : "해제"}
+            </button>
+          </div>
+        ) : (
+          <div className="text-sm text-slate-500 py-2">장착한 칭호가 없어요. 아래에서 골라 장착해보세요.</div>
+        )}
+      </div>
+
+      {/* 보유 칭호 */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-bold text-white">보유 칭호</h3>
+          <span className="text-xs text-slate-500 font-mono">{owned.length}개</span>
+        </div>
+
+        {owned.length === 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] py-12 text-center">
+            <div className="text-sm text-slate-500 mb-1">아직 획득한 칭호가 없어요</div>
+            <div className="text-xs text-slate-600">업적을 달성하면 칭호가 자동으로 부여됩니다</div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {owned.map((t: any) => {
+              const r = rarityStyle[t.rarity] || rarityStyle.common;
+              const isEquipped = t.id === equippedId;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => !isEquipped && equip(t.id)}
+                  disabled={equipping !== null || isEquipped}
+                  className="relative rounded-2xl border p-4 text-left transition-all overflow-hidden hover:scale-[1.02] disabled:hover:scale-100"
+                  style={{
+                    borderColor: isEquipped ? "rgba(252,211,77,0.6)" : r.border,
+                    background: `linear-gradient(135deg, ${r.bgFrom}, ${r.bgTo})`,
+                    boxShadow: isEquipped
+                      ? `0 0 32px rgba(252,211,77,0.4), 0 0 18px ${r.glow}`
+                      : `0 0 18px ${r.glow}`,
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: r.text }}>
+                      {r.label}
+                    </span>
+                    {isEquipped && (
+                      <span className="text-[9px] uppercase tracking-wider rounded-full px-2 py-0.5 border border-amber-400/60 bg-amber-400/15 text-amber-200">
+                        장착 중
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className="text-lg font-bold mb-1"
+                    style={{ color: t.color || r.text }}
+                  >
+                    ✦ {t.name}
+                  </div>
+                  <p className="text-xs text-slate-400 leading-relaxed line-clamp-2">{t.description}</p>
+                  {!isEquipped && (
+                    <div className="mt-3 text-[10px] uppercase tracking-wider text-amber-300/80 font-semibold">
+                      클릭해서 장착 →
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 미획득 칭호 */}
+      {locked.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-bold text-white">미획득 칭호</h3>
+            <span className="text-xs text-slate-500 font-mono">{locked.length}개</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {locked.map((t: any) => {
+              const r = rarityStyle[t.rarity] || rarityStyle.common;
+              return (
+                <div
+                  key={t.id}
+                  className="rounded-2xl border border-white/5 bg-black/40 p-4 opacity-60"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-slate-600">
+                      {r.label}
+                    </span>
+                    <span className="text-[10px] text-slate-700">🔒</span>
+                  </div>
+                  <div className="text-lg font-bold text-slate-600 mb-1">??? </div>
+                  <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">조건을 만족하면 공개됩니다.</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsgRead }: any) => {
-  const [myRoomTab, setMyRoomTab] = useState<"characters" | "messages">("characters");
+  const [myRoomTab, setMyRoomTab] = useState<"characters" | "messages" | "titles">("characters");
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -15834,6 +16028,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
         {[
           { key: "characters", label: "캐릭터 관리" },
           { key: "messages", label: "쪽지함" },
+          { key: "titles", label: "칭호" },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -16425,6 +16620,15 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
           </AnimatePresence>
         </div>
       )} {/* end messages tab */}
+
+      {/* ── 칭호 탭 ── */}
+      {myRoomTab === "titles" && (
+        <TitlesPanel
+          user={user}
+          profile={profile}
+          onProfileChanged={fetchProfile}
+        />
+      )}
 
       </>
       )}
