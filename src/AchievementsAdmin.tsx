@@ -45,7 +45,7 @@ type Props = {
 export const AchievementsAdmin: React.FC<Props> = ({ supabase, user, profile }) => {
   const isAdmin = profile?.role === "admin";
 
-  const [section, setSection] = useState<"text" | "design" | "tiers" | "achievements" | "titles">("text");
+  const [section, setSection] = useState<"text" | "design" | "tiers" | "achievements" | "titles" | "grant">("text");
   const [toast, setToast] = useState<{ msg: string; kind: "ok" | "err" } | null>(null);
   const showToast = (msg: string, kind: "ok" | "err" = "ok") => {
     setToast({ msg, kind });
@@ -68,6 +68,7 @@ export const AchievementsAdmin: React.FC<Props> = ({ supabase, user, profile }) 
     { key: "tiers",        label: "티어 관리",         icon: Layers },
     { key: "achievements", label: "업적 관리",         icon: Award },
     { key: "titles",       label: "칭호 & 레어도",     icon: Crown },
+    { key: "grant",        label: "수여 (수동 부여)",   icon: Plus },
   ];
 
   return (
@@ -113,6 +114,7 @@ export const AchievementsAdmin: React.FC<Props> = ({ supabase, user, profile }) 
       {section === "tiers" && <TiersSection supabase={supabase} showToast={showToast} />}
       {section === "achievements" && <AchievementsSection supabase={supabase} showToast={showToast} />}
       {section === "titles" && <TitlesSection supabase={supabase} showToast={showToast} />}
+      {section === "grant" && <GrantSection supabase={supabase} showToast={showToast} />}
 
       {/* 토스트 */}
       {toast && (
@@ -508,6 +510,36 @@ const RARITIES: { key: Rarity; label: string }[] = [
   { key: "mythic",    label: "Mythic" },
 ];
 
+/* ════════════ 조건 타입 정의 ════════════ */
+type ConditionType =
+  | "manual"
+  | "points_total"
+  | "raid_count"
+  | "raid_difficulty"
+  | "raid_night"
+  | "raid_dawn"
+  | "raid_weekend"
+  | "support_count"
+  | "post_count"
+  | "note_count"
+  | "social_count"
+  | "streak";
+
+const CONDITION_TYPES: { key: ConditionType; label: string; hint: string; needsDifficulty?: boolean }[] = [
+  { key: "manual",          label: "수동 부여 전용",          hint: "관리자가 직접 부여할 때만 사용" },
+  { key: "points_total",    label: "누적 포인트",            hint: "현재 보유 포인트 ≥ 임계값" },
+  { key: "raid_count",      label: "레이드 참여 횟수",        hint: "총 참여 ≥ 임계값" },
+  { key: "raid_difficulty", label: "특정 난이도 레이드",      hint: "예: 하드/나이트메어 N회 클리어", needsDifficulty: true },
+  { key: "raid_night",      label: "심야 레이드 (00–05시)",  hint: "자정~새벽 5시 누적 참여" },
+  { key: "raid_dawn",       label: "새벽 레이드 (06–10시)",  hint: "오전 6~10시 누적 참여" },
+  { key: "raid_weekend",    label: "주말 레이드 (토/일)",     hint: "주말 누적 참여" },
+  { key: "support_count",   label: "서포터 참여 횟수",        hint: "서포터로 참여 ≥ 임계값" },
+  { key: "post_count",      label: "게시글 작성 수",          hint: "공지 제외 게시글 ≥ 임계값" },
+  { key: "note_count",      label: "공략 노트 작성 수",       hint: "카테고리=공략 게시글 ≥ 임계값" },
+  { key: "social_count",    label: "게시글+댓글 합산",        hint: "총 활동 ≥ 임계값" },
+  { key: "streak",          label: "연속 출석 일수",          hint: "현재 streak ≥ 임계값" },
+];
+
 const AchievementsSection: React.FC<{ supabase: any; showToast: (m: string, k?: "ok" | "err") => void }> = ({ supabase, showToast }) => {
   const [items, setItems] = useState<Achievement[]>([]);
   const [titles, setTitles] = useState<Title[]>([]);
@@ -572,6 +604,15 @@ const AchievementsSection: React.FC<{ supabase: any; showToast: (m: string, k?: 
                     <span className="font-semibold text-white">{a.hidden ? "🔒 " : ""}{a.title}</span>
                     <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border" style={rarityChipStyle(a.rarity)}>{a.rarity}</span>
                     <span className="text-[10px] uppercase tracking-wider text-slate-500">{a.category}</span>
+                    {a.condition_type && a.condition_type !== "manual" ? (
+                      <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-emerald-400/30 bg-emerald-500/10 text-emerald-300">
+                        ⚡ {CONDITION_TYPES.find((c) => c.key === a.condition_type)?.label || a.condition_type} {a.condition_value ? `≥${a.condition_value}` : ""}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-slate-500/30 bg-slate-500/10 text-slate-400">
+                        ✋ 수동
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-slate-400 truncate mt-0.5">{a.description}</div>
                 </div>
@@ -611,10 +652,16 @@ const AchievementEditorModal: React.FC<{
     icon: "🏆", hidden: false,
     threshold: null, point_reward: 10,
     reward_title_id: null, sort_order: 0,
+    condition_type: "manual",
+    condition_value: 0,
+    condition_extra: {},
   });
   const [saving, setSaving] = useState(false);
 
   const update = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+
+  // 현재 선택된 조건 타입의 메타 정보
+  const condMeta = CONDITION_TYPES.find((c) => c.key === (form.condition_type || "manual"));
 
   const save = async () => {
     if (!form.code || !form.title) { onError("code와 title은 필수입니다"); return; }
@@ -698,6 +745,60 @@ const AchievementEditorModal: React.FC<{
           <Field label="sort_order (정렬 순서)">
             <Input type="number" value={form.sort_order ?? 0} onChange={(v) => update("sort_order", Number(v))} />
           </Field>
+        </div>
+
+        {/* ───────────── 자동 부여 조건 ───────────── */}
+        <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.03] p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-[0.3em] text-amber-300">⚡ 자동 부여 조건</span>
+          </div>
+
+          <Field label="조건 타입">
+            <select
+              value={form.condition_type || "manual"}
+              onChange={(e) => update("condition_type", e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400/40"
+            >
+              {CONDITION_TYPES.map((c) => (
+                <option key={c.key} value={c.key}>{c.label}</option>
+              ))}
+            </select>
+            {condMeta && (
+              <p className="mt-1.5 text-[11px] text-slate-500">💡 {condMeta.hint}</p>
+            )}
+          </Field>
+
+          {form.condition_type && form.condition_type !== "manual" && (
+            <Field label="임계값 (이 숫자 이상이면 부여)">
+              <Input
+                type="number"
+                value={form.condition_value ?? 0}
+                onChange={(v) => update("condition_value", Number(v))}
+                placeholder="예: 10"
+              />
+            </Field>
+          )}
+
+          {form.condition_type === "raid_difficulty" && (
+            <Field label="난이도 (정확히 일치해야 카운트됨)">
+              <select
+                value={(form.condition_extra as any)?.difficulty ?? "하드"}
+                onChange={(e) => update("condition_extra", { ...(form.condition_extra || {}), difficulty: e.target.value })}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400/40"
+              >
+                <option value="노말">노말</option>
+                <option value="하드">하드</option>
+                <option value="나이트메어">나이트메어</option>
+              </select>
+            </Field>
+          )}
+
+          {form.condition_type === "manual" && (
+            <div className="text-[11px] text-slate-500 leading-relaxed">
+              수동 부여 전용 업적이에요. 활동에 따라 자동으로 부여되지 않습니다.<br/>
+              아래 [<strong className="text-amber-300">칭호 & 업적 수여</strong>] 섹션에서 길드원에게 직접 수여하세요.
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 pt-2">
@@ -1108,6 +1209,272 @@ const Modal: React.FC<{ title: string; onClose: () => void; children: React.Reac
     </div>
   </div>
 );
+
+/* ═══════════════════════════════════════════════════════
+ *  6. 수여 (수동 부여) UI
+ * ═══════════════════════════════════════════════════════ */
+
+const GrantSection: React.FC<{ supabase: any; showToast: (m: string, k?: "ok" | "err") => void }> = ({ supabase, showToast }) => {
+  const [members, setMembers] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [titles, setTitles] = useState<Title[]>([]);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [selectedMember, setSelectedMember] = useState<any | null>(null);
+  const [tab, setTab] = useState<"achievement" | "title">("achievement");
+  const [loading, setLoading] = useState(true);
+  const [granting, setGranting] = useState<string | null>(null);
+  const [ownedAchIds, setOwnedAchIds] = useState<Set<string>>(new Set());
+  const [ownedTitleIds, setOwnedTitleIds] = useState<Set<string>>(new Set());
+
+  // 초기 로드
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const [mRes, aRes, tRes] = await Promise.all([
+        supabase.from("profiles").select("id, nickname, points, role").order("nickname"),
+        supabase.from("achievements").select("*").order("category").order("title"),
+        supabase.from("titles").select("*").order("name"),
+      ]);
+      setMembers(mRes.data || []);
+      setAchievements(aRes.data || []);
+      setTitles(tRes.data || []);
+      setLoading(false);
+    })();
+  }, [supabase]);
+
+  // 선택된 멤버의 보유 업적/칭호 로드
+  useEffect(() => {
+    if (!selectedMember) {
+      setOwnedAchIds(new Set());
+      setOwnedTitleIds(new Set());
+      return;
+    }
+    (async () => {
+      const [uaRes, utRes] = await Promise.all([
+        supabase.from("user_achievements").select("achievement_id").eq("user_id", selectedMember.id),
+        supabase.from("user_titles").select("title_id").eq("user_id", selectedMember.id),
+      ]);
+      setOwnedAchIds(new Set((uaRes.data || []).map((r: any) => r.achievement_id)));
+      setOwnedTitleIds(new Set((utRes.data || []).map((r: any) => r.title_id)));
+    })();
+  }, [selectedMember, supabase, granting]);
+
+  const grantAchievement = async (code: string) => {
+    if (!selectedMember) return;
+    setGranting(code);
+    const { data, error } = await supabase.rpc("admin_grant_to_user", {
+      p_target_user_id: selectedMember.id,
+      p_code: code,
+    });
+    setGranting(null);
+    if (error) showToast("부여 실패: " + error.message, "err");
+    else if (data?.ok === false && data?.reason === "already_achieved") showToast("이미 보유한 업적입니다", "err");
+    else if (data?.ok === false && data?.reason === "permission_denied") showToast("관리자 권한이 필요합니다", "err");
+    else if (data?.ok) showToast(`✨ ${selectedMember.nickname}에게 "${data.title}" 부여 완료`);
+    else showToast("부여 실패", "err");
+  };
+
+  const grantTitle = async (titleId: string, titleName: string) => {
+    if (!selectedMember) return;
+    setGranting(titleId);
+    const { error } = await supabase.from("user_titles").insert({
+      user_id: selectedMember.id,
+      title_id: titleId,
+    });
+    setGranting(null);
+    if (error) {
+      if (error.code === "23505") showToast("이미 보유한 칭호입니다", "err");
+      else showToast("부여 실패: " + error.message, "err");
+    } else {
+      showToast(`✨ ${selectedMember.nickname}에게 "${titleName}" 칭호 부여 완료`);
+    }
+  };
+
+  const revokeAchievement = async (achId: string, title: string) => {
+    if (!selectedMember) return;
+    if (!confirm(`정말 "${title}" 업적을 회수하시겠어요?`)) return;
+    setGranting(achId);
+    const { error } = await supabase
+      .from("user_achievements")
+      .delete()
+      .eq("user_id", selectedMember.id)
+      .eq("achievement_id", achId);
+    setGranting(null);
+    if (error) showToast("회수 실패: " + error.message, "err");
+    else showToast(`회수 완료`);
+  };
+
+  const revokeTitle = async (titleId: string, titleName: string) => {
+    if (!selectedMember) return;
+    if (!confirm(`정말 "${titleName}" 칭호를 회수하시겠어요?`)) return;
+    setGranting(titleId);
+    const { error } = await supabase
+      .from("user_titles")
+      .delete()
+      .eq("user_id", selectedMember.id)
+      .eq("title_id", titleId);
+    setGranting(null);
+    if (error) showToast("회수 실패: " + error.message, "err");
+    else showToast(`회수 완료`);
+  };
+
+  const filteredMembers = memberSearch
+    ? members.filter((m) => (m.nickname || "").toLowerCase().includes(memberSearch.toLowerCase()))
+    : members;
+
+  if (loading) return <div className="py-12 text-center text-slate-500">불러오는 중...</div>;
+
+  return (
+    <div className="space-y-6">
+      <AdminCard title="1단계: 길드원 선택">
+        <input
+          type="text"
+          value={memberSearch}
+          onChange={(e) => setMemberSearch(e.target.value)}
+          placeholder="닉네임으로 검색..."
+          className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400/40 placeholder:text-slate-600 mb-3"
+        />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1">
+          {filteredMembers.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setSelectedMember(m)}
+              className={cn(
+                "p-2.5 rounded-xl border text-left transition-all",
+                selectedMember?.id === m.id
+                  ? "bg-amber-500/20 border-amber-400/50"
+                  : "bg-white/[0.02] border-white/10 hover:border-white/20"
+              )}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-semibold text-white truncate">{m.nickname || "Unknown"}</span>
+                {m.role === "admin" && <span className="text-[9px] text-amber-300">👑</span>}
+              </div>
+              <div className="text-[10px] text-slate-500 font-mono">{m.points || 0} P</div>
+            </button>
+          ))}
+        </div>
+        {filteredMembers.length === 0 && (
+          <div className="py-6 text-center text-slate-500 text-sm">검색 결과가 없어요.</div>
+        )}
+      </AdminCard>
+
+      {selectedMember && (
+        <AdminCard title={`2단계: ${selectedMember.nickname}에게 부여`}>
+          {/* 탭 */}
+          <div className="flex gap-1 mb-4">
+            <button
+              onClick={() => setTab("achievement")}
+              className={cn(
+                "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
+                tab === "achievement" ? "bg-amber-500/20 border border-amber-400/40 text-amber-100" : "bg-white/[0.02] border border-white/10 text-slate-400"
+              )}
+            >
+              <Award className="w-3.5 h-3.5 inline mr-1" /> 업적 ({achievements.length})
+            </button>
+            <button
+              onClick={() => setTab("title")}
+              className={cn(
+                "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
+                tab === "title" ? "bg-amber-500/20 border border-amber-400/40 text-amber-100" : "bg-white/[0.02] border border-white/10 text-slate-400"
+              )}
+            >
+              <Crown className="w-3.5 h-3.5 inline mr-1" /> 칭호 ({titles.length})
+            </button>
+          </div>
+
+          {tab === "achievement" && (
+            <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
+              {achievements.map((a) => {
+                const owned = ownedAchIds.has(a.id);
+                return (
+                  <div
+                    key={a.id}
+                    className={cn(
+                      "flex items-center gap-2 p-2.5 rounded-lg border transition-all",
+                      owned ? "bg-emerald-500/5 border-emerald-400/20" : "bg-white/[0.02] border-white/10"
+                    )}
+                  >
+                    <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-black/40 flex items-center justify-center text-base">{a.icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-semibold text-white truncate">{a.title}</span>
+                        <span className="text-[9px] uppercase tracking-wider px-1 py-0.5 rounded border" style={rarityChipStyle(a.rarity)}>{a.rarity}</span>
+                        {a.condition_type === "manual" && (
+                          <span className="text-[9px] uppercase tracking-wider text-slate-500">수동</span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-500 truncate">{a.description}</div>
+                    </div>
+                    {owned ? (
+                      <button
+                        onClick={() => revokeAchievement(a.id, a.title)}
+                        disabled={granting === a.id}
+                        className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 border border-rose-400/30 text-rose-300 text-xs font-semibold hover:bg-rose-500/20 disabled:opacity-50"
+                      >
+                        회수
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => grantAchievement(a.code)}
+                        disabled={granting === a.code}
+                        className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-100 text-xs font-semibold hover:bg-amber-500/30 disabled:opacity-50"
+                      >
+                        {granting === a.code ? "..." : "부여"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {tab === "title" && (
+            <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
+              {titles.map((t) => {
+                const owned = ownedTitleIds.has(t.id);
+                return (
+                  <div
+                    key={t.id}
+                    className={cn(
+                      "flex items-center gap-2 p-2.5 rounded-lg border transition-all",
+                      owned ? "bg-emerald-500/5 border-emerald-400/20" : "bg-white/[0.02] border-white/10"
+                    )}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-semibold truncate" style={{ color: t.color || "#FFFFFF" }}>{t.name}</span>
+                        <span className="text-[9px] uppercase tracking-wider px-1 py-0.5 rounded border" style={rarityChipStyle(t.rarity)}>{t.rarity}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 truncate">{t.description}</div>
+                    </div>
+                    {owned ? (
+                      <button
+                        onClick={() => revokeTitle(t.id, t.name)}
+                        disabled={granting === t.id}
+                        className="px-2.5 py-1.5 rounded-lg bg-rose-500/10 border border-rose-400/30 text-rose-300 text-xs font-semibold hover:bg-rose-500/20 disabled:opacity-50"
+                      >
+                        회수
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => grantTitle(t.id, t.name)}
+                        disabled={granting === t.id}
+                        className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-100 text-xs font-semibold hover:bg-amber-500/30 disabled:opacity-50"
+                      >
+                        {granting === t.id ? "..." : "부여"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </AdminCard>
+      )}
+    </div>
+  );
+};
 
 /* ═══════════════ Helpers ═══════════════ */
 function rarityChipStyle(r: Rarity) {
