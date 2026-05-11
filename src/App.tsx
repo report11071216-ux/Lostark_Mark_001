@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { GuildHistory } from "./GuildHistory";
+import AchievementsPage from "./AchievementsPage";
 
 // ── Theme System ───────────────────────────────────────────
 type Theme = "dark" | "light";
@@ -2655,7 +2656,7 @@ const fetchInitialData = async () => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <RankingPage user={user} profile={profile} />
+                <AchievementsPage user={user} profile={profile} supabase={supabase} />
               </motion.div>
             )}
 
