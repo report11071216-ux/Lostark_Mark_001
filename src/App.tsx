@@ -137,6 +137,18 @@ const RAID_TYPE_OPTIONS = ["8인", "4인"];
 const CONTENT_MODE_OPTIONS = ["raid", "anime"];
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+// ✅ 권한 체크 헬퍼: 마스터(admin) 또는 부마스터(submaster) 여부 확인
+//    관리자 패널, 업적 시스템, 게시판 관리 등 스태프 권한이 필요한 곳에 사용
+const isStaffRole = (role?: string | null): boolean =>
+  role === "admin" || role === "submaster";
+
+// ✅ 역할 라벨 변환 (UI 표시용)
+const getRoleLabel = (role?: string | null): string => {
+  if (role === "admin") return "Guild Master";
+  if (role === "submaster") return "Vice Master";
+  return "Guild Member";
+};
+
 const defaultSettings = {
   guild_name: "쁘밍",
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
@@ -2334,7 +2346,7 @@ const fetchInitialData = async () => {
     profile?.character_name ||
     (user?.email ? String(user.email).split("@")[0] : "Guest");
   const avatarText = String(displayName || "G").slice(0, 1).toUpperCase();
-  const roleLabel = profile?.role === "admin" ? "Guild Master" : user ? "Guild Member" : "Guest";
+  const roleLabel = user ? getRoleLabel(profile?.role) : "Guest";
 
   return (
     <PageShell settings={settings}>
@@ -2498,7 +2510,7 @@ const fetchInitialData = async () => {
                             { id: "expense", icon: <ShoppingBag size={14} />, label: "사용내역 조회", color: "#fde68a" },
                             { id: "education", icon: <Sparkles size={14} />, label: "교육자료 메모", color: "#67e8f9" },
                             { id: "shop", icon: <ShoppingBag size={14} />, label: "포인트 상점", color: "#c4b5fd" },
-                            ...(profile?.role === "admin"
+                            ...(isStaffRole(profile?.role)
                               ? [{ id: "admin", icon: <Settings size={14} />, label: "관리자 패널", color: "#fbbf24" }]
                               : []),
                           ].map((item) => (
@@ -2755,7 +2767,7 @@ const fetchInitialData = async () => {
               </motion.div>
             )}
 
-            {activeTab === "admin" && profile?.role === "admin" && (
+            {activeTab === "admin" && isStaffRole(profile?.role) && (
               <motion.div
                 key="admin"
                 initial={{ opacity: 0 }}
@@ -2766,7 +2778,7 @@ const fetchInitialData = async () => {
               </motion.div>
             )}
 
-            {activeTab === "achievements_admin" && profile?.role === "admin" && (
+            {activeTab === "achievements_admin" && isStaffRole(profile?.role) && (
               <motion.div
                 key="achievements_admin"
                 initial={{ opacity: 0 }}
@@ -3028,7 +3040,9 @@ const GuildChat = ({ user, profile }: { user: any; profile: any }) => {
     if (!client) { setSending(false); return; }
 
     const messageContent = input.trim();
-    const isAdmin = profile?.role === "admin";
+    const isAdmin = isStaffRole(profile?.role);
+    const isMaster = profile?.role === "admin";
+    const isSubmaster = profile?.role === "submaster";
 
     const { error } = await client.from("guild_chat").insert({
       user_id: user.id,
@@ -3048,9 +3062,9 @@ const GuildChat = ({ user, profile }: { user: any; profile: any }) => {
         year: "numeric", month: "long", day: "numeric", weekday: "short",
       });
 
-      // 관리자: 황금(0xFFCC00), 일반 멤버: 앰버(0xF59E0B)
-      const embedColor = isAdmin ? 0xFFCC00 : 0xF59E0B;
-      const authorPrefix = isAdmin ? "👑 [관리자] " : "⚔️ ";
+      // 마스터: 황금(0xFFCC00) 👑, 부마스터: 오렌지(0xFB923C) ⚔️, 일반 멤버: 앰버(0xF59E0B)
+      const embedColor = isMaster ? 0xFFCC00 : isSubmaster ? 0xFB923C : 0xF59E0B;
+      const authorPrefix = isMaster ? "👑 [마스터] " : isSubmaster ? "⚔️ [부마스터] " : "⚔️ ";
 
       void fetch("/api/discord", {
         method: "POST",
@@ -4834,7 +4848,7 @@ const Hero = ({
 
   const upcomingForSide = upcomingRaids.filter(r => r.id !== todayPick?.id).slice(0, 4);
 
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = isStaffRole(profile?.role);
 
   // ─────────────────────────────────────────────
   return (
@@ -5754,7 +5768,8 @@ const OnlinePlayersCard = () => {
                       )}>
                         {m.nickname || "Unknown"}
                       </span>
-                      {m.role === "admin" && <span className="text-[9px] flex-shrink-0">👑</span>}
+                      {m.role === "admin" && <span className="text-[9px] flex-shrink-0" title="길드 마스터">👑</span>}
+                      {m.role === "submaster" && <span className="text-[9px] flex-shrink-0" title="부 마스터">⚔️</span>}
                     </div>
                     {title && rs ? (
                       <div
@@ -5817,7 +5832,7 @@ const GuildManageFAB = ({
 
   if (activeTab !== "home" || hidden) return null;
 
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = isStaffRole(profile?.role);
   const targetTab = isAdmin ? "admin" : "myroom";
   const label = isAdmin ? "길드 관리" : "내 정보";
   const sub = isAdmin ? "Admin Console" : "My Room";
@@ -7154,7 +7169,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
     profile?.character_name ||
     (user?.email ? String(user.email).split("@")[0] : "Guest");
   const avatarText = String(displayName || "G").slice(0, 1).toUpperCase();
-  const isAdmin = profile?.role === "admin";
+  const isAdmin = isStaffRole(profile?.role);
 
   const handleMove = (tab: string) => {
     setActiveTab(tab);
@@ -9613,7 +9628,7 @@ const RaidDetailModal = ({
   const rewardImageUrl = (normalDetails[0] || hardDetails[0])?.reward_image_url || "";
 
   const handleDelete = async () => {
-    if (profile?.role !== "admin") { showToast("관리자만 삭제할 수 있어.", "error"); return; }
+    if (!isStaffRole(profile?.role)) { showToast("관리자만 삭제할 수 있어.", "error"); return; }
     if (!confirm("일정을 삭제하시겠습니까?")) return;
     try {
       await supabase.from("raid_participants").delete().eq("schedule_id", raid.id);
@@ -9624,7 +9639,7 @@ const RaidDetailModal = ({
 
   const [completingRaid, setCompletingRaid] = useState(false);
   const handleCompleteRaid = async () => {
-    if (profile?.role !== "admin") { showToast("관리자만 완료 처리할 수 있어.", "error"); return; }
+    if (!isStaffRole(profile?.role)) { showToast("관리자만 완료 처리할 수 있어.", "error"); return; }
     if (parts.length === 0) { showToast("참여자가 없어서 완료 처리할 수 없어.", "error"); return; }
     if (!confirm(`레이드 완료 처리 후 참여자 ${parts.length}명에게 5포인트씩 지급합니다. 진행할까요?`)) return;
     setCompletingRaid(true);
@@ -10204,7 +10219,7 @@ const RaidDetailModal = ({
                 <ParticipantItem
                   key={participant.id}
                   participant={participant}
-                  canCancel={profile?.role === "admin"}
+                  canCancel={isStaffRole(profile?.role)}
                   onRefresh={onRefresh}
                   user={user}
                   myCharacterNames={myCharacterNames}
@@ -10220,7 +10235,7 @@ const RaidDetailModal = ({
                 <div className="rounded-[1.3rem] border border-dashed border-white/10 bg-white/[0.02] px-4 py-10 text-center text-sm text-stone-500">아직 참가자가 없습니다.</div>
               )}
               {parts.map((participant: any) => (
-                <ParticipantItem key={participant.id} participant={participant} canCancel={profile?.role === "admin"} onRefresh={onRefresh} user={user} myCharacterNames={myCharacterNames} />
+                <ParticipantItem key={participant.id} participant={participant} canCancel={isStaffRole(profile?.role)} onRefresh={onRefresh} user={user} myCharacterNames={myCharacterNames} />
               ))}
             </div>
           )}
@@ -10237,7 +10252,7 @@ const RaidDetailModal = ({
                 참여하기
               </button>
             )}
-            {profile?.role === "admin" && !raid.is_completed && (
+            {isStaffRole(profile?.role) && !raid.is_completed && (
               <button
                 onClick={handleCompleteRaid}
                 disabled={completingRaid}
@@ -10247,12 +10262,12 @@ const RaidDetailModal = ({
                 {completingRaid ? "처리 중..." : "레이드 완료 (+5P)"}
               </button>
             )}
-            {profile?.role === "admin" && raid.is_completed && (
+            {isStaffRole(profile?.role) && raid.is_completed && (
               <div className="flex items-center gap-1.5 rounded-[1.2rem] border border-emerald-400/20 bg-emerald-400/8 px-4 py-3 text-sm font-semibold text-emerald-400">
                 <Trophy size={14} /> 완료된 레이드
               </div>
             )}
-            {profile?.role === "admin" && (
+            {isStaffRole(profile?.role) && (
               <button
                 onClick={handleDelete}
                 className="rounded-[1.2rem] border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm font-semibold text-rose-300 transition-all hover:bg-rose-400/16"
@@ -12703,12 +12718,12 @@ const PostDetailModal = ({ post, comments, user, profile, onClose, onDelete, onT
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                {profile?.role === "admin" && post.is_notice && (
+                {isStaffRole(profile?.role) && post.is_notice && (
                   <button onClick={() => onTogglePin(post)} className="rounded-xl border border-amber-200/20 bg-amber-300/10 px-3 py-2 text-[11px] font-semibold text-amber-200 hover:bg-amber-300/16 transition">
                     {post.is_pinned ? "고정 해제" : "고정"}
                   </button>
                 )}
-                {(profile?.role === "admin" || user?.id === post.user_id) && (
+                {(isStaffRole(profile?.role) || user?.id === post.user_id) && (
                   <button onClick={() => { onDelete(post.id); onClose(); }} className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-500 hover:border-rose-400/20 hover:bg-rose-400/10 hover:text-rose-300 transition">
                     <Trash2 size={15} />
                   </button>
@@ -12786,7 +12801,7 @@ const PostDetailModal = ({ post, comments, user, profile, onClose, onDelete, onT
                       <span className="text-sm font-semibold text-white">{comment.author_name || comment.author || "익명"}</span>
                       <span className="ml-2 text-[10px] text-stone-500">{formatDateTime(comment.created_at)}</span>
                     </div>
-                    {(profile?.role === "admin" || user?.id === comment.user_id) && (
+                    {(isStaffRole(profile?.role) || user?.id === comment.user_id) && (
                       <button onClick={() => onDeleteComment(comment.id)} className="text-slate-600 hover:text-rose-400 transition">
                         <Trash2 size={13} />
                       </button>
@@ -12888,7 +12903,7 @@ const PostBoard = ({ posts, user, profile, onRefresh, initialTab, lockedCategory
   };
 
   const togglePin = async (post: any) => {
-    if (profile?.role !== "admin" || !post.is_notice) return;
+    if (!isStaffRole(profile?.role) || !post.is_notice) return;
     const client = getSupabaseOrThrow();
     if (!post.is_pinned) await client.from("posts").update({ is_pinned: false }).eq("is_notice", true).eq("is_pinned", true);
     const { error } = await client.from("posts").update({ is_pinned: !post.is_pinned }).eq("id", post.id);
@@ -13145,11 +13160,11 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose, defaultCategory, fo
         user_id: user.id,
         author_id: user.id,
         is_notice: Boolean(isNotice),
-        is_pinned: profile?.role === "admin" ? Boolean(isNotice && isPinned) : false,
+        is_pinned: isStaffRole(profile?.role) ? Boolean(isNotice && isPinned) : false,
         views: 0,
       }]).select().single();
       if (error) { showToast(error.message, "error"); return; }
-      if (profile?.role === "admin" && isNotice && isPinned) {
+      if (isStaffRole(profile?.role) && isNotice && isPinned) {
         await client.from("posts").update({ is_pinned: false }).neq("id", data.id).eq("is_notice", true).eq("is_pinned", true);
       }
       if (!isNotice) await client.rpc("add_points", { p_user_id: user.id, p_points: 5, p_type: "post" });
@@ -13217,7 +13232,7 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose, defaultCategory, fo
                 <option key={c.key} value={c.key}>{c.label}</option>
               ))}
             </select>
-            {profile?.role === "admin" && (
+            {isStaffRole(profile?.role) && (
               <div className="flex gap-3">
                 <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm">
                   <input type="checkbox" checked={isNotice} onChange={(e) => setIsNotice(e.target.checked)} />
