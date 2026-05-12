@@ -1916,7 +1916,14 @@ const PassivePointBackgroundSync = ({
 };
 
 function AppInner() {
-  const [activeTab, setActiveTab] = useState("home");
+  const [activeTab, _setActiveTab] = useState<string>(() => {
+  try { return localStorage.getItem("guild_active_tab") || "home"; } 
+  catch { return "home"; }
+});
+const setActiveTab = useCallback((tab: string) => {
+  _setActiveTab(tab);
+  try { localStorage.setItem("guild_active_tab", tab); } catch {}
+}, []);
   const pendingTabRef = useRef<string | null>(null);
   const [showSelector, setShowSelector] = useState(false);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
