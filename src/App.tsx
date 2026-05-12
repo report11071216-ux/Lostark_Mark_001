@@ -11156,7 +11156,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
           {adminTab === "notice"         && <AdminNoticeManager user={user} profile={profile} />}
           {adminTab === "characters"     && <AdminCharacterManager />}
           {adminTab === "raids_mgr"      && <AdminRaidManager />}
-          {adminTab === "users"          && <AdminUserManager />}
+          {adminTab === "users"          && <AdminUserManager currentUser={user} currentProfile={profile} />}
           {adminTab === "point_economy"  && <PointEconomyManager settings={settings} setSettings={setSettings} />}
           {adminTab === "point_shop"     && <AdminPointShopManager />}
           {adminTab === "private_passwords" && <PrivatePasswordSettings settings={settings} setSettings={setSettings} />}
@@ -18948,45 +18948,263 @@ const AdminRaidManager = () => {
   );
 };
 
-const AdminUserManager = () => {
+const AdminUserManager = ({ currentUser, currentProfile }: any) => {
   const [users, setUsers] = useState<any[]>([]);
+  const [search, setSearch] = useState("");
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // ✅ 권한 변경은 마스터만 가능 (부마스터의 자가 승격 방지)
+  const isMaster = currentProfile?.role === "admin";
 
   useEffect(() => {
     fetchUsers();
   }, []);
 
   const fetchUsers = async () => {
-    const { data, error } = await supabase.from("profiles").select("*");
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("nickname", { ascending: true });
     if (error) {
       console.error(error);
       setUsers([]);
-      return;
+    } else {
+      setUsers(data || []);
     }
-    setUsers(data || []);
+    setLoading(false);
   };
 
-  const deleteUser = async (id: string) => {
-    if (!confirm("회원 삭제할까요?")) return;
-    await supabase.from("profiles").delete().eq("id", id);
+  // ✅ 일반 회원의 role 값을 DB에서 자동 감지 (호환성 보장)
+  //    admin/submaster가 아닌 첫 번째 회원의 role 값을 "일반 회원" 값으로 사용
+  const memberRoleValue = (() => {
+    const sample = users.find((u) => u.role !== "admin" && u.role !== "submaster");
+    return sample ? (sample.role ?? null) : "member";
+  })();
+
+  const updateRole = async (id: string, newSelectValue: string, nickname: string) => {
+    if (!isMaster) {
+      showToast("권한 변경은 길드 마스터만 가능합니다.", "error");
+      return;
+    }
+    if (id === currentUser?.id) {
+      showToast("본인의 권한은 변경할 수 없습니다.", "error");
+      return;
+    }
+
+    // 'member' 옵션 선택 시, 실제 DB에는 일반 회원 role 값을 사용
+    const dbRole = newSelectValue === "member" ? memberRoleValue : newSelectValue;
+
+    const label =
+      newSelectValue === "admin" ? "👑 길드 마스터" :
+      newSelectValue === "submaster" ? "⚔️ 부마스터" :
+      "일반 회원";
+
+    if (!confirm(`"${nickname}"님을 ${label}(으)로 변경하시겠습니까?`)) return;
+
+    setUpdatingId(id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ role: dbRole })
+      .eq("id", id);
+    setUpdatingId(null);
+
+    if (error) {
+      // ENUM 에러 시 안내
+      const msg = error.message || "변경 실패";
+      if (msg.toLowerCase().includes("enum") || msg.toLowerCase().includes("invalid input value")) {
+        showToast(
+          "DB에 'submaster' role 값이 없습니다. Supabase SQL에서 ALTER TYPE으로 추가해주세요.",
+          "error"
+        );
+      } else {
+        showToast(`변경 실패: ${msg}`, "error");
+      }
+      console.error("role update error:", error);
+      return;
+    }
+
+    showToast(`${nickname}님 → ${label} 변경 완료`, "success");
     fetchUsers();
   };
 
+  const deleteUser = async (id: string, nickname: string) => {
+    if (!isMaster) {
+      showToast("회원 삭제는 길드 마스터만 가능합니다.", "error");
+      return;
+    }
+    if (id === currentUser?.id) {
+      showToast("본인은 삭제할 수 없습니다.", "error");
+      return;
+    }
+    if (!confirm(`"${nickname}"님을 정말 삭제하시겠습니까? 되돌릴 수 없습니다.`)) return;
+    const { error } = await supabase.from("profiles").delete().eq("id", id);
+    if (error) {
+      showToast(`삭제 실패: ${error.message}`, "error");
+      return;
+    }
+    showToast("삭제 완료", "success");
+    fetchUsers();
+  };
+
+  // 검색 필터 + 정렬 (마스터 → 부마스터 → 일반)
+  const filteredUsers = users.filter((u) => {
+    if (!search.trim()) return true;
+    const s = search.toLowerCase();
+    return (
+      String(u.nickname || "").toLowerCase().includes(s) ||
+      String(u.character_name || "").toLowerCase().includes(s)
+    );
+  });
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    const priority = (r: string) => (r === "admin" ? 0 : r === "submaster" ? 1 : 2);
+    const diff = priority(a.role) - priority(b.role);
+    if (diff !== 0) return diff;
+    return String(a.nickname || "").localeCompare(String(b.nickname || ""));
+  });
+
+  const masterCount = users.filter((u) => u.role === "admin").length;
+  const submasterCount = users.filter((u) => u.role === "submaster").length;
+  const memberCount = users.length - masterCount - submasterCount;
+
   return (
-    <div className="space-y-4">
-      <h3 className="text-xl font-bold">회원 관리</h3>
-
-      {users.map((member) => (
-        <div key={member.id} className="flex justify-between bg-black/40 p-4 rounded border border-white/10">
-          <div>
-            <div>{member.nickname}</div>
-            <div className="text-xs text-slate-400">{member.rank_name}</div>
-          </div>
-
-          <button onClick={() => deleteUser(member.id)} className="text-red-500">
-            삭제
-          </button>
+    <div className="space-y-5">
+      {/* 헤더 + 통계 */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h3 className="text-xl font-bold text-white">회원 관리</h3>
+          <p className="text-xs text-stone-400 mt-1">
+            전체 {users.length}명 · 👑 마스터 {masterCount} · ⚔️ 부마스터 {submasterCount} · 👤 일반 {memberCount}
+          </p>
         </div>
-      ))}
+        <button
+          onClick={fetchUsers}
+          className="text-xs px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 transition-all flex items-center gap-1.5 self-start sm:self-auto"
+        >
+          <RefreshCw size={12} />
+          새로고침
+        </button>
+      </div>
+
+      {/* 검색 */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500" />
+        <input
+          type="text"
+          placeholder="닉네임 또는 캐릭터명 검색..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400/50 placeholder:text-stone-600"
+        />
+      </div>
+
+      {/* 권한 안내 */}
+      {!isMaster && (
+        <div className="rounded-xl border border-amber-400/20 bg-amber-500/5 px-4 py-3 text-xs text-amber-200">
+          ⚠️ 권한 변경 및 회원 삭제는 <b>길드 마스터(admin)</b>만 가능합니다. 부마스터는 조회만 할 수 있어요.
+        </div>
+      )}
+      {isMaster && (
+        <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3 text-xs text-emerald-200">
+          💡 권한을 변경하면 즉시 반영됩니다. 본인은 변경/삭제할 수 없으며, 본인 권한을 바꾸려면 다른 마스터에게 요청하거나 Supabase에서 직접 변경하세요.
+        </div>
+      )}
+
+      {/* 회원 리스트 */}
+      {loading ? (
+        <div className="text-center py-12 text-stone-500 text-sm">불러오는 중...</div>
+      ) : sortedUsers.length === 0 ? (
+        <div className="text-center py-12 text-stone-500 text-sm">
+          {search ? "검색 결과가 없습니다." : "회원이 없습니다."}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {sortedUsers.map((member) => {
+            const isCurrent = member.id === currentUser?.id;
+            const isUpdating = updatingId === member.id;
+            const memberRole = member.role;
+            const selectValue =
+              memberRole === "admin" ? "admin" :
+              memberRole === "submaster" ? "submaster" :
+              "member";
+            const rowAccent =
+              memberRole === "admin" ? "border-amber-400/30 bg-amber-500/[0.03]" :
+              memberRole === "submaster" ? "border-orange-400/25 bg-orange-500/[0.03]" :
+              "border-white/10";
+
+            return (
+              <div
+                key={member.id}
+                className={cn(
+                  "flex items-center justify-between p-4 rounded-xl border gap-3 transition-all",
+                  rowAccent
+                )}
+              >
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="text-xl flex-shrink-0 w-8 text-center">
+                    {memberRole === "admin" ? "👑" : memberRole === "submaster" ? "⚔️" : "👤"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-white truncate">
+                        {member.nickname || "(닉네임 없음)"}
+                      </span>
+                      {isCurrent && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/20">
+                          본인
+                        </span>
+                      )}
+                      {memberRole === "admin" && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-400/20">
+                          Guild Master
+                        </span>
+                      )}
+                      {memberRole === "submaster" && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-300 border border-orange-400/20">
+                          Vice Master
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-400 truncate mt-0.5">
+                      {member.character_name || "캐릭터 없음"}
+                      {member.rank_name ? ` · ${member.rank_name}` : ""}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <select
+                    value={selectValue}
+                    onChange={(e) =>
+                      updateRole(member.id, e.target.value, member.nickname || "회원")
+                    }
+                    disabled={!isMaster || isCurrent || isUpdating}
+                    className="bg-black/60 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400/50 disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={
+                      !isMaster ? "마스터만 변경 가능" :
+                      isCurrent ? "본인 권한은 변경 불가" :
+                      "권한 변경"
+                    }
+                  >
+                    <option value="member">👤 일반 회원</option>
+                    <option value="submaster">⚔️ 부마스터</option>
+                    <option value="admin">👑 마스터</option>
+                  </select>
+
+                  <button
+                    onClick={() => deleteUser(member.id, member.nickname || "회원")}
+                    disabled={!isMaster || isCurrent || isUpdating}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
