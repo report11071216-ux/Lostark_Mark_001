@@ -1916,15 +1916,19 @@ const PassivePointBackgroundSync = ({
 };
 
 function AppInner() {
+  // ✅ activeTab을 localStorage에 저장하여 새로고침/탭복귀 시에도 유지
   const [activeTab, _setActiveTab] = useState<string>(() => {
-  try { return localStorage.getItem("guild_active_tab") || "home"; } 
-  catch { return "home"; }
-});
-const setActiveTab = useCallback((tab: string) => {
-  _setActiveTab(tab);
-  try { localStorage.setItem("guild_active_tab", tab); } catch {}
-}, []);
+    try { return localStorage.getItem("guild_active_tab") || "home"; }
+    catch { return "home"; }
+  });
+  const setActiveTab = useCallback((tab: string) => {
+    _setActiveTab(tab);
+    try { localStorage.setItem("guild_active_tab", tab); } catch {}
+  }, []);
   const pendingTabRef = useRef<string | null>(null);
+  // ✅ Stale closure 회피용 ref들 (탭 복귀/토큰갱신 시 초기화면 강제전환 방지)
+  const lastUserIdRef = useRef<string | null>(null);
+  const sectionSelectorShownRef = useRef(false);
   const [showSelector, setShowSelector] = useState(false);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -2051,6 +2055,12 @@ useEffect(() => {
 
       setUser(currentUser);
 
+      // ✅ 페이지 로드 시 이미 로그인 상태라면, 향후 SIGNED_IN 이벤트로 SectionSelector를 띄우지 않음
+      if (currentUser?.id) {
+        lastUserIdRef.current = currentUser.id;
+        sectionSelectorShownRef.current = true;
+      }
+
       if (currentUser) {
         void fetchProfile(currentUser.id);
       } else {
@@ -2084,23 +2094,44 @@ useEffect(() => {
   } = supabase.auth.onAuthStateChange(async (event, session) => {
     try {
       const currentUser = session?.user ?? null;
-      setUser(currentUser);
+      const prevUserId = lastUserIdRef.current;
+      const currentUserId = currentUser?.id ?? null;
 
-      if (currentUser) {
-        void fetchProfile(currentUser.id);
-      } else {
-        setProfile(null);
+      // ✅ 사용자가 실제로 변경된 경우에만 setUser 호출 (불필요한 리렌더 방지)
+      if (prevUserId !== currentUserId) {
+        setUser(currentUser);
+        lastUserIdRef.current = currentUserId;
+
+        if (currentUser) {
+          void fetchProfile(currentUser.id);
+        } else {
+          setProfile(null);
+        }
       }
 
-      if (event === "SIGNED_IN") {
-        void fetchInitialData();
-        if (currentUser?.id) void fetchUnreadMsgCount(currentUser.id);
-        setShowSelector(true);
-        pendingTabRef.current = null;
+      // ✅ SIGNED_IN: 이미 SectionSelector를 본 적이 있으면(=새로고침/탭복귀/토큰갱신) 화면 유지
+      //    sectionSelectorShownRef가 false인 "진짜 새 로그인"일 때만 SectionSelector 표시
+      if (event === "SIGNED_IN" && currentUserId) {
+        if (!sectionSelectorShownRef.current) {
+          void fetchInitialData();
+          void fetchUnreadMsgCount(currentUserId);
+          setShowSelector(true);
+          sectionSelectorShownRef.current = true;
+          pendingTabRef.current = null;
+        }
+        // 이미 봤다면 아무것도 하지 않음 → 현재 화면 그대로 유지!
       }
-      if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") {
-        void fetchInitialData();
+
+      // ✅ 로그아웃 시 모든 상태/ref 리셋
+      if (event === "SIGNED_OUT") {
+        sectionSelectorShownRef.current = false;
+        lastUserIdRef.current = null;
+        setShowSelector(false);
+        _setActiveTab("home");
+        try { localStorage.removeItem("guild_active_tab"); } catch {}
       }
+
+      // TOKEN_REFRESHED, INITIAL_SESSION 등은 화면 전환 없이 무시
     } catch (error) {
       console.error("Auth state change error:", error);
     }
@@ -2180,7 +2211,11 @@ const fetchInitialData = async () => {
     setUser(null);
     setProfile(null);
     setShowSelector(false);
-    setActiveTab("home");
+    _setActiveTab("home");
+    // ✅ ref 리셋
+    sectionSelectorShownRef.current = false;
+    lastUserIdRef.current = null;
+    try { localStorage.removeItem("guild_active_tab"); } catch {}
   };
 
   if (loading) {
@@ -2270,7 +2305,11 @@ const fetchInitialData = async () => {
             setUser(null);
             setProfile(null);
             setShowSelector(false);
-            setActiveTab("home");
+            _setActiveTab("home");
+            // ✅ ref 리셋
+            sectionSelectorShownRef.current = false;
+            lastUserIdRef.current = null;
+            try { localStorage.removeItem("guild_active_tab"); } catch {}
           }}
         />
       </PageShell>
