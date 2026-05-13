@@ -1944,6 +1944,9 @@ function AppInner() {
   const [showSelector, setShowSelector] = useState(false);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  // ✅ 출석 모달 상태
+  const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
+  const [attendanceRefreshKey, setAttendanceRefreshKey] = useState(0);
   // 프로필 드롭다운 (Topbar)
   const [topbarMenuOpen, setTopbarMenuOpen] = useState(false);
   const topbarMenuRef = useRef<HTMLDivElement | null>(null);
@@ -2365,6 +2368,8 @@ const fetchInitialData = async () => {
           settings={settings}
           mobileOpen={mobileSidebarOpen}
           onMobileClose={() => setMobileSidebarOpen(false)}
+          onOpenAttendance={() => setAttendanceModalOpen(true)}
+          attendanceRefreshKey={attendanceRefreshKey}
         />
 
         {/* ── 메인 영역 ── */}
@@ -2861,6 +2866,15 @@ const fetchInitialData = async () => {
         onClose={() => setIsRaidCalendarModalOpen(false)}
         user={user}
         profile={profile}
+      />
+
+      {/* ✅ 출석 체크 모달 */}
+      <AttendanceModal
+        open={attendanceModalOpen}
+        onClose={() => setAttendanceModalOpen(false)}
+        user={user}
+        profile={profile}
+        onAttendanceChange={() => setAttendanceRefreshKey((k) => k + 1)}
       />
 
       {/* 🗨️ 길드 실시간 채팅 플로팅 */}
@@ -7158,7 +7172,545 @@ const RaidHistoryBoard = ({ user, profile, onOpenCalendar }: any) => {
 };
 
 
-const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelector, unreadMsgCount, settings, mobileOpen, onMobileClose }: any) => {
+// ✅ ─────────────────────────────────────────────────────────
+// 출석 체크 시스템
+// ─────────────────────────────────────────────────────────────
+const ATTENDANCE_REWARDS = {
+  base: 10,        // 매일 출석 기본 보상
+  bonus_7day: 10,  // 7일 연속 출석 보너스
+};
+
+const calcAttendanceReward = (streak: number) => {
+  let points = ATTENDANCE_REWARDS.base;
+  const bonuses: string[] = [];
+  if (streak > 0 && streak % 7 === 0) {
+    points += ATTENDANCE_REWARDS.bonus_7day;
+    bonuses.push(`7일 연속 보너스 +${ATTENDANCE_REWARDS.bonus_7day}P`);
+  }
+  return { points, bonuses };
+};
+
+const dateToKey = (d: Date) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+const todayKey = () => dateToKey(new Date());
+const yesterdayKey = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return dateToKey(d);
+};
+
+// 사이드바에 들어가는 컴팩트 위젯
+const AttendanceWidget = ({ user, onOpenModal, refreshKey }: any) => {
+  const [todayAttended, setTodayAttended] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) { setLoading(false); return; }
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("attendance")
+        .select("attended_date, streak_days")
+        .eq("user_id", user.id)
+        .order("attended_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!mounted) return;
+      if (!error && data) {
+        const today = todayKey();
+        const isToday = data.attended_date === today;
+        const isYesterday = data.attended_date === yesterdayKey();
+        setTodayAttended(isToday);
+        setStreak(isToday || isYesterday ? (data.streak_days || 0) : 0);
+      } else {
+        setTodayAttended(false);
+        setStreak(0);
+      }
+      setLoading(false);
+    })();
+    return () => { mounted = false; };
+  }, [user?.id, refreshKey]);
+
+  if (!user) return null;
+
+  return (
+    <button
+      onClick={onOpenModal}
+      className={cn(
+        "mx-3 mb-2 px-3 py-2.5 rounded-xl border transition-all text-left flex items-center gap-2.5",
+        todayAttended
+          ? "border-emerald-400/25 bg-emerald-500/[0.06] hover:bg-emerald-500/10"
+          : "border-amber-400/30 bg-amber-500/[0.08] hover:bg-amber-500/15"
+      )}
+      style={!todayAttended && !loading ? { animation: "pulse 2.5s ease-in-out infinite" } : {}}
+    >
+      <div className="text-base flex-shrink-0">
+        {loading ? "⏳" : todayAttended ? "✅" : "📅"}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className={cn(
+          "text-[11px] font-bold truncate",
+          todayAttended ? "text-emerald-300" : "text-amber-200"
+        )}>
+          {loading ? "확인 중..." : todayAttended ? "오늘 출석 완료" : "오늘 출석체크 +10P"}
+        </div>
+        <div className="text-[9px] text-stone-400 truncate">
+          {streak > 0 ? `🔥 ${streak}일 연속 · 클릭` : "클릭하여 캘린더 보기"}
+        </div>
+      </div>
+    </button>
+  );
+};
+
+// 미니 캘린더 (월별 출석 표시)
+const MiniCalendar = ({ year, month, attendedDates, onMonthChange, allowNav = true, compact = false }: any) => {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  const todayDate = today.getDate();
+  const attendedSet = new Set(attendedDates || []);
+
+  const cells: Array<{ day: number | null; isToday: boolean; isAttended: boolean }> = [];
+  for (let i = 0; i < startWeekday; i++) cells.push({ day: null, isToday: false, isAttended: false });
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    cells.push({
+      day: d,
+      isToday: isCurrentMonth && d === todayDate,
+      isAttended: attendedSet.has(dateStr),
+    });
+  }
+
+  return (
+    <div className={cn("bg-black/30 rounded-xl border border-white/10", compact ? "p-2" : "p-3")}>
+      {allowNav ? (
+        <div className="flex items-center justify-between mb-2">
+          <button onClick={() => onMonthChange?.(-1)} className="p-1 rounded hover:bg-white/10 text-stone-400">
+            <ChevronLeft size={14} />
+          </button>
+          <div className="text-xs font-bold text-white">{year}년 {month + 1}월</div>
+          <button onClick={() => onMonthChange?.(1)} className="p-1 rounded hover:bg-white/10 text-stone-400">
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      ) : (
+        !compact && <div className="text-xs font-bold text-white text-center mb-2">{year}년 {month + 1}월</div>
+      )}
+
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
+          <div key={i} className={cn(
+            "text-[9px] font-semibold text-center py-0.5",
+            i === 0 ? "text-red-400/70" : i === 6 ? "text-blue-400/70" : "text-stone-500"
+          )}>{d}</div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map((cell, i) => (
+          <div
+            key={i}
+            className={cn(
+              "aspect-square flex items-center justify-center text-[10px] font-medium rounded-md relative",
+              cell.day === null && "invisible",
+              cell.day !== null && !cell.isAttended && "text-stone-600",
+              cell.isAttended && "bg-amber-500/25 text-amber-100 border border-amber-400/40",
+              cell.isToday && !cell.isAttended && "border border-emerald-400/40 text-emerald-300",
+              cell.isToday && cell.isAttended && "ring-1 ring-emerald-400/60"
+            )}
+          >
+            {cell.day}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// 출석 모달 (내 출석 + 전체 길드원 2개 탭)
+const AttendanceModal = ({ user, profile, open, onClose, onAttendanceChange }: any) => {
+  const [tab, setTab] = useState<"me" | "guild">("me");
+  const [myAttendance, setMyAttendance] = useState<any[]>([]);
+  const [guildList, setGuildList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [calYear, setCalYear] = useState(new Date().getFullYear());
+  const [calMonth, setCalMonth] = useState(new Date().getMonth());
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose?.(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  const fetchMyAttendance = async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("attendance")
+      .select("attended_date, streak_days, points_earned")
+      .eq("user_id", user.id)
+      .order("attended_date", { ascending: false });
+    if (!error) setMyAttendance(data || []);
+    setLoading(false);
+  };
+
+  const fetchGuildAttendance = async () => {
+    setLoading(true);
+    const startDate = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-01`;
+    const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
+    const endDate = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+    const [profilesRes, monthAttendRes, latestRes] = await Promise.all([
+      supabase.from("profiles").select("id, nickname, character_name, role"),
+      supabase.from("attendance").select("user_id, attended_date").gte("attended_date", startDate).lte("attended_date", endDate),
+      supabase.from("attendance").select("user_id, streak_days, attended_date").order("attended_date", { ascending: false }),
+    ]);
+
+    const profiles = profilesRes.data || [];
+    const monthData = monthAttendRes.data || [];
+    const latestData = latestRes.data || [];
+
+    const grouped: Record<string, string[]> = {};
+    monthData.forEach((a: any) => {
+      if (!grouped[a.user_id]) grouped[a.user_id] = [];
+      grouped[a.user_id].push(a.attended_date);
+    });
+
+    const latestMap: Record<string, { streak: number; date: string }> = {};
+    latestData.forEach((row: any) => {
+      if (!latestMap[row.user_id]) {
+        latestMap[row.user_id] = { streak: row.streak_days || 0, date: row.attended_date };
+      }
+    });
+
+    const today = todayKey();
+    const yesterday = yesterdayKey();
+    const result = profiles.map((p: any) => {
+      const dates = grouped[p.id] || [];
+      const latest = latestMap[p.id];
+      const currentStreak = latest && (latest.date === today || latest.date === yesterday) ? latest.streak : 0;
+      return {
+        ...p,
+        attendedDates: dates,
+        attendedCount: dates.length,
+        currentStreak,
+      };
+    }).sort((a: any, b: any) => {
+      if (b.attendedCount !== a.attendedCount) return b.attendedCount - a.attendedCount;
+      return b.currentStreak - a.currentStreak;
+    });
+
+    setGuildList(result);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    if (tab === "me") fetchMyAttendance();
+    else fetchGuildAttendance();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, tab, calYear, calMonth]);
+
+  const handleCheckIn = async () => {
+    if (!user?.id || submitting) return;
+    const today = todayKey();
+    if (myAttendance.some((a) => a.attended_date === today)) {
+      showToast("이미 오늘 출석했습니다.", "info");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const yKey = yesterdayKey();
+      const yesterdayRecord = myAttendance.find((a) => a.attended_date === yKey);
+      const newStreak = yesterdayRecord ? (yesterdayRecord.streak_days || 0) + 1 : 1;
+      const { points, bonuses } = calcAttendanceReward(newStreak);
+
+      const { error: insertErr } = await supabase.from("attendance").insert({
+        user_id: user.id,
+        attended_date: today,
+        streak_days: newStreak,
+        points_earned: points,
+      });
+
+      if (insertErr) {
+        const msg = insertErr.message || "";
+        if (msg.includes("duplicate") || msg.includes("unique")) {
+          showToast("이미 출석한 날입니다.", "info");
+        } else if (msg.toLowerCase().includes("does not exist") || msg.toLowerCase().includes("relation")) {
+          showToast("attendance 테이블이 없습니다. 아래 SQL을 먼저 실행해주세요.", "error");
+        } else {
+          showToast(`출석 실패: ${msg}`, "error");
+        }
+        console.error(insertErr);
+        setSubmitting(false);
+        return;
+      }
+
+      // 포인트 적립
+      const { data: profileRow } = await supabase.from("profiles").select("points").eq("id", user.id).maybeSingle();
+      const currentPoints = profileRow?.points || 0;
+      await supabase.from("profiles").update({ points: currentPoints + points }).eq("id", user.id);
+
+      // 포인트 로그 (있으면 기록, 실패해도 무시)
+      try {
+        await supabase.from("point_earn_logs").insert({
+          user_id: user.id,
+          points,
+          reason: `출석 체크 (${newStreak}일 연속)`,
+          source: "attendance",
+        });
+      } catch { /* point_earn_logs 스키마가 다를 수 있으므로 무시 */ }
+
+      const bonusText = bonuses.length > 0 ? ` 🎉 ${bonuses.join(", ")}` : "";
+      showToast(`출석 완료! +${points}P · 🔥 ${newStreak}일 연속${bonusText}`, "success");
+
+      fetchMyAttendance();
+      onAttendanceChange?.();
+    } catch (e: any) {
+      showToast(`오류: ${e.message || e}`, "error");
+      console.error(e);
+    }
+    setSubmitting(false);
+  };
+
+  if (!open) return null;
+
+  const today = todayKey();
+  const todayAttended = myAttendance.some((a) => a.attended_date === today);
+  const latest = myAttendance[0];
+  const currentStreak = latest && (latest.attended_date === today || latest.attended_date === yesterdayKey())
+    ? (latest.streak_days || 0)
+    : 0;
+
+  const thisMonthCount = myAttendance.filter((a) => {
+    const [y, m] = a.attended_date.split("-");
+    return parseInt(y) === calYear && parseInt(m) === calMonth + 1;
+  }).length;
+
+  const totalPoints = myAttendance.reduce((sum, a) => sum + (a.points_earned || 0), 0);
+  const myAttendedDates = myAttendance.map((a) => a.attended_date);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#0d0d14] p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 헤더 */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-400/15 border border-amber-400/20">
+              <CalendarDays size={20} className="text-amber-300" />
+            </div>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-amber-300/70">Attendance</div>
+              <div className="text-lg font-bold text-white">출석 체크</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 text-stone-400">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* 탭 */}
+        <div className="flex gap-1 mb-5 border-b border-white/10">
+          <button
+            onClick={() => setTab("me")}
+            className={cn(
+              "px-4 py-2.5 text-sm font-semibold transition-all",
+              tab === "me" ? "text-amber-300 border-b-2 border-amber-400" : "text-stone-500 hover:text-stone-300"
+            )}
+          >
+            내 출석
+          </button>
+          <button
+            onClick={() => setTab("guild")}
+            className={cn(
+              "px-4 py-2.5 text-sm font-semibold transition-all",
+              tab === "guild" ? "text-amber-300 border-b-2 border-amber-400" : "text-stone-500 hover:text-stone-300"
+            )}
+          >
+            전체 길드원
+          </button>
+        </div>
+
+        {/* === 내 출석 === */}
+        {tab === "me" && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-amber-400/20 bg-amber-500/[0.04] p-3 text-center">
+                <div className="text-[10px] text-stone-400 mb-1">🔥 연속 출석</div>
+                <div className="text-xl font-bold text-amber-300">{currentStreak}일</div>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
+                <div className="text-[10px] text-stone-400 mb-1">📅 이번 달</div>
+                <div className="text-xl font-bold text-white">{thisMonthCount}일</div>
+              </div>
+              <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/[0.04] p-3 text-center">
+                <div className="text-[10px] text-stone-400 mb-1">💰 누적 P</div>
+                <div className="text-xl font-bold text-emerald-300">{totalPoints}</div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleCheckIn}
+              disabled={submitting || todayAttended}
+              className={cn(
+                "w-full py-3.5 rounded-xl font-bold text-sm transition-all",
+                todayAttended
+                  ? "bg-emerald-500/10 border border-emerald-400/30 text-emerald-300 cursor-not-allowed"
+                  : "bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 shadow-lg shadow-amber-500/20"
+              )}
+            >
+              {submitting ? "처리 중..." : todayAttended ? "✅ 오늘 출석 완료!" : "📅 오늘 출석체크 받기 (+10P)"}
+            </button>
+
+            <MiniCalendar
+              year={calYear}
+              month={calMonth}
+              attendedDates={myAttendedDates}
+              onMonthChange={(delta: number) => {
+                const nd = new Date(calYear, calMonth + delta, 1);
+                setCalYear(nd.getFullYear());
+                setCalMonth(nd.getMonth());
+              }}
+              allowNav
+            />
+
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-[11px] text-stone-400 space-y-1">
+              <div className="font-bold text-amber-300 mb-1.5">💎 출석 보상</div>
+              <div>• 매일 출석: <span className="text-amber-200">+10P</span></div>
+              <div>• 7일 연속 출석: <span className="text-amber-200">+10P 보너스</span> (총 20P)</div>
+              <div className="text-stone-500 mt-1.5">⚠️ 하루라도 빠지면 연속 카운트가 1일부터 다시 시작합니다.</div>
+            </div>
+          </div>
+        )}
+
+        {/* === 전체 길드원 === */}
+        {tab === "guild" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between bg-black/30 rounded-xl border border-white/10 px-4 py-2.5">
+              <button
+                onClick={() => {
+                  const nd = new Date(calYear, calMonth - 1, 1);
+                  setCalYear(nd.getFullYear()); setCalMonth(nd.getMonth());
+                  setExpandedUserId(null);
+                }}
+                className="p-1 rounded hover:bg-white/10 text-stone-400"
+              ><ChevronLeft size={16} /></button>
+              <div className="text-sm font-bold text-white">{calYear}년 {calMonth + 1}월</div>
+              <button
+                onClick={() => {
+                  const nd = new Date(calYear, calMonth + 1, 1);
+                  setCalYear(nd.getFullYear()); setCalMonth(nd.getMonth());
+                  setExpandedUserId(null);
+                }}
+                className="p-1 rounded hover:bg-white/10 text-stone-400"
+              ><ChevronRight size={16} /></button>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-12 text-stone-500 text-sm">불러오는 중...</div>
+            ) : guildList.length === 0 ? (
+              <div className="text-center py-12 text-stone-500 text-sm">길드원이 없습니다.</div>
+            ) : (
+              <div className="space-y-2">
+                {guildList.map((m: any, idx: number) => {
+                  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+                  const today2 = new Date();
+                  const isCurMonth = today2.getFullYear() === calYear && today2.getMonth() === calMonth;
+                  const elapsedDays = isCurMonth ? today2.getDate() : daysInMonth;
+                  const rate = elapsedDays > 0 ? Math.round((m.attendedCount / elapsedDays) * 100) : 0;
+                  const isExpanded = expandedUserId === m.id;
+                  const isMe = m.id === user?.id;
+
+                  return (
+                    <div key={m.id} className="rounded-xl border border-white/10 bg-black/30">
+                      <button
+                        onClick={() => setExpandedUserId(isExpanded ? null : m.id)}
+                        className="w-full p-3 flex items-center gap-3 hover:bg-white/[0.03] transition-all"
+                      >
+                        <div className={cn(
+                          "w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0",
+                          idx === 0 ? "bg-amber-500/20" :
+                          idx === 1 ? "bg-stone-400/20" :
+                          idx === 2 ? "bg-orange-700/20" :
+                          "bg-white/5 text-stone-500"
+                        )}>
+                          {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : idx + 1}
+                        </div>
+                        <div className="text-base flex-shrink-0">
+                          {m.role === "admin" ? "👑" : m.role === "submaster" ? "⚔️" : "👤"}
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-bold text-white truncate">
+                              {m.nickname || "(닉네임 없음)"}
+                            </span>
+                            {isMe && <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/20">본인</span>}
+                            {m.currentStreak > 0 && (
+                              <span className="text-[10px] text-amber-300">🔥 {m.currentStreak}일</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all"
+                                style={{ width: `${Math.min(100, rate)}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-stone-400 flex-shrink-0 tabular-nums">
+                              {m.attendedCount}/{elapsedDays}일 ({rate}%)
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronDown
+                          size={14}
+                          className={cn(
+                            "text-stone-500 transition-transform flex-shrink-0",
+                            isExpanded && "rotate-180"
+                          )}
+                        />
+                      </button>
+                      {isExpanded && (
+                        <div className="px-3 pb-3">
+                          <MiniCalendar
+                            year={calYear}
+                            month={calMonth}
+                            attendedDates={m.attendedDates}
+                            allowNav={false}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+
+const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelector, unreadMsgCount, settings, mobileOpen, onMobileClose, onOpenAttendance, attendanceRefreshKey }: any) => {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -7326,6 +7878,15 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
             </div>
           ))}
         </nav>
+
+        {/* ── 출석 체크 위젯 ── */}
+        {user && (
+          <AttendanceWidget
+            user={user}
+            refreshKey={attendanceRefreshKey}
+            onOpenModal={() => onOpenAttendance?.()}
+          />
+        )}
 
         {/* ── 접속 중인 길드원 ── */}
         <div
