@@ -154,6 +154,7 @@ const defaultSettings = {
   guild_description: "로스트아크 길드 홈페이지에 오신 것을 환영합니다.",
   private_note_password: "",
   education_note_password: "",
+  registration_code: "",
   point_rate_settings: {
     enabled: true,
     cycle_minutes: 60,
@@ -1723,6 +1724,7 @@ const normalizeAppSettings = (value: any) => {
     ...raw,
     private_note_password: raw?.private_note_password ?? "",
     education_note_password: raw?.education_note_password ?? "",
+    registration_code: raw?.registration_code ?? "",
     point_rate_settings: normalizePointRateSettings(raw?.point_rate_settings),
   };
 };
@@ -2299,6 +2301,7 @@ const fetchInitialData = async () => {
           onNavigate={(tab) => {
             pendingTabRef.current = tab;
           }}
+          settings={settings}
         />
       </PageShell>
     );
@@ -11781,6 +11784,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
         { id: "point_economy",  icon: "💰", label: "포인트 경제" },
         { id: "point_shop",     icon: "🛒", label: "포인트샵" },
         { id: "private_passwords", icon: "🔐", label: "개인 탭 패스워드" },
+        { id: "registration_code", icon: "🎫", label: "회원가입 코드" },
       ],
     },
   ];
@@ -11840,6 +11844,7 @@ const AdminPanel = ({ settings, setSettings, user, profile }: any) => {
           {adminTab === "point_economy"  && <PointEconomyManager settings={settings} setSettings={setSettings} />}
           {adminTab === "point_shop"     && <AdminPointShopManager />}
           {adminTab === "private_passwords" && <PrivatePasswordSettings settings={settings} setSettings={setSettings} />}
+          {adminTab === "registration_code"  && <RegistrationCodeSettings settings={settings} setSettings={setSettings} />}
         </div>
       </div>
     </div>
@@ -21881,10 +21886,11 @@ const SectionSelector = ({
 
 // ── LandingPage — 비로그인 진입 화면 ────────────────────────
 // ═══════════════════════════════════════════════════════════
-const LandingPage = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
+const LandingPage = ({ onNavigate, settings }: { onNavigate: (tab: string) => void; settings?: any }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
+  const [registrationCode, setRegistrationCode] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [authLoading, setAuthLoading] = useState(false);
   const [pendingTab, setPendingTab] = useState<string | null>(null);
@@ -21896,6 +21902,16 @@ const LandingPage = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
     setAuthLoading(true);
     try {
       if (authMode === "signup") {
+        // 회원가입 코드 검증
+        const requiredCode = settings?.registration_code ?? "";
+        if (requiredCode.trim() !== "") {
+          if (registrationCode.trim() !== requiredCode.trim()) {
+            showToast("회원가입 코드가 올바르지 않습니다.", "error");
+            setAuthLoading(false);
+            return;
+          }
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -22071,6 +22087,21 @@ const LandingPage = ({ onNavigate }: { onNavigate: (tab: string) => void }) => {
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
                 />
+              )}
+              {authMode === "signup" && (
+                <div className="space-y-1">
+                  <input
+                    type="text"
+                    placeholder="회원가입 코드"
+                    required={!!(settings?.registration_code?.trim())}
+                    className="w-full bg-black/40 border border-amber-400/20 rounded-2xl px-5 py-4 text-white text-sm font-semibold tracking-widest focus:outline-none focus:border-amber-400/60 transition-colors placeholder:text-slate-500 placeholder:font-normal placeholder:tracking-normal"
+                    value={registrationCode}
+                    onChange={(e) => setRegistrationCode(e.target.value)}
+                  />
+                  <p className="text-[11px] text-slate-600 px-1">
+                    🔐 가입 코드가 필요합니다. 길드 마스터에게 문의하세요.
+                  </p>
+                </div>
               )}
               <button
                 type="submit"
@@ -22287,6 +22318,122 @@ const PrivatePasswordSettings = ({ settings, setSettings }: any) => {
             </div>
           </div>
         ))}
+      </div>
+
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="px-8 py-3.5 rounded-2xl bg-amber-500 font-semibold text-white hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-60"
+      >
+        {saving ? "저장 중..." : "💾 저장하기"}
+      </button>
+    </div>
+  );
+};
+
+// ── RegistrationCodeSettings — 관리자패널 회원가입 코드 관리 ──
+const RegistrationCodeSettings = ({ settings, setSettings }: any) => {
+  const [code, setCode] = useState(settings?.registration_code || "");
+  const [saving, setSaving] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const next = { ...settings, registration_code: code.trim() };
+    const { error, payload } = await saveSingletonSettings(next);
+    if (error) {
+      showToast(error.message, "error");
+    } else {
+      const nextSettings = normalizeAppSettings(payload);
+      setSettings(nextSettings);
+      writeCache(CACHE_KEYS.settings, nextSettings);
+      showToast("회원가입 코드가 저장되었습니다.", "success");
+    }
+    setSaving(false);
+  };
+
+  const handleGenerate = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    const generated = Array.from({ length: 8 }, () =>
+      chars[Math.floor(Math.random() * chars.length)]
+    ).join("");
+    setCode(generated);
+  };
+
+  return (
+    <div className="space-y-8 max-w-lg">
+      <div>
+        <div className="text-[10px] uppercase tracking-[0.28em] text-amber-200 font-semibold">Registration Code</div>
+        <div className="mt-1 text-2xl font-semibold text-white">회원가입 코드 설정</div>
+        <p className="mt-1 text-sm text-slate-400">
+          코드를 설정하면 회원가입 시 이 코드를 입력해야 합니다. 비워두면 코드 없이 자유롭게 가입할 수 있습니다.
+        </p>
+      </div>
+
+      <div className="rounded-[2rem] border border-white/8 bg-[#0a0e18] p-6 space-y-5">
+        {/* 현재 상태 배지 */}
+        <div className="flex items-center gap-3 p-4 rounded-2xl border border-amber-400/15 bg-amber-400/[0.05]">
+          <span className="text-2xl">🎫</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-amber-200 mb-0.5">현재 상태</div>
+            <div className="text-sm">
+              {settings?.registration_code?.trim()
+                ? <span className="text-green-300 font-semibold">🔒 코드 보호 활성화됨</span>
+                : <span className="text-slate-500">🔓 코드 없음 (누구나 가입 가능)</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        {/* 코드 입력 */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-300">🎫 회원가입 코드</label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type={showCode ? "text" : "password"}
+                placeholder="코드를 입력하거나 자동 생성하세요"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 pr-14 text-sm text-white focus:outline-none focus:border-amber-400/50 placeholder:text-slate-600 font-mono tracking-widest"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCode((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-slate-500 hover:text-slate-300 transition-colors px-1"
+              >
+                {showCode ? "숨김" : "표시"}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              className="px-4 py-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 text-amber-200 text-xs font-semibold hover:bg-amber-400/20 transition-all shrink-0"
+            >
+              🎲 자동생성
+            </button>
+            <button
+              type="button"
+              onClick={() => setCode("")}
+              className="px-4 py-3 rounded-2xl border border-white/10 bg-white/5 text-slate-400 text-xs hover:text-red-300 hover:border-red-400/20 transition-all shrink-0"
+            >
+              초기화
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-600 px-1">
+            코드를 변경하면 이전 코드는 즉시 무효화됩니다. 길드원에게 새 코드를 공유하세요.
+          </p>
+        </div>
+
+        {/* 저장 예정 코드 미리보기 */}
+        {code.trim() && (
+          <div className="p-4 rounded-2xl border border-green-400/15 bg-green-400/[0.05]">
+            <div className="text-xs font-semibold text-green-300 mb-1">저장 시 적용될 코드</div>
+            <div className="font-mono text-lg font-bold text-white tracking-[0.35em]">
+              {showCode ? code.trim() : "•".repeat(code.trim().length)}
+            </div>
+          </div>
+        )}
       </div>
 
       <button
