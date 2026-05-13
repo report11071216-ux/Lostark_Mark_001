@@ -4724,7 +4724,7 @@ const Hero = ({
         // 2) 최근 레이드 생성
         const { data: raidData } = await supabase
           .from("raid_schedules")
-          .select("id, raid_name, created_at, leader_name")
+          .select("id, raid_name, raid_date, raid_time, created_at, leader_name")
           .order("created_at", { ascending: false })
           .limit(3);
         (raidData || []).forEach((r: any) => {
@@ -4732,8 +4732,31 @@ const Hero = ({
             id: `raid-${r.id}`,
             avatar: null,
             name: r.leader_name || "길드원",
-            text: `님이 ${r.raid_name} 레이드를 생성했습니다.`,
+            text: `님이 [${r.raid_name}] 레이드를 생성했습니다.`,
+            sub: r.raid_date && r.raid_time ? `📅 ${r.raid_date} ${r.raid_time}` : r.raid_date || "",
             ts: r.created_at,
+            icon: "⚔️",
+          });
+        });
+
+        // 2-1) 예정 레이드 일정 (오늘 이후 가까운 것)
+        const today2 = new Date().toISOString().slice(0, 10);
+        const { data: upcomingRaidData } = await supabase
+          .from("raid_schedules")
+          .select("id, raid_name, raid_date, raid_time, created_at, leader_name")
+          .gte("raid_date", today2)
+          .order("raid_date", { ascending: true })
+          .order("raid_time", { ascending: true })
+          .limit(2);
+        (upcomingRaidData || []).forEach((r: any) => {
+          items.push({
+            id: `upcoming-${r.id}`,
+            avatar: null,
+            name: r.leader_name || "길드원",
+            text: `님의 [${r.raid_name}] 레이드 일정이 있습니다.`,
+            sub: r.raid_date && r.raid_time ? `📅 ${r.raid_date} ${r.raid_time}` : r.raid_date || "",
+            ts: r.created_at,
+            icon: "🗓️",
           });
         });
 
@@ -4750,6 +4773,28 @@ const Hero = ({
             name: p.author_name || p.author || "길드원",
             text: `님이 [${p.title}] 글을 작성했습니다.`,
             ts: p.created_at,
+            icon: "📝",
+          });
+        });
+
+        // 4) 최근 출석 체크
+        const { data: attendData } = await supabase
+          .from("attendance")
+          .select("user_id, attended_date, streak_days, profiles(nickname, character_name)")
+          .order("attended_date", { ascending: false })
+          .limit(3);
+        (attendData || []).forEach((a: any) => {
+          const prof: any = Array.isArray(a.profiles) ? a.profiles[0] : a.profiles;
+          const name = prof?.nickname || prof?.character_name || "길드원";
+          const streakTxt = a.streak_days > 1 ? ` (🔥${a.streak_days}일 연속)` : "";
+          items.push({
+            id: `attend-${a.user_id}-${a.attended_date}`,
+            avatar: null,
+            name,
+            text: `님이 출석 체크했습니다.${streakTxt}`,
+            sub: `📅 ${a.attended_date}`,
+            ts: `${a.attended_date}T00:00:00`,
+            icon: "✅",
           });
         });
       } catch (err) {
@@ -4757,7 +4802,10 @@ const Hero = ({
       }
 
       items.sort((a, b) => new Date(b.ts || 0).getTime() - new Date(a.ts || 0).getTime());
-      setActivityFeed(items.slice(0, 4));
+      // 중복 제거 (upcoming vs raid-created 같은 id일 수 있음)
+      const seen = new Set<string>();
+      const deduped = items.filter((it) => { if (seen.has(it.id)) return false; seen.add(it.id); return true; });
+      setActivityFeed(deduped.slice(0, 6));
     };
 
     void buildFeed();
@@ -5179,7 +5227,7 @@ const Hero = ({
                   </div>
                 ) : activityFeed.map((act) => (
                   <div key={act.id} className="flex items-center gap-3 py-2 px-2 rounded-xl transition-colors hover:bg-white/[0.03]">
-                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-xs font-bold flex-shrink-0"
+                    <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold flex-shrink-0"
                       style={{
                         background: "linear-gradient(135deg, #6d28d9, #4c1d95)",
                         color: "#ede9fe",
@@ -5187,15 +5235,20 @@ const Hero = ({
                       }}>
                       {act.avatar ? (
                         <img src={act.avatar} alt="" className="w-full h-full object-cover" />
+                      ) : act.icon ? (
+                        <span>{act.icon}</span>
                       ) : (
                         String(act.name || "G").slice(0, 1).toUpperCase()
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-xs leading-relaxed truncate" style={{ color: "rgba(240,238,255,0.85)" }}>
+                      <div className="text-xs leading-relaxed" style={{ color: "rgba(240,238,255,0.85)" }}>
                         <span className="font-semibold text-white">{act.name}</span>
                         <span style={{ color: "rgba(155,159,196,0.85)" }}>{act.text}</span>
                       </div>
+                      {act.sub && (
+                        <div className="text-[10px] mt-0.5" style={{ color: "rgba(155,159,196,0.5)" }}>{act.sub}</div>
+                      )}
                     </div>
                     <div className="text-[10px] font-medium flex-shrink-0" style={{ color: "rgba(155,159,196,0.5)" }}>
                       {formatTimeAgo(act.ts)}
@@ -7367,6 +7420,7 @@ const AttendanceModal = ({ user, profile, open, onClose, onAttendanceChange }: a
   };
 
   const fetchGuildAttendance = async () => {
+    if (!supabase) return;
     setLoading(true);
     const startDate = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-01`;
     const lastDay = new Date(calYear, calMonth + 1, 0).getDate();
@@ -7663,6 +7717,13 @@ const AttendanceModal = ({ user, profile, open, onClose, onAttendanceChange }: a
                               {m.nickname || "(닉네임 없음)"}
                             </span>
                             {isMe && <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/20">본인</span>}
+                            {(() => {
+                              const todayStr = new Date().toISOString().slice(0, 10);
+                              const attendedToday = m.attendedDates?.includes(todayStr);
+                              return attendedToday
+                                ? <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-400/25">✅ 오늘 출석</span>
+                                : <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-white/5 text-stone-500 border border-white/8">미출석</span>;
+                            })()}
                             {m.currentStreak > 0 && (
                               <span className="text-[10px] text-amber-300">🔥 {m.currentStreak}일</span>
                             )}
@@ -8813,6 +8874,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
   const [raids, setRaids] = useState<ScheduleLike[]>([]);
   const [participants, setParticipants] = useState<ParticipantLike[]>([]);
   const [selectedDate, setSelectedDate] = useState("");
+  const [showDateRaidList, setShowDateRaidList] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedRaid, setSelectedRaid] = useState<any>(null);
   const [calendarLoading, setCalendarLoading] = useState(true);
@@ -9345,7 +9407,7 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
                       {dayRaids.length > 2 && (
                         <button
                           type="button"
-                          onClick={() => setSelectedRaid(dayRaids[0])}
+                          onClick={(e) => { e.stopPropagation(); setSelectedDate(dateStr); setShowDateRaidList(true); }}
                           className="w-full px-1.5 py-1 text-left text-[10px] font-medium transition-all"
                           style={{ color: "#64748B" }}
                           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color="#A78BFA"; }}
@@ -9458,6 +9520,63 @@ const RaidCalendar = ({ user, profile, embedded = false, hideRanking = false }: 
             onClose={() => setIsCreateOpen(false)}
           />
         )}
+      </AnimatePresence>
+
+      {/* 날짜별 레이드 전체 목록 팝오버 */}
+      <AnimatePresence>
+        {showDateRaidList && selectedDate && (() => {
+          const dateRaids = visibleRaids.filter((r) => r.raid_date === selectedDate);
+          return (
+            <motion.div
+              key="date-raid-list"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[120] flex items-center justify-center px-4"
+              style={{ background: "rgba(2,6,23,0.72)", backdropFilter: "blur(6px)" }}
+              onClick={() => setShowDateRaidList(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 12 }}
+                transition={{ duration: 0.22 }}
+                className="relative w-full max-w-md rounded-[1.6rem] border border-white/10 bg-[#0d0f1c]/97 shadow-[0_24px_60px_rgba(2,6,23,0.55)] p-5"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-300 mb-0.5">레이드 일정</div>
+                    <div className="text-base font-bold text-white">{selectedDate.replace(/-/g, ".")} ({dateRaids.length}개)</div>
+                  </div>
+                  <button
+                    onClick={() => setShowDateRaidList(false)}
+                    className="h-8 w-8 flex items-center justify-center rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-400 transition-all"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                  {dateRaids.map((raid) => (
+                    <button
+                      key={raid.id}
+                      type="button"
+                      onClick={() => { setShowDateRaidList(false); setSelectedRaid(raid); }}
+                      className="w-full text-left rounded-xl border border-white/8 bg-white/[0.03] hover:bg-white/[0.07] p-3.5 transition-all"
+                    >
+                      <RaidCard
+                        raid={raid}
+                        parts={participants.filter((p) => p.schedule_id === raid.id)}
+                        onOpen={() => { setShowDateRaidList(false); setSelectedRaid(raid); }}
+                        compact
+                      />
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       <AnimatePresence>
