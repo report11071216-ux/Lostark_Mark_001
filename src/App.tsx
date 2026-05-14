@@ -21139,13 +21139,20 @@ const AdminPointShopManager = () => {
   const toggleActive = async (item: any) => {
     const { error } = await supabase.from("point_shop_items").update({ is_active: !item.is_active }).eq("id", item.id);
     if (error) return showToast(error.message, "error");
+    showToast(
+      item.is_active
+        ? `🛑 '${item.title}' 판매 중지됨 — 유저에게 더 이상 노출되지 않아.`
+        : `✅ '${item.title}' 판매 재개! 포인트샵에 다시 표시돼.`,
+      "success"
+    );
     fetchItems();
   };
 
   const deleteItem = async (itemId: string) => {
-    if (!confirm("상품을 완전히 삭제할까요?")) return;
+    // confirm은 호출부에서 이미 받음 (상품명 포함해서)
     const { error } = await supabase.from("point_shop_items").delete().eq("id", itemId);
     if (error) return showToast(error.message, "error");
+    showToast("🗑 상품이 완전히 삭제됐어.", "success");
     fetchItems();
   };
 
@@ -21601,14 +21608,47 @@ const AdminPointShopManager = () => {
 
 
       <div className="max-w-4xl">
-        <SectionPanel title="등록된 포인트샵 상품" description="뱃지와 강화석 상품을 함께 관리할 수 있어.">
+        <SectionPanel
+          title={
+            rewardType === "title" ? "등록된 칭호 상품"
+            : rewardType === "nickname_effect" ? "등록된 닉네임 효과 상품"
+            : rewardType === "enhance_stone" ? "등록된 강화석 상품"
+            : "등록된 뱃지 상품"
+          }
+          description="활성/비활성 토글 + 삭제로 판매 상태를 관리할 수 있어."
+        >
             <div className="space-y-4">
-              {items.filter((item) => item.reward_type === "badge").map((item) => {
+              {items.filter((item) => item.reward_type === rewardType).length === 0 && (
+                <div className="rounded-2xl border border-dashed border-white/10 px-5 py-10 text-center text-sm text-slate-500">
+                  아직 등록된 상품이 없어. 위에서 새 상품을 만들어봐.
+                </div>
+              )}
+              {items.filter((item) => item.reward_type === rewardType).map((item) => {
                 const badgeTheme = getBadgeVisualTheme(item);
+                const isTitle = item.reward_type === "title";
+                const linkedTitle = isTitle && item.title_id
+                  ? availableTitles.find((t: any) => t.id === item.title_id)
+                  : null;
+                const rarityColor: Record<string, string> = {
+                  common: "#CBD5E1", rare: "#7DD3FC", epic: "#C4B5FD",
+                  legendary: "#FCD34D", mythic: "#F9A8D4",
+                };
+                const titleColor = linkedTitle
+                  ? (linkedTitle.color || rarityColor[linkedTitle.rarity] || "#c4b5fd")
+                  : "#c4b5fd";
                 return (
                   <div key={item.id} className="rounded-[1.75rem] border border-white/10 bg-[#0a0e18] p-5 relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: getPointShopCardBackground(item, badgeTheme) }} />
-                    <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: getPointShopAuraBackground(item, badgeTheme) }} />
+                    {!isTitle && (
+                      <>
+                        <div className="absolute inset-0 opacity-90 pointer-events-none" style={{ background: getPointShopCardBackground(item, badgeTheme) }} />
+                        <div className="absolute inset-0 pointer-events-none opacity-60" style={{ background: getPointShopAuraBackground(item, badgeTheme) }} />
+                      </>
+                    )}
+                    {isTitle && (
+                      <div className="absolute inset-0 opacity-70 pointer-events-none" style={{
+                        background: `linear-gradient(135deg, ${titleColor}25, transparent 60%), linear-gradient(160deg, rgba(15,12,30,0.95), rgba(10,8,20,0.95))`
+                      }} />
+                    )}
                     <div className="relative z-10 flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -21616,30 +21656,68 @@ const AdminPointShopManager = () => {
                             {getShopRewardTypeLabel(item)}
                           </span>
                           <span
-                            className="px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border"
+                            className={cn(
+                              "px-2.5 py-1 rounded-full text-[10px] uppercase tracking-[0.24em] font-semibold border",
+                              item.is_active ? "" : "opacity-60"
+                            )}
                             style={{
-                              color: item.reward_type === "badge" ? badgeTheme.chipText : "#fde68a",
-                              borderColor: item.reward_type === "badge" ? badgeTheme.chipBorder : "rgba(250,204,21,0.35)",
-                              background: item.reward_type === "badge" ? badgeTheme.chipBackground : "rgba(245,158,11,0.16)",
+                              color: !item.is_active ? "#fca5a5" : item.reward_type === "badge" ? badgeTheme.chipText : isTitle ? titleColor : "#fde68a",
+                              borderColor: !item.is_active ? "rgba(252,165,165,0.35)" : item.reward_type === "badge" ? badgeTheme.chipBorder : isTitle ? `${titleColor}55` : "rgba(250,204,21,0.35)",
+                              background: !item.is_active ? "rgba(252,165,165,0.10)" : item.reward_type === "badge" ? badgeTheme.chipBackground : isTitle ? `${titleColor}18` : "rgba(245,158,11,0.16)",
                             }}
                           >
-                            {item.reward_type === "enhance_stone" ? getEnhancementItemEffectText(item) : getShopItemStatusText(item)}
+                            {!item.is_active ? "판매 중지" : item.reward_type === "enhance_stone" ? getEnhancementItemEffectText(item) : getShopItemStatusText(item)}
                           </span>
                         </div>
                         <div className="mt-3 text-xl font-semibold break-words">{item.title}</div>
                         <div className="mt-2 text-sm text-white/70">{getShopMoodLine(item)}</div>
+                        {isTitle && linkedTitle && (
+                          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-semibold"
+                            style={{
+                              color: titleColor,
+                              borderColor: `${titleColor}55`,
+                              background: `${titleColor}18`,
+                            }}
+                          >
+                            ✦ {linkedTitle.name}
+                            <span className="text-[9px] uppercase tracking-widest opacity-70">{linkedTitle.rarity}</span>
+                          </div>
+                        )}
+                        {isTitle && !linkedTitle && item.title_id && (
+                          <div className="mt-3 text-xs text-red-400">⚠️ 연결된 칭호가 삭제됐거나 찾을 수 없어 — 상품도 정리하는 게 좋겠어.</div>
+                        )}
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-2xl font-semibold text-amber-200">{item.price}P</div>
-                        <div className="text-xs text-slate-500">{item.reward_type === "badge" ? "뱃지 상품" : "강화석 상품"}</div>
+                        <div className="text-xs text-slate-500">
+                          {item.reward_type === "badge" ? "뱃지 상품"
+                            : item.reward_type === "nickname_effect" ? "닉네임 효과"
+                            : item.reward_type === "title" ? "칭호 상품"
+                            : "강화석 상품"}
+                        </div>
                       </div>
                     </div>
                     <div className="mt-4 flex gap-2">
-                      <button onClick={() => toggleActive(item)} className="px-4 py-2 rounded-xl bg-white/10 font-semibold text-sm">
-                        {item.is_active ? "비활성화" : "활성화"}
+                      <button
+                        onClick={() => toggleActive(item)}
+                        className={cn(
+                          "px-4 py-2 rounded-xl font-semibold text-sm transition",
+                          item.is_active
+                            ? "bg-orange-500/80 hover:bg-orange-500 text-white"
+                            : "bg-emerald-500/80 hover:bg-emerald-500 text-white"
+                        )}
+                      >
+                        {item.is_active ? "🛑 판매 중지" : "✅ 판매 재개"}
                       </button>
-                      <button onClick={() => deleteItem(item.id)} className="px-4 py-2 rounded-xl bg-red-500/85 font-semibold text-sm">
-                        삭제
+                      <button
+                        onClick={() => {
+                          if (confirm(`'${item.title}' 상품을 완전히 삭제할까요?\n삭제 후엔 복구할 수 없어. (단순 판매 중단은 '판매 중지'를 사용하는 걸 권장)`)) {
+                            deleteItem(item.id);
+                          }
+                        }}
+                        className="px-4 py-2 rounded-xl bg-red-500/85 hover:bg-red-500 font-semibold text-sm text-white"
+                      >
+                        🗑 삭제
                       </button>
                     </div>
                   </div>
