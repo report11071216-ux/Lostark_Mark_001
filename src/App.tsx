@@ -126,6 +126,30 @@ const getSupabaseOrThrow = () => {
   return supabase;
 };
 
+// 🏆 업적 자동 평가 헬퍼
+// 주요 이벤트(레이드 참여, 출석, 글 작성, 구매 등) 직후 호출해서
+// achievements 테이블의 조건을 SQL 함수가 평가, 충족 시 user_achievements에 자동 INSERT.
+const triggerAchievementEval = async (userId?: string | null) => {
+  if (!supabase || !userId) return;
+  try {
+    const { data, error } = await supabase.rpc("evaluate_user_achievements", { p_user_id: userId });
+    if (error) {
+      console.warn("[achievement eval] rpc error:", error.message);
+      return;
+    }
+    const cnt = Number((data as any)?.newly_completed || 0);
+    const pts = Number((data as any)?.points_awarded || 0);
+    if (cnt > 0) {
+      const msg = pts > 0 ? `🏆 새 업적 ${cnt}개 달성! +${pts}P` : `🏆 새 업적 ${cnt}개 달성!`;
+      try { (window as any).__showToast?.(msg, "success"); } catch {}
+      // showToast 함수가 위에서 정의되기 전이라 안전하게 이벤트 디스패치
+      try { window.dispatchEvent(new CustomEvent("achievement-completed", { detail: { count: cnt, points: pts } })); } catch {}
+    }
+  } catch (e) {
+    console.warn("[achievement eval] failed:", e);
+  }
+};
+
 type UserLike = any;
 type ProfileLike = any;
 type PostLike = any;
@@ -1963,6 +1987,21 @@ function AppInner() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [topbarMenuOpen]);
 
+  // 🏆 업적 자동 완료 이벤트 리스너 — triggerAchievementEval이 띄우는 토스트
+  useEffect(() => {
+    const onAchievement = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      const cnt = Number(detail.count || 0);
+      const pts = Number(detail.points || 0);
+      if (cnt > 0) {
+        const msg = pts > 0 ? `🏆 새 업적 ${cnt}개 달성! +${pts}P` : `🏆 새 업적 ${cnt}개 달성!`;
+        showToast(msg, "success");
+      }
+    };
+    window.addEventListener("achievement-completed", onAchievement);
+    return () => window.removeEventListener("achievement-completed", onAchievement);
+  }, []);
+
   const fetchUnreadMsgCount = useCallback(async (uid: string) => {
     if (!supabase || !uid) return;
     try {
@@ -2176,7 +2215,11 @@ useEffect(() => {
         return;
       }
 
-      if (data) setProfile(data);
+      if (data) {
+        setProfile(data);
+        // 🏆 로그인/프로필 로드 시점에 한 번 평가 (놓친 업적 즉시 완료)
+        if (data.id) triggerAchievementEval(data.id);
+      }
       else setProfile(null);
     } catch (error) {
       console.error("fetchProfile unexpected error:", error);
@@ -7512,6 +7555,11 @@ const AttendanceModal = ({ user, profile, open, onClose, onAttendanceChange }: a
         points_earned: points,
       });
 
+      if (!insertErr) {
+        // 🏆 출석 → 업적 자동 평가
+        triggerAchievementEval(user?.id);
+      }
+
       if (insertErr) {
         const msg = insertErr.message || "";
         if (msg.includes("duplicate") || msg.includes("unique")) {
@@ -11270,6 +11318,8 @@ const JoinForm = ({
       });
 
       if (!error) {
+        // 🏆 레이드 참여 → 업적 자동 평가
+        triggerAchievementEval(user?.id);
         // 디스코드 참여 알림 (실패해도 참여 자체는 성공으로 처리)
         try {
           const raidTime = raid.raid_datetime
@@ -13866,6 +13916,8 @@ const PostWriteModal = ({ user, profile, onRefresh, onClose, defaultCategory, fo
         await client.from("posts").update({ is_pinned: false }).neq("id", data.id).eq("is_notice", true).eq("is_pinned", true);
       }
       if (!isNotice) await client.rpc("add_points", { p_user_id: user.id, p_points: 5, p_type: "post" });
+      // 🏆 글 작성 → 업적 자동 평가
+      triggerAchievementEval(user?.id);
       showToast(isNotice ? "공지 작성 완료!" : "게시글 작성 완료! +5P 🎉");
       await onRefresh(); onClose();
     } catch (err: any) { showToast(err?.message || "작성 중 오류 발생", "error"); }
@@ -19916,7 +19968,8 @@ const PointShopPage = ({ user, profile }: any) => {
   const [gachaRewards, setGachaRewards] = useState<Record<string, any[]>>({});
   const [myPoint, setMyPoint] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [shopTab, setShopTab] = useState<"guild" | "nickname" | "enhance" | "gacha" | "gold">("guild");
+  const [shopTab, setShopTab] = useState<"guild" | "nickname" | "title" | "enhance" | "gacha" | "gold">("guild");
+  const [titleMap, setTitleMap] = useState<Record<string, any>>({});
   const [goldRequests, setGoldRequests] = useState<any[]>([]);
   const [goldLoading, setGoldLoading] = useState(false);
   const [goldSubmitting, setGoldSubmitting] = useState(false);
@@ -19979,11 +20032,20 @@ const PointShopPage = ({ user, profile }: any) => {
     setLoading(true);
     const client = getSupabaseOrThrow();
 
-    const [itemsRes, profileRes, gachaRes] = await Promise.allSettled([
+    const [itemsRes, profileRes, gachaRes, titlesRes] = await Promise.allSettled([
       client.from("point_shop_items").select("*").order("price", { ascending: true }),
       user ? client.from("profiles").select("points").eq("id", user.id).maybeSingle() : Promise.resolve({ data: null } as any),
       client.from("weapon_gacha_products").select("*").order("created_at", { ascending: false }),
+      client.from("titles").select("*"),
     ]);
+
+    if (titlesRes.status === "fulfilled" && !(titlesRes.value as any).error) {
+      const map: Record<string, any> = {};
+      for (const t of ((titlesRes.value as any).data || [])) map[t.id] = t;
+      setTitleMap(map);
+    } else {
+      setTitleMap({});
+    }
 
     if (itemsRes.status === "fulfilled" && !(itemsRes.value as any).error) {
       setItems((itemsRes.value as any).data || []);
@@ -20146,6 +20208,37 @@ const PointShopPage = ({ user, profile }: any) => {
       return;
     }
 
+    if (item.reward_type === "title") {
+      const { data: titleResult, error: titleError } = await client.rpc("purchase_title_item", {
+        p_user_id: user.id,
+        p_item_id: item.id,
+      });
+
+      if (titleError) {
+        showToast(titleError.message || "칭호 구매에 실패했어.", "error");
+        await fetchShop();
+        return;
+      }
+
+      const remainingPoints = Number(
+        (titleResult as any)?.remaining_points ??
+          Math.max(0, Number(myPoint || 0) - Number(item.price || 0))
+      );
+      setMyPoint(remainingPoints);
+      showToast(`✦ ${item.title} 구매 완료! 마이룸 → 칭호에서 장착할 수 있어.`, "success");
+      await fetchShop();
+
+      // 🏆 칭호 구매로 업적 조건이 충족됐을 수 있으니 평가 트리거
+      try {
+        const { data: ev } = await client.rpc("evaluate_user_achievements", { p_user_id: user.id });
+        const cnt = Number((ev as any)?.newly_completed || 0);
+        if (cnt > 0) showToast(`🏆 새 업적 ${cnt}개 달성!`, "success");
+      } catch (e) {
+        console.warn("[achievement eval] failed:", e);
+      }
+      return;
+    }
+
     if (item.reward_type === "badge") {
       const { data: badgePurchaseResult, error: badgePurchaseError } = await client.rpc("purchase_badge_item_and_inventory_v2", {
         p_user_id: user.id,
@@ -20234,6 +20327,7 @@ const PointShopPage = ({ user, profile }: any) => {
   const guildItems = items.filter((item) => item.reward_type === "badge" && String(item.shop_category || "guild") !== "nickname");
   const nicknameItems = items.filter((item) => item.reward_type === "nickname_effect" || String(item.shop_category || "") === "nickname");
   const enhanceItems = items.filter((item) => item.reward_type === "enhance_stone");
+  const titleItems = items.filter((item) => item.reward_type === "title");
 
   const renderShopCards = (shopItems: any[], emptyText: string) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -20278,6 +20372,30 @@ const PointShopPage = ({ user, profile }: any) => {
                   </div>
                   <div className="mt-4 text-2xl font-semibold leading-tight break-words">{item.title}</div>
                   <div className="mt-2 text-sm text-white/70">{moodLine}</div>
+                  {item.reward_type === "title" && item.title_id && titleMap[item.title_id] && (() => {
+                    const t = titleMap[item.title_id];
+                    const rarityColor: Record<string, string> = {
+                      common: "#CBD5E1", rare: "#7DD3FC", epic: "#C4B5FD",
+                      legendary: "#FCD34D", mythic: "#F9A8D4",
+                    };
+                    const color = t.color || rarityColor[t.rarity] || "#c4b5fd";
+                    return (
+                      <div
+                        className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-semibold"
+                        style={{
+                          color,
+                          borderColor: `${color}55`,
+                          background: `${color}18`,
+                          textShadow: `0 0 12px ${color}55`,
+                        }}
+                      >
+                        ✦ {t.name}
+                        <span className="text-[10px] uppercase tracking-widest opacity-70">
+                          {t.rarity || "common"}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center backdrop-blur-md">
                   <ShoppingBag className="text-white/80" />
@@ -20362,6 +20480,7 @@ const PointShopPage = ({ user, profile }: any) => {
         {[
           ["guild", "뱃지 상점"],
           ["nickname", "닉네임 상점"],
+          ["title", "✦ 칭호 상점"],
           ["enhance", "강화석 상점"],
           ["gacha", "무기 가챠"],
           ["gold", "💰 골드 교환"],
@@ -20482,6 +20601,8 @@ const PointShopPage = ({ user, profile }: any) => {
         renderShopCards(guildItems, "아직 등록된 뱃지 상품이 없습니다.")
       ) : shopTab === "nickname" ? (
         renderShopCards(nicknameItems, "아직 등록된 닉네임 상품이 없습니다.")
+      ) : shopTab === "title" ? (
+        renderShopCards(titleItems, "아직 등록된 칭호 상품이 없습니다.")
       ) : shopTab === "enhance" ? (
         renderShopCards(enhanceItems, "아직 등록된 강화석 상품이 없습니다.")
       ) : (
@@ -20677,7 +20798,9 @@ const AdminPointShopManager = () => {
   const [adminManagerTab, setAdminManagerTab] = useState<"shop" | "gold_requests">("gold_requests");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [rewardType, setRewardType] = useState<"badge" | "enhance_stone" | "nickname_effect">("badge");
+  const [rewardType, setRewardType] = useState<"badge" | "enhance_stone" | "nickname_effect" | "title">("badge");
+  const [selectedTitleId, setSelectedTitleId] = useState<string>("");
+  const [availableTitles, setAvailableTitles] = useState<any[]>([]);
   const [badgeColor, setBadgeColor] = useState("#8b5cf6");
   const [badgeCardEffect, setBadgeCardEffect] = useState<BadgeEffectKey>("violet");
   const [badgeGradientFrom, setBadgeGradientFrom] = useState(BADGE_CARD_EFFECT_PRESETS.violet.from);
@@ -20691,7 +20814,7 @@ const AdminPointShopManager = () => {
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
-  const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "weapon" | "enhance_stone">("guild");
+  const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "title" | "weapon" | "enhance_stone">("guild");
   const [productAdminTab, setProductAdminTab] = useState<"badge" | "weapon_parts" | "gacha">("badge");
 
   const [weaponName, setWeaponName] = useState("");
@@ -20718,6 +20841,12 @@ const AdminPointShopManager = () => {
     fetchWeaponParts();
     fetchGachaProducts();
     fetchGoldExchangeReqs();
+    // 칭호 상품 등록용 칭호 목록 로드
+    (async () => {
+      if (!supabase) return;
+      const { data } = await supabase.from("titles").select("*").order("rarity").order("name");
+      setAvailableTitles(data || []);
+    })();
   }, []);
 
   useEffect(() => {
@@ -20732,6 +20861,8 @@ const AdminPointShopManager = () => {
       setRewardType("nickname_effect");
     } else if (managerTab === "enhance_stone") {
       setRewardType("enhance_stone");
+    } else if (managerTab === "title") {
+      setRewardType("title");
     } else {
       setRewardType("badge");
     }
@@ -20838,6 +20969,7 @@ const AdminPointShopManager = () => {
     setDescription("");
     setRewardType("badge");
     setManagerTab("guild");
+    setSelectedTitleId("");
     setNicknameEffectKey("violet");
     setNicknameGradientFrom(NICKNAME_EFFECT_PRESETS.violet.from);
     setNicknameGradientTo(NICKNAME_EFFECT_PRESETS.violet.to);
@@ -20854,6 +20986,7 @@ const AdminPointShopManager = () => {
 
   const createItem = async () => {
     if (!title.trim() || !price) return showToast("상품명과 가격을 입력하세요.");
+    if (rewardType === "title" && !selectedTitleId) return showToast("판매할 칭호를 선택하세요.");
 
     const basePayload: Record<string, any> = {
       title,
@@ -20872,6 +21005,7 @@ const AdminPointShopManager = () => {
       nickname_gradient_from: rewardType === "nickname_effect" ? nicknameGradientFrom : null,
       nickname_gradient_to: rewardType === "nickname_effect" ? nicknameGradientTo : null,
       nickname_glow_color: rewardType === "nickname_effect" ? nicknameGlowColor : null,
+      title_id: rewardType === "title" ? (selectedTitleId || null) : null,
       available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
       available_to: availableTo ? new Date(availableTo).toISOString() : null,
     };
@@ -21211,16 +21345,18 @@ const AdminPointShopManager = () => {
                 className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
                 value={rewardType}
                 onChange={(e) => {
-                  const nextType = e.target.value as "badge" | "enhance_stone" | "nickname_effect";
+                  const nextType = e.target.value as "badge" | "enhance_stone" | "nickname_effect" | "title";
                   setRewardType(nextType);
                   if (nextType === "nickname_effect") setManagerTab("nickname");
                   else if (nextType === "enhance_stone") setManagerTab("enhance_stone");
+                  else if (nextType === "title") setManagerTab("title");
                   else setManagerTab("guild");
                 }}
               >
                 <option value="badge">뱃지 상품</option>
                 <option value="enhance_stone">강화석 상품</option>
                 <option value="nickname_effect">닉네임 효과 상품</option>
+                <option value="title">✦ 칭호 상품</option>
               </select>
             </div>
           </div>
@@ -21246,6 +21382,71 @@ const AdminPointShopManager = () => {
               placeholder={rewardType === "badge" ? "상품 설명 / 구매 욕구 자극 문구" : rewardType === "nickname_effect" ? "예: 마이룸 닉네임에 그라데이션과 글로우를 적용" : "예: 무기 강화 시 성공 확률을 높여주는 보조 아이템"}
             />
           </div>
+
+          {rewardType === "title" && (
+            <div className="rounded-2xl border border-violet-400/25 bg-violet-500/[0.05] p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-200">Title Linkage</div>
+                  <div className="text-sm font-semibold text-white mt-0.5">판매할 칭호를 선택하세요</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!supabase) return;
+                    const { data } = await supabase.from("titles").select("*").order("rarity").order("name");
+                    setAvailableTitles(data || []);
+                    showToast("칭호 목록 새로고침 완료", "info");
+                  }}
+                  className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 text-xs text-white/80 hover:bg-white/10"
+                >
+                  새로고침
+                </button>
+              </div>
+              <select
+                className="w-full h-[52px] bg-black border border-white/10 rounded-2xl px-4 text-sm text-white"
+                value={selectedTitleId}
+                onChange={(e) => setSelectedTitleId(e.target.value)}
+              >
+                <option value="">— 칭호 선택 —</option>
+                {availableTitles.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    [{String(t.rarity || "common").toUpperCase()}] {t.name}
+                  </option>
+                ))}
+              </select>
+              {selectedTitleId && (() => {
+                const t = availableTitles.find((x) => x.id === selectedTitleId);
+                if (!t) return null;
+                const rarityColor: Record<string, string> = {
+                  common: "#CBD5E1", rare: "#7DD3FC", epic: "#C4B5FD",
+                  legendary: "#FCD34D", mythic: "#F9A8D4",
+                };
+                const color = t.color || rarityColor[t.rarity] || "#c4b5fd";
+                return (
+                  <div className="flex items-center gap-3 pt-2 border-t border-white/5">
+                    <span className="text-[10px] uppercase tracking-widest text-slate-400">Preview</span>
+                    <span
+                      className="px-3 py-1 rounded-full border text-sm font-semibold"
+                      style={{
+                        color,
+                        borderColor: `${color}55`,
+                        background: `${color}18`,
+                        textShadow: `0 0 12px ${color}55`,
+                      }}
+                    >
+                      ✦ {t.name}
+                    </span>
+                    <span className="text-xs text-slate-500">({t.rarity})</span>
+                  </div>
+                );
+              })()}
+              <div className="text-[11px] text-slate-500 leading-relaxed">
+                ℹ️ 미리 <code className="px-1 py-0.5 rounded bg-white/5 text-violet-300">titles</code> 테이블에 칭호를 등록한 뒤 여기서 골라 판매할 수 있어.
+                구매 시 <code className="px-1 py-0.5 rounded bg-white/5 text-violet-300">user_titles</code>에 자동 추가되고, 마이룸 → 칭호에서 장착할 수 있어.
+              </div>
+            </div>
+          )}
 
           {rewardType === "nickname_effect" && (
             <div className="space-y-4">
@@ -21326,7 +21527,7 @@ const AdminPointShopManager = () => {
             onClick={createItem}
             className="w-full bg-amber-500 p-4 rounded-2xl font-semibold uppercase hover:bg-amber-400 transition-all"
           >
-            {rewardType === "badge" ? "뱃지 상품 생성" : rewardType === "nickname_effect" ? "닉네임 상품 생성" : "강화석 상품 생성"}
+            {rewardType === "badge" ? "뱃지 상품 생성" : rewardType === "nickname_effect" ? "닉네임 상품 생성" : rewardType === "title" ? "✦ 칭호 상품 생성" : "강화석 상품 생성"}
           </button>
         </div>
 
