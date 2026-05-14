@@ -11262,6 +11262,7 @@ const JoinForm = ({
     try {
       const { error } = await supabase.from("raid_participants").insert({
         schedule_id: raid.id,
+        user_id: user?.id ?? null, // ✅ 통계 매칭용 (없으면 character_name 폴백)
         character_name: nickname.trim(),
         item_level: level,
         class_name: playerClass.trim(),
@@ -23729,25 +23730,53 @@ const RaidStatsDashboard = ({ user, profile }: { user: any; profile: any }) => {
   const [members, setMembers] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<any[]>([]);
   const [participants, setParticipants] = useState<any[]>([]);
+  // ✅ character_name → user_id 매핑 (raid_participants.user_id가 NULL인 기존 데이터 호환)
+  const [charToUser, setCharToUser] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<"count" | "rate" | "name">("count");
   const [heatmapYear, setHeatmapYear] = useState(now.getFullYear());
   const [heatmapMonth, setHeatmapMonth] = useState(now.getMonth());
 
-  // ── 데이터 페치 ─────────────────────────────────────────
+  // ── 1단계: 프로필 + 스케줄 + 캐릭터 매핑 로드 ─────────────
   useEffect(() => {
     if (!supabase) return;
     const load = async () => {
       setLoading(true);
       try {
-        const [{ data: membData }, { data: schedData }, { data: partData }] = await Promise.all([
+        const [
+          { data: membData, error: membErr },
+          { data: schedData, error: schedErr },
+          { data: gmData, error: gmErr },
+        ] = await Promise.all([
           supabase.from("profiles").select("id, nickname, role").order("nickname"),
-          supabase.from("raid_schedules").select("id, raid_name, raid_date, raid_time, type, difficulty").order("raid_date", { ascending: true }),
-          supabase.from("raid_participants").select("schedule_id, user_id, character_name, position"),
+          supabase
+            .from("raid_schedules")
+            .select("id, raid_name, raid_date, raid_time, type, difficulty")
+            .order("raid_date", { ascending: false })
+            .limit(2000),
+          // guild_members: 캐릭터명 ↔ user_id 매핑 테이블
+          supabase
+            .from("guild_members")
+            .select("character_name, user_id, owner_id")
+            .limit(5000),
         ]);
+
+        if (membErr) console.error("[Stats] profiles error:", membErr);
+        if (schedErr) console.error("[Stats] schedules error:", schedErr);
+        if (gmErr) console.error("[Stats] guild_members error:", gmErr);
+
         setMembers(membData || []);
         setSchedules(schedData || []);
-        setParticipants(partData || []);
+
+        // character_name → user_id 맵 구축 (user_id 우선, 없으면 owner_id)
+        const map: Record<string, string> = {};
+        (gmData || []).forEach((g: any) => {
+          const name = String(g?.character_name || "").trim();
+          const uid = g?.user_id || g?.owner_id;
+          if (name && uid) map[name] = uid;
+        });
+        setCharToUser(map);
+        console.log("[Stats] char→user map size:", Object.keys(map).length);
       } catch (e) {
         console.error("RaidStatsDashboard fetch error:", e);
       }
@@ -23755,6 +23784,50 @@ const RaidStatsDashboard = ({ user, profile }: { user: any; profile: any }) => {
     };
     load();
   }, []);
+
+  // ── 2단계: 선택 월이 바뀔 때마다 해당 월 참여자만 로드 ────
+  //    (Supabase 기본 1000행 제한 우회 + 빠른 응답)
+  useEffect(() => {
+    if (!supabase || schedules.length === 0) return;
+    const reloadForMonth = async () => {
+      const { year, month } = selectedMonth;
+      const ids = schedules
+        .filter((s: any) => {
+          if (!s?.raid_date) return false;
+          const [y, m] = s.raid_date.split("-").map(Number);
+          return y === year && m === month + 1;
+        })
+        .map((s: any) => s.id);
+
+      if (ids.length === 0) {
+        setParticipants([]);
+        return;
+      }
+
+      // schedule_id 청크 분할 (URL 길이 폭주 방지)
+      const CHUNK = 200;
+      const all: any[] = [];
+      try {
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const chunk = ids.slice(i, i + CHUNK);
+          const { data, error } = await supabase
+            .from("raid_participants")
+            .select("schedule_id, user_id, character_name, position")
+            .in("schedule_id", chunk);
+          if (error) {
+            console.error("[Stats] participants error:", error);
+          } else {
+            all.push(...(data || []));
+          }
+        }
+        console.log("[Stats] loaded", all.length, "participants for", ids.length, "schedules in", year, month + 1);
+        setParticipants(all);
+      } catch (e) {
+        console.error("[Stats] reloadForMonth error:", e);
+      }
+    };
+    reloadForMonth();
+  }, [selectedMonth, schedules]);
 
   // ── 월 필터된 스케줄 ─────────────────────────────────────
   const monthSchedules = useMemo(() => {
@@ -23768,26 +23841,42 @@ const RaidStatsDashboard = ({ user, profile }: { user: any; profile: any }) => {
 
   const monthScheduleIds = useMemo(() => new Set(monthSchedules.map(s => s.id)), [monthSchedules]);
 
+  // ✅ 참여자를 user_id 기준으로 정규화 (NULL이면 character_name으로 폴백)
+  const normalizedParts = useMemo(() => {
+    return participants.map(p => {
+      const resolvedUserId =
+        p.user_id ||
+        charToUser[String(p.character_name || "").trim()] ||
+        null;
+      return { ...p, resolved_user_id: resolvedUserId };
+    });
+  }, [participants, charToUser]);
+
   // ── 멤버별 통계 ─────────────────────────────────────────
   const memberStats = useMemo(() => {
     const total = monthSchedules.length;
     return members.map(m => {
-      const myParts = participants.filter(p => p.user_id === m.id && monthScheduleIds.has(p.schedule_id));
+      const myParts = normalizedParts.filter(
+        p => p.resolved_user_id === m.id && monthScheduleIds.has(p.schedule_id)
+      );
       const count = myParts.length;
       const rate = total > 0 ? Math.round((count / total) * 100) : 0;
       // 포지션 분류
       const dealer = myParts.filter(p => String(p.position || "").includes("딜")).length;
       const support = myParts.filter(p => String(p.position || "").includes("서포")).length;
       return { ...m, count, rate, dealer, support, total };
-    }).filter(m => m.count > 0 || monthSchedules.length > 0);
-  }, [members, participants, monthSchedules, monthScheduleIds]);
+    });
+  }, [members, normalizedParts, monthSchedules, monthScheduleIds]);
 
   const sortedStats = useMemo(() => {
-    return [...memberStats].sort((a, b) => {
-      if (sortBy === "count") return b.count - a.count;
-      if (sortBy === "rate") return b.rate - a.rate;
-      return String(a.nickname || "").localeCompare(String(b.nickname || ""), "ko");
-    });
+    // 참여 있는 멤버만 랭킹에 표시
+    return [...memberStats]
+      .filter(m => m.count > 0)
+      .sort((a, b) => {
+        if (sortBy === "count") return b.count - a.count;
+        if (sortBy === "rate") return b.rate - a.rate;
+        return String(a.nickname || "").localeCompare(String(b.nickname || ""), "ko");
+      });
   }, [memberStats, sortBy]);
 
   // ── 히트맵용 날짜별 참여 수 ─────────────────────────────
@@ -23823,9 +23912,11 @@ const RaidStatsDashboard = ({ user, profile }: { user: any; profile: any }) => {
 
   // ── 요약 카드 수치 ───────────────────────────────────────
   const totalRaidsMonth = monthSchedules.length;
-  const totalParticipationsMonth = participants.filter(p => monthScheduleIds.has(p.schedule_id)).length;
+  // ✅ 정규화된 참여자로 카운트 (월 필터링은 이미 fetch 단계에서 적용됨)
+  const totalParticipationsMonth = normalizedParts.filter(p => monthScheduleIds.has(p.schedule_id)).length;
   const avgParticipationRate = useMemo(() => {
-    const active = memberStats.filter(m => m.total > 0);
+    // ✅ 이번 달에 1회 이상 참여한 멤버만 평균 계산에 포함
+    const active = memberStats.filter(m => m.count > 0);
     if (!active.length) return 0;
     return Math.round(active.reduce((s, m) => s + m.rate, 0) / active.length);
   }, [memberStats]);
