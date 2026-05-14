@@ -21299,30 +21299,38 @@ const AdminPointShopManager = () => {
       <div className="rounded-[2rem] border border-white/10 bg-black/20 p-3">
         <div className="flex flex-wrap gap-2">
           {[
-            { key: "badge", label: "뱃지" },
-            { key: "weapon_parts", label: "무기파츠" },
-            { key: "gacha", label: "가챠" },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => {
-                setProductAdminTab(tab.key as "badge" | "weapon_parts" | "gacha");
-                if (tab.key === "badge") {
-                  setRewardType("badge");
-                  setManagerTab("guild");
-                }
-              }}
-              className={cn(
-                "px-5 py-3 rounded-2xl text-sm font-semibold transition-all border",
-                productAdminTab === tab.key
-                  ? "bg-amber-500 border-amber-400 text-white shadow-[0_0_30px_rgba(245,158,11,0.22)]"
-                  : "bg-white/[0.04] border-white/10 text-slate-400 hover:bg-white/[0.08] hover:text-white"
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+            { key: "badge", label: "뱃지", reward: "badge", manager: "guild" },
+            { key: "badge", label: "닉네임 효과", reward: "nickname_effect", manager: "nickname" },
+            { key: "badge", label: "강화석", reward: "enhance_stone", manager: "enhance_stone" },
+            { key: "badge", label: "✦ 칭호", reward: "title", manager: "title" },
+            { key: "weapon_parts", label: "무기파츠", reward: null, manager: null },
+            { key: "gacha", label: "가챠", reward: null, manager: null },
+          ].map((tab, idx) => {
+            const isActive =
+              productAdminTab === tab.key &&
+              (tab.reward === null || rewardType === tab.reward);
+            return (
+              <button
+                key={`${tab.key}-${tab.label}-${idx}`}
+                type="button"
+                onClick={() => {
+                  setProductAdminTab(tab.key as "badge" | "weapon_parts" | "gacha");
+                  if (tab.reward) setRewardType(tab.reward as any);
+                  if (tab.manager) setManagerTab(tab.manager as any);
+                }}
+                className={cn(
+                  "px-5 py-3 rounded-2xl text-sm font-semibold transition-all border",
+                  isActive
+                    ? tab.label === "✦ 칭호"
+                      ? "bg-violet-500 border-violet-400 text-white shadow-[0_0_30px_rgba(139,92,246,0.30)]"
+                      : "bg-amber-500 border-amber-400 text-white shadow-[0_0_30px_rgba(245,158,11,0.22)]"
+                    : "bg-white/[0.04] border-white/10 text-slate-400 hover:bg-white/[0.08] hover:text-white"
+                )}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
       {productAdminTab === "badge" ? (
