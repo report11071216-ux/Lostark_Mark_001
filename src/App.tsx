@@ -2713,6 +2713,17 @@ const fetchInitialData = async () => {
               </motion.div>
             )}
 
+            {activeTab === "stats" && (
+              <motion.div
+                key="stats"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <RaidStatsDashboard user={user} profile={profile} />
+              </motion.div>
+            )}
+
             {activeTab === "guild_history" && (
               <motion.div
                 key="guild_history"
@@ -7815,6 +7826,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
       items: [
         { id: "home", icon: "📅", label: "레이드 일정", isRaidCalendar: true },
         { id: "raid_history", icon: "📋", label: "레이드 기록" },
+        { id: "stats", icon: "📊", label: "참여 통계" },
         { id: "recruit", icon: "👫", label: "파티 모집" },
       ],
     },
@@ -23705,6 +23717,588 @@ const PersonalNoteRoom = ({ user, profile }: { user: any; profile: any }) => {
         )}
       </AnimatePresence>
     </div>
+  );
+};
+
+// ══════════════════════════════════════════════════════════
+// ── RaidStatsDashboard — 레이드 참여 통계 대시보드 ────────
+// ══════════════════════════════════════════════════════════
+const RaidStatsDashboard = ({ user, profile }: { user: any; profile: any }) => {
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
+  const [members, setMembers] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<any[]>([]);
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState<"count" | "rate" | "name">("count");
+  const [heatmapYear, setHeatmapYear] = useState(now.getFullYear());
+  const [heatmapMonth, setHeatmapMonth] = useState(now.getMonth());
+
+  // ── 데이터 페치 ─────────────────────────────────────────
+  useEffect(() => {
+    if (!supabase) return;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [{ data: membData }, { data: schedData }, { data: partData }] = await Promise.all([
+          supabase.from("profiles").select("id, nickname, role").order("nickname"),
+          supabase.from("raid_schedules").select("id, raid_name, raid_date, raid_time, type, difficulty").order("raid_date", { ascending: true }),
+          supabase.from("raid_participants").select("schedule_id, user_id, character_name, position"),
+        ]);
+        setMembers(membData || []);
+        setSchedules(schedData || []);
+        setParticipants(partData || []);
+      } catch (e) {
+        console.error("RaidStatsDashboard fetch error:", e);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  // ── 월 필터된 스케줄 ─────────────────────────────────────
+  const monthSchedules = useMemo(() => {
+    const { year, month } = selectedMonth;
+    return schedules.filter(s => {
+      if (!s.raid_date) return false;
+      const [y, m] = s.raid_date.split("-").map(Number);
+      return y === year && m === month + 1;
+    });
+  }, [schedules, selectedMonth]);
+
+  const monthScheduleIds = useMemo(() => new Set(monthSchedules.map(s => s.id)), [monthSchedules]);
+
+  // ── 멤버별 통계 ─────────────────────────────────────────
+  const memberStats = useMemo(() => {
+    const total = monthSchedules.length;
+    return members.map(m => {
+      const myParts = participants.filter(p => p.user_id === m.id && monthScheduleIds.has(p.schedule_id));
+      const count = myParts.length;
+      const rate = total > 0 ? Math.round((count / total) * 100) : 0;
+      // 포지션 분류
+      const dealer = myParts.filter(p => String(p.position || "").includes("딜")).length;
+      const support = myParts.filter(p => String(p.position || "").includes("서포")).length;
+      return { ...m, count, rate, dealer, support, total };
+    }).filter(m => m.count > 0 || monthSchedules.length > 0);
+  }, [members, participants, monthSchedules, monthScheduleIds]);
+
+  const sortedStats = useMemo(() => {
+    return [...memberStats].sort((a, b) => {
+      if (sortBy === "count") return b.count - a.count;
+      if (sortBy === "rate") return b.rate - a.rate;
+      return String(a.nickname || "").localeCompare(String(b.nickname || ""), "ko");
+    });
+  }, [memberStats, sortBy]);
+
+  // ── 히트맵용 날짜별 참여 수 ─────────────────────────────
+  const heatmapData = useMemo(() => {
+    const map: Record<string, number> = {};
+    schedules.forEach(s => {
+      if (!s.raid_date) return;
+      const key = s.raid_date.slice(0, 10);
+      const cnt = participants.filter(p => p.schedule_id === s.id).length;
+      map[key] = (map[key] || 0) + cnt;
+    });
+    return map;
+  }, [schedules, participants]);
+
+  const maxHeat = useMemo(() => {
+    const vals = Object.values(heatmapData);
+    return vals.length > 0 ? Math.max(...vals) : 1;
+  }, [heatmapData]);
+
+  // ── 히트맵 그리드 계산 ───────────────────────────────────
+  const heatmapGrid = useMemo(() => {
+    const firstDay = new Date(heatmapYear, heatmapMonth, 1);
+    const daysInMonth = new Date(heatmapYear, heatmapMonth + 1, 0).getDate();
+    const startWeekday = (firstDay.getDay() + 6) % 7; // 월요일 시작
+    const cells: { date: string; day: number; otherMonth: boolean }[] = [];
+    for (let i = 0; i < startWeekday; i++) cells.push({ date: "", day: 0, otherMonth: true });
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = `${heatmapYear}-${String(heatmapMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      cells.push({ date, day: d, otherMonth: false });
+    }
+    return cells;
+  }, [heatmapYear, heatmapMonth]);
+
+  // ── 요약 카드 수치 ───────────────────────────────────────
+  const totalRaidsMonth = monthSchedules.length;
+  const totalParticipationsMonth = participants.filter(p => monthScheduleIds.has(p.schedule_id)).length;
+  const avgParticipationRate = useMemo(() => {
+    const active = memberStats.filter(m => m.total > 0);
+    if (!active.length) return 0;
+    return Math.round(active.reduce((s, m) => s + m.rate, 0) / active.length);
+  }, [memberStats]);
+  const topMember = sortedStats[0];
+  const myStats = memberStats.find(m => m.id === user?.id);
+
+  const prevMonth = () => setSelectedMonth(({ year, month }) =>
+    month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 });
+  const nextMonth = () => setSelectedMonth(({ year, month }) =>
+    month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 });
+  const prevHeatmap = () => { if (heatmapMonth === 0) { setHeatmapYear(y => y - 1); setHeatmapMonth(11); } else setHeatmapMonth(m => m - 1); };
+  const nextHeatmap = () => { if (heatmapMonth === 11) { setHeatmapYear(y => y + 1); setHeatmapMonth(0); } else setHeatmapMonth(m => m + 1); };
+
+  const getHeatColor = (count: number) => {
+    if (!count) return "rgba(255,255,255,0.04)";
+    const ratio = count / maxHeat;
+    if (ratio < 0.25) return "rgba(167,139,250,0.25)";
+    if (ratio < 0.5)  return "rgba(139,92,246,0.50)";
+    if (ratio < 0.75) return "rgba(124,58,237,0.72)";
+    return "rgba(109,40,217,0.92)";
+  };
+
+  const DAY_KR = ["월", "화", "수", "목", "금", "토", "일"];
+  const MONTH_NAMES = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-32">
+      <div className="flex flex-col items-center gap-4">
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="h-10 w-10 rounded-full border-2 border-t-transparent"
+          style={{ borderColor: "rgba(167,139,250,0.4)", borderTopColor: "#a78bfa" }} />
+        <span className="text-sm" style={{ color: "rgba(196,181,253,0.6)" }}>통계 데이터 불러오는 중...</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-auto w-full max-w-7xl px-3 sm:px-5 py-8 space-y-6">
+
+      {/* ── 페이지 헤더 ── */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.32em] mb-1" style={{ color: "#c4b5fd" }}>
+            Raid Statistics
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">레이드 참여 통계</h1>
+          <p className="mt-1.5 text-sm" style={{ color: "rgba(155,159,196,0.7)" }}>
+            길드원의 월간 레이드 참여 현황과 길드 전체 활동 히트맵을 확인합니다.
+          </p>
+        </div>
+        {/* 월 선택 */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={prevMonth}
+            className="h-9 w-9 flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all">
+            <ChevronLeft size={16} />
+          </button>
+          <div className="px-4 py-2 rounded-xl text-sm font-bold text-white min-w-[110px] text-center"
+            style={{ background: "rgba(139,92,246,0.14)", border: "1px solid rgba(139,92,246,0.28)" }}>
+            {selectedMonth.year}년 {MONTH_NAMES[selectedMonth.month]}
+          </div>
+          <button onClick={nextMonth}
+            className="h-9 w-9 flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08] transition-all">
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── 요약 카드 4개 ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[
+          {
+            label: "이번 달 레이드",
+            value: totalRaidsMonth,
+            unit: "회",
+            icon: <Swords size={18} />,
+            color: "#a78bfa",
+            accentR: "167,139,250",
+          },
+          {
+            label: "총 참여 기록",
+            value: totalParticipationsMonth,
+            unit: "건",
+            icon: <Users size={18} />,
+            color: "#67e8f9",
+            accentR: "103,232,249",
+          },
+          {
+            label: "평균 참여율",
+            value: avgParticipationRate,
+            unit: "%",
+            icon: <BarChart3 size={18} />,
+            color: "#6ee7b7",
+            accentR: "110,231,183",
+          },
+          {
+            label: "내 참여 횟수",
+            value: myStats?.count ?? 0,
+            unit: "회",
+            sub: myStats ? `${myStats.rate}% 달성` : "데이터 없음",
+            icon: <Crown size={18} />,
+            color: "#fbbf24",
+            accentR: "251,191,36",
+          },
+        ].map(({ label, value, unit, sub, icon, color, accentR }) => (
+          <motion.div
+            key={label}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-[1.6rem] p-4 sm:p-5 flex flex-col gap-3"
+            style={{
+              background: `linear-gradient(160deg, rgba(${accentR},0.12) 0%, rgba(15,13,32,0.85) 100%)`,
+              border: `1px solid rgba(${accentR},0.22)`,
+              boxShadow: `0 8px 24px rgba(${accentR},0.08)`,
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em]"
+                style={{ color: `rgba(${accentR},0.7)` }}>{label}</div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl"
+                style={{ background: `rgba(${accentR},0.14)`, color }}>
+                {icon}
+              </div>
+            </div>
+            <div>
+              <span className="text-2xl sm:text-3xl font-bold" style={{ color }}>{value.toLocaleString()}</span>
+              <span className="text-sm ml-1" style={{ color: `rgba(${accentR},0.6)` }}>{unit}</span>
+            </div>
+            {sub && <div className="text-[11px]" style={{ color: "rgba(155,159,196,0.55)" }}>{sub}</div>}
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ── 메인 2컬럼: 멤버 랭킹 + 히트맵 ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-5">
+
+        {/* ◀ 멤버별 참여 랭킹 */}
+        <div
+          className="rounded-[2rem] overflow-hidden"
+          style={{
+            background: "linear-gradient(160deg, rgba(28,23,51,0.85) 0%, rgba(15,13,32,0.95) 100%)",
+            border: "1px solid rgba(139,92,246,0.16)",
+            boxShadow: "0 14px 36px rgba(0,0,0,0.22)",
+          }}
+        >
+          {/* 헤더 */}
+          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid rgba(139,92,246,0.10)" }}>
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "#c4b5fd" }}>
+                Member Ranking
+              </div>
+              <h2 className="text-lg font-bold text-white mt-0.5">멤버별 참여 현황</h2>
+            </div>
+            {/* 정렬 */}
+            <div className="flex gap-1.5">
+              {([
+                { key: "count", label: "횟수순" },
+                { key: "rate", label: "참여율" },
+                { key: "name", label: "이름순" },
+              ] as const).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setSortBy(key)}
+                  className="px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
+                  style={sortBy === key
+                    ? { background: "rgba(139,92,246,0.22)", border: "1px solid rgba(139,92,246,0.42)", color: "#c4b5fd" }
+                    : { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(155,159,196,0.65)" }
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 리스트 */}
+          <div className="p-4 space-y-2 max-h-[520px] overflow-y-auto">
+            {totalRaidsMonth === 0 ? (
+              <div className="text-center py-16" style={{ color: "rgba(155,159,196,0.5)" }}>
+                <div className="text-4xl mb-3">📊</div>
+                <div className="text-sm font-semibold">이번 달 레이드 일정이 없습니다</div>
+              </div>
+            ) : sortedStats.length === 0 ? (
+              <div className="text-center py-16" style={{ color: "rgba(155,159,196,0.5)" }}>
+                <div className="text-sm">데이터가 없습니다</div>
+              </div>
+            ) : (
+              sortedStats.map((m, idx) => {
+                const isMe = m.id === user?.id;
+                const barWidth = totalRaidsMonth > 0 ? Math.min(100, (m.count / totalRaidsMonth) * 100) : 0;
+                const rankColors = ["#fbbf24", "#94a3b8", "#b45309"];
+                const rankColor = idx < 3 ? rankColors[idx] : "rgba(167,139,250,0.5)";
+
+                return (
+                  <motion.div
+                    key={m.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="rounded-2xl p-3.5"
+                    style={{
+                      background: isMe
+                        ? "linear-gradient(135deg, rgba(139,92,246,0.14), rgba(109,40,217,0.08))"
+                        : "rgba(255,255,255,0.025)",
+                      border: isMe
+                        ? "1px solid rgba(139,92,246,0.30)"
+                        : "1px solid rgba(255,255,255,0.05)",
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* 순위 */}
+                      <div className="w-7 text-center font-bold text-[13px] shrink-0" style={{ color: rankColor }}>
+                        {idx < 3 ? ["🥇","🥈","🥉"][idx] : `${idx + 1}`}
+                      </div>
+
+                      {/* 아바타 + 이름 */}
+                      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <div
+                          className="h-8 w-8 shrink-0 rounded-xl flex items-center justify-center text-xs font-bold"
+                          style={{
+                            background: isMe ? "rgba(139,92,246,0.28)" : "rgba(255,255,255,0.06)",
+                            color: isMe ? "#c4b5fd" : "rgba(196,181,253,0.7)",
+                          }}
+                        >
+                          {String(m.nickname || "?").slice(0, 1).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-white truncate">{m.nickname || "알 수 없음"}</span>
+                            {isMe && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0"
+                                style={{ background: "rgba(139,92,246,0.25)", color: "#c4b5fd" }}>나</span>
+                            )}
+                            {m.role === "admin" && <span className="text-[11px] shrink-0">👑</span>}
+                          </div>
+                          {/* 프로그레스 바 */}
+                          <div className="mt-1.5 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${barWidth}%` }}
+                              transition={{ duration: 0.6, delay: idx * 0.04, ease: "easeOut" }}
+                              className="h-full rounded-full"
+                              style={{
+                                background: isMe
+                                  ? "linear-gradient(90deg, #8b5cf6, #a78bfa)"
+                                  : "linear-gradient(90deg, rgba(167,139,250,0.5), rgba(167,139,250,0.8))",
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 통계 수치 */}
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="text-right">
+                          <div className="text-sm font-bold" style={{ color: "#a78bfa" }}>{m.count}회</div>
+                          <div className="text-[10px]" style={{ color: "rgba(155,159,196,0.55)" }}>{m.rate}%</div>
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold"
+                            style={{ background: "rgba(244,114,182,0.12)", color: "#f9a8d4" }}>
+                            딜 {m.dealer}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold"
+                            style={{ background: "rgba(110,231,183,0.12)", color: "#6ee7b7" }}>
+                            서포 {m.support}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* ▶ 우측: 히트맵 캘린더 + 상위 레이드 */}
+        <div className="space-y-4">
+
+          {/* 히트맵 캘린더 */}
+          <div
+            className="rounded-[2rem] overflow-hidden"
+            style={{
+              background: "linear-gradient(160deg, rgba(28,23,51,0.85) 0%, rgba(15,13,32,0.95) 100%)",
+              border: "1px solid rgba(139,92,246,0.16)",
+              boxShadow: "0 14px 36px rgba(0,0,0,0.22)",
+            }}
+          >
+            {/* 히트맵 헤더 */}
+            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid rgba(139,92,246,0.10)" }}>
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "#c4b5fd" }}>Activity Heatmap</div>
+                <h2 className="text-base font-bold text-white mt-0.5">길드 활동 히트맵</h2>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button onClick={prevHeatmap}
+                  className="h-8 w-8 flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400 hover:text-white transition-all">
+                  <ChevronLeft size={14} />
+                </button>
+                <span className="text-xs font-semibold text-white px-2 min-w-[80px] text-center">
+                  {heatmapYear}.{String(heatmapMonth + 1).padStart(2, "0")}
+                </span>
+                <button onClick={nextHeatmap}
+                  className="h-8 w-8 flex items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400 hover:text-white transition-all">
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4">
+              {/* 요일 헤더 */}
+              <div className="grid grid-cols-7 mb-2">
+                {DAY_KR.map(d => (
+                  <div key={d} className="text-center text-[10px] font-semibold" style={{ color: "rgba(155,159,196,0.45)" }}>{d}</div>
+                ))}
+              </div>
+
+              {/* 날짜 그리드 */}
+              <div className="grid grid-cols-7 gap-1">
+                {heatmapGrid.map((cell, idx) => {
+                  if (cell.otherMonth) return <div key={idx} />;
+                  const count = heatmapData[cell.date] || 0;
+                  const heatColor = getHeatColor(count);
+                  const isToday = cell.date === `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+
+                  return (
+                    <div
+                      key={cell.date}
+                      title={count > 0 ? `${cell.date}: ${count}명 참여` : cell.date}
+                      className="aspect-square rounded-lg flex items-center justify-center text-[10px] font-semibold transition-all cursor-default"
+                      style={{
+                        background: heatColor,
+                        color: count > 0 ? "#fff" : "rgba(155,159,196,0.4)",
+                        border: isToday ? "1px solid rgba(251,191,36,0.6)" : "1px solid transparent",
+                        boxShadow: count > 0 ? `0 0 8px ${heatColor}` : "none",
+                      }}
+                    >
+                      {cell.day}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* 범례 */}
+              <div className="flex items-center justify-end gap-2 mt-3">
+                <span className="text-[9px]" style={{ color: "rgba(155,159,196,0.45)" }}>적음</span>
+                {["rgba(255,255,255,0.04)", "rgba(167,139,250,0.25)", "rgba(139,92,246,0.50)", "rgba(124,58,237,0.72)", "rgba(109,40,217,0.92)"].map((c, i) => (
+                  <div key={i} className="w-4 h-4 rounded-md" style={{ background: c, border: "1px solid rgba(255,255,255,0.06)" }} />
+                ))}
+                <span className="text-[9px]" style={{ color: "rgba(155,159,196,0.45)" }}>많음</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 이번 달 레이드 목록 요약 */}
+          <div
+            className="rounded-[2rem] overflow-hidden"
+            style={{
+              background: "linear-gradient(160deg, rgba(28,23,51,0.85) 0%, rgba(15,13,32,0.95) 100%)",
+              border: "1px solid rgba(139,92,246,0.16)",
+            }}
+          >
+            <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(139,92,246,0.10)" }}>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "#c4b5fd" }}>This Month Raids</div>
+              <h2 className="text-base font-bold text-white mt-0.5">이번 달 레이드 목록</h2>
+            </div>
+            <div className="p-3 max-h-64 overflow-y-auto space-y-1.5">
+              {monthSchedules.length === 0 ? (
+                <div className="text-center py-8 text-sm" style={{ color: "rgba(155,159,196,0.45)" }}>
+                  이번 달 레이드가 없습니다
+                </div>
+              ) : (
+                monthSchedules.map(s => {
+                  const cnt = participants.filter(p => p.schedule_id === s.id).length;
+                  const max = s.type === "anime" ? 10 : 8;
+                  const pct = Math.round((cnt / max) * 100);
+                  return (
+                    <div key={s.id} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.04)" }}>
+                      <div className="text-base shrink-0">{s.type === "anime" ? "🎬" : "⚔️"}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-white truncate">
+                          {s.raid_name || "미정"} {s.difficulty && <span style={{ color: "#f9a8d4" }}>({s.difficulty})</span>}
+                        </div>
+                        <div className="text-[10px] mt-0.5" style={{ color: "rgba(155,159,196,0.55)" }}>
+                          {s.raid_date} {s.raid_time}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="text-xs font-bold" style={{ color: "#a78bfa" }}>{cnt}명</div>
+                        <div className="text-[9px]" style={{ color: pct >= 80 ? "#6ee7b7" : "rgba(155,159,196,0.5)" }}>
+                          {pct}%
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── 하단: 길드 전체 월별 추이 바 차트 ── */}
+      <div
+        className="rounded-[2rem] overflow-hidden"
+        style={{
+          background: "linear-gradient(160deg, rgba(28,23,51,0.85) 0%, rgba(15,13,32,0.95) 100%)",
+          border: "1px solid rgba(139,92,246,0.16)",
+          boxShadow: "0 14px 36px rgba(0,0,0,0.22)",
+        }}
+      >
+        <div className="px-6 py-5" style={{ borderBottom: "1px solid rgba(139,92,246,0.10)" }}>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.26em] mb-1" style={{ color: "#c4b5fd" }}>
+            Monthly Overview
+          </div>
+          <h2 className="text-lg font-bold text-white">월별 레이드 수 추이 (최근 6개월)</h2>
+        </div>
+        <div className="px-6 py-5">
+          {(() => {
+            const months: { label: string; year: number; month: number }[] = [];
+            for (let i = 5; i >= 0; i--) {
+              const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+              months.push({ label: `${d.getMonth() + 1}월`, year: d.getFullYear(), month: d.getMonth() });
+            }
+            const barData = months.map(({ label, year, month }) => {
+              const count = schedules.filter(s => {
+                if (!s.raid_date) return false;
+                const [y, m] = s.raid_date.split("-").map(Number);
+                return y === year && m === month + 1;
+              }).length;
+              return { label, count };
+            });
+            const barMax = Math.max(...barData.map(b => b.count), 1);
+
+            return (
+              <div className="flex items-end gap-3 h-36">
+                {barData.map(({ label, count }, idx) => {
+                  const h = Math.max(4, (count / barMax) * 100);
+                  const isCurrent = idx === 5;
+                  return (
+                    <div key={label} className="flex-1 flex flex-col items-center gap-2">
+                      <div className="text-[11px] font-bold" style={{ color: isCurrent ? "#a78bfa" : "rgba(167,139,250,0.55)" }}>
+                        {count}
+                      </div>
+                      <div className="w-full flex flex-col justify-end" style={{ height: 80 }}>
+                        <motion.div
+                          initial={{ height: 0 }}
+                          animate={{ height: `${h}%` }}
+                          transition={{ duration: 0.6, delay: idx * 0.08, ease: "easeOut" }}
+                          className="w-full rounded-lg"
+                          style={{
+                            background: isCurrent
+                              ? "linear-gradient(180deg, #a78bfa, #7c3aed)"
+                              : "linear-gradient(180deg, rgba(167,139,250,0.4), rgba(109,40,217,0.3))",
+                            boxShadow: isCurrent ? "0 0 16px rgba(139,92,246,0.4)" : "none",
+                          }}
+                        />
+                      </div>
+                      <div className="text-[10px]" style={{ color: isCurrent ? "#c4b5fd" : "rgba(155,159,196,0.5)" }}>
+                        {label}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
+    </motion.div>
   );
 };
 
