@@ -4829,6 +4829,45 @@ const Hero = ({
           });
         });
 
+        // 2-2) 최근 트라이 등록 / 클리어
+        const { data: tryData } = await supabase
+          .from("try_schedules")
+          .select("id, raid_name, difficulty, status, start_date, start_time, cleared_date, created_by, created_at, updated_at")
+          .order("updated_at", { ascending: false })
+          .limit(4);
+        const tryUserIds = (tryData || []).map((t: any) => t.created_by);
+        let tryProfiles: Record<string, any> = {};
+        if (tryUserIds.length > 0) {
+          const { data: tryProfs } = await supabase
+            .from("profiles")
+            .select("id, nickname, character_name")
+            .in("id", tryUserIds);
+          (tryProfs || []).forEach((p: any) => { tryProfiles[p.id] = p; });
+        }
+        (tryData || []).forEach((t: any) => {
+          const prof = tryProfiles[t.created_by];
+          const name = prof?.nickname || prof?.character_name || "길드원";
+          const diffLabel = t.difficulty ? ` (${t.difficulty})` : "";
+          const isCleared = t.status === "cleared";
+          const text = isCleared
+            ? `님이 [${t.raid_name}${diffLabel}] 트라이를 클리어했습니다! 🏆`
+            : `님이 [${t.raid_name}${diffLabel}] 트라이를 등록했습니다.`;
+          const sub = isCleared
+            ? (t.cleared_date ? `🏆 ${t.cleared_date} 클리어` : "")
+            : (t.start_date
+                ? `📅 ${t.start_date}${t.start_time ? " " + String(t.start_time).slice(0,5) : ""} 시작`
+                : "");
+          items.push({
+            id: `try-${t.id}-${t.status}`,
+            avatar: null,
+            name,
+            text,
+            sub,
+            ts: t.updated_at || t.created_at,
+            icon: isCleared ? "🏆" : "⚔️",
+          });
+        });
+
         // 3) 최근 게시글
         const { data: postData } = await supabase
           .from("posts")
