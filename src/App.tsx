@@ -38,6 +38,7 @@ import { createClient } from "@supabase/supabase-js";
 import { GuildHistory } from "./GuildHistory";
 import AchievementsPage from "./AchievementsPage";
 import AchievementsAdmin from "./AchievementsAdmin";
+import TrySchedulePage from "./TrySchedule";
 
 // ── Theme System ───────────────────────────────────────────
 type Theme = "dark" | "light";
@@ -2764,6 +2765,17 @@ const fetchInitialData = async () => {
                 exit={{ opacity: 0 }}
               >
                 <RaidStatsDashboard user={user} profile={profile} />
+              </motion.div>
+            )}
+
+            {activeTab === "try_schedule" && (
+              <motion.div
+                key="try_schedule"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <TrySchedulePage user={user} profile={profile} supabase={supabase} />
               </motion.div>
             )}
 
@@ -7890,6 +7902,7 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
     {
       label: "기록실",
       items: [
+        { id: "try_schedule", icon: "⚔️", label: "트라이 일정" },
         { id: "guild_history", icon: "🏛️", label: "길드 히스토리" },
         { id: "ranking", icon: "🥇", label: "업적" },
       ],
