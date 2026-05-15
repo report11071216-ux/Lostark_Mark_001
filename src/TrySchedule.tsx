@@ -26,6 +26,7 @@ interface TrySchedule {
   current_gate: number;
   total_gates: number;
   start_date: string | null;
+  start_time: string | null;
   cleared_date: string | null;
   description: string | null;
   created_by: string;
@@ -578,6 +579,11 @@ const TryCard: React.FC<{
             <span className="text-sm font-medium ml-1.5" style={{ color: "#f9a8d4" }}>({tryItem.difficulty})</span>
           )}
         </h3>
+        {(tryItem.start_date || tryItem.start_time) && (
+          <div className="mt-1 text-[11px]" style={{ color: "rgba(196,181,253,0.7)" }}>
+            🕐 시작: {tryItem.start_date || "날짜 미정"}{tryItem.start_time ? ` ${tryItem.start_time.slice(0, 5)}` : ""}
+          </div>
+        )}
 
         {!isCleared && (
           <div className="mt-3">
@@ -760,6 +766,12 @@ const DetailModal: React.FC<{
               {tryItem.raid_name}
               {tryItem.difficulty && <span className="text-base font-medium ml-2" style={{ color: "#f9a8d4" }}>({tryItem.difficulty})</span>}
             </h2>
+            {(tryItem.start_date || tryItem.start_time) && (
+              <div className="mt-1 text-xs flex items-center gap-1" style={{ color: "rgba(196,181,253,0.75)" }}>
+                <Clock size={11} />
+                트라이 시작: {tryItem.start_date || "날짜 미정"}{tryItem.start_time ? ` ${tryItem.start_time.slice(0, 5)}` : ""}
+              </div>
+            )}
             {tryItem.description && (
               <p className="mt-2 text-sm whitespace-pre-wrap" style={{ color: "rgba(226,232,240,0.7)" }}>{tryItem.description}</p>
             )}
@@ -1120,8 +1132,25 @@ const FormModal: React.FC<{
   const [totalGates, setTotalGates] = useState<number>(4);
   const [currentGate, setCurrentGate] = useState<number>(1);
   const [startDate, setStartDate] = useState<string>("");
+  const [startTime, setStartTime] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [busy, setBusy] = useState(false);
+
+  // contents 테이블에서 레이드 목록 가져오기
+  const [raidList, setRaidList] = useState<{ id: string; name: string }[]>([]);
+  const [useCustomName, setUseCustomName] = useState(false);
+
+  useEffect(() => {
+    if (!supabase) return;
+    (async () => {
+      const { data } = await supabase
+        .from("contents")
+        .select("id, name")
+        .eq("category", "레이드")
+        .order("name", { ascending: true });
+      setRaidList(data || []);
+    })();
+  }, [supabase]);
 
   useEffect(() => {
     if (editing) {
@@ -1131,9 +1160,11 @@ const FormModal: React.FC<{
       setTotalGates(editing.total_gates);
       setCurrentGate(editing.current_gate);
       setStartDate(editing.start_date || "");
+      setStartTime(editing.start_time ? editing.start_time.slice(0, 5) : "");
       setDescription(editing.description || "");
     } else {
       setStartDate(new Date().toISOString().slice(0, 10));
+      setStartTime("");
     }
   }, [editing]);
 
@@ -1152,6 +1183,7 @@ const FormModal: React.FC<{
         total_gates: totalGates,
         current_gate: currentGate,
         start_date: startDate || null,
+        start_time: startTime || null,
         description: description.trim() || null,
         updated_at: new Date().toISOString(),
       };
@@ -1207,10 +1239,48 @@ const FormModal: React.FC<{
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           <Field label="레이드 이름 *">
-            <input type="text" value={raidName} onChange={(e) => setRaidName(e.target.value)}
-                   placeholder="예: 에키드나, 카멘, 모르둠..."
-                   className="w-full h-10 px-3 rounded-lg text-sm text-white"
-                   style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.10)" }} />
+            {!useCustomName ? (
+              <div className="flex gap-2">
+                <select
+                  value={raidName}
+                  onChange={(e) => {
+                    if (e.target.value === "__custom__") {
+                      setUseCustomName(true);
+                      setRaidName("");
+                    } else {
+                      setRaidName(e.target.value);
+                    }
+                  }}
+                  className="flex-1 h-10 px-3 rounded-lg text-sm text-white"
+                  style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.10)" }}
+                >
+                  <option value="">레이드 선택...</option>
+                  {raidList.map((r) => (
+                    <option key={r.id} value={r.name}>{r.name}</option>
+                  ))}
+                  <option value="__custom__">✏️ 직접 입력하기</option>
+                </select>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={raidName}
+                  onChange={(e) => setRaidName(e.target.value)}
+                  placeholder="레이드 이름을 직접 입력하세요"
+                  className="flex-1 h-10 px-3 rounded-lg text-sm text-white"
+                  style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.10)" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => { setUseCustomName(false); setRaidName(""); }}
+                  className="h-10 px-3 rounded-lg text-[11px] font-semibold transition-all"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: "#c4b5fd" }}
+                >
+                  목록에서
+                </button>
+              </div>
+            )}
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
@@ -1254,11 +1324,18 @@ const FormModal: React.FC<{
             </Field>
           </div>
 
-          <Field label="트라이 시작일">
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
-                   className="w-full h-10 px-3 rounded-lg text-sm text-white"
-                   style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.10)" }} />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="트라이 시작일">
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                     className="w-full h-10 px-3 rounded-lg text-sm text-white"
+                     style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.10)" }} />
+            </Field>
+            <Field label="트라이 시작 시간">
+              <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
+                     className="w-full h-10 px-3 rounded-lg text-sm text-white"
+                     style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.10)" }} />
+            </Field>
+          </div>
 
           <Field label="공략 메모 (선택)">
             <textarea value={description} onChange={(e) => setDescription(e.target.value)}
