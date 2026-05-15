@@ -4,6 +4,7 @@
 //  + 다중 웹훅 target 지원
 //    body.target = "raid"    → DISCORD_WEBHOOK_RAID
 //    body.target = "welcome" → DISCORD_WEBHOOK_WELCOME
+//    body.target = "try"     → DISCORD_WEBHOOK_TRY     ← 추가
 //    body.target = (없음)    → DISCORD_WEBHOOK_URL (기본)
 //  + Discord rate limit 자동 재시도
 // ─────────────────────────────────────────────
@@ -12,7 +13,7 @@ const MAX_RETRIES = 3;
 
 /**
  * target 값에 따라 환경변수에서 웹훅 URL 선택
- * DISCORD_WEBHOOK_RAID / DISCORD_WEBHOOK_WELCOME 미설정 시
+ * DISCORD_WEBHOOK_RAID / DISCORD_WEBHOOK_WELCOME / DISCORD_WEBHOOK_TRY 미설정 시
  * 기본 DISCORD_WEBHOOK_URL 로 폴백
  */
 function resolveWebhookUrl(target?: string): string | undefined {
@@ -21,6 +22,12 @@ function resolveWebhookUrl(target?: string): string | undefined {
       return process.env.DISCORD_WEBHOOK_RAID || process.env.DISCORD_WEBHOOK_URL;
     case "welcome":
       return process.env.DISCORD_WEBHOOK_WELCOME || process.env.DISCORD_WEBHOOK_URL;
+    case "try":
+      return (
+        process.env.DISCORD_WEBHOOK_TRY ||
+        process.env.DISCORD_WEBHOOK_RAID ||
+        process.env.DISCORD_WEBHOOK_URL
+      );
     default:
       return process.env.DISCORD_WEBHOOK_URL;
   }
