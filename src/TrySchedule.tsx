@@ -74,6 +74,30 @@ const STATUS_COLOR: Record<TryStatus, string> = {
 
 const isStaff = (role?: string | null) => role === "admin" || role === "submaster";
 
+// ============================================================
+//  디스코드 웹훅 알림 헬퍼
+// ============================================================
+const DISCORD_COLOR = {
+  active:  0x8b5cf6, // 보라 - 새 등록
+  cleared: 0x34d399, // 초록 - 클리어
+  session: 0xfbbf24, // 황색 - 새 일정
+};
+
+async function sendTryDiscord(embed: any) {
+  try {
+    await fetch("/api/discord", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        target: "try",
+        embeds: [embed],
+      }),
+    });
+  } catch (e) {
+    console.warn("[TrySchedule] Discord notification failed:", e);
+  }
+}
+
 // 트라이마다 고유 색상
 const RAID_COLORS = [
   { bg: "rgba(167,139,250,0.85)", glow: "rgba(139,92,246,0.5)" },
@@ -283,7 +307,7 @@ export default function TrySchedulePage({ user, profile, supabase }: Props) {
         {showForm && (
           <FormModal
             key="form"
-            user={user} supabase={supabase}
+            user={user} profile={profile} supabase={supabase}
             editing={editingTry}
             onClose={() => { setShowForm(false); setEditingTry(null); }}
             onSaved={() => { setShowForm(false); setEditingTry(null); fetchAll(); }}
@@ -714,6 +738,26 @@ const DetailModal: React.FC<{
       if (newStatus === "cleared") payload.cleared_date = new Date().toISOString().slice(0, 10);
       const { error } = await supabase.from("try_schedules").update(payload).eq("id", tryItem.id);
       if (error) throw error;
+
+      // 디스코드 알림 (클리어 시에만)
+      if (newStatus === "cleared") {
+        const participantNames = participants
+          .map(p => p.character_name || p.display_name)
+          .filter(Boolean)
+          .join(", ");
+        sendTryDiscord({
+          title: "🏆 트라이 클리어!",
+          description: `**${tryItem.raid_name}**${tryItem.difficulty ? ` (${tryItem.difficulty})` : ""} 클리어를 축하합니다! 🎉`,
+          color: DISCORD_COLOR.cleared,
+          fields: [
+            { name: "🎯 총 관문", value: `${tryItem.total_gates}관문`, inline: true },
+            { name: "👥 인원", value: `${tryItem.party_size}인`, inline: true },
+            ...(participantNames ? [{ name: "🛡️ 참가자", value: participantNames.slice(0, 1000), inline: false }] : []),
+          ],
+          timestamp: new Date().toISOString(),
+        });
+      }
+
       onRefresh();
     } catch (e: any) { alert("상태 변경 실패: " + (e.message || e)); }
     finally { setBusy(false); }
@@ -996,6 +1040,23 @@ const TimelineTab: React.FC<{
         created_by: user.id,
       });
       if (error) throw error;
+
+      // 디스코드 알림
+      sendTryDiscord({
+        title: "📅 트라이 일정 추가",
+        description: `**${tryItem.raid_name}**${tryItem.difficulty ? ` (${tryItem.difficulty})` : ""}`,
+        color: DISCORD_COLOR.session,
+        fields: [
+          {
+            name: "🕐 일정",
+            value: `${date}${time ? ` ${time}` : ""}`,
+            inline: false,
+          },
+          ...(note.trim() ? [{ name: "📝 메모", value: note.trim().slice(0, 500), inline: false }] : []),
+        ],
+        timestamp: new Date().toISOString(),
+      });
+
       setNote(""); setTime("");
       onRefresh();
     } catch (e: any) { alert("일정 추가 실패: " + (e.message || e)); }
@@ -1122,10 +1183,10 @@ const TimelineTab: React.FC<{
 //  FormModal (등록/수정)
 // ============================================================
 const FormModal: React.FC<{
-  user: any; supabase: any;
+  user: any; profile: any; supabase: any;
   editing: TrySchedule | null;
   onClose: () => void; onSaved: () => void;
-}> = ({ user, supabase, editing, onClose, onSaved }) => {
+}> = ({ user, profile, supabase, editing, onClose, onSaved }) => {
   const [raidName, setRaidName] = useState("");
   const [difficulty, setDifficulty] = useState<Difficulty | "">("");
   const [partySize, setPartySize] = useState<number>(8);
@@ -1195,6 +1256,30 @@ const FormModal: React.FC<{
           ...payload, created_by: user.id, status: "active",
         });
         if (error) throw error;
+
+        // 디스코드 알림 (새 트라이 등록 시)
+        const creatorName = profile?.nickname || profile?.character_name || profile?.display_name || "길드원";
+        const fields: any[] = [
+          { name: "⚔️ 레이드", value: `${payload.raid_name}${payload.difficulty ? ` (${payload.difficulty})` : ""}`, inline: true },
+          { name: "👥 인원", value: `${payload.party_size}인 · ${payload.total_gates}관문`, inline: true },
+        ];
+        if (payload.start_date || payload.start_time) {
+          fields.push({
+            name: "📅 시작",
+            value: `${payload.start_date || "날짜 미정"}${payload.start_time ? ` ${String(payload.start_time).slice(0,5)}` : ""}`,
+            inline: false,
+          });
+        }
+        if (payload.description) {
+          fields.push({ name: "📝 메모", value: payload.description.slice(0, 500), inline: false });
+        }
+        sendTryDiscord({
+          title: "⚔️ 새 트라이 시작!",
+          description: `**${creatorName}** 님이 새로운 트라이를 등록했습니다.`,
+          color: DISCORD_COLOR.active,
+          fields,
+          timestamp: new Date().toISOString(),
+        });
       }
       onSaved();
     } catch (e: any) { alert("저장 실패: " + (e.message || e)); }
