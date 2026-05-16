@@ -14,6 +14,7 @@ import {
   Trash2,
   X,
   Clock,
+  Send,           // ← 추가
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -85,10 +86,9 @@ const CARD_STYLE: React.CSSProperties = {
   boxShadow: "0 14px 36px rgba(0,0,0,0.22)",
 };
 
-// 슬롯 애니메이션 타이밍
-const ROLL_TICK_MS = 70;          // 슬롯 회전 속도
-const REVEAL_FIRST_DELAY_MS = 600; // 첫 멤버 확정까지
-const REVEAL_STEP_MS = 220;        // 다음 멤버 확정 간격
+const ROLL_TICK_MS = 70;
+const REVEAL_FIRST_DELAY_MS = 600;
+const REVEAL_STEP_MS = 220;
 
 // ─────────────────────────────────────────────────────────────
 // Stepper
@@ -172,14 +172,12 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [waiting, setWaiting] = useState<Member[]>([]);
 
-  // 슬롯머신 애니메이션
   const [rolling, setRolling] = useState(false);
   const [revealedCount, setRevealedCount] = useState(0);
   const [rollTick, setRollTick] = useState(0);
   const rollTimerRef = useRef<number | null>(null);
   const revealTimersRef = useRef<number[]>([]);
 
-  // 저장 / 히스토리 / 복사
   const [saving, setSaving] = useState(false);
   const [savedThisResult, setSavedThisResult] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -187,6 +185,10 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
   const [showHistory, setShowHistory] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  // ── 디스코드 전송 상태 ─────────────────────── (추가)
+  const [sending, setSending] = useState(false);
+  const [sentToDiscord, setSentToDiscord] = useState(false);
 
   const isLoggedIn = !!user?.id;
 
@@ -217,9 +219,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
       }
     };
     fetchMembers();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [supabase]);
 
   // ── 히스토리 fetch ────────────────────────────
@@ -246,7 +246,6 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
 
-  // ── 언마운트 시 타이머 정리 ──────────────────
   useEffect(() => {
     return () => {
       if (rollTimerRef.current) window.clearInterval(rollTimerRef.current);
@@ -254,7 +253,6 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
     };
   }, []);
 
-  // ── 토스트 자동 사라짐 ───────────────────────
   useEffect(() => {
     if (!toast) return;
     const id = window.setTimeout(() => setToast(null), 2200);
@@ -301,11 +299,10 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
   };
   const clearSelection = () => setSelectedIds(new Set());
 
-  // ── 뽑기 (슬롯머신 연출 포함) ────────────────
+  // ── 뽑기 ────────────────────────────────────
   const doPick = () => {
     if (!canPick) return;
 
-    // 결과 미리 결정
     const shuffled = shuffle(selectedMembers);
     const newTeams: Team[] = [];
     for (let i = 0; i < teamCount; i++) {
@@ -314,7 +311,6 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
     }
     const leftover = shuffled.slice(teamCount * teamSize);
 
-    // 이전 타이머 정리
     if (rollTimerRef.current) window.clearInterval(rollTimerRef.current);
     revealTimersRef.current.forEach((t) => window.clearTimeout(t));
     revealTimersRef.current = [];
@@ -323,14 +319,13 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
     setWaiting(leftover);
     setRevealedCount(0);
     setSavedThisResult(false);
+    setSentToDiscord(false); // ← 다시 뽑으면 전송 상태 초기화
     setRolling(true);
 
-    // 슬롯 회전 시작
     rollTimerRef.current = window.setInterval(() => {
       setRollTick((t) => t + 1);
     }, ROLL_TICK_MS);
 
-    // 슬롯 순차 확정
     const total = newTeams.reduce((s, t) => s + t.length, 0);
     for (let i = 0; i < total; i++) {
       const t = window.setTimeout(() => {
@@ -338,7 +333,6 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
       }, REVEAL_FIRST_DELAY_MS + i * REVEAL_STEP_MS);
       revealTimersRef.current.push(t);
     }
-    // 마지막 슬롯 후 회전 종료
     const finalTimer = window.setTimeout(() => {
       if (rollTimerRef.current) {
         window.clearInterval(rollTimerRef.current);
@@ -359,9 +353,9 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
     setRevealedCount(0);
     setRolling(false);
     setSavedThisResult(false);
+    setSentToDiscord(false); // ← 초기화
   };
 
-  // ── 슬롯 표시 이름 (확정 전엔 무작위) ────────
   const getSlotDisplay = (teamIdx: number, memberIdx: number): string => {
     const member = teams[teamIdx]?.[memberIdx];
     if (!member) return "?";
@@ -386,8 +380,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
     try {
       const payload = {
         created_by: user.id,
-        creator_name:
-          profile?.nickname || profile?.character_name || "익명",
+        creator_name: profile?.nickname || profile?.character_name || "익명",
         teams: teams.map((t) => t.map((m) => getDisplayName(m))),
         waiting: waiting.map((m) => getDisplayName(m)),
         options: { team_size: teamSize, team_count: teamCount },
@@ -406,6 +399,35 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
     }
   };
 
+  // ── 디스코드로 보내기 ────────────────────────── (추가)
+  const sendToDiscord = async () => {
+    if (teams.length === 0 || !allRevealed || sending) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/discord-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teams: teams.map((t) => t.map((m) => getDisplayName(m))),
+          waiting: waiting.map((m) => getDisplayName(m)),
+          options: { team_size: teamSize, team_count: teamCount },
+          creator_name:
+            profile?.nickname || profile?.character_name || "익명",
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      setSentToDiscord(true);
+      setToast("디스코드 채널로 전송했습니다 🎉");
+    } catch (e: any) {
+      setToast(`전송 실패: ${e?.message || "오류"}`);
+    } finally {
+      setSending(false);
+    }
+  };
+
   // ── 디스코드용 텍스트 복사 ───────────────────
   const copyResultText = async () => {
     if (teams.length === 0) return;
@@ -417,9 +439,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
     });
     if (waiting.length > 0) {
       lines.push("");
-      lines.push(
-        `🪑 대기: ${waiting.map((m) => getDisplayName(m)).join(", ")}`
-      );
+      lines.push(`🪑 대기: ${waiting.map((m) => getDisplayName(m)).join(", ")}`);
     }
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
@@ -448,7 +468,6 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
     }
   };
 
-  // 잠금 전 슬롯이 매 틱마다 새 이름으로 보이도록 rollTick 참조용
   const _ = rollTick;
 
   // ─────────────────────────────────────────────────────
@@ -511,20 +530,8 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
         </div>
 
         <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Stepper
-            label="팀당 인원"
-            value={teamSize}
-            setValue={setTeamSize}
-            min={1}
-            max={20}
-          />
-          <Stepper
-            label="팀 개수"
-            value={teamCount}
-            setValue={setTeamCount}
-            min={1}
-            max={20}
-          />
+          <Stepper label="팀당 인원" value={teamSize} setValue={setTeamSize} min={1} max={20} />
+          <Stepper label="팀 개수" value={teamCount} setValue={setTeamCount} min={1} max={20} />
           <div
             className="rounded-2xl p-4"
             style={{
@@ -550,8 +557,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
               <span
                 className="font-bold"
                 style={{
-                  color:
-                    selectedCount >= requiredSlots ? "#6ee7b7" : "#fda4af",
+                  color: selectedCount >= requiredSlots ? "#6ee7b7" : "#fda4af",
                 }}
               >
                 {selectedCount}
@@ -571,9 +577,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                 ? "linear-gradient(135deg, #a78bfa, #7c3aed)"
                 : "rgba(255,255,255,0.05)",
               color: "#fff",
-              boxShadow: canPick
-                ? "0 8px 24px rgba(124,58,237,0.35)"
-                : "none",
+              boxShadow: canPick ? "0 8px 24px rgba(124,58,237,0.35)" : "none",
             }}
           >
             <Shuffle size={16} className={rolling ? "animate-spin" : ""} />
@@ -641,8 +645,9 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center gap-1.5"
+                  className="flex items-center gap-1.5 flex-wrap"
                 >
+                  {/* 복사 버튼 */}
                   <button
                     onClick={copyResultText}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition-all"
@@ -651,6 +656,32 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                     {copied ? <Check size={12} /> : <Copy size={12} />}
                     {copied ? "복사됨" : "복사"}
                   </button>
+
+                  {/* ── 디스코드로 보내기 버튼 (추가) ── */}
+                  <button
+                    onClick={sendToDiscord}
+                    disabled={sending || sentToDiscord}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      background: sentToDiscord
+                        ? "rgba(110,231,183,0.15)"
+                        : "linear-gradient(135deg, rgba(88,101,242,0.25), rgba(88,101,242,0.15))",
+                      border: sentToDiscord
+                        ? "1px solid rgba(110,231,183,0.4)"
+                        : "1px solid rgba(88,101,242,0.5)",
+                      color: sentToDiscord ? "#6ee7b7" : "#fff",
+                    }}
+                    title="팀 결과를 디스코드 채널로 전송"
+                  >
+                    {sentToDiscord ? (
+                      <Check size={12} />
+                    ) : (
+                      <Send size={12} className={sending ? "animate-pulse" : ""} />
+                    )}
+                    {sending ? "전송 중..." : sentToDiscord ? "전송됨" : "디스코드로 보내기"}
+                  </button>
+
+                  {/* 저장 버튼 */}
                   <button
                     onClick={saveResult}
                     disabled={saving || savedThisResult || !isLoggedIn}
@@ -755,9 +786,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                             <div
                               className="text-sm font-medium truncate flex-1"
                               style={{
-                                color: isLocked
-                                  ? "#fff"
-                                  : "rgba(167,139,250,0.6)",
+                                color: isLocked ? "#fff" : "rgba(167,139,250,0.6)",
                                 fontFamily: isLocked ? "inherit" : "monospace",
                               }}
                             >
@@ -839,10 +868,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
           <div className="flex items-center gap-2">
             <Users size={16} style={{ color: "#c4b5fd" }} />
             <h3 className="text-base font-bold text-white">길드원 선택</h3>
-            <span
-              className="text-xs"
-              style={{ color: "rgba(155,159,196,0.55)" }}
-            >
+            <span className="text-xs" style={{ color: "rgba(155,159,196,0.55)" }}>
               ({selectedCount}/{members.length})
             </span>
           </div>
@@ -885,24 +911,15 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
 
         <div className="p-6">
           {loading ? (
-            <div
-              className="text-center py-10 text-sm"
-              style={{ color: "rgba(155,159,196,0.5)" }}
-            >
+            <div className="text-center py-10 text-sm" style={{ color: "rgba(155,159,196,0.5)" }}>
               길드원 목록을 불러오는 중...
             </div>
           ) : error ? (
-            <div
-              className="text-center py-10 text-sm"
-              style={{ color: "#fda4af" }}
-            >
+            <div className="text-center py-10 text-sm" style={{ color: "#fda4af" }}>
               {error}
             </div>
           ) : filteredMembers.length === 0 ? (
-            <div
-              className="text-center py-10 text-sm"
-              style={{ color: "rgba(155,159,196,0.5)" }}
-            >
+            <div className="text-center py-10 text-sm" style={{ color: "rgba(155,159,196,0.5)" }}>
               표시할 길드원이 없습니다.
             </div>
           ) : (
@@ -921,9 +938,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                       border: selected
                         ? "1px solid rgba(167,139,250,0.5)"
                         : "1px solid rgba(255,255,255,0.05)",
-                      boxShadow: selected
-                        ? "0 0 12px rgba(139,92,246,0.18)"
-                        : "none",
+                      boxShadow: selected ? "0 0 12px rgba(139,92,246,0.18)" : "none",
                     }}
                   >
                     <div
@@ -937,17 +952,11 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                           : "1px solid rgba(255,255,255,0.1)",
                       }}
                     >
-                      {selected && (
-                        <Check size={12} color="#fff" strokeWidth={3} />
-                      )}
+                      {selected && <Check size={12} color="#fff" strokeWidth={3} />}
                     </div>
                     <span
                       className="text-sm truncate"
-                      style={{
-                        color: selected
-                          ? "#fff"
-                          : "rgba(226,232,240,0.85)",
-                      }}
+                      style={{ color: selected ? "#fff" : "rgba(226,232,240,0.85)" }}
                     >
                       {getDisplayName(m)}
                     </span>
@@ -967,10 +976,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-40 flex items-center justify-center p-4"
-            style={{
-              background: "rgba(0,0,0,0.7)",
-              backdropFilter: "blur(6px)",
-            }}
+            style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
             onClick={() => setShowHistory(false)}
           >
             <motion.div
@@ -994,9 +1000,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                     >
                       History
                     </div>
-                    <h3 className="text-base font-bold text-white">
-                      지난 뽑기 결과
-                    </h3>
+                    <h3 className="text-base font-bold text-white">지난 뽑기 결과</h3>
                   </div>
                 </div>
                 <button
@@ -1009,17 +1013,11 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {historyLoading ? (
-                  <div
-                    className="text-center py-10 text-sm"
-                    style={{ color: "rgba(155,159,196,0.5)" }}
-                  >
+                  <div className="text-center py-10 text-sm" style={{ color: "rgba(155,159,196,0.5)" }}>
                     불러오는 중...
                   </div>
                 ) : history.length === 0 ? (
-                  <div
-                    className="text-center py-10 text-sm"
-                    style={{ color: "rgba(155,159,196,0.5)" }}
-                  >
+                  <div className="text-center py-10 text-sm" style={{ color: "rgba(155,159,196,0.5)" }}>
                     아직 저장된 결과가 없습니다.
                   </div>
                 ) : (
@@ -1036,10 +1034,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                       >
                         <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span
-                              className="text-xs font-semibold"
-                              style={{ color: "#c4b5fd" }}
-                            >
+                            <span className="text-xs font-semibold" style={{ color: "#c4b5fd" }}>
                               {h.creator_name || "익명"}
                             </span>
                             <span
@@ -1058,8 +1053,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                                   border: "1px solid rgba(167,139,250,0.2)",
                                 }}
                               >
-                                {h.options.team_count}팀 ×{" "}
-                                {h.options.team_size}명
+                                {h.options.team_count}팀 × {h.options.team_size}명
                               </span>
                             )}
                           </div>
@@ -1075,8 +1069,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {h.teams.map((team, ti) => {
-                            const palette =
-                              TEAM_PALETTE[ti % TEAM_PALETTE.length];
+                            const palette = TEAM_PALETTE[ti % TEAM_PALETTE.length];
                             return (
                               <div
                                 key={ti}
@@ -1103,10 +1096,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                           })}
                         </div>
                         {h.waiting && h.waiting.length > 0 && (
-                          <div
-                            className="mt-2 text-[11px]"
-                            style={{ color: "rgba(155,159,196,0.6)" }}
-                          >
+                          <div className="mt-2 text-[11px]" style={{ color: "rgba(155,159,196,0.6)" }}>
                             🪑 대기: {h.waiting.join(", ")}
                           </div>
                         )}
