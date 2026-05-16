@@ -19056,6 +19056,8 @@ const GuildMembersPage = () => {
   // ── 화면 너비에 따라 카드 열 수 강제 결정 (Tailwind 미디어 쿼리 우회) ──
   const [gridCols, setGridCols] = useState(2);
   const [innerWidth, setInnerWidth] = useState(0);
+  const [cardWidth, setCardWidth] = useState(0);
+  const firstCardRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const update = () => {
       const w = window.innerWidth;
@@ -19063,10 +19065,18 @@ const GuildMembersPage = () => {
       if (w >= 1536) setGridCols(4);
       else if (w >= 1024) setGridCols(3);
       else setGridCols(2);
+      // 첫 카드 너비 측정
+      if (firstCardRef.current) {
+        setCardWidth(Math.round(firstCardRef.current.offsetWidth));
+      }
     };
     update();
+    const t = setTimeout(update, 500); // 렌더 직후 다시 측정
     window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", update);
+    };
   }, []);
 
   // ── 인라인 전투정보실 캐시 & 탭 상태 ──────────────────────
@@ -19490,7 +19500,7 @@ const GuildMembersPage = () => {
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-4">
           {/* 🆕 디버그 마커 — 모바일에서만 표시 (배포 확인용) */}
           <div className="sm:hidden text-[10px] text-amber-300/70 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 mb-2">
-            🆕 v5 · {gridCols}열 · viewport {innerWidth}px
+            🆕 v6 · {gridCols}열 · viewport {innerWidth}px · 카드 {cardWidth}px
           </div>
           {/* ◀ 좌측: 캐릭터 카드 (정사각형 헤더) */}
           <div
@@ -19500,7 +19510,7 @@ const GuildMembersPage = () => {
               gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
             }}
           >
-            {filteredMembers.map((member: any) => {
+            {filteredMembers.map((member: any, _cardIdx: number) => {
               const { theme } = getPrimaryBadgeTheme(member);
               const armory     = armoryCache[member.character_name];
               const activeTab  = cardTabs[member.character_name] || "profile";
@@ -19544,6 +19554,7 @@ const GuildMembersPage = () => {
             return (
               <div
                 key={member.id}
+                ref={_cardIdx === 0 ? firstCardRef : null}
                 className="rounded-[2rem] border border-white/10 overflow-hidden relative"
                 style={{ background: "#000", boxShadow: "0 4px 32px rgba(0,0,0,0.6)" }}
               >
