@@ -4568,6 +4568,7 @@ const Hero = ({
   });
   const [monthSchedules, setMonthSchedules] = useState<Record<string, any[]>>({});
   const [selectedCalDate, setSelectedCalDate] = useState<string>(() => getTodayKey());
+  const [calMode, setCalMode] = useState<"month" | "week" | "day">("month");
 
   const todayKey = getTodayKey();
   const noticeCount = useMemo(
@@ -5140,109 +5141,314 @@ const Hero = ({
                 minHeight: 380,
               }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-base font-bold text-white">레이드 캘린더</div>
-                <button
-                  onClick={onOpenRaidCalendar}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all"
-                  style={{
-                    background: "rgba(139,92,246,0.10)",
-                    border: "1px solid rgba(139,92,246,0.20)",
-                    color: "#c4b5fd",
-                  }}
-                >
-                  전체 일정
-                </button>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 my-3">
-                <button onClick={goPrevYear} className="p-1 rounded-md transition-all hover:bg-white/5 flex items-center" style={{ color: "rgba(196,181,253,0.6)" }} title="이전 년도">
-                  <ChevronLeft size={12} />
-                  <ChevronLeft size={12} className="-ml-2" />
-                </button>
-                <button onClick={goPrevMonth} className="p-1 rounded-md transition-all hover:bg-white/5" style={{ color: "rgba(196,181,253,0.7)" }}>
-                  <ChevronLeft size={14} />
-                </button>
-                <div className="text-base font-bold tracking-tight px-2" style={{ color: "#a78bfa" }}>
-                  {calMonth.year}. {String(calMonth.month + 1).padStart(2, "0")}
-                </div>
-                <button onClick={goNextMonth} className="p-1 rounded-md transition-all hover:bg-white/5" style={{ color: "rgba(196,181,253,0.7)" }}>
-                  <ChevronRight size={14} />
-                </button>
-                <button onClick={goNextYear} className="p-1 rounded-md transition-all hover:bg-white/5 flex items-center" style={{ color: "rgba(196,181,253,0.6)" }} title="다음 년도">
-                  <ChevronRight size={12} />
-                  <ChevronRight size={12} className="-ml-2" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-7 mb-1">
-                {["MON","TUE","WED","THU","FRI","SAT","SUN"].map((d, i) => (
-                  <div key={d}
-                    className="text-center text-[10px] font-bold uppercase tracking-[0.16em] py-1.5"
-                    style={{
-                      color: i === 5 ? "rgba(129,140,248,0.55)" : i === 6 ? "rgba(248,113,113,0.55)" : "rgba(155,159,196,0.55)",
-                    }}>
-                    {d}
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-7 gap-y-1">
-                {monthGrid.map((cell) => {
-                  const schedules = monthSchedules[cell.date] || [];
-                  const isToday = cell.date === todayKey;
-                  const isSelected = cell.date === selectedCalDate;
-                  const isSat = cell.weekday === 5;
-                  const isSun = cell.weekday === 6;
-
-                  const dots = schedules.slice(0, 3).map((s: any) => {
-                    if (s.difficulty === "하드") return "#f472b6";
-                    if (s.difficulty === "노말") return "#34d399";
-                    if (s.difficulty === "나이트메어") return "#a855f7";
-                    return "#a78bfa";
-                  });
-
-                  return (
-                    <button
-                      key={cell.date + "-" + cell.day}
-                      onClick={() => setSelectedCalDate(cell.date)}
-                      className="relative flex flex-col items-center justify-center h-9 transition-all"
-                    >
-                      <div
-                        className="flex items-center justify-center rounded-full transition-all w-7 h-7"
+              <div className="flex items-center justify-between mb-3 gap-2">
+                <div className="text-base font-bold text-white shrink-0">레이드 캘린더</div>
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {/* 월/주/일 모드 토글 */}
+                  <div className="flex items-center gap-0.5 p-0.5 rounded-lg"
+                       style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    {(["month", "week", "day"] as const).map(m => (
+                      <button
+                        key={m}
+                        onClick={() => setCalMode(m)}
+                        className="h-6 px-2 text-[10px] font-bold rounded-md transition-all"
                         style={{
-                          background: isSelected
-                            ? "linear-gradient(135deg, #8b5cf6, #6d28d9)"
-                            : "transparent",
-                          color: isSelected
-                            ? "#fff"
-                            : cell.otherMonth
-                            ? "rgba(155,159,196,0.20)"
-                            : isToday
-                            ? "#a78bfa"
-                            : isSat
-                            ? "#818cf8"
-                            : isSun
-                            ? "#f87171"
-                            : "rgba(240,238,255,0.85)",
-                          fontSize: 12,
-                          fontWeight: isToday || isSelected ? 700 : 500,
-                          border: isToday && !isSelected ? "1px solid rgba(167,139,250,0.5)" : "none",
+                          background: calMode === m ? "linear-gradient(135deg, #8b5cf6, #7c3aed)" : "transparent",
+                          color: calMode === m ? "#fff" : "rgba(196,181,253,0.6)",
                         }}
                       >
-                        {cell.day}
-                      </div>
-                      {schedules.length > 0 && !cell.otherMonth && (
-                        <div className="flex items-center gap-0.5 absolute" style={{ bottom: 2 }}>
-                          {dots.map((color, idx) => (
-                            <span key={idx} className="w-1 h-1 rounded-full" style={{ background: color }} />
-                          ))}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+                        {m === "month" ? "월" : m === "week" ? "주" : "일"}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={onOpenRaidCalendar}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all"
+                    style={{
+                      background: "rgba(139,92,246,0.10)",
+                      border: "1px solid rgba(139,92,246,0.20)",
+                      color: "#c4b5fd",
+                    }}
+                  >
+                    전체 일정
+                  </button>
+                </div>
               </div>
+
+              {/* 네비게이션 (모드별로 작동 분기) */}
+              {(() => {
+                // 주별/일별을 위한 헬퍼
+                const shiftDate = (days: number) => {
+                  const d = new Date(selectedCalDate + "T00:00:00");
+                  d.setDate(d.getDate() + days);
+                  const newKey = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+                  setSelectedCalDate(newKey);
+                  // 다른 달이면 calMonth도 업데이트
+                  if (d.getFullYear() !== calMonth.year || d.getMonth() !== calMonth.month) {
+                    setCalMonth({ year: d.getFullYear(), month: d.getMonth() });
+                  }
+                };
+                const handlePrev = () => {
+                  if (calMode === "month") goPrevMonth();
+                  else if (calMode === "week") shiftDate(-7);
+                  else shiftDate(-1);
+                };
+                const handleNext = () => {
+                  if (calMode === "month") goNextMonth();
+                  else if (calMode === "week") shiftDate(7);
+                  else shiftDate(1);
+                };
+                const sel = new Date(selectedCalDate + "T00:00:00");
+                const DAY_KR_MAIN = ["일", "월", "화", "수", "목", "금", "토"];
+                let title = "";
+                if (calMode === "month") {
+                  title = `${calMonth.year}. ${String(calMonth.month + 1).padStart(2, "0")}`;
+                } else if (calMode === "week") {
+                  const start = new Date(sel);
+                  start.setDate(sel.getDate() - sel.getDay());
+                  const end = new Date(start);
+                  end.setDate(start.getDate() + 6);
+                  title = `${start.getMonth()+1}/${start.getDate()} ~ ${end.getMonth()+1}/${end.getDate()}`;
+                } else {
+                  title = `${sel.getMonth()+1}월 ${sel.getDate()}일 (${DAY_KR_MAIN[sel.getDay()]})`;
+                }
+                return (
+                  <div className="flex items-center justify-center gap-2 my-3">
+                    {calMode === "month" && (
+                      <button onClick={goPrevYear} className="p-1 rounded-md transition-all hover:bg-white/5 flex items-center" style={{ color: "rgba(196,181,253,0.6)" }} title="이전 년도">
+                        <ChevronLeft size={12} />
+                        <ChevronLeft size={12} className="-ml-2" />
+                      </button>
+                    )}
+                    <button onClick={handlePrev} className="p-1 rounded-md transition-all hover:bg-white/5" style={{ color: "rgba(196,181,253,0.7)" }}>
+                      <ChevronLeft size={14} />
+                    </button>
+                    <div className="text-sm font-bold tracking-tight px-2" style={{ color: "#a78bfa" }}>
+                      {title}
+                    </div>
+                    <button onClick={handleNext} className="p-1 rounded-md transition-all hover:bg-white/5" style={{ color: "rgba(196,181,253,0.7)" }}>
+                      <ChevronRight size={14} />
+                    </button>
+                    {calMode === "month" && (
+                      <button onClick={goNextYear} className="p-1 rounded-md transition-all hover:bg-white/5 flex items-center" style={{ color: "rgba(196,181,253,0.6)" }} title="다음 년도">
+                        <ChevronRight size={12} />
+                        <ChevronRight size={12} className="-ml-2" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* === 월별 뷰 (기존) === */}
+              {calMode === "month" && (
+                <>
+                  <div className="grid grid-cols-7 mb-1">
+                    {["MON","TUE","WED","THU","FRI","SAT","SUN"].map((d, i) => (
+                      <div key={d}
+                        className="text-center text-[10px] font-bold uppercase tracking-[0.16em] py-1.5"
+                        style={{
+                          color: i === 5 ? "rgba(129,140,248,0.55)" : i === 6 ? "rgba(248,113,113,0.55)" : "rgba(155,159,196,0.55)",
+                        }}>
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-y-1">
+                    {monthGrid.map((cell) => {
+                      const schedules = monthSchedules[cell.date] || [];
+                      const isToday = cell.date === todayKey;
+                      const isSelected = cell.date === selectedCalDate;
+                      const isSat = cell.weekday === 5;
+                      const isSun = cell.weekday === 6;
+
+                      const dots = schedules.slice(0, 3).map((s: any) => {
+                        if (s.difficulty === "하드") return "#f472b6";
+                        if (s.difficulty === "노말") return "#34d399";
+                        if (s.difficulty === "나이트메어") return "#a855f7";
+                        return "#a78bfa";
+                      });
+
+                      return (
+                        <button
+                          key={cell.date + "-" + cell.day}
+                          onClick={() => {
+                            setSelectedCalDate(cell.date);
+                            // 날짜 셀 누르면 자동으로 일별로 전환 (모바일 친화)
+                            if (!cell.otherMonth) setCalMode("day");
+                          }}
+                          className="relative flex flex-col items-center justify-center h-10 transition-all"
+                        >
+                          <div
+                            className="flex items-center justify-center rounded-full transition-all w-8 h-8"
+                            style={{
+                              background: isSelected
+                                ? "linear-gradient(135deg, #8b5cf6, #6d28d9)"
+                                : "transparent",
+                              color: isSelected
+                                ? "#fff"
+                                : cell.otherMonth
+                                ? "rgba(155,159,196,0.20)"
+                                : isToday
+                                ? "#a78bfa"
+                                : isSat
+                                ? "#818cf8"
+                                : isSun
+                                ? "#f87171"
+                                : "rgba(240,238,255,0.85)",
+                              fontSize: 12,
+                              fontWeight: isToday || isSelected ? 700 : 500,
+                              border: isToday && !isSelected ? "1px solid rgba(167,139,250,0.5)" : "none",
+                            }}
+                          >
+                            {cell.day}
+                          </div>
+                          {schedules.length > 0 && !cell.otherMonth && (
+                            <div className="flex items-center gap-0.5 absolute" style={{ bottom: 2 }}>
+                              {dots.map((color, idx) => (
+                                <span key={idx} className="w-1 h-1 rounded-full" style={{ background: color }} />
+                              ))}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-2 text-[10px] text-center" style={{ color: "rgba(155,159,196,0.4)" }}>
+                    💡 날짜를 누르면 그날의 일정을 볼 수 있어요
+                  </div>
+                </>
+              )}
+
+              {/* === 주별 뷰 === */}
+              {calMode === "week" && (() => {
+                const sel = new Date(selectedCalDate + "T00:00:00");
+                const start = new Date(sel);
+                start.setDate(sel.getDate() - sel.getDay());
+                const DAY_KR_M = ["일","월","화","수","목","금","토"];
+                const days: { date: string; day: number; month: number; dow: number }[] = [];
+                for (let i = 0; i < 7; i++) {
+                  const d = new Date(start);
+                  d.setDate(start.getDate() + i);
+                  days.push({
+                    date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`,
+                    day: d.getDate(), month: d.getMonth()+1, dow: d.getDay(),
+                  });
+                }
+                return (
+                  <div className="space-y-1.5">
+                    {days.map(d => {
+                      const ss = monthSchedules[d.date] || [];
+                      const isToday = d.date === todayKey;
+                      return (
+                        <button key={d.date}
+                                onClick={() => { setSelectedCalDate(d.date); setCalMode("day"); }}
+                                className="w-full text-left p-2.5 rounded-xl transition-all hover:scale-[1.01]"
+                                style={{
+                                  background: isToday ? "rgba(139,92,246,0.12)" : "rgba(255,255,255,0.02)",
+                                  border: isToday ? "1px solid rgba(167,139,250,0.45)" : "1px solid rgba(255,255,255,0.05)",
+                                }}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold w-4 text-center"
+                                    style={{ color: d.dow === 0 ? "#fca5a5" : d.dow === 6 ? "#7dd3fc" : "rgba(196,181,253,0.6)" }}>
+                                {DAY_KR_M[d.dow]}
+                              </span>
+                              <span className="text-sm font-bold" style={{ color: isToday ? "#fde68a" : "#fff" }}>
+                                {d.month}/{d.day}
+                              </span>
+                              {isToday && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded" style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}>오늘</span>
+                              )}
+                            </div>
+                            <span className="text-[10px]" style={{ color: ss.length > 0 ? "#a78bfa" : "rgba(155,159,196,0.4)" }}>
+                              {ss.length > 0 ? `${ss.length}건` : "없음"}
+                            </span>
+                          </div>
+                          {ss.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {ss.slice(0, 4).map((s: any) => (
+                                <span key={s.id}
+                                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md truncate max-w-[120px]"
+                                      style={{
+                                        background: s.difficulty === "하드" ? "rgba(244,114,182,0.18)"
+                                                  : s.difficulty === "나이트메어" ? "rgba(168,85,247,0.18)"
+                                                  : "rgba(52,211,153,0.18)",
+                                        color: s.difficulty === "하드" ? "#f9a8d4"
+                                             : s.difficulty === "나이트메어" ? "#c4b5fd"
+                                             : "#6ee7b7",
+                                      }}>
+                                  {s.raid_name}
+                                </span>
+                              ))}
+                              {ss.length > 4 && (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5" style={{ color: "rgba(155,159,196,0.55)" }}>
+                                  +{ss.length - 4}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* === 일별 뷰 === */}
+              {calMode === "day" && (() => {
+                const ss = monthSchedules[selectedCalDate] || [];
+                const isToday = selectedCalDate === todayKey;
+                return (
+                  <div>
+                    {isToday && (
+                      <div className="mb-2 text-center">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}>오늘</span>
+                      </div>
+                    )}
+                    {ss.length === 0 ? (
+                      <div className="text-center py-8 text-sm" style={{ color: "rgba(155,159,196,0.4)" }}>
+                        이날은 일정이 없습니다
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {ss.map((s: any) => {
+                          const diffColor = s.difficulty === "하드" ? "#f472b6"
+                                          : s.difficulty === "나이트메어" ? "#a855f7"
+                                          : s.difficulty === "노말" ? "#34d399" : "#a78bfa";
+                          return (
+                            <button key={s.id}
+                                    onClick={onOpenRaidCalendar}
+                                    className="w-full text-left p-3 rounded-xl transition-all hover:scale-[1.01]"
+                                    style={{
+                                      background: "rgba(255,255,255,0.03)",
+                                      border: `1px solid ${diffColor}44`,
+                                      boxShadow: `0 4px 12px ${diffColor}22`,
+                                    }}>
+                              <div className="flex items-center justify-between gap-2 mb-0.5">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: diffColor }} />
+                                  <span className="text-sm font-bold text-white truncate">{s.raid_name}</span>
+                                </div>
+                                {s.difficulty && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0" style={{ background: `${diffColor}22`, color: diffColor }}>
+                                    {s.difficulty}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] pl-4" style={{ color: "rgba(196,181,253,0.7)" }}>
+                                {s.raid_time && <span>🕐 {String(s.raid_time).slice(0,5)}</span>}
+                                {s.raid_type && <span>· {s.raid_type}</span>}
+                                {s.leader_name && <span>· 👤 {s.leader_name}</span>}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </motion.div>
           </div>
 
