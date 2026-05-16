@@ -19055,9 +19055,11 @@ const GuildMembersPage = () => {
 
   // ── 화면 너비에 따라 카드 열 수 강제 결정 (Tailwind 미디어 쿼리 우회) ──
   const [gridCols, setGridCols] = useState(2);
+  const [innerWidth, setInnerWidth] = useState(0);
   useEffect(() => {
     const update = () => {
       const w = window.innerWidth;
+      setInnerWidth(w);
       if (w >= 1536) setGridCols(4);
       else if (w >= 1024) setGridCols(3);
       else setGridCols(2);
@@ -19488,7 +19490,7 @@ const GuildMembersPage = () => {
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-4">
           {/* 🆕 디버그 마커 — 모바일에서만 표시 (배포 확인용) */}
           <div className="sm:hidden text-[10px] text-amber-300/70 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 mb-2">
-            🆕 v4 모바일 컴팩트 모드 · {gridCols}열 표시
+            🆕 v5 · {gridCols}열 · viewport {innerWidth}px
           </div>
           {/* ◀ 좌측: 캐릭터 카드 (정사각형 헤더) */}
           <div
