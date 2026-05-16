@@ -19473,7 +19473,7 @@ const GuildMembersPage = () => {
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-4">
           {/* ◀ 좌측: 캐릭터 카드 (정사각형 헤더) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
             {filteredMembers.map((member: any) => {
               const { theme } = getPrimaryBadgeTheme(member);
               const armory     = armoryCache[member.character_name];
@@ -19541,37 +19541,37 @@ const GuildMembersPage = () => {
                     )}
 
                     {/* 텍스트 오버레이 */}
-                    <div className="absolute inset-0 z-10 p-3 sm:p-5 flex flex-col justify-between min-w-0">
+                    <div className="absolute inset-0 z-10 p-2.5 sm:p-5 flex flex-col justify-between min-w-0">
                       <div className="min-w-0">
                         {/* 서버 뱃지만 유지 */}
                         {(armoryProfile?.ServerName || member.server_name) && (
-                          <div className="mb-2 sm:mb-3">
-                            <span className="px-2 py-0.5 rounded-md bg-black/50 text-[10px] font-semibold text-white/70 backdrop-blur-sm">
+                          <div className="mb-1.5 sm:mb-3">
+                            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-black/50 text-[9px] sm:text-[10px] font-semibold text-white/70 backdrop-blur-sm">
                               {armoryProfile?.ServerName || member.server_name}
                             </span>
                           </div>
                         )}
 
                         {/* 캐릭터명 + 직업 + 칭호 */}
-                        <div className="text-lg sm:text-2xl font-bold drop-shadow-lg truncate">{member.character_name}</div>
-                        <div className="text-[10px] sm:text-xs text-white/60 mt-0.5 truncate">
+                        <div className="text-sm sm:text-2xl font-bold drop-shadow-lg truncate leading-tight">{member.character_name}</div>
+                        <div className="text-[9px] sm:text-xs text-white/60 mt-0.5 truncate">
                           {armoryProfile?.CharacterClassName || member.class_name}
                           {armoryProfile?.Title && <span className="ml-1.5 text-amber-300/80">· {armoryProfile.Title}</span>}
                         </div>
                       </div>
 
                       {/* 하단: 아이템 레벨 + 전투/원정대 + Owner + 생일MBTI */}
-                      <div className="mt-2 sm:mt-4 min-w-0">
+                      <div className="mt-1.5 sm:mt-4 min-w-0">
                         {/* 아이템 레벨 */}
-                        <div className="flex items-baseline gap-1.5 mb-1">
-                          <span className="text-[10px] text-white/40 uppercase tracking-widest">아이템</span>
-                          <span className="text-base sm:text-xl font-bold text-amber-300 drop-shadow-lg">
+                        <div className="flex items-baseline gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
+                          <span className="text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest">아이템</span>
+                          <span className="text-sm sm:text-xl font-bold text-amber-300 drop-shadow-lg">
                             {armoryProfile?.ItemAvgLevel || member.item_level}
                           </span>
                         </div>
 
                         {/* 전투/원정대 레벨 */}
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] sm:text-[11px] text-white/50 mb-2 sm:mb-3">
+                        <div className="flex flex-wrap gap-x-2 sm:gap-x-3 gap-y-0.5 text-[9px] sm:text-[11px] text-white/50 mb-1.5 sm:mb-3">
                           {armoryProfile ? (
                             <>
                               <span>전투 <b className="text-white/80">{armoryProfile.CharacterLevel}</b></span>
@@ -19585,15 +19585,15 @@ const GuildMembersPage = () => {
                           )}
                         </div>
 
-                        {/* 생일 / MBTI / Owner */}
+                        {/* 생일 / MBTI / Owner (모바일에서는 Owner만 표시 - 공간 절약) */}
                         <div className="flex items-end justify-between gap-2 min-w-0">
-                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] sm:text-[11px] text-white/50 min-w-0">
+                          <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/50 min-w-0">
                             {member.birthday && <span className="truncate">생일 <b className="text-white/80">{formatShortDate(member.birthday)}</b></span>}
                             {member.mbti && <span>MBTI <b className="text-white/80">{member.mbti}</b></span>}
                           </div>
-                          <div className="text-right shrink-0 min-w-0">
-                            <div className="text-[9px] text-white/25 uppercase tracking-widest">Owner</div>
-                            <div className="text-[11px] sm:text-xs font-bold drop-shadow truncate" style={getNicknameEffectStyle({
+                          <div className="text-right shrink-0 min-w-0 ml-auto">
+                            <div className="text-[8px] sm:text-[9px] text-white/25 uppercase tracking-widest">Owner</div>
+                            <div className="text-[10px] sm:text-xs font-bold drop-shadow truncate" style={getNicknameEffectStyle({
                               active_nickname_effect: member.owner_active_nickname_effect,
                               nickname_gradient_from: member.owner_nickname_gradient_from,
                               nickname_gradient_to:   member.owner_nickname_gradient_to,
