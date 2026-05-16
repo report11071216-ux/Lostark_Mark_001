@@ -17704,6 +17704,26 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
                   </button>
                   <button
                     onClick={async () => {
+                      // 🔍 디버그: 버튼 클릭 시점 상태 확인
+                      const dbg = {
+                        hasEditingCharacter: !!editingCharacter,
+                        characterId: editingCharacter?.id,
+                        hasNewImageFile: !!editingCharacter?.draft?.new_image_file,
+                        newFileName: editingCharacter?.draft?.new_image_file?.name || null,
+                        newFileSize: editingCharacter?.draft?.new_image_file?.size || null,
+                        currentAvatarUrlEnd: (editingCharacter?.avatar_url || "").slice(-30),
+                        draftAvatarUrlEnd: (editingCharacter?.draft?.avatar_url || "").slice(-30),
+                        draftPreviewUrlEnd: (editingCharacter?.draft?.image_preview_url || "").slice(-30),
+                      };
+                      console.log("[수정저장 버튼] ▶ 클릭됨:\n" + JSON.stringify(dbg, null, 2));
+                      alert("저장 버튼 클릭됨\n\n" +
+                        `새 파일 있음: ${dbg.hasNewImageFile}\n` +
+                        `파일명: ${dbg.newFileName}\n` +
+                        `파일크기: ${dbg.newFileSize}\n` +
+                        `현재 avatar: ${dbg.currentAvatarUrlEnd}\n` +
+                        `draft avatar: ${dbg.draftAvatarUrlEnd}\n` +
+                        `미리보기 URL: ${dbg.draftPreviewUrlEnd}`
+                      );
                       await saveCharacterEdit(editingCharacter);
                       setEditingCharacterId(null);
                     }}
