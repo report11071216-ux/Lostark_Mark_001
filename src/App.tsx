@@ -39,6 +39,7 @@ import { GuildHistory } from "./GuildHistory";
 import AchievementsPage from "./AchievementsPage";
 import AchievementsAdmin from "./AchievementsAdmin";
 import TrySchedulePage from "./TrySchedule";
+import EventsPage from "./EventsPage";
 
 // ── Theme System ───────────────────────────────────────────
 type Theme = "dark" | "light";
@@ -2827,6 +2828,17 @@ const fetchInitialData = async () => {
                 exit={{ opacity: 0 }}
               >
                 <AchievementsPage user={user} profile={profile} supabase={supabase} />
+              </motion.div>
+            )}
+
+            {activeTab === "events" && (
+              <motion.div
+                key="events"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <EventsPage user={user} profile={profile} supabase={supabase} />
               </motion.div>
             )}
 
@@ -8189,6 +8201,12 @@ const Sidebar = ({ activeTab, setActiveTab, user, profile, onLogout, onShowSelec
         { id: "try_schedule", icon: "⚔️", label: "트라이 일정" },
         { id: "guild_history", icon: "🏛️", label: "길드 히스토리" },
         { id: "ranking", icon: "🥇", label: "업적" },
+      ],
+    },
+    {
+      label: "이벤트",
+      items: [
+        { id: "events", icon: "🎲", label: "길드 이벤트" },
       ],
     },
     ...(user ? [{
