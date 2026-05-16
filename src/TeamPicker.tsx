@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Shuffle,
@@ -8,6 +8,12 @@ import {
   Check,
   Sparkles,
   AlertCircle,
+  Save,
+  History,
+  Copy,
+  Trash2,
+  X,
+  Clock,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -21,6 +27,16 @@ type Member = {
 
 type Team = Member[];
 
+type SavedResult = {
+  id: string;
+  created_by: string | null;
+  creator_name: string | null;
+  teams: string[][];
+  waiting: string[];
+  options: { team_size?: number; team_count?: number };
+  created_at: string;
+};
+
 type Props = {
   user?: any;
   profile?: any;
@@ -30,7 +46,6 @@ type Props = {
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
-// Fisher–Yates shuffle — returns a new array, leaves input intact
 const shuffle = <T,>(arr: T[]): T[] => {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -43,7 +58,17 @@ const shuffle = <T,>(arr: T[]): T[] => {
 const getDisplayName = (m: Member) =>
   (m.nickname && m.nickname.trim()) || "이름없음";
 
-// 팀 카드 컬러 팔레트 (퍼플/핑크/옐로우 등 순환)
+const formatRelativeTime = (iso: string): string => {
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const diff = Math.floor((now - then) / 1000);
+  if (diff < 60) return "방금 전";
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}일 전`;
+  return new Date(iso).toLocaleDateString("ko-KR");
+};
+
 const TEAM_PALETTE = [
   { from: "#a78bfa", to: "#7c3aed", glow: "rgba(139,92,246,0.35)" },
   { from: "#f9a8d4", to: "#db2777", glow: "rgba(219,39,119,0.30)" },
@@ -53,7 +78,6 @@ const TEAM_PALETTE = [
   { from: "#fda4af", to: "#e11d48", glow: "rgba(225,29,72,0.30)" },
 ];
 
-// 공통 카드 스타일 (앱 전반 디자인 토큰과 일치)
 const CARD_STYLE: React.CSSProperties = {
   background:
     "linear-gradient(160deg, rgba(28,23,51,0.85) 0%, rgba(15,13,32,0.95) 100%)",
@@ -61,8 +85,13 @@ const CARD_STYLE: React.CSSProperties = {
   boxShadow: "0 14px 36px rgba(0,0,0,0.22)",
 };
 
+// 슬롯 애니메이션 타이밍
+const ROLL_TICK_MS = 70;          // 슬롯 회전 속도
+const REVEAL_FIRST_DELAY_MS = 600; // 첫 멤버 확정까지
+const REVEAL_STEP_MS = 220;        // 다음 멤버 확정 간격
+
 // ─────────────────────────────────────────────────────────────
-// Stepper sub-component (팀당 인원, 팀 개수 조절)
+// Stepper
 // ─────────────────────────────────────────────────────────────
 const Stepper = ({
   label,
@@ -100,7 +129,6 @@ const Stepper = ({
             background: "rgba(255,255,255,0.05)",
             border: "1px solid rgba(255,255,255,0.08)",
           }}
-          aria-label={`${label} 감소`}
         >
           −
         </button>
@@ -119,7 +147,6 @@ const Stepper = ({
             background: "rgba(255,255,255,0.05)",
             border: "1px solid rgba(255,255,255,0.08)",
           }}
-          aria-label={`${label} 증가`}
         >
           +
         </button>
@@ -144,9 +171,26 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [waiting, setWaiting] = useState<Member[]>([]);
-  const [picking, setPicking] = useState(false);
 
-  // ── 길드원 목록 가져오기 ─────────────────────────────
+  // 슬롯머신 애니메이션
+  const [rolling, setRolling] = useState(false);
+  const [revealedCount, setRevealedCount] = useState(0);
+  const [rollTick, setRollTick] = useState(0);
+  const rollTimerRef = useRef<number | null>(null);
+  const revealTimersRef = useRef<number[]>([]);
+
+  // 저장 / 히스토리 / 복사
+  const [saving, setSaving] = useState(false);
+  const [savedThisResult, setSavedThisResult] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [history, setHistory] = useState<SavedResult[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const isLoggedIn = !!user?.id;
+
+  // ── 길드원 fetch ──────────────────────────────
   useEffect(() => {
     let cancelled = false;
     const fetchMembers = async () => {
@@ -178,7 +222,46 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
     };
   }, [supabase]);
 
-  // ── 파생 상태 ───────────────────────────────────────
+  // ── 히스토리 fetch ────────────────────────────
+  const fetchHistory = async () => {
+    if (!supabase) return;
+    setHistoryLoading(true);
+    try {
+      const { data, error: err } = await supabase
+        .from("team_picker_results")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (err) throw err;
+      setHistory((data as SavedResult[]) || []);
+    } catch (e: any) {
+      console.error("history fetch failed:", e);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase]);
+
+  // ── 언마운트 시 타이머 정리 ──────────────────
+  useEffect(() => {
+    return () => {
+      if (rollTimerRef.current) window.clearInterval(rollTimerRef.current);
+      revealTimersRef.current.forEach((t) => window.clearTimeout(t));
+    };
+  }, []);
+
+  // ── 토스트 자동 사라짐 ───────────────────────
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 2200);
+    return () => window.clearTimeout(id);
+  }, [toast]);
+
+  // ── 파생 상태 ────────────────────────────────
   const filteredMembers = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return members;
@@ -194,9 +277,13 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
 
   const requiredSlots = teamSize * teamCount;
   const selectedCount = selectedIds.size;
-  const canPick = selectedCount >= requiredSlots && requiredSlots > 0;
+  const canPick =
+    selectedCount >= requiredSlots && requiredSlots > 0 && !rolling;
 
-  // ── 선택 핸들러 ─────────────────────────────────────
+  const totalSlots = teams.reduce((s, t) => s + t.length, 0);
+  const allRevealed = totalSlots > 0 && revealedCount >= totalSlots;
+
+  // ── 선택 핸들러 ──────────────────────────────
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -205,7 +292,6 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
       return next;
     });
   };
-
   const selectAllFiltered = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -213,44 +299,186 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
       return next;
     });
   };
-
   const clearSelection = () => setSelectedIds(new Set());
 
-  // ── 뽑기 실행 ───────────────────────────────────────
+  // ── 뽑기 (슬롯머신 연출 포함) ────────────────
   const doPick = () => {
     if (!canPick) return;
-    setPicking(true);
-    setTeams([]);
-    setWaiting([]);
-    // 짧은 딜레이로 exit 애니메이션 → 재진입 느낌 살리기
-    window.setTimeout(() => {
-      const shuffled = shuffle(selectedMembers);
-      const newTeams: Team[] = [];
-      for (let i = 0; i < teamCount; i++) {
-        const start = i * teamSize;
-        newTeams.push(shuffled.slice(start, start + teamSize));
+
+    // 결과 미리 결정
+    const shuffled = shuffle(selectedMembers);
+    const newTeams: Team[] = [];
+    for (let i = 0; i < teamCount; i++) {
+      const start = i * teamSize;
+      newTeams.push(shuffled.slice(start, start + teamSize));
+    }
+    const leftover = shuffled.slice(teamCount * teamSize);
+
+    // 이전 타이머 정리
+    if (rollTimerRef.current) window.clearInterval(rollTimerRef.current);
+    revealTimersRef.current.forEach((t) => window.clearTimeout(t));
+    revealTimersRef.current = [];
+
+    setTeams(newTeams);
+    setWaiting(leftover);
+    setRevealedCount(0);
+    setSavedThisResult(false);
+    setRolling(true);
+
+    // 슬롯 회전 시작
+    rollTimerRef.current = window.setInterval(() => {
+      setRollTick((t) => t + 1);
+    }, ROLL_TICK_MS);
+
+    // 슬롯 순차 확정
+    const total = newTeams.reduce((s, t) => s + t.length, 0);
+    for (let i = 0; i < total; i++) {
+      const t = window.setTimeout(() => {
+        setRevealedCount((c) => c + 1);
+      }, REVEAL_FIRST_DELAY_MS + i * REVEAL_STEP_MS);
+      revealTimersRef.current.push(t);
+    }
+    // 마지막 슬롯 후 회전 종료
+    const finalTimer = window.setTimeout(() => {
+      if (rollTimerRef.current) {
+        window.clearInterval(rollTimerRef.current);
+        rollTimerRef.current = null;
       }
-      const leftover = shuffled.slice(teamCount * teamSize);
-      setTeams(newTeams);
-      setWaiting(leftover);
-      setPicking(false);
-    }, 180);
+      setRolling(false);
+    }, REVEAL_FIRST_DELAY_MS + total * REVEAL_STEP_MS + 100);
+    revealTimersRef.current.push(finalTimer);
   };
 
   const reset = () => {
+    if (rollTimerRef.current) window.clearInterval(rollTimerRef.current);
+    revealTimersRef.current.forEach((t) => window.clearTimeout(t));
+    revealTimersRef.current = [];
+    rollTimerRef.current = null;
     setTeams([]);
     setWaiting([]);
+    setRevealedCount(0);
+    setRolling(false);
+    setSavedThisResult(false);
   };
+
+  // ── 슬롯 표시 이름 (확정 전엔 무작위) ────────
+  const getSlotDisplay = (teamIdx: number, memberIdx: number): string => {
+    const member = teams[teamIdx]?.[memberIdx];
+    if (!member) return "?";
+    let globalIdx = memberIdx;
+    for (let i = 0; i < teamIdx; i++) globalIdx += teams[i].length;
+    const isLocked = globalIdx < revealedCount;
+    if (isLocked) return getDisplayName(member);
+    const pool = selectedMembers.length > 0 ? selectedMembers : members;
+    if (pool.length === 0) return "?";
+    const r = Math.floor(Math.random() * pool.length);
+    return getDisplayName(pool[r]) || "?";
+  };
+
+  // ── 결과 저장 ────────────────────────────────
+  const saveResult = async () => {
+    if (!supabase || !isLoggedIn) {
+      setToast("로그인이 필요합니다");
+      return;
+    }
+    if (teams.length === 0 || !allRevealed) return;
+    setSaving(true);
+    try {
+      const payload = {
+        created_by: user.id,
+        creator_name:
+          profile?.nickname || profile?.character_name || "익명",
+        teams: teams.map((t) => t.map((m) => getDisplayName(m))),
+        waiting: waiting.map((m) => getDisplayName(m)),
+        options: { team_size: teamSize, team_count: teamCount },
+      };
+      const { error: err } = await supabase
+        .from("team_picker_results")
+        .insert(payload);
+      if (err) throw err;
+      setSavedThisResult(true);
+      setToast("결과를 저장했습니다");
+      fetchHistory();
+    } catch (e: any) {
+      setToast(`저장 실패: ${e?.message || "오류"}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── 디스코드용 텍스트 복사 ───────────────────
+  const copyResultText = async () => {
+    if (teams.length === 0) return;
+    const lines: string[] = ["🎲 **팀원 뽑기 결과**", ""];
+    teams.forEach((team, i) => {
+      lines.push(
+        `**팀 ${i + 1}** — ${team.map((m) => getDisplayName(m)).join(", ")}`
+      );
+    });
+    if (waiting.length > 0) {
+      lines.push("");
+      lines.push(
+        `🪑 대기: ${waiting.map((m) => getDisplayName(m)).join(", ")}`
+      );
+    }
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setCopied(true);
+      setToast("디스코드용 텍스트를 복사했습니다");
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setToast("복사 실패 - 브라우저 권한을 확인해주세요");
+    }
+  };
+
+  // ── 히스토리 항목 삭제 ───────────────────────
+  const deleteHistory = async (id: string) => {
+    if (!supabase) return;
+    if (!window.confirm("이 결과를 삭제할까요?")) return;
+    try {
+      const { error: err } = await supabase
+        .from("team_picker_results")
+        .delete()
+        .eq("id", id);
+      if (err) throw err;
+      setHistory((prev) => prev.filter((h) => h.id !== id));
+      setToast("삭제됨");
+    } catch (e: any) {
+      setToast(`삭제 실패: ${e?.message || "오류"}`);
+    }
+  };
+
+  // 잠금 전 슬롯이 매 틱마다 새 이름으로 보이도록 rollTick 참조용
+  const _ = rollTick;
 
   // ─────────────────────────────────────────────────────
   // Render
   // ─────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
-      {/* ── 헤더 + 설정 카드 ───────────────────────── */}
+    <div className="space-y-6 relative">
+      {/* 토스트 */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-sm font-medium text-white"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(124,58,237,0.95), rgba(167,139,250,0.85))",
+              boxShadow: "0 12px 32px rgba(124,58,237,0.4)",
+            }}
+          >
+            {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── 헤더 + 설정 ───────────────────────────── */}
       <div className="rounded-[2rem] overflow-hidden" style={CARD_STYLE}>
         <div
-          className="px-6 py-5 flex items-center justify-between"
+          className="px-6 py-5 flex items-center justify-between gap-3 flex-wrap"
           style={{ borderBottom: "1px solid rgba(139,92,246,0.10)" }}
         >
           <div>
@@ -270,10 +498,18 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
               길드원을 선택하고 팀 인원 / 팀 개수를 정한 뒤 뽑기를 누르세요.
             </p>
           </div>
-          <Sparkles size={24} style={{ color: "#a78bfa" }} />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHistory(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition-all"
+            >
+              <History size={14} />
+              히스토리
+            </button>
+            <Sparkles size={24} style={{ color: "#a78bfa" }} />
+          </div>
         </div>
 
-        {/* 설정 */}
         <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Stepper
             label="팀당 인원"
@@ -325,11 +561,10 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
           </div>
         </div>
 
-        {/* 액션 바 */}
         <div className="px-6 pb-6 flex flex-wrap items-center gap-2">
           <button
             onClick={doPick}
-            disabled={!canPick || picking}
+            disabled={!canPick}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               background: canPick
@@ -341,11 +576,11 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                 : "none",
             }}
           >
-            <Shuffle size={16} />
-            뽑기
+            <Shuffle size={16} className={rolling ? "animate-spin" : ""} />
+            {rolling ? "뽑는 중..." : "뽑기"}
           </button>
 
-          {teams.length > 0 && (
+          {teams.length > 0 && !rolling && (
             <>
               <button
                 onClick={doPick}
@@ -363,7 +598,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
             </>
           )}
 
-          {!canPick && selectedCount > 0 && (
+          {!canPick && selectedCount > 0 && !rolling && (
             <div
               className="flex items-center gap-1.5 text-xs"
               style={{ color: "#fda4af" }}
@@ -375,7 +610,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
         </div>
       </div>
 
-      {/* ── 결과 카드 ─────────────────────────────── */}
+      {/* ── 결과 카드 (슬롯머신) ──────────────────── */}
       <AnimatePresence mode="wait">
         {teams.length > 0 && (
           <motion.div
@@ -387,18 +622,55 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
             style={CARD_STYLE}
           >
             <div
-              className="px-6 py-4"
+              className="px-6 py-4 flex items-center justify-between gap-3 flex-wrap"
               style={{ borderBottom: "1px solid rgba(139,92,246,0.10)" }}
             >
-              <div
-                className="text-[10px] font-semibold uppercase tracking-[0.26em]"
-                style={{ color: "#c4b5fd" }}
-              >
-                Result
+              <div>
+                <div
+                  className="text-[10px] font-semibold uppercase tracking-[0.26em]"
+                  style={{ color: "#c4b5fd" }}
+                >
+                  {rolling ? "Rolling..." : "Result"}
+                </div>
+                <h3 className="text-base font-bold text-white mt-0.5">
+                  {rolling ? "뽑는 중" : "뽑기 결과"}
+                </h3>
               </div>
-              <h3 className="text-base font-bold text-white mt-0.5">
-                뽑기 결과
-              </h3>
+
+              {allRevealed && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-1.5"
+                >
+                  <button
+                    onClick={copyResultText}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-white/10 bg-white/[0.03] text-slate-200 hover:bg-white/[0.06] transition-all"
+                    title="디스코드에 붙여넣기용 텍스트로 복사"
+                  >
+                    {copied ? <Check size={12} /> : <Copy size={12} />}
+                    {copied ? "복사됨" : "복사"}
+                  </button>
+                  <button
+                    onClick={saveResult}
+                    disabled={saving || savedThisResult || !isLoggedIn}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      background: savedThisResult
+                        ? "rgba(110,231,183,0.15)"
+                        : "linear-gradient(135deg, rgba(167,139,250,0.2), rgba(124,58,237,0.15))",
+                      border: savedThisResult
+                        ? "1px solid rgba(110,231,183,0.4)"
+                        : "1px solid rgba(167,139,250,0.4)",
+                      color: savedThisResult ? "#6ee7b7" : "#fff",
+                    }}
+                    title={isLoggedIn ? "히스토리에 저장" : "로그인 필요"}
+                  >
+                    {savedThisResult ? <Check size={12} /> : <Save size={12} />}
+                    {saving ? "저장 중" : savedThisResult ? "저장됨" : "저장"}
+                  </button>
+                </motion.div>
+              )}
             </div>
 
             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -435,44 +707,95 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                       </div>
                     </div>
                     <div className="space-y-1.5">
-                      {team.map((m, mi) => (
-                        <motion.div
-                          key={m.id}
-                          initial={{ opacity: 0, x: -8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{
-                            duration: 0.25,
-                            delay: idx * 0.08 + mi * 0.05 + 0.15,
-                          }}
-                          className="flex items-center gap-2 px-3 py-2 rounded-xl"
-                          style={{
-                            background: "rgba(255,255,255,0.03)",
-                            border: "1px solid rgba(255,255,255,0.04)",
-                          }}
-                        >
-                          <div
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                      {team.map((_member, mi) => {
+                        let globalIdx = mi;
+                        for (let i = 0; i < idx; i++)
+                          globalIdx += teams[i].length;
+                        const isLocked = globalIdx < revealedCount;
+                        const display = getSlotDisplay(idx, mi);
+                        const justLocked =
+                          isLocked && globalIdx === revealedCount - 1;
+                        return (
+                          <motion.div
+                            key={mi}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{
+                              opacity: 1,
+                              x: 0,
+                              scale: justLocked ? [1, 1.06, 1] : 1,
+                            }}
+                            transition={{
+                              duration: 0.25,
+                              delay: idx * 0.08 + mi * 0.05 + 0.15,
+                              scale: { duration: 0.4 },
+                            }}
+                            className="flex items-center gap-2 px-3 py-2 rounded-xl"
                             style={{
-                              background: `linear-gradient(135deg, ${palette.from}, ${palette.to})`,
-                              color: "#fff",
+                              background: isLocked
+                                ? "rgba(255,255,255,0.05)"
+                                : "rgba(255,255,255,0.02)",
+                              border: isLocked
+                                ? "1px solid rgba(167,139,250,0.25)"
+                                : "1px dashed rgba(255,255,255,0.08)",
+                              transition: "all 0.2s",
                             }}
                           >
-                            {mi + 1}
-                          </div>
-                          <div className="text-sm text-white font-medium truncate">
-                            {getDisplayName(m)}
-                          </div>
-                        </motion.div>
-                      ))}
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                              style={{
+                                background: isLocked
+                                  ? `linear-gradient(135deg, ${palette.from}, ${palette.to})`
+                                  : "rgba(255,255,255,0.08)",
+                                color: "#fff",
+                                opacity: isLocked ? 1 : 0.5,
+                              }}
+                            >
+                              {mi + 1}
+                            </div>
+                            <div
+                              className="text-sm font-medium truncate flex-1"
+                              style={{
+                                color: isLocked
+                                  ? "#fff"
+                                  : "rgba(167,139,250,0.6)",
+                                fontFamily: isLocked ? "inherit" : "monospace",
+                              }}
+                            >
+                              {display}
+                            </div>
+                            {!isLocked && rolling && (
+                              <span
+                                className="text-[9px] uppercase tracking-wider shrink-0"
+                                style={{ color: "rgba(167,139,250,0.5)" }}
+                              >
+                                rolling
+                              </span>
+                            )}
+                            {justLocked && (
+                              <motion.span
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="text-xs shrink-0"
+                              >
+                                ✨
+                              </motion.span>
+                            )}
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   </motion.div>
                 );
               })}
             </div>
 
-            {/* 대기 명단 */}
-            {waiting.length > 0 && (
-              <div className="px-6 pb-6">
+            {waiting.length > 0 && allRevealed && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="px-6 pb-6"
+              >
                 <div
                   className="rounded-2xl p-4"
                   style={{
@@ -501,7 +824,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
                     ))}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
           </motion.div>
         )}
@@ -539,7 +862,6 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
           </div>
         </div>
 
-        {/* 검색 */}
         <div className="px-6 pt-4">
           <div className="relative">
             <Search
@@ -561,7 +883,6 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
           </div>
         </div>
 
-        {/* 멤버 그리드 */}
         <div className="p-6">
           {loading ? (
             <div
@@ -637,6 +958,167 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
           )}
         </div>
       </div>
+
+      {/* ── 히스토리 모달 ───────────────────────────── */}
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 flex items-center justify-center p-4"
+            style={{
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(6px)",
+            }}
+            onClick={() => setShowHistory(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl max-h-[80vh] rounded-[2rem] overflow-hidden flex flex-col"
+              style={CARD_STYLE}
+            >
+              <div
+                className="px-6 py-4 flex items-center justify-between"
+                style={{ borderBottom: "1px solid rgba(139,92,246,0.10)" }}
+              >
+                <div className="flex items-center gap-2">
+                  <History size={16} style={{ color: "#c4b5fd" }} />
+                  <div>
+                    <div
+                      className="text-[10px] font-semibold uppercase tracking-[0.26em]"
+                      style={{ color: "#c4b5fd" }}
+                    >
+                      History
+                    </div>
+                    <h3 className="text-base font-bold text-white">
+                      지난 뽑기 결과
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowHistory(false)}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {historyLoading ? (
+                  <div
+                    className="text-center py-10 text-sm"
+                    style={{ color: "rgba(155,159,196,0.5)" }}
+                  >
+                    불러오는 중...
+                  </div>
+                ) : history.length === 0 ? (
+                  <div
+                    className="text-center py-10 text-sm"
+                    style={{ color: "rgba(155,159,196,0.5)" }}
+                  >
+                    아직 저장된 결과가 없습니다.
+                  </div>
+                ) : (
+                  history.map((h) => {
+                    const isOwn = h.created_by === user?.id;
+                    return (
+                      <div
+                        key={h.id}
+                        className="rounded-2xl p-4"
+                        style={{
+                          background: "rgba(255,255,255,0.025)",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                        }}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className="text-xs font-semibold"
+                              style={{ color: "#c4b5fd" }}
+                            >
+                              {h.creator_name || "익명"}
+                            </span>
+                            <span
+                              className="flex items-center gap-1 text-[11px]"
+                              style={{ color: "rgba(155,159,196,0.55)" }}
+                            >
+                              <Clock size={10} />
+                              {formatRelativeTime(h.created_at)}
+                            </span>
+                            {h.options?.team_size && h.options?.team_count && (
+                              <span
+                                className="text-[10px] px-2 py-0.5 rounded-md"
+                                style={{
+                                  background: "rgba(167,139,250,0.1)",
+                                  color: "#a78bfa",
+                                  border: "1px solid rgba(167,139,250,0.2)",
+                                }}
+                              >
+                                {h.options.team_count}팀 ×{" "}
+                                {h.options.team_size}명
+                              </span>
+                            )}
+                          </div>
+                          {isOwn && (
+                            <button
+                              onClick={() => deleteHistory(h.id)}
+                              className="h-7 w-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all"
+                              title="삭제"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {h.teams.map((team, ti) => {
+                            const palette =
+                              TEAM_PALETTE[ti % TEAM_PALETTE.length];
+                            return (
+                              <div
+                                key={ti}
+                                className="rounded-xl p-2.5"
+                                style={{
+                                  background: "rgba(255,255,255,0.02)",
+                                  border: "1px solid rgba(255,255,255,0.04)",
+                                }}
+                              >
+                                <div
+                                  className="text-[10px] font-bold uppercase tracking-wider mb-1.5 inline-block px-1.5 py-0.5 rounded"
+                                  style={{
+                                    background: `linear-gradient(135deg, ${palette.from}, ${palette.to})`,
+                                    color: "#fff",
+                                  }}
+                                >
+                                  Team {ti + 1}
+                                </div>
+                                <div className="text-xs text-slate-200 leading-relaxed">
+                                  {team.join(", ")}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {h.waiting && h.waiting.length > 0 && (
+                          <div
+                            className="mt-2 text-[11px]"
+                            style={{ color: "rgba(155,159,196,0.6)" }}
+                          >
+                            🪑 대기: {h.waiting.join(", ")}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
