@@ -19364,7 +19364,10 @@ const GuildMembersPage = () => {
   }, [members]);
 
   return (
-    <div className="w-full px-3 lg:pl-0 lg:pr-4 py-3 sm:py-4">
+    <div
+      className="w-full px-3 lg:pl-0 lg:pr-4 py-3 sm:py-4"
+      style={{ maxWidth: "100vw", overflowX: "hidden" }}
+    >
       {/* ── 컴팩트 헤더 ── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
         <div>
