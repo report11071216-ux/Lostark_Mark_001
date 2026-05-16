@@ -17175,8 +17175,31 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
     };
 
     const client = getSupabaseOrThrow();
-    const { error } = await client.from("guild_members").update(payload).eq("id", character.id);
+    const { data: updated, error } = await client
+      .from("guild_members")
+      .update(payload)
+      .eq("id", character.id)
+      .select();
+
+    // 진단 로그 (F12 콘솔에서 확인용)
+    console.log("[saveCharacterEdit] update result:", {
+      updatedRows: updated?.length || 0,
+      error,
+      characterId: character.id,
+      userId: user.id,
+      avatarUrl,
+    });
+
     if (error) return showToast(error.message, "error");
+
+    // 0행 업데이트 = RLS가 막은 것 (에러는 안 던지지만 실제로는 차단됨)
+    if (!updated || updated.length === 0) {
+      showToast(
+        "저장 실패: guild_members 테이블 UPDATE 권한 없음 (RLS 정책 확인 필요)",
+        "error"
+      );
+      return;
+    }
 
     showToast("캐릭터 수정 완료", "success");
     fetchCharacters();
