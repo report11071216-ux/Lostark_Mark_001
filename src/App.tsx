@@ -19524,7 +19524,7 @@ const GuildMembersPage = () => {
                 <div className="relative z-10">
 
                   {/* ══ 상단 헤더: 캐릭터 이미지 정사각형 배경 ══ */}
-                  <div className="relative overflow-hidden aspect-square">
+                  <div className="relative overflow-hidden aspect-[4/3] sm:aspect-square">
 
                     {/* 전체 배경 이미지 */}
                     {(armoryProfile?.CharacterImage || member.avatar_url || member.image_url) && (
@@ -19541,11 +19541,11 @@ const GuildMembersPage = () => {
                     )}
 
                     {/* 텍스트 오버레이 */}
-                    <div className="absolute inset-0 z-10 p-5 flex flex-col justify-between">
-                      <div>
+                    <div className="absolute inset-0 z-10 p-3 sm:p-5 flex flex-col justify-between min-w-0">
+                      <div className="min-w-0">
                         {/* 서버 뱃지만 유지 */}
                         {(armoryProfile?.ServerName || member.server_name) && (
-                          <div className="mb-3">
+                          <div className="mb-2 sm:mb-3">
                             <span className="px-2 py-0.5 rounded-md bg-black/50 text-[10px] font-semibold text-white/70 backdrop-blur-sm">
                               {armoryProfile?.ServerName || member.server_name}
                             </span>
@@ -19553,25 +19553,25 @@ const GuildMembersPage = () => {
                         )}
 
                         {/* 캐릭터명 + 직업 + 칭호 */}
-                        <div className="text-2xl font-bold drop-shadow-lg">{member.character_name}</div>
-                        <div className="text-xs text-white/60 mt-0.5">
+                        <div className="text-lg sm:text-2xl font-bold drop-shadow-lg truncate">{member.character_name}</div>
+                        <div className="text-[10px] sm:text-xs text-white/60 mt-0.5 truncate">
                           {armoryProfile?.CharacterClassName || member.class_name}
                           {armoryProfile?.Title && <span className="ml-1.5 text-amber-300/80">· {armoryProfile.Title}</span>}
                         </div>
                       </div>
 
                       {/* 하단: 아이템 레벨 + 전투/원정대 + Owner + 생일MBTI */}
-                      <div className="mt-4">
+                      <div className="mt-2 sm:mt-4 min-w-0">
                         {/* 아이템 레벨 */}
                         <div className="flex items-baseline gap-1.5 mb-1">
                           <span className="text-[10px] text-white/40 uppercase tracking-widest">아이템</span>
-                          <span className="text-xl font-bold text-amber-300 drop-shadow-lg">
+                          <span className="text-base sm:text-xl font-bold text-amber-300 drop-shadow-lg">
                             {armoryProfile?.ItemAvgLevel || member.item_level}
                           </span>
                         </div>
 
                         {/* 전투/원정대 레벨 */}
-                        <div className="flex gap-3 text-[11px] text-white/50 mb-3">
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] sm:text-[11px] text-white/50 mb-2 sm:mb-3">
                           {armoryProfile ? (
                             <>
                               <span>전투 <b className="text-white/80">{armoryProfile.CharacterLevel}</b></span>
@@ -19586,14 +19586,14 @@ const GuildMembersPage = () => {
                         </div>
 
                         {/* 생일 / MBTI / Owner */}
-                        <div className="flex items-end justify-between">
-                          <div className="flex gap-3 text-[11px] text-white/50">
-                            {member.birthday && <span>생일 <b className="text-white/80">{formatShortDate(member.birthday)}</b></span>}
+                        <div className="flex items-end justify-between gap-2 min-w-0">
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] sm:text-[11px] text-white/50 min-w-0">
+                            {member.birthday && <span className="truncate">생일 <b className="text-white/80">{formatShortDate(member.birthday)}</b></span>}
                             {member.mbti && <span>MBTI <b className="text-white/80">{member.mbti}</b></span>}
                           </div>
-                          <div className="text-right">
+                          <div className="text-right shrink-0 min-w-0">
                             <div className="text-[9px] text-white/25 uppercase tracking-widest">Owner</div>
-                            <div className="text-xs font-bold drop-shadow" style={getNicknameEffectStyle({
+                            <div className="text-[11px] sm:text-xs font-bold drop-shadow truncate" style={getNicknameEffectStyle({
                               active_nickname_effect: member.owner_active_nickname_effect,
                               nickname_gradient_from: member.owner_nickname_gradient_from,
                               nickname_gradient_to:   member.owner_nickname_gradient_to,
@@ -19609,11 +19609,11 @@ const GuildMembersPage = () => {
 
                   {/* ══ 전투 스탯 바 ══ */}
                   {armoryProfile?.Stats && (
-                    <div className="flex border-t border-white/8">
+                    <div className="flex border-t border-white/8 overflow-x-auto">
                       {armoryProfile.Stats.filter((s: any) => Number(s.Value) > 0 && ["치명","특화","신속","제압","인내","숙련"].includes(s.Type)).map((s: any) => (
-                        <div key={s.Type} className="flex-1 text-center py-2.5 border-r border-white/5 last:border-r-0">
+                        <div key={s.Type} className="flex-1 min-w-[52px] text-center py-2 sm:py-2.5 border-r border-white/5 last:border-r-0">
                           <div className="text-[9px] text-white/30 uppercase">{s.Type}</div>
-                          <div className="text-xs font-bold text-amber-200">{Number(s.Value).toLocaleString()}</div>
+                          <div className="text-[11px] sm:text-xs font-bold text-amber-200">{Number(s.Value).toLocaleString()}</div>
                         </div>
                       ))}
                     </div>
