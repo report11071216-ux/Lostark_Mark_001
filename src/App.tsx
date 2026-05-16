@@ -19053,6 +19053,20 @@ const GuildMembersPage = () => {
   const [classFilter, setClassFilter] = useState("all");
   const [lostarkTarget, setLostarkTarget] = useState<string | null>(null);
 
+  // ── 화면 너비에 따라 카드 열 수 강제 결정 (Tailwind 미디어 쿼리 우회) ──
+  const [gridCols, setGridCols] = useState(2);
+  useEffect(() => {
+    const update = () => {
+      const w = window.innerWidth;
+      if (w >= 1536) setGridCols(4);
+      else if (w >= 1024) setGridCols(3);
+      else setGridCols(2);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   // ── 인라인 전투정보실 캐시 & 탭 상태 ──────────────────────
   // 탭별 개별 API 호출 방식: type=all 대신 profile/equipment/engravings/gems/cards/siblings 각각 호출
   type ArmoryTabData = {
@@ -19472,8 +19486,18 @@ const GuildMembersPage = () => {
         <div className="text-center py-10" style={{ color: "rgba(155,159,196,0.6)" }}>길드원 불러오는 중...</div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-4">
+          {/* 🆕 디버그 마커 — 모바일에서만 표시 (배포 확인용) */}
+          <div className="sm:hidden text-[10px] text-amber-300/70 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 mb-2">
+            🆕 v4 모바일 컴팩트 모드 · {gridCols}열 표시
+          </div>
           {/* ◀ 좌측: 캐릭터 카드 (정사각형 헤더) */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-2 sm:gap-3">
+          <div
+            className="gap-2 sm:gap-3"
+            style={{
+              display: "grid",
+              gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
+            }}
+          >
             {filteredMembers.map((member: any) => {
               const { theme } = getPrimaryBadgeTheme(member);
               const armory     = armoryCache[member.character_name];
@@ -19524,7 +19548,7 @@ const GuildMembersPage = () => {
                 <div className="relative z-10">
 
                   {/* ══ 상단 헤더: 캐릭터 이미지 정사각형 배경 ══ */}
-                  <div className="relative overflow-hidden aspect-[4/3] sm:aspect-square">
+                  <div className="relative overflow-hidden aspect-[16/9] sm:aspect-square">
 
                     {/* 전체 배경 이미지 */}
                     {(armoryProfile?.CharacterImage || member.avatar_url || member.image_url) && (
@@ -19541,12 +19565,12 @@ const GuildMembersPage = () => {
                     )}
 
                     {/* 텍스트 오버레이 */}
-                    <div className="absolute inset-0 z-10 p-2.5 sm:p-5 flex flex-col justify-between min-w-0">
+                    <div className="absolute inset-0 z-10 p-2 sm:p-5 flex flex-col justify-between min-w-0">
                       <div className="min-w-0">
-                        {/* 서버 뱃지만 유지 */}
+                        {/* 서버 뱃지 - 모바일에서 숨김 */}
                         {(armoryProfile?.ServerName || member.server_name) && (
-                          <div className="mb-1.5 sm:mb-3">
-                            <span className="px-1.5 sm:px-2 py-0.5 rounded-md bg-black/50 text-[9px] sm:text-[10px] font-semibold text-white/70 backdrop-blur-sm">
+                          <div className="hidden sm:block mb-3">
+                            <span className="px-2 py-0.5 rounded-md bg-black/50 text-[10px] font-semibold text-white/70 backdrop-blur-sm">
                               {armoryProfile?.ServerName || member.server_name}
                             </span>
                           </div>
@@ -19556,22 +19580,22 @@ const GuildMembersPage = () => {
                         <div className="text-sm sm:text-2xl font-bold drop-shadow-lg truncate leading-tight">{member.character_name}</div>
                         <div className="text-[9px] sm:text-xs text-white/60 mt-0.5 truncate">
                           {armoryProfile?.CharacterClassName || member.class_name}
-                          {armoryProfile?.Title && <span className="ml-1.5 text-amber-300/80">· {armoryProfile.Title}</span>}
+                          {armoryProfile?.Title && <span className="hidden sm:inline ml-1.5 text-amber-300/80">· {armoryProfile.Title}</span>}
                         </div>
                       </div>
 
                       {/* 하단: 아이템 레벨 + 전투/원정대 + Owner + 생일MBTI */}
-                      <div className="mt-1.5 sm:mt-4 min-w-0">
+                      <div className="mt-1 sm:mt-4 min-w-0">
                         {/* 아이템 레벨 */}
                         <div className="flex items-baseline gap-1 sm:gap-1.5 mb-0.5 sm:mb-1">
-                          <span className="text-[9px] sm:text-[10px] text-white/40 uppercase tracking-widest">아이템</span>
+                          <span className="text-[8px] sm:text-[10px] text-white/40 uppercase tracking-widest">아이템</span>
                           <span className="text-sm sm:text-xl font-bold text-amber-300 drop-shadow-lg">
                             {armoryProfile?.ItemAvgLevel || member.item_level}
                           </span>
                         </div>
 
-                        {/* 전투/원정대 레벨 */}
-                        <div className="flex flex-wrap gap-x-2 sm:gap-x-3 gap-y-0.5 text-[9px] sm:text-[11px] text-white/50 mb-1.5 sm:mb-3">
+                        {/* 전투/원정대 레벨 - 모바일에서 숨김 */}
+                        <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/50 mb-2 sm:mb-3">
                           {armoryProfile ? (
                             <>
                               <span>전투 <b className="text-white/80">{armoryProfile.CharacterLevel}</b></span>
@@ -19585,15 +19609,15 @@ const GuildMembersPage = () => {
                           )}
                         </div>
 
-                        {/* 생일 / MBTI / Owner (모바일에서는 Owner만 표시 - 공간 절약) */}
-                        <div className="flex items-end justify-between gap-2 min-w-0">
-                          <div className="hidden sm:flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/50 min-w-0">
+                        {/* 생일 / MBTI / Owner - 데스크탑만 */}
+                        <div className="hidden sm:flex items-end justify-between gap-2 min-w-0">
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-white/50 min-w-0">
                             {member.birthday && <span className="truncate">생일 <b className="text-white/80">{formatShortDate(member.birthday)}</b></span>}
                             {member.mbti && <span>MBTI <b className="text-white/80">{member.mbti}</b></span>}
                           </div>
                           <div className="text-right shrink-0 min-w-0 ml-auto">
-                            <div className="text-[8px] sm:text-[9px] text-white/25 uppercase tracking-widest">Owner</div>
-                            <div className="text-[10px] sm:text-xs font-bold drop-shadow truncate" style={getNicknameEffectStyle({
+                            <div className="text-[9px] text-white/25 uppercase tracking-widest">Owner</div>
+                            <div className="text-xs font-bold drop-shadow truncate" style={getNicknameEffectStyle({
                               active_nickname_effect: member.owner_active_nickname_effect,
                               nickname_gradient_from: member.owner_nickname_gradient_from,
                               nickname_gradient_to:   member.owner_nickname_gradient_to,
