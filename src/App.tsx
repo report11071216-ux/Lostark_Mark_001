@@ -17181,25 +17181,43 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
       .eq("id", character.id)
       .select();
 
-    // 진단 로그 (F12 콘솔에서 확인용)
-    console.log("[saveCharacterEdit] update result:", {
+    // 진단 로그 (F12 콘솔에서 펼치지 않아도 보이도록 JSON으로 출력)
+    console.log("[saveCharacterEdit] ▶ update result:\n" + JSON.stringify({
       updatedRows: updated?.length || 0,
-      error,
+      errorMessage: error?.message || null,
+      errorCode: (error as any)?.code || null,
+      errorDetails: (error as any)?.details || null,
+      errorHint: (error as any)?.hint || null,
       characterId: character.id,
       userId: user.id,
       avatarUrl,
-    });
+      payloadAvatar: payload.avatar_url,
+    }, null, 2));
 
-    if (error) return showToast(error.message, "error");
+    if (error) {
+      alert(`업데이트 에러:\n${error.message}\n\n코드: ${(error as any)?.code}\n힌트: ${(error as any)?.hint}`);
+      return showToast(error.message, "error");
+    }
 
     // 0행 업데이트 = RLS가 막은 것 (에러는 안 던지지만 실제로는 차단됨)
     if (!updated || updated.length === 0) {
+      alert(
+        "🚫 저장 실패: 0행 업데이트 됨\n\n" +
+        "원인: guild_members 테이블의 RLS UPDATE 정책이 차단 중\n\n" +
+        `캐릭터 ID: ${character.id}\n` +
+        `내 user.id: ${user.id}\n\n` +
+        "Supabase → guild_members → Policies 에서 UPDATE 정책 확인 필요"
+      );
       showToast(
-        "저장 실패: guild_members 테이블 UPDATE 권한 없음 (RLS 정책 확인 필요)",
+        "저장 실패: RLS 정책이 UPDATE를 차단함 (자세한 내용은 알림 확인)",
         "error"
       );
       return;
     }
+
+    // 저장된 행의 실제 avatar_url 검증
+    const savedAvatar = updated[0]?.avatar_url;
+    console.log("[saveCharacterEdit] ✓ DB에 저장된 avatar_url:", savedAvatar);
 
     showToast("캐릭터 수정 완료", "success");
     fetchCharacters();
