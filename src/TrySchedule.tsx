@@ -335,29 +335,25 @@ const StatBox: React.FC<{ icon: React.ReactNode; label: string; value: number; c
 );
 
 // ============================================================
-//  CalendarView – 월별 캘린더
+//  CalendarView – 월/주/일 전환 가능한 캘린더
 // ============================================================
 const DAY_KR = ["일", "월", "화", "수", "목", "금", "토"];
+type CalendarMode = "month" | "week" | "day";
+
+const fmtDate = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const CalendarView: React.FC<{
   tries: TrySchedule[]; sessions: TrySession[]; onSelectTry: (id: string) => void;
 }> = ({ tries, sessions, onSelectTry }) => {
   const now = new Date();
-  const [year, setYear]   = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
+  const [mode, setMode] = useState<CalendarMode>("month");
+  const [cursor, setCursor] = useState<Date>(new Date());
 
-  const grid = useMemo(() => {
-    const firstDay = new Date(year, month, 1).getDay();
-    const lastDate = new Date(year, month + 1, 0).getDate();
-    const cells: { date: string; day: number; otherMonth: boolean }[] = [];
-    for (let i = 0; i < firstDay; i++) cells.push({ date: "", day: 0, otherMonth: true });
-    for (let d = 1; d <= lastDate; d++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-      cells.push({ date: dateStr, day: d, otherMonth: false });
-    }
-    return cells;
-  }, [year, month]);
+  const todayStr = fmtDate(now);
+  const cursorStr = fmtDate(cursor);
 
+  // ── 데이터 인덱싱 ───────────────────────────────────────────
   const sessionsByDate = useMemo(() => {
     const map: Record<string, TrySession[]> = {};
     sessions.forEach(s => {
@@ -373,11 +369,64 @@ const CalendarView: React.FC<{
     return m;
   }, [tries]);
 
-  const prevMonth = () => { if (month === 0) { setYear(y => y - 1); setMonth(11); } else setMonth(m => m - 1); };
-  const nextMonth = () => { if (month === 11) { setYear(y => y + 1); setMonth(0); } else setMonth(m => m + 1); };
-  const goToday   = () => { setYear(now.getFullYear()); setMonth(now.getMonth()); };
+  // ── 월별 그리드 ─────────────────────────────────────────────
+  const monthGrid = useMemo(() => {
+    if (mode !== "month") return [];
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const lastDate = new Date(year, month + 1, 0).getDate();
+    const cells: { date: string; day: number; otherMonth: boolean }[] = [];
+    for (let i = 0; i < firstDay; i++) cells.push({ date: "", day: 0, otherMonth: true });
+    for (let d = 1; d <= lastDate; d++) {
+      cells.push({ date: fmtDate(new Date(year, month, d)), day: d, otherMonth: false });
+    }
+    return cells;
+  }, [cursor, mode]);
 
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+  // ── 주별 그리드 (일요일 시작) ───────────────────────────────
+  const weekDays = useMemo(() => {
+    if (mode !== "week") return [];
+    const start = new Date(cursor);
+    start.setDate(cursor.getDate() - cursor.getDay());
+    const days: { date: string; day: number; month: number; dayOfWeek: number }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      days.push({ date: fmtDate(d), day: d.getDate(), month: d.getMonth() + 1, dayOfWeek: d.getDay() });
+    }
+    return days;
+  }, [cursor, mode]);
+
+  // ── 네비게이션 ──────────────────────────────────────────────
+  const prev = () => {
+    const d = new Date(cursor);
+    if (mode === "month") d.setMonth(d.getMonth() - 1);
+    else if (mode === "week") d.setDate(d.getDate() - 7);
+    else d.setDate(d.getDate() - 1);
+    setCursor(d);
+  };
+  const next = () => {
+    const d = new Date(cursor);
+    if (mode === "month") d.setMonth(d.getMonth() + 1);
+    else if (mode === "week") d.setDate(d.getDate() + 7);
+    else d.setDate(d.getDate() + 1);
+    setCursor(d);
+  };
+  const goToday = () => setCursor(new Date());
+
+  // ── 헤더 타이틀 ─────────────────────────────────────────────
+  let title = "";
+  if (mode === "month") {
+    title = `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월`;
+  } else if (mode === "week" && weekDays.length > 0) {
+    const s = weekDays[0], e = weekDays[6];
+    title = `${s.month}월 ${s.day}일 ~ ${e.month}월 ${e.day}일`;
+  } else {
+    title = `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월 ${cursor.getDate()}일 (${DAY_KR[cursor.getDay()]})`;
+  }
+
+  const daySessions = sessionsByDate[cursorStr] || [];
 
   return (
     <div className="rounded-[2rem] overflow-hidden"
@@ -386,25 +435,49 @@ const CalendarView: React.FC<{
            border: "1px solid rgba(139,92,246,0.16)",
            boxShadow: "0 14px 36px rgba(0,0,0,0.22)",
          }}>
-      <div className="flex items-center justify-between px-5 sm:px-6 py-4" style={{ borderBottom: "1px solid rgba(139,92,246,0.10)" }}>
-        <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "#c4b5fd" }}>
-            <CalendarDays size={11} className="inline mr-1 -mt-0.5" />Calendar
+      {/* ── 헤더 ──────────────────────────────────────────── */}
+      <div className="px-4 sm:px-6 py-4" style={{ borderBottom: "1px solid rgba(139,92,246,0.10)" }}>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.26em]" style={{ color: "#c4b5fd" }}>
+              <CalendarDays size={11} className="inline mr-1 -mt-0.5" />Calendar
+            </div>
+            <h2 className="text-sm sm:text-base font-bold text-white mt-0.5 truncate">{title}</h2>
           </div>
-          <h2 className="text-base font-bold text-white mt-0.5">{year}년 {month + 1}월</h2>
+
+          {/* 모드 전환 (월/주/일) */}
+          <div className="flex items-center gap-0.5 p-0.5 rounded-xl shrink-0"
+               style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            {(["month", "week", "day"] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className="h-8 px-2.5 sm:px-3 text-[11px] font-semibold rounded-lg transition-all"
+                style={{
+                  background: mode === m ? "linear-gradient(135deg, #8b5cf6, #7c3aed)" : "transparent",
+                  color: mode === m ? "#fff" : "rgba(196,181,253,0.6)",
+                  boxShadow: mode === m ? "0 4px 10px rgba(139,92,246,0.35)" : "none",
+                }}
+              >
+                {m === "month" ? "월" : m === "week" ? "주" : "일"}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* 네비게이션 */}
         <div className="flex items-center gap-1.5">
           <button onClick={goToday}
                   className="h-8 px-3 text-[11px] font-semibold rounded-lg transition-all"
                   style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#c4b5fd" }}>
             오늘
           </button>
-          <button onClick={prevMonth}
+          <button onClick={prev}
                   className="h-8 w-8 flex items-center justify-center rounded-xl transition-all"
                   style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#c4b5fd" }}>
             <ChevronLeft size={14} />
           </button>
-          <button onClick={nextMonth}
+          <button onClick={next}
                   className="h-8 w-8 flex items-center justify-center rounded-xl transition-all"
                   style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#c4b5fd" }}>
             <ChevronRight size={14} />
@@ -412,67 +485,224 @@ const CalendarView: React.FC<{
         </div>
       </div>
 
+      {/* ── 본문 ──────────────────────────────────────────── */}
       <div className="p-4 sm:p-5">
-        <div className="grid grid-cols-7 mb-2">
-          {DAY_KR.map((d, i) => (
-            <div key={d} className="text-center text-[10px] font-semibold py-1"
-                 style={{
-                   color: i === 0 ? "rgba(248,113,113,0.6)"
-                        : i === 6 ? "rgba(96,165,250,0.6)"
-                        : "rgba(155,159,196,0.55)",
-                 }}>
-              {d}
-            </div>
-          ))}
-        </div>
 
-        <div className="grid grid-cols-7 gap-1.5">
-          {grid.map((cell, idx) => {
-            if (cell.otherMonth) return <div key={`empty-${idx}`} className="min-h-[64px] sm:min-h-[88px]" />;
-            const daySessions = sessionsByDate[cell.date] || [];
-            const isToday = cell.date === todayStr;
-            const dayOfWeek = (idx % 7);
-            return (
-              <div key={cell.date}
-                   className="min-h-[64px] sm:min-h-[88px] rounded-xl p-1.5 sm:p-2 flex flex-col gap-1 transition-all"
-                   style={{
-                     background: isToday ? "rgba(139,92,246,0.10)" : "rgba(255,255,255,0.015)",
-                     border: isToday ? "1px solid rgba(167,139,250,0.55)" : "1px solid rgba(255,255,255,0.04)",
-                   }}>
-                <div className="text-[10px] sm:text-xs font-bold"
+        {/* === 월별 뷰 === */}
+        {mode === "month" && (
+          <>
+            <div className="grid grid-cols-7 mb-2">
+              {DAY_KR.map((d, i) => (
+                <div key={d} className="text-center text-[10px] font-semibold py-1"
                      style={{
-                       color: isToday ? "#fde68a"
-                            : dayOfWeek === 0 ? "rgba(248,113,113,0.85)"
-                            : dayOfWeek === 6 ? "rgba(96,165,250,0.85)"
-                            : "rgba(226,232,240,0.75)",
+                       color: i === 0 ? "rgba(248,113,113,0.6)"
+                            : i === 6 ? "rgba(96,165,250,0.6)"
+                            : "rgba(155,159,196,0.55)",
                      }}>
-                  {cell.day}
+                  {d}
                 </div>
-                <div className="flex flex-col gap-0.5 flex-1 overflow-hidden">
-                  {daySessions.slice(0, 3).map(s => {
-                    const t = tryMap[s.try_id];
-                    if (!t) return null;
-                    const color = hashColor(t.id);
-                    return (
-                      <button key={s.id} onClick={() => onSelectTry(t.id)}
-                              className="text-left text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-md truncate transition-all hover:scale-105"
-                              style={{ background: color.bg, color: "#fff", boxShadow: `0 0 8px ${color.glow}` }}
-                              title={`${t.raid_name}${s.attempt_note ? ` – ${s.attempt_note}` : ""}`}>
-                        {t.raid_name}
-                      </button>
-                    );
-                  })}
-                  {daySessions.length > 3 && (
-                    <div className="text-[9px] font-semibold pl-1" style={{ color: "rgba(196,181,253,0.65)" }}>
-                      +{daySessions.length - 3}개
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-1.5">
+              {monthGrid.map((cell, idx) => {
+                if (cell.otherMonth) return <div key={`empty-${idx}`} className="min-h-[68px] sm:min-h-[88px]" />;
+                const ds = sessionsByDate[cell.date] || [];
+                const isToday = cell.date === todayStr;
+                const dayOfWeek = (idx % 7);
+                return (
+                  <button
+                    key={cell.date}
+                    onClick={() => {
+                      // 셀 클릭 시 그날의 일별 뷰로 전환 (모바일 친화)
+                      setCursor(new Date(cell.date + "T00:00:00"));
+                      setMode("day");
+                    }}
+                    className="min-h-[68px] sm:min-h-[88px] rounded-xl p-1.5 sm:p-2 flex flex-col gap-1 transition-all hover:scale-[1.02] text-left"
+                    style={{
+                      background: isToday ? "rgba(139,92,246,0.10)" : "rgba(255,255,255,0.015)",
+                      border: isToday ? "1px solid rgba(167,139,250,0.55)" : "1px solid rgba(255,255,255,0.04)",
+                    }}
+                  >
+                    <div className="text-[10px] sm:text-xs font-bold"
+                         style={{
+                           color: isToday ? "#fde68a"
+                                : dayOfWeek === 0 ? "rgba(248,113,113,0.85)"
+                                : dayOfWeek === 6 ? "rgba(96,165,250,0.85)"
+                                : "rgba(226,232,240,0.75)",
+                         }}>
+                      {cell.day}
                     </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                    <div className="flex flex-col gap-0.5 flex-1 overflow-hidden">
+                      {ds.slice(0, 2).map(s => {
+                        const t = tryMap[s.try_id];
+                        if (!t) return null;
+                        const color = hashColor(t.id);
+                        return (
+                          <div key={s.id}
+                               className="text-left text-[9px] sm:text-[10px] font-semibold px-1.5 py-0.5 rounded-md truncate"
+                               style={{ background: color.bg, color: "#fff", boxShadow: `0 0 8px ${color.glow}` }}
+                               title={`${t.raid_name}${s.attempt_note ? ` – ${s.attempt_note}` : ""}`}>
+                            {t.raid_name}
+                          </div>
+                        );
+                      })}
+                      {ds.length > 2 && (
+                        <div className="text-[9px] font-semibold pl-1" style={{ color: "rgba(196,181,253,0.65)" }}>
+                          +{ds.length - 2}개
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-2 text-[10px] text-center" style={{ color: "rgba(155,159,196,0.4)" }}>
+              💡 날짜를 누르면 그날의 자세한 일정을 볼 수 있어요
+            </div>
+          </>
+        )}
 
+        {/* === 주별 뷰 === */}
+        {mode === "week" && (
+          <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
+            {weekDays.map(d => {
+              const ds = sessionsByDate[d.date] || [];
+              const isToday = d.date === todayStr;
+              return (
+                <div key={d.date}
+                     className="rounded-xl p-3 transition-all"
+                     style={{
+                       background: isToday ? "rgba(139,92,246,0.10)" : "rgba(255,255,255,0.02)",
+                       border: isToday ? "1px solid rgba(167,139,250,0.55)" : "1px solid rgba(255,255,255,0.05)",
+                       minHeight: "100px",
+                     }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold"
+                            style={{
+                              color: d.dayOfWeek === 0 ? "#fca5a5"
+                                   : d.dayOfWeek === 6 ? "#7dd3fc"
+                                   : "rgba(196,181,253,0.55)",
+                            }}>
+                        {DAY_KR[d.dayOfWeek]}
+                      </span>
+                      <span className="text-sm font-bold" style={{ color: isToday ? "#fde68a" : "#fff" }}>
+                        {d.month}/{d.day}
+                      </span>
+                      {isToday && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                              style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}>
+                          오늘
+                        </span>
+                      )}
+                    </div>
+                    {ds.length > 0 && (
+                      <span className="text-[10px] font-semibold" style={{ color: "rgba(196,181,253,0.55)" }}>
+                        {ds.length}건
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {ds.length === 0 ? (
+                      <div className="text-[11px] text-center py-2" style={{ color: "rgba(155,159,196,0.4)" }}>
+                        일정 없음
+                      </div>
+                    ) : ds.map(s => {
+                      const t = tryMap[s.try_id];
+                      if (!t) return null;
+                      const color = hashColor(t.id);
+                      return (
+                        <button key={s.id} onClick={() => onSelectTry(t.id)}
+                                className="text-left p-2 rounded-lg transition-all hover:scale-[1.02]"
+                                style={{ background: color.bg, color: "#fff", boxShadow: `0 4px 10px ${color.glow}` }}>
+                          <div className="text-xs font-bold truncate">{t.raid_name}</div>
+                          {s.session_time && (
+                            <div className="text-[10px] opacity-80 mt-0.5">🕐 {s.session_time.slice(0, 5)}</div>
+                          )}
+                          {s.attempt_note && (
+                            <div className="text-[10px] opacity-85 mt-0.5 line-clamp-2">{s.attempt_note}</div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* === 일별 뷰 === */}
+        {mode === "day" && (
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-sm" style={{ color: "rgba(196,181,253,0.7)" }}>
+                {daySessions.length === 0 ? "이날은 일정이 없습니다" : `총 ${daySessions.length}개의 일정`}
+              </div>
+              {cursorStr === todayStr && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{ background: "rgba(251,191,36,0.15)", color: "#fbbf24" }}>
+                  오늘
+                </span>
+              )}
+            </div>
+            {daySessions.length === 0 ? (
+              <div className="text-center py-12 text-sm" style={{ color: "rgba(155,159,196,0.4)" }}>
+                선택한 날에 트라이 일정이 없습니다
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {daySessions.map(s => {
+                  const t = tryMap[s.try_id];
+                  if (!t) return null;
+                  const color = hashColor(t.id);
+                  return (
+                    <button key={s.id} onClick={() => onSelectTry(t.id)}
+                            className="w-full text-left p-4 rounded-2xl transition-all hover:scale-[1.01]"
+                            style={{
+                              background: `linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%)`,
+                              border: `1px solid ${color.bg}66`,
+                              boxShadow: `0 4px 14px ${color.glow}33`,
+                            }}>
+                      <div className="flex items-start justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color.bg, boxShadow: `0 0 8px ${color.glow}` }} />
+                          <h3 className="text-base font-bold text-white truncate">
+                            {t.raid_name}
+                            {t.difficulty && (
+                              <span className="text-sm font-medium ml-1.5" style={{ color: "#f9a8d4" }}>
+                                ({t.difficulty})
+                              </span>
+                            )}
+                          </h3>
+                        </div>
+                        {s.session_time && (
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-md shrink-0"
+                                style={{ background: "rgba(0,0,0,0.3)", color: "#fde68a" }}>
+                            🕐 {s.session_time.slice(0, 5)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] ml-4.5" style={{ color: "rgba(226,232,240,0.7)" }}>
+                        <span>{t.party_size}인</span>
+                        <span style={{ color: "rgba(155,159,196,0.4)" }}>·</span>
+                        <span>{t.current_gate}/{t.total_gates}관문</span>
+                      </div>
+                      {s.attempt_note && (
+                        <div className="text-sm mt-2 px-3 py-2 rounded-lg"
+                             style={{ background: "rgba(0,0,0,0.25)", color: "rgba(226,232,240,0.85)" }}>
+                          📝 {s.attempt_note}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 범례 (모든 모드 공통) */}
         {tries.length > 0 && (
           <div className="mt-4 pt-3 flex flex-wrap gap-2" style={{ borderTop: "1px solid rgba(139,92,246,0.08)" }}>
             {tries.filter(t => t.status !== "cleared").slice(0, 8).map(t => {
