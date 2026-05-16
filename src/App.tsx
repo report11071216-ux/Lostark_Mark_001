@@ -4569,6 +4569,27 @@ const Hero = ({
   const [monthSchedules, setMonthSchedules] = useState<Record<string, any[]>>({});
   const [selectedCalDate, setSelectedCalDate] = useState<string>(() => getTodayKey());
   const [calMode, setCalMode] = useState<"month" | "week" | "day">("month");
+  const [selectedMainRaid, setSelectedMainRaid] = useState<any>(null);
+  const [selectedMainRaidParts, setSelectedMainRaidParts] = useState<any[]>([]);
+
+  // 캘린더에서 일정 클릭 → 참가 신청 모달 바로 열기
+  const openMainRaidDetail = async (raid: any) => {
+    setSelectedMainRaid(raid);
+    if (!supabase || !raid?.id) return;
+    const { data } = await supabase
+      .from("raid_participants")
+      .select("*")
+      .eq("schedule_id", raid.id);
+    setSelectedMainRaidParts(data || []);
+  };
+  const refreshMainRaidParts = async () => {
+    if (!supabase || !selectedMainRaid?.id) return;
+    const { data } = await supabase
+      .from("raid_participants")
+      .select("*")
+      .eq("schedule_id", selectedMainRaid.id);
+    setSelectedMainRaidParts(data || []);
+  };
 
   const todayKey = getTodayKey();
   const noticeCount = useMemo(
@@ -5368,8 +5389,9 @@ const Hero = ({
                           {ss.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
                               {ss.slice(0, 4).map((s: any) => (
-                                <span key={s.id}
-                                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md truncate max-w-[120px]"
+                                <button key={s.id}
+                                      onClick={(e) => { e.stopPropagation(); openMainRaidDetail(s); }}
+                                      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md truncate max-w-[120px] transition-all hover:scale-105"
                                       style={{
                                         background: s.difficulty === "하드" ? "rgba(244,114,182,0.18)"
                                                   : s.difficulty === "나이트메어" ? "rgba(168,85,247,0.18)"
@@ -5379,7 +5401,7 @@ const Hero = ({
                                              : "#6ee7b7",
                                       }}>
                                   {s.raid_name}
-                                </span>
+                                </button>
                               ))}
                               {ss.length > 4 && (
                                 <span className="text-[10px] font-semibold px-1.5 py-0.5" style={{ color: "rgba(155,159,196,0.55)" }}>
@@ -5418,7 +5440,7 @@ const Hero = ({
                                           : s.difficulty === "노말" ? "#34d399" : "#a78bfa";
                           return (
                             <button key={s.id}
-                                    onClick={onOpenRaidCalendar}
+                                    onClick={() => openMainRaidDetail(s)}
                                     className="w-full text-left p-3 rounded-xl transition-all hover:scale-[1.01]"
                                     style={{
                                       background: "rgba(255,255,255,0.03)",
@@ -5450,6 +5472,23 @@ const Hero = ({
                 );
               })()}
             </motion.div>
+
+            {/* 메인 캘린더에서 일정 클릭 시 열리는 참가 신청 모달 */}
+            <AnimatePresence>
+              {selectedMainRaid && (
+                <RaidDetailModal
+                  raid={selectedMainRaid}
+                  parts={selectedMainRaidParts}
+                  user={user}
+                  profile={profile}
+                  onClose={() => setSelectedMainRaid(null)}
+                  onRefresh={async () => {
+                    await refreshMainRaidParts();
+                    setSelectedMainRaid(null);
+                  }}
+                />
+              )}
+            </AnimatePresence>
           </div>
 
           {/* ── 2행: QUICK MENU ── */}
