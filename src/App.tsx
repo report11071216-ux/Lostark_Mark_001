@@ -15945,6 +15945,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
   };
 
   const fetchCharacters = async () => {
+    console.log("[fetchCharacters] ▶ 호출됨");
     const client = getSupabaseOrThrow();
     const { data, error } = await client
       .from("guild_members")
@@ -15953,6 +15954,18 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
       .order("is_main", { ascending: false })
       .order("item_level", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: true });
+
+    console.log("[fetchCharacters] ◀ 결과:\n" + JSON.stringify({
+      hasError: !!error,
+      errorMessage: error?.message || null,
+      count: data?.length || 0,
+      avatarUrls: (data || []).map((c: any) => ({
+        id: c.id,
+        name: c.character_name,
+        avatar_url: c.avatar_url,
+        image_url: c.image_url,
+      })),
+    }, null, 2));
 
     if (error) {
       console.error("fetchCharacters error:", error);
