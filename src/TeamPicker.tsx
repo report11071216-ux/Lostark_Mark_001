@@ -16,7 +16,6 @@ import {
 type Member = {
   id: string;
   nickname: string | null;
-  character_name: string | null;
   role: string | null;
 };
 
@@ -42,9 +41,7 @@ const shuffle = <T,>(arr: T[]): T[] => {
 };
 
 const getDisplayName = (m: Member) =>
-  (m.nickname && m.nickname.trim()) ||
-  (m.character_name && m.character_name.trim()) ||
-  "이름없음";
+  (m.nickname && m.nickname.trim()) || "이름없음";
 
 // 팀 카드 컬러 팔레트 (퍼플/핑크/옐로우 등 순환)
 const TEAM_PALETTE = [
@@ -161,7 +158,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
       try {
         const { data, error: err } = await supabase
           .from("profiles")
-          .select("id, nickname, character_name, role")
+          .select("id, nickname, role")
           .order("nickname", { ascending: true });
         if (err) throw err;
         if (!cancelled) {
@@ -554,7 +551,7 @@ export default function TeamPicker({ user, profile, supabase }: Props) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="닉네임 / 캐릭터명 검색"
+              placeholder="닉네임 검색"
               className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none transition-all"
               style={{
                 background: "rgba(255,255,255,0.04)",
