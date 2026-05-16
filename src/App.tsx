@@ -17346,6 +17346,14 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
                   style={{ background: "#000", borderColor: "rgba(255,255,255,0.1)", boxShadow: "0 4px 32px rgba(0,0,0,0.6)" }}
                   onClick={() => setViewingCharacterId(character.id)}
                 >
+                  {/* 🔍 디버그: 현재 카드가 사용하는 avatar_url 끝부분 표시 */}
+                  <div
+                    className="absolute top-1 left-1 z-50 text-[9px] font-mono px-1.5 py-0.5 rounded"
+                    style={{ background: "rgba(0,0,0,0.85)", color: "#fde68a", maxWidth: "90%" }}
+                  >
+                    URL: {(character.avatar_url || character.image_url || "없음").slice(-25)}
+                  </div>
+
                   {/* 배경 이미지 */}
                   {(character.avatar_url || character.image_url) && (
                     <div className="absolute inset-0">
