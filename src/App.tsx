@@ -1073,11 +1073,17 @@ const getShopRewardTypeLabel = (item: any) => {
   if (item?.reward_type === "badge") return "Badge Item";
   if (item?.reward_type === "nickname_effect") return "Nickname FX";
   if (item?.reward_type === "enhance_protect_ticket") return "Protect Ticket";
+  if (item?.reward_type === "myroom_theme") return "MyRoom Theme";
+  if (item?.reward_type === "title") return "Title";
   return "Point Item";
 };
 
 const getPointShopCardBackground = (item: any, badgeTheme: any) => {
   if (item?.reward_type === "badge") return badgeTheme.cardBackground;
+  if (item?.reward_type === "myroom_theme") {
+    const t = getMyRoomThemeColors(item);
+    return `linear-gradient(135deg, ${t.bgFrom}, ${t.bgTo})`;
+  }
   if (item?.reward_type === "enhance_stone") {
     return "linear-gradient(135deg, rgba(251,191,36,0.18), rgba(168,85,247,0.18), rgba(15,23,42,0.96) 58%, rgba(2,6,23,0.98))";
   }
@@ -1093,6 +1099,10 @@ const getPointShopCardBackground = (item: any, badgeTheme: any) => {
 
 const getPointShopAuraBackground = (item: any, badgeTheme: any) => {
   if (item?.reward_type === "badge") return badgeTheme.aura;
+  if (item?.reward_type === "myroom_theme") {
+    const t = getMyRoomThemeColors(item);
+    return `radial-gradient(circle at top right, ${t.accent}33, transparent 50%)`;
+  }
   if (item?.reward_type === "enhance_stone") {
     return "radial-gradient(circle at top right, rgba(251,191,36,0.22), transparent 40%), radial-gradient(circle at bottom left, rgba(168,85,247,0.16), transparent 44%)";
   }
@@ -1647,6 +1657,16 @@ const getShopItemHighlights = (item: any) => {
     highlights.push("파손만 막고 실패 자체는 그대로 처리");
   }
 
+  if (item?.reward_type === "myroom_theme") {
+    const t = getMyRoomThemeColors(item);
+    highlights.push(`마이룸 배경을 ${t.label} 테마로 변경`);
+    highlights.push("구매 후 마이룸 → 테마 탭에서 장착");
+  }
+
+  if (item?.reward_type === "title") {
+    highlights.push("구매 후 마이룸 → 칭호 탭에서 장착 가능");
+  }
+
   if (item?.reward_type === "badge" && (item?.badge_name || item?.title)) {
     highlights.push(`획득 뱃지명 · ${item?.badge_name || item?.title}`);
   }
@@ -1679,6 +1699,15 @@ const getShopMoodLine = (item: any) => {
 
   if (item?.reward_type === "enhance_protect_ticket") {
     return "고강 실패 시 파손 판정을 막아주는 강화 보호권";
+  }
+
+  if (item?.reward_type === "myroom_theme") {
+    const t = getMyRoomThemeColors(item);
+    return `${t.label} 테마로 마이룸 분위기를 바꿔주는 변경권`;
+  }
+
+  if (item?.reward_type === "title") {
+    return "마이룸에 장착할 수 있는 신규 칭호 상품";
   }
 
   return item?.description?.trim()
@@ -1854,6 +1883,68 @@ const getNextPointTickInfo = (lastTickAt: string | null | undefined, cycleMinute
 };
 
 type NicknameEffectKey = "none" | "violet" | "sunset" | "ocean" | "emerald" | "rose" | "gold" | "rainbow";
+
+// ════════════════════════════════════════════════════════════
+// 마이룸 테마 변경권 (myroom_theme)
+//   - 관리자가 색상 6개(배경 from/to, 카드 from/to, 강조, 텍스트) 등록
+//   - 유저가 구매 후 마이룸 → 테마 탭에서 장착 가능
+// ════════════════════════════════════════════════════════════
+type MyRoomThemeKey =
+  | "none" | "midnight" | "sakura" | "forest" | "sunset" | "ocean" | "ember" | "lilac";
+
+const MYROOM_THEME_PRESETS: Record<MyRoomThemeKey, {
+  label: string;
+  bgFrom: string; bgTo: string;
+  accent: string;
+  cardFrom: string; cardTo: string;
+  text: string;
+}> = {
+  none:     { label: "기본",      bgFrom: "#0a0e18", bgTo: "#0a0e18", accent: "#fbbf24", cardFrom: "rgba(255,255,255,0.03)", cardTo: "rgba(255,255,255,0.01)", text: "#ffffff" },
+  midnight: { label: "미드나잇",  bgFrom: "#020617", bgTo: "#1e1b4b", accent: "#818cf8", cardFrom: "rgba(99,102,241,0.10)",  cardTo: "rgba(30,27,75,0.40)",    text: "#e0e7ff" },
+  sakura:   { label: "사쿠라",    bgFrom: "#1f0f1a", bgTo: "#4a1d3a", accent: "#f9a8d4", cardFrom: "rgba(244,114,182,0.10)", cardTo: "rgba(131,24,67,0.30)",   text: "#fdf2f8" },
+  forest:   { label: "포레스트",  bgFrom: "#0b1d12", bgTo: "#14532d", accent: "#6ee7b7", cardFrom: "rgba(52,211,153,0.10)",  cardTo: "rgba(6,78,59,0.40)",     text: "#ecfdf5" },
+  sunset:   { label: "선셋",      bgFrom: "#1c0a05", bgTo: "#7c2d12", accent: "#fb923c", cardFrom: "rgba(251,146,60,0.12)",  cardTo: "rgba(124,45,18,0.35)",   text: "#fff7ed" },
+  ocean:    { label: "오션",      bgFrom: "#031426", bgTo: "#0c4a6e", accent: "#7dd3fc", cardFrom: "rgba(56,189,248,0.10)",  cardTo: "rgba(7,89,133,0.35)",    text: "#f0f9ff" },
+  ember:    { label: "엠버",      bgFrom: "#1a0a02", bgTo: "#78350f", accent: "#fcd34d", cardFrom: "rgba(252,211,77,0.12)",  cardTo: "rgba(120,53,15,0.35)",   text: "#fef3c7" },
+  lilac:    { label: "라일락",    bgFrom: "#160a24", bgTo: "#4c1d95", accent: "#c4b5fd", cardFrom: "rgba(196,181,253,0.12)", cardTo: "rgba(76,29,149,0.35)",   text: "#f5f3ff" },
+};
+
+const normalizeMyRoomThemeKey = (value: any): MyRoomThemeKey => {
+  const normalized = String(value || "none").trim().toLowerCase();
+  if (["midnight","sakura","forest","sunset","ocean","ember","lilac"].includes(normalized)) {
+    return normalized as MyRoomThemeKey;
+  }
+  return "none";
+};
+
+const getMyRoomThemeColors = (source: any) => {
+  const key = normalizeMyRoomThemeKey(
+    source?.myroom_theme_key ?? source?.active_myroom_theme
+  );
+  const preset = MYROOM_THEME_PRESETS[key] || MYROOM_THEME_PRESETS.none;
+  return {
+    key,
+    label: preset.label,
+    bgFrom:   source?.myroom_theme_bg_from   || preset.bgFrom,
+    bgTo:     source?.myroom_theme_bg_to     || preset.bgTo,
+    accent:   source?.myroom_theme_accent    || preset.accent,
+    cardFrom: source?.myroom_theme_card_from || preset.cardFrom,
+    cardTo:   source?.myroom_theme_card_to   || preset.cardTo,
+    text:     source?.myroom_theme_text      || preset.text,
+  };
+};
+
+const hasMyRoomTheme = (source: any) =>
+  normalizeMyRoomThemeKey(source?.myroom_theme_key ?? source?.active_myroom_theme) !== "none";
+
+const getMyRoomThemeBackgroundStyle = (source: any): React.CSSProperties => {
+  if (!hasMyRoomTheme(source)) return {};
+  const t = getMyRoomThemeColors(source);
+  return {
+    background: `linear-gradient(140deg, ${t.bgFrom} 0%, ${t.bgTo} 100%)`,
+    color: t.text,
+  };
+};
 
 const NICKNAME_EFFECT_PRESETS: Record<NicknameEffectKey, { label: string; from: string; to: string; glow: string }> = {
   none: { label: "기본", from: "#ffffff", to: "#ffffff", glow: "#a78bfa" },
@@ -15581,6 +15672,151 @@ const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClo
 // ── End ArmoryViewModal ──────────────────────────────────────
 
 // ════════════════════════════════════════════════════════════
+// MyRoomThemesPanel — 마이룸 테마 탭
+//   - 보유 마이룸 테마 목록 + 장착/해제
+// ════════════════════════════════════════════════════════════
+const MyRoomThemesPanel = ({ user, profile, setProfile, fetchProfile }: any) => {
+  const [owned, setOwned] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const activeKey = normalizeMyRoomThemeKey(profile?.active_myroom_theme);
+
+  const fetchOwned = useCallback(async () => {
+    if (!supabase || !user?.id) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("user_owned_myroom_themes")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error(error);
+      showToast(error.message, "error");
+    }
+    setOwned(data || []);
+    setLoading(false);
+  }, [user?.id]);
+
+  useEffect(() => { fetchOwned(); }, [fetchOwned]);
+
+  const applyTheme = async (theme: any) => {
+    if (!supabase || !user?.id) return;
+    const { error } = await supabase.rpc("apply_myroom_theme", {
+      p_user_id: user.id,
+      p_owned_id: theme.id,
+    });
+    if (error) { showToast(error.message, "error"); return; }
+    showToast(`🛋 ${theme.title} 테마를 장착했어`, "success");
+    if (typeof fetchProfile === "function") await fetchProfile(user.id);
+    if (typeof setProfile === "function") {
+      setProfile((prev: any) => ({
+        ...(prev || {}),
+        active_myroom_theme:    theme.myroom_theme_key,
+        myroom_theme_bg_from:   theme.myroom_theme_bg_from,
+        myroom_theme_bg_to:     theme.myroom_theme_bg_to,
+        myroom_theme_accent:    theme.myroom_theme_accent,
+        myroom_theme_card_from: theme.myroom_theme_card_from,
+        myroom_theme_card_to:   theme.myroom_theme_card_to,
+        myroom_theme_text:      theme.myroom_theme_text,
+      }));
+    }
+  };
+
+  const clearTheme = async () => {
+    if (!supabase || !user?.id) return;
+    const { error } = await supabase.rpc("clear_myroom_theme", { p_user_id: user.id });
+    if (error) { showToast(error.message, "error"); return; }
+    showToast("기본 테마로 돌아왔어", "info");
+    if (typeof fetchProfile === "function") await fetchProfile(user.id);
+    if (typeof setProfile === "function") {
+      setProfile((prev: any) => ({
+        ...(prev || {}),
+        active_myroom_theme:    null,
+        myroom_theme_bg_from:   null,
+        myroom_theme_bg_to:     null,
+        myroom_theme_accent:    null,
+        myroom_theme_card_from: null,
+        myroom_theme_card_to:   null,
+        myroom_theme_text:      null,
+      }));
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-bold text-white">마이룸 테마</h3>
+          <p className="text-xs text-slate-400 mt-0.5">보유 테마 중 하나를 골라 마이룸 배경을 바꿔보세요.</p>
+        </div>
+        {activeKey !== "none" && (
+          <button
+            onClick={clearTheme}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 transition-all"
+          >
+            기본 테마로
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <div className="py-12 text-center text-slate-500">불러오는 중...</div>
+      ) : owned.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/10 py-12 text-center text-sm text-slate-500">
+          아직 보유한 테마가 없어요. 포인트샵 → 🛋 마이룸 테마 에서 구매할 수 있어요.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {owned.map((theme) => {
+            const colors = getMyRoomThemeColors(theme);
+            const isActive = activeKey === colors.key;
+            return (
+              <div key={theme.id}
+                className={cn(
+                  "relative overflow-hidden rounded-2xl border p-4 transition-all",
+                  isActive ? "border-amber-400/50" : "border-white/10 hover:border-white/20"
+                )}
+                style={{
+                  background: `linear-gradient(135deg, ${colors.bgFrom}, ${colors.bgTo})`,
+                  color: colors.text,
+                }}
+              >
+                <div className="text-[10px] uppercase tracking-widest opacity-70 font-semibold">
+                  {colors.label}
+                </div>
+                <div className="mt-1 text-base font-bold truncate">{theme.title}</div>
+                <div className="mt-3 rounded-lg p-2.5 border border-white/10"
+                  style={{ background: `linear-gradient(135deg, ${colors.cardFrom}, ${colors.cardTo})` }}>
+                  <div className="text-xs font-semibold" style={{ color: colors.accent }}>
+                    ✦ 카드 샘플
+                  </div>
+                </div>
+                <div className="mt-3 flex gap-1.5">
+                  {[colors.bgFrom, colors.bgTo, colors.accent, colors.cardFrom].map((c, i) => (
+                    <div key={i} className="w-5 h-5 rounded border border-white/20" style={{ background: c }} />
+                  ))}
+                </div>
+                <button
+                  onClick={() => applyTheme(theme)}
+                  disabled={isActive}
+                  className={cn(
+                    "mt-4 w-full rounded-xl py-2 text-xs font-bold border transition-all",
+                    isActive
+                      ? "bg-amber-400/20 border-amber-400/50 text-amber-200 cursor-default"
+                      : "bg-white/10 border-white/15 text-white hover:bg-white/20"
+                  )}
+                >
+                  {isActive ? "✓ 장착 중" : "이 테마 장착"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════
 // TitlesPanel — 마이룸 칭호 탭
 //   - 보유 칭호 목록 + 장착/해제
 //   - 미보유 칭호 (잠긴 상태 표시)
@@ -15804,7 +16040,7 @@ const TitlesPanel = ({ user, profile, onProfileChanged }: any) => {
 };
 
 const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsgRead }: any) => {
-  const [myRoomTab, setMyRoomTab] = useState<"characters" | "messages" | "titles">("characters");
+  const [myRoomTab, setMyRoomTab] = useState<"characters" | "messages" | "titles" | "themes">("characters");
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -17260,7 +17496,13 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
   if (!user || !profile) return null;
 
   return (
-    <div className="max-w-6xl mx-auto py-12 sm:py-24 px-3 sm:px-6">
+    <div
+      className="max-w-6xl mx-auto py-12 sm:py-24 px-3 sm:px-6 rounded-[2rem]"
+      style={hasMyRoomTheme(profile) ? {
+        ...getMyRoomThemeBackgroundStyle(profile),
+        padding: "3rem 1.5rem",
+      } : undefined}
+    >
 
       {/* ── 신규 가입자/프로필 미로드 방어 가드 ── */}
       {!profile ? (
@@ -17311,6 +17553,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
           { key: "characters", label: "캐릭터 관리" },
           { key: "messages", label: "쪽지함" },
           { key: "titles", label: "칭호" },
+          { key: "themes", label: "🛋 테마" },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -17937,6 +18180,16 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
           user={user}
           profile={profile}
           onProfileChanged={fetchProfile}
+        />
+      )}
+
+      {/* ── 테마 탭 ── */}
+      {myRoomTab === "themes" && (
+        <MyRoomThemesPanel
+          user={user}
+          profile={profile}
+          setProfile={setProfile}
+          fetchProfile={fetchProfile}
         />
       )}
 
@@ -20405,7 +20658,7 @@ const PointShopPage = ({ user, profile }: any) => {
   const [gachaRewards, setGachaRewards] = useState<Record<string, any[]>>({});
   const [myPoint, setMyPoint] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [shopTab, setShopTab] = useState<"guild" | "nickname" | "title" | "enhance" | "gacha" | "gold">("guild");
+  const [shopTab, setShopTab] = useState<"guild" | "nickname" | "title" | "myroom" | "enhance" | "gacha" | "gold">("guild");
   const [titleMap, setTitleMap] = useState<Record<string, any>>({});
   const [goldRequests, setGoldRequests] = useState<any[]>([]);
   const [goldLoading, setGoldLoading] = useState(false);
@@ -20645,6 +20898,26 @@ const PointShopPage = ({ user, profile }: any) => {
       return;
     }
 
+    if (item.reward_type === "myroom_theme") {
+      const { data: themeResult, error: themeError } = await client.rpc("purchase_myroom_theme_item", {
+        p_user_id: user.id,
+        p_item_id: item.id,
+      });
+      if (themeError) {
+        showToast(themeError.message || "마이룸 테마 구매에 실패했어.", "error");
+        await fetchShop();
+        return;
+      }
+      const remainingThemePoints = Number(
+        (themeResult as any)?.remaining_points ??
+          Math.max(0, Number(myPoint || 0) - Number(item.price || 0))
+      );
+      setMyPoint(remainingThemePoints);
+      showToast(`🛋 ${item.title} 구매 완료! 마이룸 → 테마 탭에서 장착할 수 있어.`, "success");
+      await fetchShop();
+      return;
+    }
+
     if (item.reward_type === "title") {
       const { data: titleResult, error: titleError } = await client.rpc("purchase_title_item", {
         p_user_id: user.id,
@@ -20765,6 +21038,7 @@ const PointShopPage = ({ user, profile }: any) => {
   const nicknameItems = items.filter((item) => item.reward_type === "nickname_effect" || String(item.shop_category || "") === "nickname");
   const enhanceItems = items.filter((item) => item.reward_type === "enhance_stone");
   const titleItems = items.filter((item) => item.reward_type === "title");
+  const myroomThemeItems = items.filter((item) => item.reward_type === "myroom_theme");
 
   const renderShopCards = (shopItems: any[], emptyText: string) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -20817,19 +21091,88 @@ const PointShopPage = ({ user, profile }: any) => {
                     };
                     const color = t.color || rarityColor[t.rarity] || "#c4b5fd";
                     return (
-                      <div
-                        className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-semibold"
+                      <div className="mt-3 flex items-center gap-3 rounded-2xl border p-3"
                         style={{
-                          color,
-                          borderColor: `${color}55`,
-                          background: `${color}18`,
-                          textShadow: `0 0 12px ${color}55`,
-                        }}
+                          borderColor: `${color}44`,
+                          background: `${color}10`,
+                        }}>
+                        {/* 칭호 아이콘 이미지 */}
+                        {t.icon_url ? (
+                          <img
+                            src={t.icon_url}
+                            alt={t.name}
+                            className="w-14 h-14 rounded-xl object-cover border-2 flex-shrink-0"
+                            style={{
+                              borderColor: `${color}66`,
+                              boxShadow: `0 0 18px ${color}55`,
+                            }}
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ) : (
+                          <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold border-2 flex-shrink-0"
+                            style={{
+                              borderColor: `${color}66`,
+                              background: `${color}22`,
+                              color,
+                              boxShadow: `0 0 18px ${color}55`,
+                            }}>
+                            ✦
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div
+                            className="text-base font-bold truncate"
+                            style={{ color, textShadow: `0 0 12px ${color}55` }}
+                          >
+                            ✦ {t.name}
+                          </div>
+                          <div className="text-[10px] uppercase tracking-widest opacity-70 mt-0.5" style={{ color }}>
+                            {t.rarity || "common"}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {/* 닉네임 효과 미리보기 */}
+                  {item.reward_type === "nickname_effect" && (
+                    <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-semibold mb-2">
+                        미리보기
+                      </div>
+                      <div
+                        className="text-2xl font-bold"
+                        style={getNicknameEffectStyle(item)}
                       >
-                        ✦ {t.name}
-                        <span className="text-[10px] uppercase tracking-widest opacity-70">
-                          {t.rarity || "common"}
-                        </span>
+                        {profile?.nickname || "내 닉네임"}
+                      </div>
+                      <div className="mt-1.5 text-xs text-white/55">
+                        구매 후 마이룸에서 ON/OFF 가능
+                      </div>
+                    </div>
+                  )}
+                  {/* 마이룸 테마 미리보기 */}
+                  {item.reward_type === "myroom_theme" && (() => {
+                    const t = getMyRoomThemeColors(item);
+                    return (
+                      <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+                        <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-semibold mb-2">
+                          테마 미리보기
+                        </div>
+                        <div
+                          className="rounded-xl p-3 border border-white/8"
+                          style={{
+                            background: `linear-gradient(135deg, ${t.bgFrom}, ${t.bgTo})`,
+                            color: t.text,
+                          }}
+                        >
+                          <div className="text-sm font-bold">{t.label} 테마</div>
+                          <div className="mt-2 flex gap-1.5">
+                            {[t.bgFrom, t.bgTo, t.accent, t.cardFrom].map((c, i) => (
+                              <div key={i} className="w-6 h-6 rounded-md border border-white/20"
+                                style={{ background: c }} />
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     );
                   })()}
@@ -20918,6 +21261,7 @@ const PointShopPage = ({ user, profile }: any) => {
           ["guild", "뱃지 상점"],
           ["nickname", "닉네임 상점"],
           ["title", "✦ 칭호 상점"],
+          ["myroom", "🛋 마이룸 테마"],
           ["enhance", "강화석 상점"],
           ["gacha", "무기 가챠"],
           ["gold", "💰 골드 교환"],
@@ -21040,6 +21384,8 @@ const PointShopPage = ({ user, profile }: any) => {
         renderShopCards(nicknameItems, "아직 등록된 닉네임 상품이 없습니다.")
       ) : shopTab === "title" ? (
         renderShopCards(titleItems, "아직 등록된 칭호 상품이 없습니다.")
+      ) : shopTab === "myroom" ? (
+        renderShopCards(myroomThemeItems, "아직 등록된 마이룸 테마가 없습니다.")
       ) : shopTab === "enhance" ? (
         renderShopCards(enhanceItems, "아직 등록된 강화석 상품이 없습니다.")
       ) : (
@@ -21235,7 +21581,7 @@ const AdminPointShopManager = () => {
   const [adminManagerTab, setAdminManagerTab] = useState<"shop" | "gold_requests">("gold_requests");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [rewardType, setRewardType] = useState<"badge" | "enhance_stone" | "nickname_effect" | "title">("badge");
+  const [rewardType, setRewardType] = useState<"badge" | "enhance_stone" | "nickname_effect" | "title" | "myroom_theme">("badge");
   const [selectedTitleId, setSelectedTitleId] = useState<string>("");
   const [availableTitles, setAvailableTitles] = useState<any[]>([]);
   const [badgeColor, setBadgeColor] = useState("#8b5cf6");
@@ -21248,10 +21594,18 @@ const AdminPointShopManager = () => {
   const [nicknameGradientFrom, setNicknameGradientFrom] = useState(NICKNAME_EFFECT_PRESETS.violet.from);
   const [nicknameGradientTo, setNicknameGradientTo] = useState(NICKNAME_EFFECT_PRESETS.violet.to);
   const [nicknameGlowColor, setNicknameGlowColor] = useState(NICKNAME_EFFECT_PRESETS.violet.glow);
+  // 마이룸 테마 상품용 state
+  const [myroomThemeKey, setMyroomThemeKey] = useState<MyRoomThemeKey>("midnight");
+  const [myroomBgFrom, setMyroomBgFrom]     = useState(MYROOM_THEME_PRESETS.midnight.bgFrom);
+  const [myroomBgTo, setMyroomBgTo]         = useState(MYROOM_THEME_PRESETS.midnight.bgTo);
+  const [myroomAccent, setMyroomAccent]     = useState(MYROOM_THEME_PRESETS.midnight.accent);
+  const [myroomCardFrom, setMyroomCardFrom] = useState(MYROOM_THEME_PRESETS.midnight.cardFrom);
+  const [myroomCardTo, setMyroomCardTo]     = useState(MYROOM_THEME_PRESETS.midnight.cardTo);
+  const [myroomTextColor, setMyroomTextColor] = useState(MYROOM_THEME_PRESETS.midnight.text);
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
-  const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "title" | "weapon" | "enhance_stone">("guild");
+  const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "title" | "myroom_theme" | "weapon" | "enhance_stone">("guild");
   const [productAdminTab, setProductAdminTab] = useState<"badge" | "weapon_parts" | "gacha">("badge");
 
   const [weaponName, setWeaponName] = useState("");
@@ -21294,12 +21648,24 @@ const AdminPointShopManager = () => {
   }, [badgeCardEffect]);
 
   useEffect(() => {
+    const preset = MYROOM_THEME_PRESETS[myroomThemeKey] || MYROOM_THEME_PRESETS.midnight;
+    setMyroomBgFrom(preset.bgFrom);
+    setMyroomBgTo(preset.bgTo);
+    setMyroomAccent(preset.accent);
+    setMyroomCardFrom(preset.cardFrom);
+    setMyroomCardTo(preset.cardTo);
+    setMyroomTextColor(preset.text);
+  }, [myroomThemeKey]);
+
+  useEffect(() => {
     if (managerTab === "nickname") {
       setRewardType("nickname_effect");
     } else if (managerTab === "enhance_stone") {
       setRewardType("enhance_stone");
     } else if (managerTab === "title") {
       setRewardType("title");
+    } else if (managerTab === "myroom_theme") {
+      setRewardType("myroom_theme");
     } else {
       setRewardType("badge");
     }
@@ -21443,6 +21809,13 @@ const AdminPointShopManager = () => {
       nickname_gradient_to: rewardType === "nickname_effect" ? nicknameGradientTo : null,
       nickname_glow_color: rewardType === "nickname_effect" ? nicknameGlowColor : null,
       title_id: rewardType === "title" ? (selectedTitleId || null) : null,
+      myroom_theme_key:       rewardType === "myroom_theme" ? myroomThemeKey : null,
+      myroom_theme_bg_from:   rewardType === "myroom_theme" ? myroomBgFrom : null,
+      myroom_theme_bg_to:     rewardType === "myroom_theme" ? myroomBgTo : null,
+      myroom_theme_accent:    rewardType === "myroom_theme" ? myroomAccent : null,
+      myroom_theme_card_from: rewardType === "myroom_theme" ? myroomCardFrom : null,
+      myroom_theme_card_to:   rewardType === "myroom_theme" ? myroomCardTo : null,
+      myroom_theme_text:      rewardType === "myroom_theme" ? myroomTextColor : null,
       available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
       available_to: availableTo ? new Date(availableTo).toISOString() : null,
     };
@@ -21747,6 +22120,7 @@ const AdminPointShopManager = () => {
             { key: "badge", label: "닉네임 효과", reward: "nickname_effect", manager: "nickname" },
             { key: "badge", label: "강화석", reward: "enhance_stone", manager: "enhance_stone" },
             { key: "badge", label: "✦ 칭호", reward: "title", manager: "title" },
+            { key: "badge", label: "🛋 마이룸 테마", reward: "myroom_theme", manager: "myroom_theme" },
             { key: "weapon_parts", label: "무기파츠", reward: null, manager: null },
             { key: "gacha", label: "가챠", reward: null, manager: null },
           ].map((tab, idx) => {
@@ -21797,11 +22171,12 @@ const AdminPointShopManager = () => {
                 className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
                 value={rewardType}
                 onChange={(e) => {
-                  const nextType = e.target.value as "badge" | "enhance_stone" | "nickname_effect" | "title";
+                  const nextType = e.target.value as "badge" | "enhance_stone" | "nickname_effect" | "title" | "myroom_theme";
                   setRewardType(nextType);
                   if (nextType === "nickname_effect") setManagerTab("nickname");
                   else if (nextType === "enhance_stone") setManagerTab("enhance_stone");
                   else if (nextType === "title") setManagerTab("title");
+                  else if (nextType === "myroom_theme") setManagerTab("myroom_theme");
                   else setManagerTab("guild");
                 }}
               >
@@ -21809,6 +22184,7 @@ const AdminPointShopManager = () => {
                 <option value="enhance_stone">강화석 상품</option>
                 <option value="nickname_effect">닉네임 효과 상품</option>
                 <option value="title">✦ 칭호 상품</option>
+                <option value="myroom_theme">🛋 마이룸 테마 상품</option>
               </select>
             </div>
           </div>
@@ -21878,6 +22254,26 @@ const AdminPointShopManager = () => {
                 return (
                   <div className="flex items-center gap-3 pt-2 border-t border-white/5">
                     <span className="text-[10px] uppercase tracking-widest text-slate-400">Preview</span>
+                    {/* 칭호 아이콘 이미지 */}
+                    {t.icon_url ? (
+                      <img
+                        src={t.icon_url}
+                        alt={t.name}
+                        className="w-10 h-10 rounded-lg object-cover border-2"
+                        style={{ borderColor: `${color}66`, boxShadow: `0 0 12px ${color}55` }}
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold border-2"
+                        style={{
+                          borderColor: `${color}66`,
+                          background: `${color}22`,
+                          color,
+                          boxShadow: `0 0 12px ${color}55`,
+                        }}>
+                        ✦
+                      </div>
+                    )}
                     <span
                       className="px-3 py-1 rounded-full border text-sm font-semibold"
                       style={{
@@ -21896,6 +22292,71 @@ const AdminPointShopManager = () => {
               <div className="text-[11px] text-slate-500 leading-relaxed">
                 ℹ️ 미리 <code className="px-1 py-0.5 rounded bg-white/5 text-violet-300">titles</code> 테이블에 칭호를 등록한 뒤 여기서 골라 판매할 수 있어.
                 구매 시 <code className="px-1 py-0.5 rounded bg-white/5 text-violet-300">user_titles</code>에 자동 추가되고, 마이룸 → 칭호에서 장착할 수 있어.
+              </div>
+            </div>
+          )}
+
+          {rewardType === "myroom_theme" && (
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-slate-400 mb-2 block">테마 프리셋</label>
+                  <select
+                    className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
+                    value={myroomThemeKey}
+                    onChange={(e) => setMyroomThemeKey(e.target.value as MyRoomThemeKey)}
+                  >
+                    {Object.entries(MYROOM_THEME_PRESETS)
+                      .filter(([k]) => k !== "none")
+                      .map(([key, value]) => (
+                        <option key={key} value={key}>{value.label}</option>
+                      ))}
+                  </select>
+                </div>
+                <div className="rounded-2xl border border-white/10 px-4 py-3"
+                  style={{ background: `linear-gradient(135deg, ${myroomBgFrom}, ${myroomBgTo})`, color: myroomTextColor }}>
+                  <div className="text-xs opacity-70">마이룸 배경 미리보기</div>
+                  <div className="mt-2 text-xl font-bold">{title || "내 마이룸"}</div>
+                  <div className="mt-2 rounded-lg p-2" style={{ background: `linear-gradient(135deg, ${myroomCardFrom}, ${myroomCardTo})` }}>
+                    <div className="text-sm" style={{ color: myroomAccent }}>✦ 카드 미리보기</div>
+                  </div>
+                </div>
+              </div>
+              <div className="grid md:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 mb-2 block">배경 시작</label>
+                  <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2"
+                    value={myroomBgFrom} onChange={(e) => setMyroomBgFrom(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-2 block">배경 끝</label>
+                  <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2"
+                    value={myroomBgTo} onChange={(e) => setMyroomBgTo(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-2 block">강조 색</label>
+                  <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2"
+                    value={myroomAccent} onChange={(e) => setMyroomAccent(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-2 block">카드 시작</label>
+                  <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2"
+                    value={myroomCardFrom} onChange={(e) => setMyroomCardFrom(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-2 block">카드 끝</label>
+                  <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2"
+                    value={myroomCardTo} onChange={(e) => setMyroomCardTo(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-2 block">텍스트 색</label>
+                  <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2"
+                    value={myroomTextColor} onChange={(e) => setMyroomTextColor(e.target.value)} />
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-500 leading-relaxed">
+                ℹ️ 구매 시 <code className="px-1 py-0.5 rounded bg-white/5 text-violet-300">user_owned_myroom_themes</code> 에 추가되고,
+                마이룸 → 🛋 테마 탭에서 장착할 수 있어요.
               </div>
             </div>
           )}
@@ -21979,7 +22440,7 @@ const AdminPointShopManager = () => {
             onClick={createItem}
             className="w-full bg-amber-500 p-4 rounded-2xl font-semibold uppercase hover:bg-amber-400 transition-all"
           >
-            {rewardType === "badge" ? "뱃지 상품 생성" : rewardType === "nickname_effect" ? "닉네임 상품 생성" : rewardType === "title" ? "✦ 칭호 상품 생성" : "강화석 상품 생성"}
+            {rewardType === "badge" ? "뱃지 상품 생성" : rewardType === "nickname_effect" ? "닉네임 상품 생성" : rewardType === "title" ? "✦ 칭호 상품 생성" : rewardType === "myroom_theme" ? "🛋 마이룸 테마 상품 생성" : "강화석 상품 생성"}
           </button>
         </div>
 
