@@ -1075,6 +1075,8 @@ const getShopRewardTypeLabel = (item: any) => {
   if (item?.reward_type === "enhance_protect_ticket") return "Protect Ticket";
   if (item?.reward_type === "myroom_theme") return "MyRoom Theme";
   if (item?.reward_type === "title") return "Title";
+  if (item?.reward_type === "profile_bg") return "Profile BG";
+  if (item?.reward_type === "custom_bg_ticket") return "Custom BG Ticket";
   return "Point Item";
 };
 
@@ -1083,6 +1085,12 @@ const getPointShopCardBackground = (item: any, badgeTheme: any) => {
   if (item?.reward_type === "myroom_theme") {
     const t = getMyRoomThemeColors(item);
     return `linear-gradient(135deg, ${t.bgFrom}, ${t.bgTo})`;
+  }
+  if (item?.reward_type === "profile_bg" && item?.profile_card_bg_url) {
+    return `linear-gradient(135deg, rgba(15,23,42,0.55), rgba(2,6,23,0.85)), url(${item.profile_card_bg_url})`;
+  }
+  if (item?.reward_type === "custom_bg_ticket") {
+    return "linear-gradient(135deg, rgba(244,114,182,0.20), rgba(96,165,250,0.18), rgba(15,23,42,0.96) 58%, rgba(2,6,23,0.98))";
   }
   if (item?.reward_type === "enhance_stone") {
     return "linear-gradient(135deg, rgba(251,191,36,0.18), rgba(168,85,247,0.18), rgba(15,23,42,0.96) 58%, rgba(2,6,23,0.98))";
@@ -1102,6 +1110,12 @@ const getPointShopAuraBackground = (item: any, badgeTheme: any) => {
   if (item?.reward_type === "myroom_theme") {
     const t = getMyRoomThemeColors(item);
     return `radial-gradient(circle at top right, ${t.accent}33, transparent 50%)`;
+  }
+  if (item?.reward_type === "profile_bg") {
+    return "radial-gradient(circle at top right, rgba(96,165,250,0.22), transparent 42%)";
+  }
+  if (item?.reward_type === "custom_bg_ticket") {
+    return "radial-gradient(circle at top right, rgba(244,114,182,0.24), transparent 42%), radial-gradient(circle at bottom left, rgba(96,165,250,0.18), transparent 44%)";
   }
   if (item?.reward_type === "enhance_stone") {
     return "radial-gradient(circle at top right, rgba(251,191,36,0.22), transparent 40%), radial-gradient(circle at bottom left, rgba(168,85,247,0.16), transparent 44%)";
@@ -1663,6 +1677,16 @@ const getShopItemHighlights = (item: any) => {
     highlights.push("구매 후 마이룸 → 테마 탭에서 장착");
   }
 
+  if (item?.reward_type === "profile_bg") {
+    highlights.push("메인화면 프로필 카드 배경으로 적용");
+    highlights.push("마이룸 → 프로필 카드에서 장착");
+  }
+
+  if (item?.reward_type === "custom_bg_ticket") {
+    highlights.push("내가 원하는 이미지를 직접 업로드");
+    highlights.push("관리자 승인 후 프로필 카드에 적용");
+  }
+
   if (item?.reward_type === "title") {
     highlights.push("구매 후 마이룸 → 칭호 탭에서 장착 가능");
   }
@@ -1704,6 +1728,14 @@ const getShopMoodLine = (item: any) => {
   if (item?.reward_type === "myroom_theme") {
     const t = getMyRoomThemeColors(item);
     return `${t.label} 테마로 마이룸 분위기를 바꿔주는 변경권`;
+  }
+
+  if (item?.reward_type === "profile_bg") {
+    return "메인화면에서 프로필 카드를 클릭했을 때 보이는 배경 이미지";
+  }
+
+  if (item?.reward_type === "custom_bg_ticket") {
+    return "원하는 이미지를 직접 올려 프로필 카드를 꾸미는 1회용 업로드권";
   }
 
   if (item?.reward_type === "title") {
@@ -6087,10 +6119,164 @@ const Hero = ({
 //   - 각 행: [캐릭터 이미지] [닉네임 + 온라인 점] [장착한 칭호]
 //   - 칭호는 레어도 컬러로 표시
 // ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// PlayerProfileModal — 접속 플레이어 카드를 클릭했을 때 뜨는 풀카드 모달
+//   - 큰 배경 이미지 (구매한 프로필 배경)
+//   - 큰 칭호 아이콘 + 닉네임 효과 + 칭호
+//   - 본인이 작성한 한마디
+// ════════════════════════════════════════════════════════════
+const PlayerProfileModal = ({ member, onClose }: { member: any; onClose: () => void }) => {
+  const title = member?.equipped_title;
+  const rarityColor: Record<string, string> = {
+    common: "#CBD5E1", rare: "#7DD3FC", epic: "#C4B5FD",
+    legendary: "#FCD34D", mythic: "#F9A8D4",
+  };
+  const titleColor = title ? (title.color || rarityColor[title.rarity] || "#c4b5fd") : "#94a3b8";
+  const bgUrl = member?.profile_card_bg_url;
+  const motto = member?.profile_card_motto;
+  const initial = (member?.nickname || "?").slice(0, 1);
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-white/10 bg-[#0a0e18] shadow-[0_30px_80px_rgba(0,0,0,0.6)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 닫기 버튼 */}
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-20 w-9 h-9 rounded-full flex items-center justify-center bg-black/40 hover:bg-black/60 text-white/80 hover:text-white transition-all"
+          aria-label="닫기"
+        >
+          ✕
+        </button>
+
+        {/* 배경 이미지 + 그라데이션 오버레이 */}
+        <div className="relative h-48">
+          {bgUrl ? (
+            <img
+              src={bgUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+          ) : (
+            <div className="absolute inset-0" style={{
+              background: `linear-gradient(135deg, ${titleColor}30, rgba(15,23,42,0.95))`,
+            }} />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e18] via-[#0a0e18]/40 to-transparent" />
+        </div>
+
+        {/* 본문 */}
+        <div className="relative -mt-12 px-6 pb-6 pt-0 z-10">
+          {/* 아바타 */}
+          <div className="flex justify-center mb-4">
+            {title?.icon_url ? (
+              <img
+                src={title.icon_url}
+                alt={title.name}
+                className="w-24 h-24 rounded-2xl object-cover border-4"
+                style={{
+                  borderColor: titleColor,
+                  boxShadow: `0 0 32px ${titleColor}88`,
+                  background: "#0a0e18",
+                }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-2xl flex items-center justify-center text-4xl font-bold border-4"
+                style={{
+                  borderColor: titleColor,
+                  background: `linear-gradient(135deg, ${titleColor}40, ${titleColor}10)`,
+                  color: "#fff",
+                  boxShadow: `0 0 32px ${titleColor}66`,
+                }}>
+                {initial}
+              </div>
+            )}
+          </div>
+
+          {/* 닉네임 */}
+          <div className="text-center">
+            {hasNicknameEffect(member) ? (
+              <div className="text-3xl font-bold" style={getNicknameEffectStyle(member)}>
+                {member?.nickname || "Unknown"}
+              </div>
+            ) : (
+              <div className="text-3xl font-bold text-white">
+                {member?.nickname || "Unknown"}
+              </div>
+            )}
+            <div className="mt-1 text-[10px] text-slate-500 font-semibold tracking-widest uppercase">
+              {member?.role === "admin" ? "👑 GUILD MASTER"
+                : member?.role === "submaster" ? "⚔️ SUB MASTER"
+                : "GUILD MEMBER"}
+            </div>
+          </div>
+
+          {/* 칭호 */}
+          {title && (
+            <div className="mt-4 flex justify-center">
+              <div
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-sm font-semibold"
+                style={{
+                  color: titleColor,
+                  borderColor: `${titleColor}55`,
+                  background: `${titleColor}18`,
+                  textShadow: `0 0 12px ${titleColor}55`,
+                }}
+              >
+                ✦ {title.name}
+              </div>
+            </div>
+          )}
+
+          {/* 한마디 */}
+          {motto && (
+            <div className="mt-5 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+              <div className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold mb-1">
+                한마디
+              </div>
+              <div className="text-sm text-white/90 leading-relaxed break-words">
+                "{motto}"
+              </div>
+            </div>
+          )}
+
+          {/* 정보 */}
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-center">
+              <div className="text-[9px] uppercase tracking-widest text-slate-500 font-semibold">포인트</div>
+              <div className="mt-1 text-sm font-bold text-amber-300">{member?.points ?? 0}</div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-center">
+              <div className="text-[9px] uppercase tracking-widest text-slate-500 font-semibold">마지막 접속</div>
+              <div className="mt-1 text-xs font-bold text-white/80">
+                {member?.last_seen ? new Date(member.last_seen).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }) : "-"}
+              </div>
+            </div>
+          </div>
+
+          {!motto && (
+            <div className="mt-4 text-center text-[11px] text-slate-600">
+              본인의 카드라면 마이룸 → 🖼 프로필 카드에서 한마디를 작성할 수 있어요
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const OnlinePlayersCard = () => {
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expand, setExpand] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
 
   const fetchMembers = useCallback(async () => {
     if (!supabase) {
@@ -6102,7 +6288,7 @@ const OnlinePlayersCard = () => {
       // 1) profiles 단순 조회 (조인 시도 안 함)
       const { data: profilesData, error: profilesErr } = await supabase
         .from("profiles")
-        .select("id, nickname, last_attendance, last_seen, points, role, equipped_title_id, active_nickname_effect, nickname_gradient_from, nickname_gradient_to, nickname_glow_color")
+        .select("id, nickname, last_attendance, last_seen, points, role, equipped_title_id, active_nickname_effect, nickname_gradient_from, nickname_gradient_to, nickname_glow_color, profile_card_bg_url, profile_card_motto")
         .order("last_seen", { ascending: false, nullsFirst: false });
 
       if (profilesErr) {
@@ -6246,7 +6432,8 @@ const OnlinePlayersCard = () => {
               return (
                 <div
                   key={m.id}
-                  className="flex items-center gap-2.5 p-2 rounded-xl transition-all"
+                  onClick={() => setSelectedMember(m)}
+                  className="flex items-center gap-2.5 p-2 rounded-xl transition-all cursor-pointer hover:bg-white/[0.06]"
                   style={{
                     background: status === "online" ? "rgba(52,211,153,0.04)" : "transparent",
                   }}
@@ -6337,6 +6524,12 @@ const OnlinePlayersCard = () => {
             </button>
           )}
         </>
+      )}
+      {selectedMember && (
+        <PlayerProfileModal
+          member={selectedMember}
+          onClose={() => setSelectedMember(null)}
+        />
       )}
     </motion.div>
   );
@@ -15681,6 +15874,268 @@ const ArmoryViewModal = ({ character, onClose, onEdit }: { character: any; onClo
 // ── End ArmoryViewModal ──────────────────────────────────────
 
 // ════════════════════════════════════════════════════════════
+// ProfileCardPanel — 마이룸 프로필 카드 탭
+//   - 한마디(motto) 작성/수정
+//   - 보유 배경 그리드 (적용/해제/삭제)
+//   - 커스텀 업로드 (티켓 차감)
+// ════════════════════════════════════════════════════════════
+const ProfileCardPanel = ({ user, profile, setProfile, fetchProfile }: any) => {
+  const [owned, setOwned] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [motto, setMotto] = useState<string>(profile?.profile_card_motto || "");
+  const [savingMotto, setSavingMotto] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadTitle, setUploadTitle] = useState("");
+  const totalTickets = tickets.reduce((s, t) => s + (t.quantity || 0), 0);
+  const currentBg = profile?.profile_card_bg_url;
+
+  const fetchAll = useCallback(async () => {
+    if (!supabase || !user?.id) return;
+    setLoading(true);
+    const [{ data: bgs }, { data: tks }] = await Promise.all([
+      supabase.from("user_owned_profile_backgrounds").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("user_owned_custom_bg_tickets").select("*").eq("user_id", user.id).gt("quantity", 0),
+    ]);
+    setOwned(bgs || []);
+    setTickets(tks || []);
+    setLoading(false);
+  }, [user?.id]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { setMotto(profile?.profile_card_motto || ""); }, [profile?.profile_card_motto]);
+
+  const saveMotto = async () => {
+    if (!supabase || !user?.id) return;
+    setSavingMotto(true);
+    const { error } = await supabase.rpc("update_profile_motto", { p_user_id: user.id, p_text: motto });
+    setSavingMotto(false);
+    if (error) { showToast(error.message, "error"); return; }
+    showToast("한마디 저장 완료", "success");
+    if (typeof setProfile === "function") setProfile((prev: any) => ({ ...(prev||{}), profile_card_motto: motto || null }));
+    if (typeof fetchProfile === "function") await fetchProfile(user.id);
+  };
+
+  const applyBg = async (bg: any) => {
+    if (!supabase || !user?.id) return;
+    const { error } = await supabase.rpc("apply_profile_bg", { p_user_id: user.id, p_owned_id: bg.id });
+    if (error) { showToast(error.message, "error"); return; }
+    showToast(`🖼 ${bg.title} 적용 완료`, "success");
+    if (typeof setProfile === "function") setProfile((prev: any) => ({ ...(prev||{}), profile_card_bg_url: bg.bg_url }));
+    if (typeof fetchProfile === "function") await fetchProfile(user.id);
+  };
+
+  const clearBg = async () => {
+    if (!supabase || !user?.id) return;
+    const { error } = await supabase.rpc("clear_profile_bg", { p_user_id: user.id });
+    if (error) { showToast(error.message, "error"); return; }
+    showToast("배경 해제됨", "info");
+    if (typeof setProfile === "function") setProfile((prev: any) => ({ ...(prev||{}), profile_card_bg_url: null }));
+    if (typeof fetchProfile === "function") await fetchProfile(user.id);
+  };
+
+  const deleteBg = async (bg: any) => {
+    if (!supabase || !user?.id) return;
+    if (!confirm(`'${bg.title}' 배경을 삭제할까요?`)) return;
+    if (currentBg === bg.bg_url) await clearBg();
+    const { error } = await supabase.from("user_owned_profile_backgrounds").delete().eq("id", bg.id).eq("user_id", user.id);
+    if (error) { showToast(error.message, "error"); return; }
+    showToast("삭제 완료", "success");
+    await fetchAll();
+  };
+
+  const handleUpload = async (file: File) => {
+    if (!supabase || !user?.id) return;
+    if (totalTickets <= 0) { showToast("업로드권이 부족합니다.", "error"); return; }
+    if (file.size > 5 * 1024 * 1024) { showToast("5MB 이하 이미지만 가능해요.", "error"); return; }
+    setUploading(true);
+    try {
+      const url = await uploadGuildImage(file, `profile-bg/${user.id}`);
+      const { error } = await supabase.rpc("submit_custom_bg", {
+        p_user_id: user.id, p_url: url, p_title: uploadTitle || file.name,
+      });
+      if (error) { showToast(error.message, "error"); return; }
+      showToast("📤 업로드 완료! 관리자 승인을 기다려주세요.", "success");
+      setUploadTitle("");
+      await fetchAll();
+    } catch (err: any) {
+      showToast(`업로드 실패: ${err?.message || err}`, "error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* 미리보기 */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/10">
+        <div className="aspect-video w-full bg-gradient-to-br from-violet-900/40 to-slate-900 relative">
+          {currentBg ? (
+            <img src={currentBg} alt="" className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-600">
+              배경 없음 (기본)
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e18] via-transparent to-transparent" />
+          <div className="absolute bottom-3 left-4 right-4">
+            <div className="text-lg font-bold text-white">{profile?.nickname || "내 닉네임"}</div>
+            {motto && <div className="text-xs text-white/80 mt-1 italic">"{motto}"</div>}
+          </div>
+        </div>
+      </div>
+
+      {/* 한마디 */}
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-bold text-white">한마디</label>
+          <span className="text-[11px] text-slate-500">{motto.length}/80</span>
+        </div>
+        <textarea
+          value={motto}
+          onChange={(e) => setMotto(e.target.value.slice(0, 80))}
+          placeholder="프로필 카드에 표시될 한마디를 적어주세요"
+          className="w-full h-20 bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-slate-600 resize-none"
+        />
+        <button
+          onClick={saveMotto}
+          disabled={savingMotto}
+          className="mt-2 rounded-xl bg-violet-500/20 border border-violet-400/40 px-4 py-1.5 text-xs font-bold text-violet-200 hover:bg-violet-500/30 disabled:opacity-50 transition-all"
+        >
+          {savingMotto ? "저장 중..." : "한마디 저장"}
+        </button>
+      </div>
+
+      {/* 커스텀 업로드 */}
+      <div className="rounded-2xl border border-pink-400/20 bg-pink-500/[0.05] p-4">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <div className="text-sm font-bold text-pink-200">🎟 커스텀 이미지 업로드</div>
+            <div className="text-[11px] text-pink-100/60 mt-0.5">관리자 승인 후 프로필 카드 배경으로 사용 가능</div>
+          </div>
+          <div className="text-xs font-bold text-pink-300">보유: {totalTickets}장</div>
+        </div>
+        {totalTickets > 0 ? (
+          <>
+            <input
+              type="text"
+              placeholder="배경 제목 (예: 내 강아지 사진)"
+              value={uploadTitle}
+              onChange={(e) => setUploadTitle(e.target.value.slice(0, 40))}
+              className="w-full mt-2 h-9 bg-black/40 border border-white/10 rounded-xl px-3 text-sm text-white placeholder:text-slate-600"
+            />
+            <input
+              type="file"
+              accept="image/*"
+              disabled={uploading}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleUpload(f);
+                e.target.value = "";
+              }}
+              className="w-full mt-2 text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-pink-500/20 file:text-pink-200 hover:file:bg-pink-500/30"
+            />
+            {uploading && <div className="text-[11px] text-amber-300 mt-2">업로드 중...</div>}
+          </>
+        ) : (
+          <div className="text-[11px] text-slate-500 py-2">
+            업로드권이 없습니다. 포인트샵 → 🖼 프로필 카드 에서 구입할 수 있어요.
+          </div>
+        )}
+      </div>
+
+      {/* 보유 배경 */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-bold text-white">보유 배경</h3>
+          {currentBg && (
+            <button
+              onClick={clearBg}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/10 transition-all"
+            >
+              배경 해제
+            </button>
+          )}
+        </div>
+        {loading ? (
+          <div className="py-12 text-center text-slate-500">불러오는 중...</div>
+        ) : owned.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/10 py-12 text-center text-sm text-slate-500">
+            아직 보유한 배경이 없어요.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {owned.map((bg) => {
+              const isActive = currentBg === bg.bg_url;
+              const isPending = bg.bg_source === "custom" && bg.custom_status === "pending";
+              const isRejected = bg.bg_source === "custom" && bg.custom_status === "rejected";
+              return (
+                <div key={bg.id} className={cn(
+                  "relative overflow-hidden rounded-2xl border transition-all",
+                  isActive ? "border-amber-400/50" : "border-white/10"
+                )}>
+                  <div className="aspect-video w-full bg-black/40 relative">
+                    <img src={bg.bg_url} alt="" className="w-full h-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                    {isPending && (
+                      <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
+                        <div className="text-xs font-bold text-amber-300">⏳ 승인 대기 중</div>
+                      </div>
+                    )}
+                    {isRejected && (
+                      <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center p-3 text-center">
+                        <div className="text-xs font-bold text-red-300 mb-1">✕ 거부됨</div>
+                        {bg.admin_note && <div className="text-[10px] text-red-100/70">{bg.admin_note}</div>}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3 space-y-2">
+                    <div className="text-sm font-bold text-white truncate">{bg.title}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded uppercase tracking-widest font-semibold border"
+                        style={{
+                          color: bg.bg_source === "custom" ? "#f9a8d4" : "#7dd3fc",
+                          borderColor: bg.bg_source === "custom" ? "rgba(244,114,182,0.4)" : "rgba(125,211,252,0.4)",
+                          background: bg.bg_source === "custom" ? "rgba(244,114,182,0.1)" : "rgba(125,211,252,0.1)",
+                        }}>
+                        {bg.bg_source === "custom" ? "커스텀" : "프리셋"}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => applyBg(bg)}
+                        disabled={isActive || isPending || isRejected}
+                        className={cn(
+                          "flex-1 rounded-xl py-1.5 text-xs font-bold border transition-all",
+                          isActive
+                            ? "bg-amber-400/20 border-amber-400/50 text-amber-200 cursor-default"
+                            : (isPending || isRejected)
+                              ? "bg-white/5 border-white/10 text-slate-500 cursor-not-allowed"
+                              : "bg-white/10 border-white/15 text-white hover:bg-white/20"
+                        )}
+                      >
+                        {isActive ? "✓ 적용 중" : isPending ? "대기" : isRejected ? "거부" : "적용"}
+                      </button>
+                      <button
+                        onClick={() => deleteBg(bg)}
+                        className="rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-400/20 transition-all"
+                      >
+                        🗑
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════
 // MyRoomThemesPanel — 마이룸 테마 탭
 //   - 보유 마이룸 테마 목록 + 장착/해제
 // ════════════════════════════════════════════════════════════
@@ -16049,7 +16504,7 @@ const TitlesPanel = ({ user, profile, onProfileChanged }: any) => {
 };
 
 const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsgRead }: any) => {
-  const [myRoomTab, setMyRoomTab] = useState<"characters" | "messages" | "titles" | "themes" | "nickname">("characters");
+  const [myRoomTab, setMyRoomTab] = useState<"characters" | "messages" | "titles" | "themes" | "nickname" | "profile_card">("characters");
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -17564,6 +18019,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
           { key: "titles", label: "칭호" },
           { key: "nickname", label: "✨ 닉네임" },
           { key: "themes", label: "🛋 테마" },
+          { key: "profile_card", label: "🖼 프로필 카드" },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -18328,6 +18784,16 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
       {/* ── 테마 탭 ── */}
       {myRoomTab === "themes" && (
         <MyRoomThemesPanel
+          user={user}
+          profile={profile}
+          setProfile={setProfile}
+          fetchProfile={fetchProfile}
+        />
+      )}
+
+      {/* ── 프로필 카드 탭 ── */}
+      {myRoomTab === "profile_card" && (
+        <ProfileCardPanel
           user={user}
           profile={profile}
           setProfile={setProfile}
@@ -20800,7 +21266,7 @@ const PointShopPage = ({ user, profile }: any) => {
   const [gachaRewards, setGachaRewards] = useState<Record<string, any[]>>({});
   const [myPoint, setMyPoint] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [shopTab, setShopTab] = useState<"guild" | "nickname" | "title" | "myroom" | "enhance" | "gacha" | "gold">("guild");
+  const [shopTab, setShopTab] = useState<"guild" | "nickname" | "title" | "myroom" | "profile_card" | "enhance" | "gacha" | "gold">("guild");
   const [titleMap, setTitleMap] = useState<Record<string, any>>({});
   const [goldRequests, setGoldRequests] = useState<any[]>([]);
   const [goldLoading, setGoldLoading] = useState(false);
@@ -21040,6 +21506,46 @@ const PointShopPage = ({ user, profile }: any) => {
       return;
     }
 
+    if (item.reward_type === "profile_bg") {
+      const { data: bgResult, error: bgError } = await client.rpc("purchase_profile_bg_item", {
+        p_user_id: user.id,
+        p_item_id: item.id,
+      });
+      if (bgError) {
+        showToast(bgError.message || "프로필 카드 배경 구매에 실패했어.", "error");
+        await fetchShop();
+        return;
+      }
+      const remainingBgPoints = Number(
+        (bgResult as any)?.remaining_points ??
+          Math.max(0, Number(myPoint || 0) - Number(item.price || 0))
+      );
+      setMyPoint(remainingBgPoints);
+      showToast(`🖼 ${item.title} 구매 완료! 마이룸 → 프로필 카드 탭에서 장착해.`, "success");
+      await fetchShop();
+      return;
+    }
+
+    if (item.reward_type === "custom_bg_ticket") {
+      const { data: tkResult, error: tkError } = await client.rpc("purchase_custom_bg_ticket", {
+        p_user_id: user.id,
+        p_item_id: item.id,
+      });
+      if (tkError) {
+        showToast(tkError.message || "업로드권 구매에 실패했어.", "error");
+        await fetchShop();
+        return;
+      }
+      const remainingTkPoints = Number(
+        (tkResult as any)?.remaining_points ??
+          Math.max(0, Number(myPoint || 0) - Number(item.price || 0))
+      );
+      setMyPoint(remainingTkPoints);
+      showToast(`🎟 ${item.title} 구매 완료! 마이룸 → 프로필 카드 탭에서 이미지 업로드 가능해.`, "success");
+      await fetchShop();
+      return;
+    }
+
     if (item.reward_type === "myroom_theme") {
       const { data: themeResult, error: themeError } = await client.rpc("purchase_myroom_theme_item", {
         p_user_id: user.id,
@@ -21181,6 +21687,7 @@ const PointShopPage = ({ user, profile }: any) => {
   const enhanceItems = items.filter((item) => item.reward_type === "enhance_stone");
   const titleItems = items.filter((item) => item.reward_type === "title");
   const myroomThemeItems = items.filter((item) => item.reward_type === "myroom_theme");
+  const profileBgItems = items.filter((item) => item.reward_type === "profile_bg" || item.reward_type === "custom_bg_ticket");
 
   const renderShopCards = (shopItems: any[], emptyText: string) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -21404,6 +21911,7 @@ const PointShopPage = ({ user, profile }: any) => {
           ["nickname", "닉네임 상점"],
           ["title", "✦ 칭호 상점"],
           ["myroom", "🛋 마이룸 테마"],
+          ["profile_card", "🖼 프로필 카드"],
           ["enhance", "강화석 상점"],
           ["gacha", "무기 가챠"],
           ["gold", "💰 골드 교환"],
@@ -21528,6 +22036,8 @@ const PointShopPage = ({ user, profile }: any) => {
         renderShopCards(titleItems, "아직 등록된 칭호 상품이 없습니다.")
       ) : shopTab === "myroom" ? (
         renderShopCards(myroomThemeItems, "아직 등록된 마이룸 테마가 없습니다.")
+      ) : shopTab === "profile_card" ? (
+        renderShopCards(profileBgItems, "아직 등록된 프로필 카드 상품이 없습니다.")
       ) : shopTab === "enhance" ? (
         renderShopCards(enhanceItems, "아직 등록된 강화석 상품이 없습니다.")
       ) : (
@@ -21720,10 +22230,41 @@ const AdminPointShopManager = () => {
   const [title, setTitle] = useState("");
   const [goldExchangeReqs, setGoldExchangeReqs] = useState<any[]>([]);
   const [goldReqsLoading, setGoldReqsLoading] = useState(false);
-  const [adminManagerTab, setAdminManagerTab] = useState<"shop" | "gold_requests">("gold_requests");
+  const [adminManagerTab, setAdminManagerTab] = useState<"shop" | "gold_requests" | "bg_review">("gold_requests");
+  const [pendingCustomBgs, setPendingCustomBgs] = useState<any[]>([]);
+  const [bgReviewLoading, setBgReviewLoading] = useState(false);
+
+  const fetchPendingCustomBgs = useCallback(async () => {
+    if (!supabase) return;
+    setBgReviewLoading(true);
+    const { data, error } = await supabase
+      .from("user_owned_profile_backgrounds")
+      .select("*, profiles!user_owned_profile_backgrounds_user_id_fkey(nickname)")
+      .eq("bg_source", "custom")
+      .eq("custom_status", "pending")
+      .order("created_at", { ascending: true });
+    if (error) {
+      // 외래키 alias 가 없으면 단순 select 로 폴백
+      const { data: simple, error: simpleErr } = await supabase
+        .from("user_owned_profile_backgrounds")
+        .select("*")
+        .eq("bg_source", "custom")
+        .eq("custom_status", "pending")
+        .order("created_at", { ascending: true });
+      if (simpleErr) { showToast(simpleErr.message, "error"); setPendingCustomBgs([]); }
+      else setPendingCustomBgs(simple || []);
+    } else {
+      setPendingCustomBgs(data || []);
+    }
+    setBgReviewLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (adminManagerTab === "bg_review") fetchPendingCustomBgs();
+  }, [adminManagerTab, fetchPendingCustomBgs]);
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [rewardType, setRewardType] = useState<"badge" | "enhance_stone" | "nickname_effect" | "title" | "myroom_theme">("badge");
+  const [rewardType, setRewardType] = useState<"badge" | "enhance_stone" | "nickname_effect" | "title" | "myroom_theme" | "profile_bg" | "custom_bg_ticket">("badge");
   const [selectedTitleId, setSelectedTitleId] = useState<string>("");
   const [availableTitles, setAvailableTitles] = useState<any[]>([]);
   const [badgeColor, setBadgeColor] = useState("#8b5cf6");
@@ -21744,10 +22285,14 @@ const AdminPointShopManager = () => {
   const [myroomCardFrom, setMyroomCardFrom] = useState(MYROOM_THEME_PRESETS.midnight.cardFrom);
   const [myroomCardTo, setMyroomCardTo]     = useState(MYROOM_THEME_PRESETS.midnight.cardTo);
   const [myroomTextColor, setMyroomTextColor] = useState(MYROOM_THEME_PRESETS.midnight.text);
+  // 프로필 카드 배경 상품용
+  const [profileBgUrl, setProfileBgUrl] = useState("");
+  const [profileBgFile, setProfileBgFile] = useState<File | null>(null);
+  const [profileBgUploading, setProfileBgUploading] = useState(false);
   const [availableFrom, setAvailableFrom] = useState("");
   const [availableTo, setAvailableTo] = useState("");
   const [items, setItems] = useState<any[]>([]);
-  const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "title" | "myroom_theme" | "weapon" | "enhance_stone">("guild");
+  const [managerTab, setManagerTab] = useState<"guild" | "nickname" | "title" | "myroom_theme" | "profile_bg" | "custom_bg_ticket" | "weapon" | "enhance_stone">("guild");
   const [productAdminTab, setProductAdminTab] = useState<"badge" | "weapon_parts" | "gacha">("badge");
 
   const [weaponName, setWeaponName] = useState("");
@@ -21808,6 +22353,10 @@ const AdminPointShopManager = () => {
       setRewardType("title");
     } else if (managerTab === "myroom_theme") {
       setRewardType("myroom_theme");
+    } else if (managerTab === "profile_bg") {
+      setRewardType("profile_bg");
+    } else if (managerTab === "custom_bg_ticket") {
+      setRewardType("custom_bg_ticket");
     } else {
       setRewardType("badge");
     }
@@ -21958,6 +22507,7 @@ const AdminPointShopManager = () => {
       myroom_theme_card_from: rewardType === "myroom_theme" ? myroomCardFrom : null,
       myroom_theme_card_to:   rewardType === "myroom_theme" ? myroomCardTo : null,
       myroom_theme_text:      rewardType === "myroom_theme" ? myroomTextColor : null,
+      profile_card_bg_url:    rewardType === "profile_bg" ? profileBgUrl : null,
       available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
       available_to: availableTo ? new Date(availableTo).toISOString() : null,
     };
@@ -22172,8 +22722,9 @@ const AdminPointShopManager = () => {
         {[
           { key: "gold_requests", label: "💰 골드 교환 신청 관리", badge: goldExchangeReqs.filter((r) => r.status === "pending").length },
           { key: "shop", label: "🛒 포인트샵 상품 관리" },
+          { key: "bg_review", label: "🛡 커스텀 배경 승인", badge: pendingCustomBgs.length },
         ].map((t) => (
-          <button key={t.key} onClick={() => { setAdminManagerTab(t.key as any); if (t.key === "gold_requests") fetchGoldExchangeReqs(); }}
+          <button key={t.key} onClick={() => { setAdminManagerTab(t.key as any); if (t.key === "gold_requests") fetchGoldExchangeReqs(); if (t.key === "bg_review") fetchPendingCustomBgs(); }}
             className={cn("relative flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all border",
               adminManagerTab === t.key ? "bg-amber-500/15 border-amber-400/30 text-amber-200" : "border-white/10 bg-white/5 text-slate-400 hover:text-white")}>
             {t.label}
@@ -22263,6 +22814,8 @@ const AdminPointShopManager = () => {
             { key: "badge", label: "강화석", reward: "enhance_stone", manager: "enhance_stone" },
             { key: "badge", label: "✦ 칭호", reward: "title", manager: "title" },
             { key: "badge", label: "🛋 마이룸 테마", reward: "myroom_theme", manager: "myroom_theme" },
+            { key: "badge", label: "🖼 프로필 배경", reward: "profile_bg", manager: "profile_bg" },
+            { key: "badge", label: "🎟 업로드권", reward: "custom_bg_ticket", manager: "custom_bg_ticket" },
             { key: "weapon_parts", label: "무기파츠", reward: null, manager: null },
             { key: "gacha", label: "가챠", reward: null, manager: null },
           ].map((tab, idx) => {
@@ -22313,12 +22866,14 @@ const AdminPointShopManager = () => {
                 className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
                 value={rewardType}
                 onChange={(e) => {
-                  const nextType = e.target.value as "badge" | "enhance_stone" | "nickname_effect" | "title" | "myroom_theme";
+                  const nextType = e.target.value as "badge" | "enhance_stone" | "nickname_effect" | "title" | "myroom_theme" | "profile_bg" | "custom_bg_ticket";
                   setRewardType(nextType);
                   if (nextType === "nickname_effect") setManagerTab("nickname");
                   else if (nextType === "enhance_stone") setManagerTab("enhance_stone");
                   else if (nextType === "title") setManagerTab("title");
                   else if (nextType === "myroom_theme") setManagerTab("myroom_theme");
+                  else if (nextType === "profile_bg") setManagerTab("profile_bg");
+                  else if (nextType === "custom_bg_ticket") setManagerTab("custom_bg_ticket");
                   else setManagerTab("guild");
                 }}
               >
@@ -22327,6 +22882,8 @@ const AdminPointShopManager = () => {
                 <option value="nickname_effect">닉네임 효과 상품</option>
                 <option value="title">✦ 칭호 상품</option>
                 <option value="myroom_theme">🛋 마이룸 테마 상품</option>
+                <option value="profile_bg">🖼 프로필 카드 배경 상품</option>
+                <option value="custom_bg_ticket">🎟 커스텀 업로드권 상품</option>
               </select>
             </div>
           </div>
@@ -22503,6 +23060,81 @@ const AdminPointShopManager = () => {
             </div>
           )}
 
+          {rewardType === "profile_bg" && (
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-slate-400 mb-2 block">배경 이미지 업로드</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setProfileBgFile(file);
+                        setProfileBgUploading(true);
+                        try {
+                          const url = await uploadGuildImage(file, `profile-bg/preset/${rewardType}`);
+                          setProfileBgUrl(url);
+                          showToast("이미지 업로드 완료", "success");
+                        } catch (err: any) {
+                          showToast(`업로드 실패: ${err?.message || err}`, "error");
+                        } finally {
+                          setProfileBgUploading(false);
+                        }
+                      }}
+                      className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-violet-500/20 file:text-violet-300 hover:file:bg-violet-500/30"
+                    />
+                    {profileBgUploading && <div className="text-[11px] text-amber-300 mt-1">업로드 중...</div>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 mb-2 block">또는 이미지 URL 직접 입력</label>
+                    <input
+                      type="text"
+                      placeholder="https://..."
+                      value={profileBgUrl}
+                      onChange={(e) => setProfileBgUrl(e.target.value)}
+                      className="w-full h-[44px] bg-black border border-white/10 rounded-xl px-3 text-sm text-white"
+                    />
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 overflow-hidden bg-black/40">
+                  <div className="text-[10px] text-slate-500 px-3 py-2">미리보기</div>
+                  <div className="aspect-video w-full bg-black/40 relative">
+                    {profileBgUrl ? (
+                      <img src={profileBgUrl} alt="" className="w-full h-full object-cover"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-600">
+                        이미지를 선택하세요
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-500 leading-relaxed">
+                ℹ️ 메인화면에서 유저가 프로필을 클릭했을 때 보이는 배경 이미지입니다.
+                권장 비율 16:9, 1920×1080 이내 권장.
+              </div>
+            </div>
+          )}
+
+          {rewardType === "custom_bg_ticket" && (
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-violet-400/20 bg-violet-500/[0.06] px-5 py-4">
+                <div className="text-sm font-bold text-violet-200 mb-1">🎟 커스텀 업로드권</div>
+                <div className="text-xs text-violet-100/70 leading-relaxed">
+                  유저가 직접 이미지를 업로드해서 프로필 카드 배경으로 사용할 수 있는 1회용 티켓입니다.
+                  업로드된 이미지는 <strong className="text-amber-300">관리자 승인</strong> 후 적용 가능해요.
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-500">
+                ℹ️ 별도 이미지/색상 설정이 필요 없습니다. 가격과 제목만 입력하세요.
+              </div>
+            </div>
+          )}
+
           {rewardType === "nickname_effect" && (
             <div className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
@@ -22582,7 +23214,7 @@ const AdminPointShopManager = () => {
             onClick={createItem}
             className="w-full bg-amber-500 p-4 rounded-2xl font-semibold uppercase hover:bg-amber-400 transition-all"
           >
-            {rewardType === "badge" ? "뱃지 상품 생성" : rewardType === "nickname_effect" ? "닉네임 상품 생성" : rewardType === "title" ? "✦ 칭호 상품 생성" : rewardType === "myroom_theme" ? "🛋 마이룸 테마 상품 생성" : "강화석 상품 생성"}
+            {rewardType === "badge" ? "뱃지 상품 생성" : rewardType === "nickname_effect" ? "닉네임 상품 생성" : rewardType === "title" ? "✦ 칭호 상품 생성" : rewardType === "myroom_theme" ? "🛋 마이룸 테마 상품 생성" : rewardType === "profile_bg" ? "🖼 프로필 카드 배경 상품 생성" : rewardType === "custom_bg_ticket" ? "🎟 커스텀 업로드권 상품 생성" : "강화석 상품 생성"}
           </button>
         </div>
 
@@ -23019,6 +23651,98 @@ const AdminPointShopManager = () => {
       </div>
       )} {/* end productAdminTab ternary */}
       </>)} {/* end shop tab */}
+
+      {/* 커스텀 배경 승인 관리 */}
+      {adminManagerTab === "bg_review" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-pink-300/70">Custom BG Review</div>
+              <div className="text-xl font-semibold text-white mt-0.5">커스텀 배경 승인 대기</div>
+              <div className="text-xs text-slate-400 mt-1">
+                유저가 업로드한 프로필 카드 배경 이미지를 검토합니다. 부적절한 이미지는 거부하세요.
+              </div>
+            </div>
+            <button
+              onClick={fetchPendingCustomBgs}
+              className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/10 transition-all"
+            >
+              새로고침
+            </button>
+          </div>
+
+          {bgReviewLoading ? (
+            <div className="py-12 text-center text-slate-500">불러오는 중...</div>
+          ) : pendingCustomBgs.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-white/10 py-12 text-center text-sm text-slate-500">
+              승인 대기 중인 커스텀 배경이 없어요.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {pendingCustomBgs.map((bg) => (
+                <div key={bg.id} className="rounded-2xl border border-white/10 bg-black/30 overflow-hidden">
+                  <div className="aspect-video w-full bg-black/40 relative">
+                    <img src={bg.bg_url} alt="" className="w-full h-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-bold text-white">
+                          {(bg.profiles && bg.profiles.nickname) || "(유저)"}
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          {new Date(bg.created_at).toLocaleString("ko-KR")}
+                        </div>
+                      </div>
+                      <a href={bg.bg_url} target="_blank" rel="noreferrer"
+                        className="text-[11px] text-violet-300 hover:text-violet-200 underline">
+                        원본
+                      </a>
+                    </div>
+                    <div className="text-xs text-slate-400 truncate">{bg.title}</div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          if (!supabase) return;
+                          const { error } = await supabase.rpc("admin_review_custom_bg", {
+                            p_owned_id: bg.id,
+                            p_decision: "approved",
+                            p_note: null,
+                          });
+                          if (error) { showToast(error.message, "error"); return; }
+                          showToast("✓ 승인 완료", "success");
+                          fetchPendingCustomBgs();
+                        }}
+                        className="flex-1 rounded-xl bg-emerald-500/20 border border-emerald-400/40 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-500/30 transition-all"
+                      >
+                        ✓ 승인
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!supabase) return;
+                          const note = prompt("거부 사유를 입력하세요 (생략 가능):") || "";
+                          const { error } = await supabase.rpc("admin_review_custom_bg", {
+                            p_owned_id: bg.id,
+                            p_decision: "rejected",
+                            p_note: note,
+                          });
+                          if (error) { showToast(error.message, "error"); return; }
+                          showToast("✕ 거부 처리", "info");
+                          fetchPendingCustomBgs();
+                        }}
+                        className="flex-1 rounded-xl bg-red-500/20 border border-red-400/40 px-3 py-2 text-xs font-bold text-red-200 hover:bg-red-500/30 transition-all"
+                      >
+                        ✕ 거부
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
 
   );
