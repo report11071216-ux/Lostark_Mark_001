@@ -16040,7 +16040,7 @@ const TitlesPanel = ({ user, profile, onProfileChanged }: any) => {
 };
 
 const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsgRead }: any) => {
-  const [myRoomTab, setMyRoomTab] = useState<"characters" | "messages" | "titles" | "themes">("characters");
+  const [myRoomTab, setMyRoomTab] = useState<"characters" | "messages" | "titles" | "themes" | "nickname">("characters");
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -17553,6 +17553,7 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
           { key: "characters", label: "캐릭터 관리" },
           { key: "messages", label: "쪽지함" },
           { key: "titles", label: "칭호" },
+          { key: "nickname", label: "✨ 닉네임" },
           { key: "themes", label: "🛋 테마" },
         ].map((tab) => (
           <button
@@ -18181,6 +18182,111 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
           profile={profile}
           onProfileChanged={fetchProfile}
         />
+      )}
+
+      {/* ── 닉네임 효과 탭 ── */}
+      {myRoomTab === "nickname" && (
+        <div className="space-y-5">
+          {/* 현재 적용 중 카드 */}
+          <div className="rounded-2xl border border-amber-400/25 bg-amber-400/[0.06] p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-amber-300/70 mb-1">
+                  현재 적용 중
+                </div>
+                <div className="text-2xl font-bold truncate" style={getNicknameEffectStyle(profile)}>
+                  {profile?.nickname || "내 닉네임"}
+                </div>
+                <div className="text-xs text-slate-400 mt-1">
+                  {hasNicknameEffect(profile)
+                    ? `${getNicknameEffectTheme(profile).label} 효과 적용 중`
+                    : "기본 (효과 없음)"}
+                </div>
+              </div>
+              {hasNicknameEffect(profile) && (
+                <button
+                  onClick={() => clearNicknameEffect()}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 transition-all whitespace-nowrap"
+                >
+                  효과 해제
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* 보유 닉네임 효과 */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-base font-bold text-white">보유 닉네임 효과</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  포인트샵에서 구매한 닉네임 효과를 골라 적용할 수 있어요.
+                </p>
+              </div>
+              <button
+                onClick={() => fetchOwnedNicknameEffects()}
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/10 transition-all"
+              >
+                새로고침
+              </button>
+            </div>
+
+            {ownedNicknameEffects.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 py-12 text-center text-sm text-slate-500">
+                아직 보유한 닉네임 효과가 없어요.<br />
+                <span className="text-xs text-slate-600">포인트샵 → 닉네임 상점 에서 구매할 수 있어요.</span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {ownedNicknameEffects.map((effect: any) => {
+                  const theme = getNicknameEffectTheme(effect);
+                  const isActive = normalizeNicknameEffectKey(profile?.active_nickname_effect) === theme.effectKey
+                    && (profile?.nickname_gradient_from || null) === (effect?.nickname_gradient_from || null)
+                    && (profile?.nickname_gradient_to || null) === (effect?.nickname_gradient_to || null);
+                  return (
+                    <div
+                      key={effect.id}
+                      className={cn(
+                        "relative overflow-hidden rounded-2xl border p-4 transition-all",
+                        isActive ? "border-amber-400/50 bg-amber-400/[0.06]" : "border-white/10 bg-white/[0.03] hover:border-white/20"
+                      )}
+                    >
+                      <div className="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">
+                        {theme.label}
+                      </div>
+                      <div className="mt-1 text-sm font-bold text-white/90 truncate">{effect.title}</div>
+                      <div className="mt-4 mb-2 rounded-xl border border-white/8 bg-black/30 px-4 py-4 text-center">
+                        <div className="text-xl font-bold" style={getNicknameEffectStyle(effect)}>
+                          {profile?.nickname || "내 닉네임"}
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 mb-3">
+                        {[theme.from, theme.to, theme.glow].map((c, i) => (
+                          <div key={i} className="w-5 h-5 rounded border border-white/20" style={{ background: c }} />
+                        ))}
+                      </div>
+                      {effect.quantity > 1 && (
+                        <div className="text-[10px] text-slate-500 mb-2">보유 수량 · {effect.quantity}</div>
+                      )}
+                      <button
+                        onClick={() => equipNicknameEffect(effect)}
+                        disabled={isActive}
+                        className={cn(
+                          "w-full rounded-xl py-2 text-xs font-bold border transition-all",
+                          isActive
+                            ? "bg-amber-400/20 border-amber-400/50 text-amber-200 cursor-default"
+                            : "bg-white/10 border-white/15 text-white hover:bg-white/20"
+                        )}
+                      >
+                        {isActive ? "✓ 적용 중" : "이 효과 적용"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ── 테마 탭 ── */}
