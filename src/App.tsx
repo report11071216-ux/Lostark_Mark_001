@@ -6102,7 +6102,7 @@ const OnlinePlayersCard = () => {
       // 1) profiles 단순 조회 (조인 시도 안 함)
       const { data: profilesData, error: profilesErr } = await supabase
         .from("profiles")
-        .select("id, nickname, last_attendance, last_seen, points, role, equipped_title_id")
+        .select("id, nickname, last_attendance, last_seen, points, role, equipped_title_id, active_nickname_effect, nickname_gradient_from, nickname_gradient_to, nickname_glow_color")
         .order("last_seen", { ascending: false, nullsFirst: false });
 
       if (profilesErr) {
@@ -6285,12 +6285,21 @@ const OnlinePlayersCard = () => {
                   {/* 닉네임 + 칭호 */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
-                      <span className={cn(
-                        "text-xs font-bold truncate",
-                        status === "online" ? "text-white" : "text-slate-400"
-                      )}>
-                        {m.nickname || "Unknown"}
-                      </span>
+                      {hasNicknameEffect(m) ? (
+                        <span
+                          className="text-xs font-bold truncate"
+                          style={getNicknameEffectStyle(m)}
+                        >
+                          {m.nickname || "Unknown"}
+                        </span>
+                      ) : (
+                        <span className={cn(
+                          "text-xs font-bold truncate",
+                          status === "online" ? "text-white" : "text-slate-400"
+                        )}>
+                          {m.nickname || "Unknown"}
+                        </span>
+                      )}
                       {m.role === "admin" && <span className="text-[9px] flex-shrink-0" title="길드 마스터">👑</span>}
                       {m.role === "submaster" && <span className="text-[9px] flex-shrink-0" title="부 마스터">⚔️</span>}
                     </div>
@@ -18268,18 +18277,45 @@ const MyRoom = ({ user, profile, setProfile, fetchProfile, unreadMsgCount, onMsg
                       {effect.quantity > 1 && (
                         <div className="text-[10px] text-slate-500 mb-2">보유 수량 · {effect.quantity}</div>
                       )}
-                      <button
-                        onClick={() => equipNicknameEffect(effect)}
-                        disabled={isActive}
-                        className={cn(
-                          "w-full rounded-xl py-2 text-xs font-bold border transition-all",
-                          isActive
-                            ? "bg-amber-400/20 border-amber-400/50 text-amber-200 cursor-default"
-                            : "bg-white/10 border-white/15 text-white hover:bg-white/20"
-                        )}
-                      >
-                        {isActive ? "✓ 적용 중" : "이 효과 적용"}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => equipNicknameEffect(effect)}
+                          disabled={isActive}
+                          className={cn(
+                            "flex-1 rounded-xl py-2 text-xs font-bold border transition-all",
+                            isActive
+                              ? "bg-amber-400/20 border-amber-400/50 text-amber-200 cursor-default"
+                              : "bg-white/10 border-white/15 text-white hover:bg-white/20"
+                          )}
+                        >
+                          {isActive ? "✓ 적용 중" : "이 효과 적용"}
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`'${effect.title}' 닉네임 변경권을 삭제할까요?\n(되돌릴 수 없습니다)`)) return;
+                            const client = getSupabaseOrThrow();
+                            // 현재 적용 중이라면 먼저 해제
+                            if (isActive) {
+                              await clearNicknameEffect();
+                            }
+                            const { error } = await client
+                              .from("user_owned_nickname_effects")
+                              .delete()
+                              .eq("id", effect.id)
+                              .eq("user_id", user.id);
+                            if (error) {
+                              showToast(`삭제 실패: ${error.message}`, "error");
+                              return;
+                            }
+                            showToast(`🗑 '${effect.title}' 삭제 완료`, "success");
+                            await fetchOwnedNicknameEffects();
+                          }}
+                          className="rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-400/20 hover:border-red-400/50 transition-all"
+                          title="이 닉네임 변경권 삭제"
+                        >
+                          🗑
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
