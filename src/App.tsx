@@ -21275,7 +21275,9 @@ const PointShopPage = ({ user, profile }: any) => {
   const [gachaRewards, setGachaRewards] = useState<Record<string, any[]>>({});
   const [myPoint, setMyPoint] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [shopTab, setShopTab] = useState<"guild" | "nickname" | "title" | "myroom" | "profile_card" | "enhance" | "gacha" | "gold">("guild");
+  const [shopTab, setShopTab] = useState<"home" | "guild" | "nickname" | "title" | "myroom" | "profile_card" | "enhance" | "gacha" | "gold">("home");
+  const [shopSearchQuery, setShopSearchQuery] = useState("");
+  const [shopSortBy, setShopSortBy] = useState<"newest" | "price_asc" | "price_desc">("newest");
   const [titleMap, setTitleMap] = useState<Record<string, any>>({});
   const [goldRequests, setGoldRequests] = useState<any[]>([]);
   const [goldLoading, setGoldLoading] = useState(false);
@@ -21959,6 +21961,7 @@ const PointShopPage = ({ user, profile }: any) => {
 
       <div className="flex flex-wrap gap-2 mb-8">
         {[
+          ["home", "🏠 홈"],
           ["guild", "뱃지 상점"],
           ["nickname", "닉네임 상점"],
           ["title", "✦ 칭호 상점"],
@@ -21983,8 +21986,126 @@ const PointShopPage = ({ user, profile }: any) => {
         ))}
       </div>
 
+      {/* 검색 + 정렬 (gold/gacha 제외 모든 탭) */}
+      {shopTab !== "gold" && shopTab !== "gacha" && (
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={shopSearchQuery}
+              onChange={(e) => setShopSearchQuery(e.target.value)}
+              placeholder="상품명/설명 검색..."
+              className="w-full h-11 pl-11 pr-4 bg-black/40 border border-white/10 rounded-2xl text-sm text-white placeholder:text-slate-600 focus:border-amber-400 outline-none"
+            />
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">🔍</div>
+            {shopSearchQuery && (
+              <button
+                onClick={() => setShopSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-xs text-slate-300"
+              >✕</button>
+            )}
+          </div>
+          <select
+            value={shopSortBy}
+            onChange={(e) => setShopSortBy(e.target.value as any)}
+            className="h-11 bg-black/40 border border-white/10 rounded-2xl px-4 text-sm text-white focus:border-amber-400 outline-none"
+          >
+            <option value="newest">최신순</option>
+            <option value="price_asc">가격 낮은순</option>
+            <option value="price_desc">가격 높은순</option>
+          </select>
+        </div>
+      )}
+
       {loading && shopTab !== "gold" ? (
         <div className="py-16 text-center text-slate-500">포인트샵 불러오는 중...</div>
+      ) : shopTab === "home" ? (
+        (() => {
+          const q = shopSearchQuery.trim().toLowerCase();
+          const sortFn = (a: any, b: any) =>
+            shopSortBy === "price_asc" ? (a.price - b.price)
+            : shopSortBy === "price_desc" ? (b.price - a.price)
+            : new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+          const filterFn = (it: any) => !q
+            || (it.title || "").toLowerCase().includes(q)
+            || (it.description || "").toLowerCase().includes(q);
+
+          // 검색 모드 — 모든 카테고리 통합 결과
+          if (q) {
+            const all = [...guildItems, ...nicknameItems, ...titleItems, ...myroomThemeItems, ...profileBgItems, ...enhanceItems]
+              .filter(filterFn).sort(sortFn);
+            return (
+              <div>
+                <div className="mb-4 text-sm text-slate-400">
+                  검색 결과: <span className="text-white font-bold">{all.length}</span>개
+                </div>
+                {all.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-white/10 py-16 text-center text-sm text-slate-500">
+                    검색 결과가 없어요.
+                  </div>
+                ) : renderShopCards(all, "")}
+              </div>
+            );
+          }
+
+          // 일반 모드 — 카테고리별 섹션
+          const sections: Array<[string, string, any[], string]> = [
+            ["title", "✦ 칭호 상점", titleItems.slice().sort(sortFn), "title"],
+            ["nickname", "✨ 닉네임 효과", nicknameItems.slice().sort(sortFn), "nickname"],
+            ["myroom", "🛋 마이룸 테마", myroomThemeItems.slice().sort(sortFn), "myroom"],
+            ["profile_card", "🖼 프로필 카드", profileBgItems.slice().sort(sortFn), "profile_card"],
+            ["enhance", "⚒️ 강화석 상점", enhanceItems.slice().sort(sortFn), "enhance"],
+            ["guild", "🎁 뱃지 상점", guildItems.slice().sort(sortFn), "guild"],
+          ];
+
+          // 신상 추천 (최근 7일 내 등록)
+          const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+          const newItems = [...guildItems, ...nicknameItems, ...titleItems, ...myroomThemeItems, ...profileBgItems, ...enhanceItems]
+            .filter((it: any) => it.created_at && new Date(it.created_at).getTime() > sevenDaysAgo)
+            .sort(sortFn)
+            .slice(0, 4);
+
+          return (
+            <div className="space-y-10">
+              {/* 신상 추천 섹션 */}
+              {newItems.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-white">🔥 신상 추천</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-widest text-pink-300 bg-pink-500/15 border border-pink-400/30 rounded-full px-2 py-0.5">NEW</span>
+                    </div>
+                    <div className="text-xs text-slate-500">최근 7일 내 등록</div>
+                  </div>
+                  {renderShopCards(newItems, "")}
+                </div>
+              )}
+
+              {/* 카테고리별 섹션 */}
+              {sections.map(([key, label, list, tabKey]) => list.length === 0 ? null : (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-lg font-bold text-white">{label}</div>
+                    <button
+                      onClick={() => setShopTab(tabKey as any)}
+                      className="text-xs text-amber-300 hover:text-amber-200 font-semibold transition flex items-center gap-1"
+                    >
+                      전체보기 ({list.length})
+                      <span className="text-base">→</span>
+                    </button>
+                  </div>
+                  {renderShopCards(list.slice(0, 4), "")}
+                </div>
+              ))}
+
+              {sections.every(([, , list]) => list.length === 0) && newItems.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-white/10 py-20 text-center text-sm text-slate-500">
+                  아직 등록된 상품이 없어요.
+                </div>
+              )}
+            </div>
+          );
+        })()
       ) : shopTab === "gold" ? (
         /* ── 골드 교환 탭 ── */
         <div className="max-w-2xl mx-auto space-y-6">
@@ -22080,18 +22201,31 @@ const PointShopPage = ({ user, profile }: any) => {
             )}
           </div>
         </div>
-      ) : shopTab === "guild" ? (
-        renderShopCards(guildItems, "아직 등록된 뱃지 상품이 없습니다.")
-      ) : shopTab === "nickname" ? (
-        renderShopCards(nicknameItems, "아직 등록된 닉네임 상품이 없습니다.")
-      ) : shopTab === "title" ? (
-        renderShopCards(titleItems, "아직 등록된 칭호 상품이 없습니다.")
-      ) : shopTab === "myroom" ? (
-        renderShopCards(myroomThemeItems, "아직 등록된 마이룸 테마가 없습니다.")
-      ) : shopTab === "profile_card" ? (
-        renderShopCards(profileBgItems, "아직 등록된 프로필 카드 상품이 없습니다.")
-      ) : shopTab === "enhance" ? (
-        renderShopCards(enhanceItems, "아직 등록된 강화석 상품이 없습니다.")
+      ) : (shopTab === "guild" || shopTab === "nickname" || shopTab === "title" || shopTab === "myroom" || shopTab === "profile_card" || shopTab === "enhance") ? (
+        (() => {
+          const q = shopSearchQuery.trim().toLowerCase();
+          const sortFn = (a: any, b: any) =>
+            shopSortBy === "price_asc" ? (a.price - b.price)
+            : shopSortBy === "price_desc" ? (b.price - a.price)
+            : new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+          const filterFn = (it: any) => !q
+            || (it.title || "").toLowerCase().includes(q)
+            || (it.description || "").toLowerCase().includes(q);
+          const sourceMap: Record<string, any[]> = {
+            guild: guildItems, nickname: nicknameItems, title: titleItems,
+            myroom: myroomThemeItems, profile_card: profileBgItems, enhance: enhanceItems,
+          };
+          const emptyMap: Record<string, string> = {
+            guild: "아직 등록된 뱃지 상품이 없습니다.",
+            nickname: "아직 등록된 닉네임 상품이 없습니다.",
+            title: "아직 등록된 칭호 상품이 없습니다.",
+            myroom: "아직 등록된 마이룸 테마가 없습니다.",
+            profile_card: "아직 등록된 프로필 카드 상품이 없습니다.",
+            enhance: "아직 등록된 강화석 상품이 없습니다.",
+          };
+          const filtered = (sourceMap[shopTab] || []).filter(filterFn).sort(sortFn);
+          return renderShopCards(filtered, q ? "검색 결과가 없어요." : emptyMap[shopTab] || "");
+        })()
       ) : (
         <div className="space-y-8">
           {gachaProducts.length === 0 && (
@@ -22304,7 +22438,62 @@ const AdminPointShopManager = () => {
   const [title, setTitle] = useState("");
   const [goldExchangeReqs, setGoldExchangeReqs] = useState<any[]>([]);
   const [goldReqsLoading, setGoldReqsLoading] = useState(false);
-  const [adminManagerTab, setAdminManagerTab] = useState<"shop" | "gold_requests" | "bg_review">("gold_requests");
+  const [adminManagerTab, setAdminManagerTab] = useState<"shop" | "gold_requests" | "bg_review" | "point_grant">("gold_requests");
+  const [grantSearchQuery, setGrantSearchQuery] = useState("");
+  const [grantSearchResults, setGrantSearchResults] = useState<any[]>([]);
+  const [grantSelectedUser, setGrantSelectedUser] = useState<any>(null);
+  const [grantAmount, setGrantAmount] = useState("");
+  const [grantReason, setGrantReason] = useState("");
+  const [grantHistory, setGrantHistory] = useState<any[]>([]);
+  const [grantLoading, setGrantLoading] = useState(false);
+  const [grantSubmitting, setGrantSubmitting] = useState(false);
+
+  const fetchGrantHistory = useCallback(async () => {
+    if (!supabase) return;
+    setGrantLoading(true);
+    const { data, error } = await supabase
+      .from("point_grants")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) showToast(error.message, "error");
+    setGrantHistory(data || []);
+    setGrantLoading(false);
+  }, []);
+
+  const searchGrantUser = useCallback(async (q: string) => {
+    if (!supabase || !q.trim()) { setGrantSearchResults([]); return; }
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, nickname, points, role")
+      .ilike("nickname", `%${q.trim()}%`)
+      .limit(20);
+    if (error) { showToast(error.message, "error"); return; }
+    setGrantSearchResults(data || []);
+  }, []);
+
+  const submitGrant = async () => {
+    if (!supabase || !grantSelectedUser) return;
+    const amount = parseInt(grantAmount, 10);
+    if (isNaN(amount) || amount === 0) { showToast("지급 수량을 입력해주세요 (음수는 차감)", "error"); return; }
+    if (!confirm(`${grantSelectedUser.nickname} 님에게 ${amount > 0 ? "+" : ""}${amount.toLocaleString()}P 를 ${amount > 0 ? "지급" : "차감"}합니다. 진행할까요?`)) return;
+    setGrantSubmitting(true);
+    const { data, error } = await supabase.rpc("admin_grant_points", {
+      p_user_id: grantSelectedUser.id,
+      p_amount: amount,
+      p_reason: grantReason,
+    });
+    setGrantSubmitting(false);
+    if (error) { showToast(error.message, "error"); return; }
+    const result = data as any;
+    showToast(`✅ ${result?.target_nickname} 님 ${amount > 0 ? "+" : ""}${amount.toLocaleString()}P (${result?.previous_points} → ${result?.new_points})`, "success");
+    setGrantAmount("");
+    setGrantReason("");
+    setGrantSelectedUser(null);
+    setGrantSearchQuery("");
+    setGrantSearchResults([]);
+    fetchGrantHistory();
+  };
   const [selectedRewardCategory, setSelectedRewardCategory] = useState<string | null>(null);
   const [pendingCustomBgs, setPendingCustomBgs] = useState<any[]>([]);
   const [bgReviewLoading, setBgReviewLoading] = useState(false);
@@ -22336,6 +22525,7 @@ const AdminPointShopManager = () => {
 
   useEffect(() => {
     if (adminManagerTab === "bg_review") fetchPendingCustomBgs();
+    if (adminManagerTab === "point_grant") fetchGrantHistory();
   }, [adminManagerTab, fetchPendingCustomBgs]);
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
@@ -22798,8 +22988,9 @@ const AdminPointShopManager = () => {
           { key: "gold_requests", label: "💰 골드 교환 신청 관리", badge: goldExchangeReqs.filter((r) => r.status === "pending").length },
           { key: "shop", label: "🛒 포인트샵 상품 관리" },
           { key: "bg_review", label: "🛡 커스텀 배경 승인", badge: pendingCustomBgs.length },
+          { key: "point_grant", label: "💰 포인트 지급", badge: 0 },
         ].map((t) => (
-          <button key={t.key} onClick={() => { setAdminManagerTab(t.key as any); if (t.key === "gold_requests") fetchGoldExchangeReqs(); if (t.key === "bg_review") fetchPendingCustomBgs(); }}
+          <button key={t.key} onClick={() => { setAdminManagerTab(t.key as any); if (t.key === "gold_requests") fetchGoldExchangeReqs(); if (t.key === "bg_review") fetchPendingCustomBgs(); if (t.key === "point_grant") fetchGrantHistory(); }}
             className={cn("relative flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all border",
               adminManagerTab === t.key ? "bg-amber-500/15 border-amber-400/30 text-amber-200" : "border-white/10 bg-white/5 text-slate-400 hover:text-white")}>
             {t.label}
@@ -22880,6 +23071,175 @@ const AdminPointShopManager = () => {
       )}
 
       {/* 포인트샵 상품 관리 */}
+      {/* 포인트 지급 탭 */}
+      {adminManagerTab === "point_grant" && (
+        <div className="space-y-6">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-amber-300/70">Point Grant</div>
+            <div className="text-xl font-semibold text-white mt-0.5">포인트 직접 지급</div>
+            <div className="text-xs text-slate-400 mt-1">
+              유저에게 포인트를 지급하거나 차감(음수 입력)할 수 있습니다. 모든 지급 이력이 기록됩니다.
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-5">
+            {/* 좌: 유저 검색 + 지급 폼 */}
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-white/10 bg-[#0a0e18] p-5 space-y-4">
+                <div className="flex items-center gap-3 pb-3 border-b border-white/5">
+                  <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-xl">👤</div>
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-amber-300/70">Step 1</div>
+                    <div className="text-base font-bold text-white">유저 선택</div>
+                  </div>
+                </div>
+
+                {grantSelectedUser ? (
+                  <div className="rounded-2xl border border-amber-400/40 bg-amber-400/[0.06] px-4 py-3 flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-bold text-white">{grantSelectedUser.nickname}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">현재: <span className="text-amber-300 font-bold">{(grantSelectedUser.points ?? 0).toLocaleString()}P</span></div>
+                    </div>
+                    <button
+                      onClick={() => { setGrantSelectedUser(null); setGrantSearchQuery(""); }}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                    >변경</button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={grantSearchQuery}
+                      onChange={(e) => { setGrantSearchQuery(e.target.value); searchGrantUser(e.target.value); }}
+                      placeholder="닉네임 검색..."
+                      className="w-full h-11 px-4 bg-black/40 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-600 focus:border-amber-400 outline-none"
+                    />
+                    {grantSearchResults.length > 0 && (
+                      <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                        {grantSearchResults.map((u) => (
+                          <button
+                            key={u.id}
+                            onClick={() => { setGrantSelectedUser(u); setGrantSearchResults([]); }}
+                            className="w-full flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 hover:bg-white/[0.07] transition-all text-left"
+                          >
+                            <div>
+                              <div className="text-sm font-bold text-white">{u.nickname}</div>
+                              <div className="text-[11px] text-slate-500 mt-0.5">{u.role || "member"}</div>
+                            </div>
+                            <div className="text-xs text-amber-300 font-bold">{(u.points ?? 0).toLocaleString()}P</div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {grantSearchQuery && grantSearchResults.length === 0 && (
+                      <div className="text-xs text-slate-500 text-center py-3">검색 결과가 없어요.</div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {grantSelectedUser && (
+                <div className="rounded-2xl border border-white/10 bg-[#0a0e18] p-5 space-y-4">
+                  <div className="flex items-center gap-3 pb-3 border-b border-white/5">
+                    <div className="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-xl">💰</div>
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-widest text-emerald-300/70">Step 2</div>
+                      <div className="text-base font-bold text-white">지급 정보</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 mb-2 block">지급 수량 (음수면 차감)</label>
+                    <input
+                      type="number"
+                      value={grantAmount}
+                      onChange={(e) => setGrantAmount(e.target.value)}
+                      placeholder="예: 1000 또는 -500"
+                      className="w-full h-12 px-4 bg-black/40 border border-white/10 rounded-xl text-lg font-bold text-white placeholder:text-slate-600 focus:border-amber-400 outline-none"
+                    />
+                    {grantAmount && !isNaN(parseInt(grantAmount, 10)) && (
+                      <div className="mt-2 text-xs text-slate-400">
+                        지급 후: <span className="text-amber-300 font-bold">
+                          {((grantSelectedUser.points ?? 0) + parseInt(grantAmount, 10)).toLocaleString()}P
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-400 mb-2 block">사유 (선택)</label>
+                    <input
+                      type="text"
+                      value={grantReason}
+                      onChange={(e) => setGrantReason(e.target.value.slice(0, 200))}
+                      placeholder="예: 로아 골드 5만 교환"
+                      className="w-full h-11 px-4 bg-black/40 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-600 focus:border-amber-400 outline-none"
+                    />
+                  </div>
+
+                  <button
+                    onClick={submitGrant}
+                    disabled={grantSubmitting || !grantAmount}
+                    className="w-full bg-gradient-to-r from-amber-400 to-amber-500 p-4 rounded-2xl font-bold text-black hover:from-amber-300 hover:to-amber-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-amber-500/30"
+                  >
+                    {grantSubmitting ? "처리 중..." : "💰 포인트 지급 실행"}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 우: 최근 이력 */}
+            <div className="rounded-2xl border border-white/10 bg-[#0a0e18] p-5 space-y-3">
+              <div className="flex items-center justify-between pb-3 border-b border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-violet-500/15 border border-violet-400/30 flex items-center justify-center text-xl">📜</div>
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-300/70">History</div>
+                    <div className="text-base font-bold text-white">최근 지급 이력</div>
+                  </div>
+                </div>
+                <button
+                  onClick={fetchGrantHistory}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+                >새로고침</button>
+              </div>
+
+              {grantLoading ? (
+                <div className="py-10 text-center text-slate-500 text-sm">불러오는 중...</div>
+              ) : grantHistory.length === 0 ? (
+                <div className="py-10 text-center text-slate-500 text-sm">지급 이력이 없습니다.</div>
+              ) : (
+                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                  {grantHistory.map((g) => (
+                    <div key={g.id} className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-bold text-white truncate">{g.user_nickname || "(unknown)"}</div>
+                          <div className="text-[11px] text-slate-500 mt-0.5">
+                            by {g.granted_by_nickname || "?"} · {new Date(g.created_at).toLocaleString("ko-KR")}
+                          </div>
+                          {g.reason && (
+                            <div className="text-xs text-slate-400 mt-1 truncate">{g.reason}</div>
+                          )}
+                        </div>
+                        <div className={cn(
+                          "text-sm font-bold flex-shrink-0 px-2.5 py-1 rounded-lg border whitespace-nowrap",
+                          g.amount > 0
+                            ? "text-emerald-300 bg-emerald-500/10 border-emerald-400/30"
+                            : "text-red-300 bg-red-500/10 border-red-400/30"
+                        )}>
+                          {g.amount > 0 ? "+" : ""}{g.amount.toLocaleString()}P
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {adminManagerTab === "shop" && (<>
       {!selectedRewardCategory ? (
         // ─── 카드 그리드 진입 화면 ───
