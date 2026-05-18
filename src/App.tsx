@@ -6433,10 +6433,19 @@ const OnlinePlayersCard = () => {
                 <div
                   key={m.id}
                   onClick={() => setSelectedMember(m)}
-                  className="flex items-center gap-2.5 p-2 rounded-xl transition-all cursor-pointer hover:bg-white/[0.06]"
-                  style={{
-                    background: status === "online" ? "rgba(52,211,153,0.04)" : "transparent",
-                  }}
+                  className="relative flex items-center gap-2.5 p-2 rounded-xl transition-all cursor-pointer hover:bg-white/[0.06] overflow-hidden"
+                  style={
+                    m.profile_card_bg_url ? {
+                      backgroundImage: `${status === "online"
+                        ? "linear-gradient(to right, rgba(16,42,30,0.88), rgba(10,14,24,0.55))"
+                        : "linear-gradient(to right, rgba(10,14,24,0.90), rgba(10,14,24,0.65))"
+                      }, url(${m.profile_card_bg_url})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                    } : {
+                      background: status === "online" ? "rgba(52,211,153,0.04)" : "transparent",
+                    }
+                  }
                 >
                   {/* 캐릭터 아바타 (칭호 이미지 → 닉네임 이니셜) */}
                   <div className="relative flex-shrink-0">
@@ -21825,6 +21834,49 @@ const PointShopPage = ({ user, profile }: any) => {
                       </div>
                     );
                   })()}
+                  {/* 프로필 카드 배경 미리보기 */}
+                  {item.reward_type === "profile_bg" && (
+                    <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-white/50 font-semibold mb-2">
+                        배경 미리보기
+                      </div>
+                      {item.profile_card_bg_url ? (
+                        <div className="relative rounded-xl overflow-hidden border border-white/8" style={{ aspectRatio: "16/9" }}>
+                          <img
+                            src={item.profile_card_bg_url}
+                            alt={item.title}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                          <div className="absolute bottom-2 left-2 right-2">
+                            <div className="text-xs font-bold text-white drop-shadow-lg">
+                              {profile?.nickname || "내 닉네임"}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-white/10 px-3 py-8 text-xs text-slate-500 text-center">
+                          이미지가 등록되지 않았어요
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* 커스텀 업로드권 안내 */}
+                  {item.reward_type === "custom_bg_ticket" && (
+                    <div className="mt-3 rounded-2xl border border-pink-400/20 bg-pink-500/[0.06] px-4 py-3">
+                      <div className="text-[10px] uppercase tracking-[0.24em] text-pink-300/70 font-semibold mb-2">
+                        🎟 사용 안내
+                      </div>
+                      <div className="text-xs text-pink-100/80 leading-relaxed">
+                        구매 후 <strong className="text-pink-200">마이룸 → 🖼 프로필 카드</strong> 탭에서
+                        원하는 이미지를 직접 업로드할 수 있어요.
+                      </div>
+                      <div className="mt-2 text-[11px] text-pink-100/55 leading-relaxed">
+                        ℹ️ 업로드된 이미지는 관리자 승인 후 프로필 카드 배경으로 적용됩니다.
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="h-14 w-14 rounded-[1.2rem] border border-white/10 bg-black/25 flex items-center justify-center backdrop-blur-md">
                   <ShoppingBag className="text-white/80" />
