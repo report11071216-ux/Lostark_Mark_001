@@ -23023,67 +23023,49 @@ const AdminPointShopManager = () => {
       </div>
       {productAdminTab === "badge" ? (
       <>
-      <div className="grid xl:grid-cols-[1.05fr,0.95fr] gap-6">
-        <div className="rounded-[2rem] border border-white/10 bg-[#0a0e18] p-6 space-y-6">
-          <div>
-            <div className="text-[10px] uppercase tracking-[0.28em] font-semibold text-amber-200">Point Shop Item Builder</div>
-            <div className="mt-2 text-2xl font-semibold">포인트샵 상품 생성</div>
-            <div className="text-sm text-slate-400 mt-1">길드/닉네임/무기/강화석 탭으로 분리해서 관리할 수 있어.</div>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="md:col-span-2">
-              <AdminInput label="상품명" value={title} onChange={setTitle} placeholder={rewardType === "badge" ? "예: 여왕의 빛 뱃지" : rewardType === "nickname_effect" ? "예: 황혼 그라데이션 닉네임" : "예: 고급 강화석"} />
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_400px] gap-6 items-start">
+        <div className="space-y-4">
+          {/* ─── Step 1 — 기본 정보 ─── */}
+          <div className="rounded-2xl border border-white/10 bg-[#0a0e18] p-5 space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-white/5">
+              <div className="w-11 h-11 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-xl flex-shrink-0">📝</div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-amber-300/70">Step 1</div>
+                <div className="text-base font-bold text-white">기본 정보</div>
+              </div>
+            </div>
+            <AdminInput label="상품명" value={title} onChange={setTitle} placeholder={rewardType === "badge" ? "예: 여왕의 빛 뱃지" : rewardType === "nickname_effect" ? "예: 황혼 그라데이션 닉네임" : rewardType === "title" ? "예: 전설의 모험가" : rewardType === "myroom_theme" ? "예: 자정의 별빛 테마" : rewardType === "profile_bg" ? "예: 우주 풍경 배경" : rewardType === "custom_bg_ticket" ? "예: 커스텀 배경 업로드권" : "예: 고급 강화석"} />
+            <div className="grid md:grid-cols-2 gap-4">
+              <AdminInput label="가격(포인트)" value={price} onChange={setPrice} placeholder="예: 800" />
+              {rewardType === "enhance_stone" ? (
+                <AdminInput label="강화확률 증가 효과(%)" value={enhanceBonusRate} onChange={setEnhanceBonusRate} placeholder="예: 7" />
+              ) : (
+                <div>
+                  <label className="text-xs text-slate-400 mb-2 block">대표 색상</label>
+                  <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeColor} onChange={(e) => setBadgeColor(e.target.value)} />
+                </div>
+              )}
             </div>
             <div>
-              <label className="text-xs text-slate-400 mb-2 block">상품 타입</label>
-              <select
-                className="w-full h-[58px] bg-black border border-white/10 rounded-2xl px-4"
-                value={rewardType}
-                onChange={(e) => {
-                  const nextType = e.target.value as "badge" | "enhance_stone" | "nickname_effect" | "title" | "myroom_theme" | "profile_bg" | "custom_bg_ticket";
-                  setRewardType(nextType);
-                  if (nextType === "nickname_effect") setManagerTab("nickname");
-                  else if (nextType === "enhance_stone") setManagerTab("enhance_stone");
-                  else if (nextType === "title") setManagerTab("title");
-                  else if (nextType === "myroom_theme") setManagerTab("myroom_theme");
-                  else if (nextType === "profile_bg") setManagerTab("profile_bg");
-                  else if (nextType === "custom_bg_ticket") setManagerTab("custom_bg_ticket");
-                  else setManagerTab("guild");
-                }}
-              >
-                <option value="badge">뱃지 상품</option>
-                <option value="enhance_stone">강화석 상품</option>
-                <option value="nickname_effect">닉네임 효과 상품</option>
-                <option value="title">✦ 칭호 상품</option>
-                <option value="myroom_theme">🛋 마이룸 테마 상품</option>
-                <option value="profile_bg">🖼 프로필 카드 배경 상품</option>
-                <option value="custom_bg_ticket">🎟 커스텀 업로드권 상품</option>
-              </select>
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">설명</label>
+              <textarea
+                className="mt-3 w-full bg-black border border-white/10 p-4 rounded-2xl outline-none focus:border-amber-400 font-bold text-sm text-white min-h-[100px]"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={rewardType === "badge" ? "상품 설명 / 구매 욕구 자극 문구" : rewardType === "nickname_effect" ? "예: 마이룸 닉네임에 그라데이션과 글로우를 적용" : "예: 무기 강화 시 성공 확률을 높여주는 보조 아이템"}
+              />
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <AdminInput label="가격(포인트)" value={price} onChange={setPrice} placeholder="예: 800" />
-            {rewardType === "enhance_stone" ? (
-              <AdminInput label="강화확률 증가 효과(%)" value={enhanceBonusRate} onChange={setEnhanceBonusRate} placeholder="예: 7" />
-            ) : (
-              <div>
-                <label className="text-xs text-slate-400 mb-2 block">대표 색상</label>
-                <input type="color" className="w-full h-[58px] bg-black border border-white/10 rounded-2xl p-2" value={badgeColor} onChange={(e) => setBadgeColor(e.target.value)} />
+          {/* ─── Step 2 — 디자인 ─── */}
+          <div className="rounded-2xl border border-white/10 bg-[#0a0e18] p-5 space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-white/5">
+              <div className="w-11 h-11 rounded-xl bg-violet-500/15 border border-violet-400/30 flex items-center justify-center text-xl flex-shrink-0">🎨</div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-300/70">Step 2</div>
+                <div className="text-base font-bold text-white">디자인 / 옵션</div>
               </div>
-            )}
-          </div>
-
-          <div>
-            <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest ml-1">설명</label>
-            <textarea
-              className="mt-3 w-full bg-black border border-white/10 p-5 rounded-2xl outline-none focus:border-amber-400 font-bold text-sm text-white min-h-[120px]"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={rewardType === "badge" ? "상품 설명 / 구매 욕구 자극 문구" : rewardType === "nickname_effect" ? "예: 마이룸 닉네임에 그라데이션과 글로우를 적용" : "예: 무기 강화 시 성공 확률을 높여주는 보조 아이템"}
-            />
-          </div>
+            </div>
 
           {rewardType === "title" && (
             <div className="rounded-2xl border border-violet-400/25 bg-violet-500/[0.05] p-4 space-y-3">
@@ -23380,20 +23362,38 @@ const AdminPointShopManager = () => {
             </>
           )}
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <AdminInput label="판매 시작" type="datetime-local" value={availableFrom} onChange={setAvailableFrom} />
-            <AdminInput label="판매 종료" type="datetime-local" value={availableTo} onChange={setAvailableTo} />
           </div>
 
-          <button
-            onClick={createItem}
-            className="w-full bg-amber-500 p-4 rounded-2xl font-semibold uppercase hover:bg-amber-400 transition-all"
-          >
-            {rewardType === "badge" ? "뱃지 상품 생성" : rewardType === "nickname_effect" ? "닉네임 상품 생성" : rewardType === "title" ? "✦ 칭호 상품 생성" : rewardType === "myroom_theme" ? "🛋 마이룸 테마 상품 생성" : rewardType === "profile_bg" ? "🖼 프로필 카드 배경 상품 생성" : rewardType === "custom_bg_ticket" ? "🎟 커스텀 업로드권 상품 생성" : "강화석 상품 생성"}
-          </button>
+          {/* ─── Step 3 — 판매 일정 ─── */}
+          <div className="rounded-2xl border border-white/10 bg-[#0a0e18] p-5 space-y-4">
+            <div className="flex items-center gap-3 pb-3 border-b border-white/5">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-xl flex-shrink-0">📅</div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-widest text-emerald-300/70">Step 3</div>
+                <div className="text-base font-bold text-white">판매 일정 <span className="text-slate-500 font-normal text-xs">(선택)</span></div>
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <AdminInput label="판매 시작" type="datetime-local" value={availableFrom} onChange={setAvailableFrom} />
+              <AdminInput label="판매 종료" type="datetime-local" value={availableTo} onChange={setAvailableTo} />
+            </div>
+            <div className="text-[11px] text-slate-500">
+              ℹ️ 비워두면 항상 판매 중인 상품으로 등록됩니다.
+            </div>
+          </div>
+
         </div>
 
-        <div className="space-y-6">
+        <div className="xl:sticky xl:top-6 self-start space-y-4">
+          {/* 큰 생성 버튼 — 우측 sticky 상단 */}
+          <button
+            onClick={createItem}
+            className="w-full bg-gradient-to-r from-amber-400 to-amber-500 p-5 rounded-2xl font-bold text-base text-black hover:from-amber-300 hover:to-amber-400 transition-all shadow-lg shadow-amber-500/30 active:scale-[0.98]"
+          >
+            {rewardType === "badge" ? "🎁 뱃지 상품 생성" : rewardType === "nickname_effect" ? "✨ 닉네임 상품 생성" : rewardType === "title" ? "✦ 칭호 상품 생성" : rewardType === "myroom_theme" ? "🛋 마이룸 테마 상품 생성" : rewardType === "profile_bg" ? "🖼 프로필 배경 상품 생성" : rewardType === "custom_bg_ticket" ? "🎟 업로드권 상품 생성" : "⚒️ 강화석 상품 생성"}
+          </button>
+
+          <div className="space-y-4 xl:max-h-[calc(100vh-9rem)] xl:overflow-y-auto pr-1">
           <div className="rounded-[2rem] border p-5 relative overflow-hidden" style={{ background: rewardType === "badge" ? previewTheme.cardBackground : "linear-gradient(135deg, rgba(251,191,36,0.16), rgba(139,92,246,0.16), rgba(15,23,42,0.94))", borderColor: rewardType === "badge" ? previewTheme.cardBorder : "rgba(250,204,21,0.28)", boxShadow: rewardType === "badge" ? previewTheme.cardShadow : "0 0 0 1px rgba(250,204,21,0.12) inset, 0 24px 48px rgba(250,204,21,0.12)" }}>
             <div className="absolute inset-0 pointer-events-none" style={{ background: rewardType === "badge" ? previewTheme.aura : "radial-gradient(circle at top right, rgba(250,204,21,0.22), transparent 40%)" }} />
             <div className="relative z-10">
@@ -23572,6 +23572,8 @@ const AdminPointShopManager = () => {
               })}
             </div>
           </SectionPanel>
+          </div>
+        </div>
       </div>
       </>
       ) : (
