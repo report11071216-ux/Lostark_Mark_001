@@ -23450,6 +23450,7 @@ const AdminPointShopManager = () => {
               </div>
             </div>
           </div>
+          </div>
         </div>
       </div>
 
@@ -23572,8 +23573,6 @@ const AdminPointShopManager = () => {
               })}
             </div>
           </SectionPanel>
-          </div>
-        </div>
       </div>
       </>
       ) : (
