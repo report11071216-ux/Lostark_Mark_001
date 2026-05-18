@@ -22278,11 +22278,34 @@ const PointShopPage = ({ user, profile }: any) => {
   );
 };
 
+// ════════════════════════════════════════════════════════════
+// REWARD_CATEGORIES — 포인트샵 상품 등록 카드 그리드용 메타데이터
+// ════════════════════════════════════════════════════════════
+const REWARD_CATEGORIES: Array<{
+  key: string;
+  rewardType: "badge" | "enhance_stone" | "nickname_effect" | "title" | "myroom_theme" | "profile_bg" | "custom_bg_ticket";
+  managerTab: "guild" | "nickname" | "title" | "myroom_theme" | "profile_bg" | "custom_bg_ticket" | "weapon" | "enhance_stone";
+  emoji: string;
+  label: string;
+  desc: string;
+  bgFrom: string; bgTo: string;
+  accent: string;
+}> = [
+  { key: "title",            rewardType: "title",            managerTab: "title",            emoji: "✦",  label: "칭호 상품",          desc: "유저가 장착할 수 있는 칭호 부여",     bgFrom: "rgba(252,211,77,0.20)",  bgTo: "rgba(120,53,15,0.30)",    accent: "#fcd34d" },
+  { key: "nickname_effect",  rewardType: "nickname_effect",  managerTab: "nickname",         emoji: "✨", label: "닉네임 효과",        desc: "닉네임 그라데이션 / 글로우 효과",     bgFrom: "rgba(244,114,182,0.20)", bgTo: "rgba(131,24,67,0.30)",    accent: "#f9a8d4" },
+  { key: "myroom_theme",     rewardType: "myroom_theme",     managerTab: "myroom_theme",     emoji: "🛋", label: "마이룸 테마",        desc: "마이룸 배경 / 카드 색상 세트",        bgFrom: "rgba(129,140,248,0.20)", bgTo: "rgba(30,27,75,0.40)",     accent: "#a5b4fc" },
+  { key: "profile_bg",       rewardType: "profile_bg",       managerTab: "profile_bg",       emoji: "🖼", label: "프로필 카드 배경",   desc: "메인 프로필 카드 배경 이미지",         bgFrom: "rgba(56,189,248,0.20)",  bgTo: "rgba(7,89,133,0.35)",     accent: "#7dd3fc" },
+  { key: "custom_bg_ticket", rewardType: "custom_bg_ticket", managerTab: "custom_bg_ticket", emoji: "🎟", label: "커스텀 업로드권",    desc: "유저가 직접 이미지를 업로드",          bgFrom: "rgba(244,63,94,0.20)",   bgTo: "rgba(136,19,55,0.35)",    accent: "#fda4af" },
+  { key: "badge",            rewardType: "badge",            managerTab: "guild",            emoji: "🎁", label: "뱃지 상품",          desc: "이미지 + 그라데이션 + 글로우",         bgFrom: "rgba(167,139,250,0.20)", bgTo: "rgba(76,29,149,0.30)",    accent: "#c4b5fd" },
+  { key: "enhance_stone",    rewardType: "enhance_stone",    managerTab: "enhance_stone",    emoji: "⚒️", label: "강화석 상품",        desc: "무기 강화 재료",                       bgFrom: "rgba(110,231,183,0.20)", bgTo: "rgba(6,78,59,0.35)",      accent: "#6ee7b7" },
+];
+
 const AdminPointShopManager = () => {
   const [title, setTitle] = useState("");
   const [goldExchangeReqs, setGoldExchangeReqs] = useState<any[]>([]);
   const [goldReqsLoading, setGoldReqsLoading] = useState(false);
   const [adminManagerTab, setAdminManagerTab] = useState<"shop" | "gold_requests" | "bg_review">("gold_requests");
+  const [selectedRewardCategory, setSelectedRewardCategory] = useState<string | null>(null);
   const [pendingCustomBgs, setPendingCustomBgs] = useState<any[]>([]);
   const [bgReviewLoading, setBgReviewLoading] = useState(false);
 
@@ -22858,7 +22881,107 @@ const AdminPointShopManager = () => {
 
       {/* 포인트샵 상품 관리 */}
       {adminManagerTab === "shop" && (<>
-      <div className="rounded-[2rem] border border-white/10 bg-black/20 p-3">
+      {!selectedRewardCategory ? (
+        // ─── 카드 그리드 진입 화면 ───
+        <div className="space-y-6">
+          <div className="flex items-end justify-between">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-300/70">Point Shop</div>
+              <div className="text-xl font-semibold text-white mt-0.5">상품 등록 — 카테고리 선택</div>
+              <div className="text-xs text-slate-400 mt-1">
+                등록하려는 상품 종류를 선택하세요. 카드를 클릭하면 등록 모드로 이동합니다.
+              </div>
+            </div>
+            <div className="text-xs text-slate-500">
+              전체 상품: <span className="text-white font-bold">{items.length}</span>개
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {REWARD_CATEGORIES.map((cat) => {
+              const count = items.filter((it: any) => it.reward_type === cat.rewardType).length;
+              const activeCount = items.filter((it: any) => it.reward_type === cat.rewardType && it.is_active).length;
+              return (
+                <button
+                  key={cat.key}
+                  onClick={() => {
+                    setSelectedRewardCategory(cat.key);
+                    setRewardType(cat.rewardType);
+                    setManagerTab(cat.managerTab);
+                  }}
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 px-5 py-5 text-left transition-all hover:border-white/30 hover:scale-[1.02] hover:shadow-[0_12px_40px_rgba(0,0,0,0.4)]"
+                  style={{
+                    background: `linear-gradient(135deg, ${cat.bgFrom}, ${cat.bgTo})`,
+                  }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="text-5xl flex-shrink-0" style={{ color: cat.accent, textShadow: `0 0 24px ${cat.accent}88` }}>
+                      {cat.emoji}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-base font-bold text-white">{cat.label}</div>
+                      <div className="text-[11px] text-white/60 mt-1 leading-snug">{cat.desc}</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+                    <div className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">등록 상품</div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-xs text-white/50">
+                        활성 <span className="font-bold" style={{ color: cat.accent }}>{activeCount}</span>
+                      </div>
+                      <div className="text-xs text-white/50">
+                        전체 <span className="font-bold text-white">{count}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 h-[3px] transition-all"
+                    style={{ background: `linear-gradient(to right, ${cat.accent}, transparent)` }}
+                  />
+                  <div className="absolute top-3 right-3 text-white/30 group-hover:text-white/70 transition-all text-xl">→</div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="rounded-2xl border border-violet-400/20 bg-violet-500/[0.04] px-5 py-4 text-xs text-violet-100/70 leading-relaxed">
+            💡 <strong className="text-violet-200">팁:</strong> 각 카테고리는 등록 방식과 미리보기가 달라요.
+            카테고리를 선택하면 그 카테고리 전용 폼과 등록된 상품 목록만 보여집니다.
+          </div>
+        </div>
+      ) : (() => {
+        // ─── 등록 모드 — 선택된 카테고리 헤더 + 폼 + 목록 ───
+        const cat = REWARD_CATEGORIES.find((c) => c.key === selectedRewardCategory);
+        return (
+        <div className="space-y-5">
+          {/* 등록 모드 헤더 */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <button
+                onClick={() => setSelectedRewardCategory(null)}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-white/10 transition-all whitespace-nowrap"
+              >
+                ← 카테고리 선택
+              </button>
+              {cat && (
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="text-3xl flex-shrink-0" style={{ color: cat.accent, textShadow: `0 0 16px ${cat.accent}77` }}>
+                    {cat.emoji}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-lg font-bold text-white truncate">{cat.label}</div>
+                    <div className="text-[11px] text-slate-400 truncate">{cat.desc}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {cat && (
+              <div className="text-xs text-slate-400 whitespace-nowrap">
+                등록: <span className="font-bold text-white">{items.filter((it: any) => it.reward_type === cat.rewardType).length}</span>개
+              </div>
+            )}
+          </div>
+
+      <div className="rounded-[2rem] border border-white/10 bg-black/20 p-3" style={{ display: "none" }}>
         <div className="flex flex-wrap gap-2">
           {[
             { key: "badge", label: "뱃지", reward: "badge", manager: "guild" },
@@ -23702,6 +23825,9 @@ const AdminPointShopManager = () => {
         </div>
       </div>
       )} {/* end productAdminTab ternary */}
+        </div>
+        );
+      })()}
       </>)} {/* end shop tab */}
 
       {/* 커스텀 배경 승인 관리 */}
