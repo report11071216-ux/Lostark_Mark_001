@@ -3,7 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase, envMissing } from "../lib/supabase";
 import { cmp, dayDiff, iso, nextRoutine, parse, prevRoutine } from "../lib/date";
 import type {
-  AlertItem, EnrichedSite, Inspection, Issue, IssueState, Site, TeamMember,
+  AlertItem, ChecklistEntry, ChecklistTemplate, EnrichedSite, Inspection, Issue, IssueState, Site, TeamMember, TeamRole,
 } from "../types/db";
 
 interface AppCtx {
@@ -18,6 +18,7 @@ interface AppCtx {
   members: TeamMember[];
   inspections: Inspection[];
   issues: Issue[];
+  templates: ChecklistTemplate[];
   loading: boolean;
   reload: () => Promise<void>;
   // 파생
@@ -25,12 +26,14 @@ interface AppCtx {
   adhoc: Inspection[];
   alerts: AlertItem[];
   nameOf: (id: string | null) => string;
+  isLead: boolean;
   // 뮤테이션 (Supabase 호출은 전부 여기 모음)
   addSite: (p: Partial<Site>) => Promise<string | null>;
   addAdhoc: (p: { site_id: string; scheduled_for: string; notes?: string | null }) => Promise<string | null>;
   addIssue: (p: Partial<Issue>) => Promise<string | null>;
-  markDone: (site: Site) => Promise<string | null>;
+  markDone: (site: Site, checklist?: ChecklistEntry[]) => Promise<string | null>;
   advanceIssue: (issue: Issue) => Promise<void>;
+  updateMember: (id: string, patch: { approved?: boolean; role?: TeamRole; name?: string }) => Promise<string | null>;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -48,6 +51,7 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
+  const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 세션
@@ -68,16 +72,18 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const reload = useCallback(async () => {
     if (envMissing || !me?.approved) return;
     setLoading(true);
-    const [s, m, ins, iss] = await Promise.all([
+    const [s, m, ins, iss, tpl] = await Promise.all([
       supabase.from("sites").select("*").eq("active", true).order("created_at"),
       supabase.from("team_members").select("id,name,email,role,approved"),
       supabase.from("inspections").select("*"),
       supabase.from("issues").select("*").order("created_at", { ascending: false }),
+      supabase.from("checklist_templates").select("*").eq("active", true).order("sort_order"),
     ]);
     setSites((s.data as Site[]) || []);
     setMembers((m.data as TeamMember[]) || []);
     setInspections((ins.data as Inspection[]) || []);
     setIssues((iss.data as Issue[]) || []);
+    setTemplates((tpl.data as ChecklistTemplate[]) || []);
     setLoading(false);
   }, [me]);
   useEffect(() => { reload(); }, [reload]);
@@ -153,15 +159,22 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     return error?.message ?? null;
   }, [reload]);
 
-  const markDone = useCallback(async (site: Site) => {
+  const markDone = useCallback(async (site: Site, checklist: ChecklistEntry[] = []) => {
     const prev = prevRoutine(site, new Date()) || new Date();
     const { error } = await supabase.from("inspections").insert({
       site_id: site.id, scheduled_for: iso(prev), kind: "routine", status: "done",
       performed_at: new Date().toISOString(), performed_by: session?.user.id ?? null,
+      checklist,
     });
     if (!error) await reload();
     return error?.message ?? null;
   }, [reload, session]);
+
+  const updateMember = useCallback(async (id: string, patch: { approved?: boolean; role?: TeamRole; name?: string }) => {
+    const { error } = await supabase.from("team_members").update(patch).eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
 
   const advanceIssue = useCallback(async (issue: Issue) => {
     const next: IssueState = issue.state === "open" ? "in_progress" : issue.state === "in_progress" ? "resolved" : "open";
@@ -175,9 +188,9 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
 
   const value: AppCtx = {
     session, me, authReady, envMissing, signOut,
-    sites, members, inspections, issues, loading, reload,
-    enriched, adhoc, alerts, nameOf,
-    addSite, addAdhoc, addIssue, markDone, advanceIssue,
+    sites, members, inspections, issues, templates, loading, reload,
+    enriched, adhoc, alerts, nameOf, isLead: me?.role === "lead" && !!me?.approved,
+    addSite, addAdhoc, addIssue, markDone, advanceIssue, updateMember,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
