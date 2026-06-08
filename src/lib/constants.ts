@@ -62,3 +62,17 @@ export const WORK_STATUS: Record<string, { label: string; color: string }> = {
   in_progress: { label: "진행중", color: "#60a5fa" },
   done:        { label: "완료",   color: "#34d399" },
 };
+
+// 장비 구분 라벨 + 색
+export const DEVICE_CATEGORY: Record<string, { label: string; color: string }> = {
+  security: { label: "보안",     color: "#f87171" },
+  server:   { label: "서버",     color: "#60a5fa" },
+  network:  { label: "네트워크", color: "#34d399" },
+  software: { label: "S/W",      color: "#a78bfa" },
+  etc:      { label: "기타",     color: "#8b96a8" },
+};
+
+export const NET_ZONE: Record<string, string> = {
+  work: "업무망",
+  internet: "인터넷망",
+};
