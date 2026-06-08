@@ -9,6 +9,8 @@ import { SchedulePage } from "./features/schedule/SchedulePage";
 import { IssuesPage } from "./features/issues/IssuesPage";
 import { TeamPage } from "./features/team/TeamPage";
 import { ReportPage } from "./features/report/ReportPage";
+import { SitesPage } from "./features/assets/SitesPage";
+import { SiteDetailPage } from "./features/assets/SiteDetailPage";
 
 export default function App() {
   return (
@@ -20,6 +22,8 @@ export default function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/schedule" element={<SchedulePage />} />
+            <Route path="/sites" element={<SitesPage />} />
+            <Route path="/sites/:siteId" element={<SiteDetailPage />} />
             <Route path="/issues" element={<IssuesPage />} />
             <Route path="/report" element={<ReportPage />} />
             <Route path="/team" element={<TeamPage />} />
