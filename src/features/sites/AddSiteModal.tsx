@@ -6,7 +6,7 @@ import { useApp } from "../../data/AppProvider";
 import type { CheckCycle } from "../../types/db";
 
 export const AddSiteModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { members, addSite } = useApp();
+  const { engineers, addSite } = useApp();
   const [f, setF] = useState({
     name: "", url: "", cycle: "monthly" as CheckCycle, start_date: iso(new Date()),
     owner_primary_id: "", owner_secondary_id: "",
@@ -41,12 +41,12 @@ export const AddSiteModal: React.FC<{ onClose: () => void }> = ({ onClose }) => 
       <div className="grid grid-cols-2 gap-3">
         <Field label="정 담당">
           <Select value={f.owner_primary_id} onChange={set("owner_primary_id")}>
-            <option value="">선택</option>{members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            <option value="">선택</option>{engineers.map((e) => <option key={e.id} value={e.id}>{e.name}{e.rank ? ` ${e.rank}` : ""}{e.dept ? ` · ${e.dept}` : ""}</option>)}
           </Select>
         </Field>
         <Field label="부 담당">
           <Select value={f.owner_secondary_id} onChange={set("owner_secondary_id")}>
-            <option value="">선택</option>{members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            <option value="">선택</option>{engineers.map((e) => <option key={e.id} value={e.id}>{e.name}{e.rank ? ` ${e.rank}` : ""}{e.dept ? ` · ${e.dept}` : ""}</option>)}
           </Select>
         </Field>
       </div>
