@@ -46,3 +46,19 @@ export const CYCLE: Record<CheckCycle, { label: string; unit: "day" | "month"; n
   quarterly: { label: "분기", unit: "month", n: 3 },
   semiannual: { label: "반기", unit: "month", n: 6 },
 };
+
+// 작업 유형 라벨 + 색 (캘린더/뱃지용)
+export const WORK_TYPE: Record<string, { label: string; color: string }> = {
+  policy:   { label: "정책 변경", color: "#f87171" },
+  install:  { label: "장비 설치", color: "#fb923c" },
+  relocate: { label: "장비 이전", color: "#fbbf24" },
+  inspect:  { label: "점검",      color: "#60a5fa" },
+  meeting:  { label: "업무협의",  color: "#a78bfa" },
+  etc:      { label: "기타",      color: "#8b96a8" },
+};
+
+export const WORK_STATUS: Record<string, { label: string; color: string }> = {
+  planned:     { label: "예정",   color: "#fbbf24" },
+  in_progress: { label: "진행중", color: "#60a5fa" },
+  done:        { label: "완료",   color: "#34d399" },
+};
