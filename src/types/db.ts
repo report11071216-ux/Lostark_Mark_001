@@ -66,3 +66,21 @@ export interface AlertItem {
   kind: InspectionKind;
   msg: string;
 }
+
+// 체크리스트 템플릿 (lead 가 관리하는 점검 항목 정의)
+export interface ChecklistTemplate {
+  id: string;
+  label: string;
+  category: string | null;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+}
+
+// 점검 시 기록되는 항목별 결과 (inspections.checklist JSON 에 배열로 저장)
+export type CheckResult = "pass" | "warn" | "fail";
+export interface ChecklistEntry {
+  item: string;
+  result: CheckResult;
+  note?: string;
+}
