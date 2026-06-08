@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { LogIn, Loader2 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import { C, btnPrimary } from "../../lib/constants";
@@ -32,6 +33,9 @@ export const Login: React.FC = () => {
             style={btnPrimary}>
             {busy ? <Loader2 size={15} className="animate-spin" /> : <LogIn size={15} />} 로그인
           </button>
+          <div className="text-center text-xs mt-4" style={{ color: C.faint }}>
+            계정이 없나요? <Link to="/signup" style={{ color: C.accent }}>가입하기</Link>
+          </div>
         </Panel>
       </div>
     </Centered>
