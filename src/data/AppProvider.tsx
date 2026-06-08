@@ -3,7 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase, envMissing } from "../lib/supabase";
 import { cmp, dayDiff, iso, nextRoutine, parse, prevRoutine } from "../lib/date";
 import type {
-  AlertItem, ChecklistEntry, ChecklistTemplate, EnrichedSite, Inspection, Issue, IssueState, Site, TeamMember, TeamRole,
+  AlertItem, ChecklistEntry, ChecklistTemplate, Engineer, EnrichedSite, Inspection, Issue, IssueState, Site, TeamMember, TeamRole,
 } from "../types/db";
 
 interface AppCtx {
@@ -16,6 +16,7 @@ interface AppCtx {
   // 원본 데이터
   sites: Site[];
   members: TeamMember[];
+  engineers: Engineer[];
   inspections: Inspection[];
   issues: Issue[];
   templates: ChecklistTemplate[];
@@ -26,6 +27,7 @@ interface AppCtx {
   adhoc: Inspection[];
   alerts: AlertItem[];
   nameOf: (id: string | null) => string;
+  engineerName: (id: string | null) => string;
   isLead: boolean;
   // 뮤테이션 (Supabase 호출은 전부 여기 모음)
   addSite: (p: Partial<Site>) => Promise<string | null>;
@@ -34,6 +36,8 @@ interface AppCtx {
   markDone: (site: Site, checklist?: ChecklistEntry[]) => Promise<string | null>;
   advanceIssue: (issue: Issue) => Promise<void>;
   updateMember: (id: string, patch: { approved?: boolean; role?: TeamRole; name?: string }) => Promise<string | null>;
+  addEngineer: (p: { name: string; rank?: string; dept?: string }) => Promise<string | null>;
+  removeEngineer: (id: string) => Promise<string | null>;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -49,6 +53,7 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const [authReady, setAuthReady] = useState(false);
   const [sites, setSites] = useState<Site[]>([]);
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [engineers, setEngineers] = useState<Engineer[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
@@ -72,18 +77,20 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const reload = useCallback(async () => {
     if (envMissing || !me?.approved) return;
     setLoading(true);
-    const [s, m, ins, iss, tpl] = await Promise.all([
+    const [s, m, ins, iss, tpl, eng] = await Promise.all([
       supabase.from("sites").select("*").eq("active", true).order("created_at"),
       supabase.from("team_members").select("id,name,email,role,approved"),
       supabase.from("inspections").select("*"),
       supabase.from("issues").select("*").order("created_at", { ascending: false }),
       supabase.from("checklist_templates").select("*").eq("active", true).order("sort_order"),
+      supabase.from("engineers").select("*").eq("active", true).order("name"),
     ]);
     setSites((s.data as Site[]) || []);
     setMembers((m.data as TeamMember[]) || []);
     setInspections((ins.data as Inspection[]) || []);
     setIssues((iss.data as Issue[]) || []);
     setTemplates((tpl.data as ChecklistTemplate[]) || []);
+    setEngineers((eng.data as Engineer[]) || []);
     setLoading(false);
   }, [me]);
   useEffect(() => { reload(); }, [reload]);
@@ -91,6 +98,11 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const nameOf = useCallback(
     (id: string | null) => members.find((m) => m.id === id)?.name || "—",
     [members]
+  );
+
+  const engineerName = useCallback(
+    (id: string | null) => engineers.find((e) => e.id === id)?.name || "—",
+    [engineers]
   );
 
   const adhoc = useMemo(() => inspections.filter((i) => i.kind === "adhoc"), [inspections]);
@@ -176,6 +188,18 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     return error?.message ?? null;
   }, [reload]);
 
+  const addEngineer = useCallback(async (p: { name: string; rank?: string; dept?: string }) => {
+    const { error } = await supabase.from("engineers").insert({ name: p.name, rank: p.rank || null, dept: p.dept || null });
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+
+  const removeEngineer = useCallback(async (id: string) => {
+    const { error } = await supabase.from("engineers").update({ active: false }).eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+
   const advanceIssue = useCallback(async (issue: Issue) => {
     const next: IssueState = issue.state === "open" ? "in_progress" : issue.state === "in_progress" ? "resolved" : "open";
     await supabase.from("issues").update({
@@ -188,9 +212,9 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
 
   const value: AppCtx = {
     session, me, authReady, envMissing, signOut,
-    sites, members, inspections, issues, templates, loading, reload,
-    enriched, adhoc, alerts, nameOf, isLead: me?.role === "lead" && !!me?.approved,
-    addSite, addAdhoc, addIssue, markDone, advanceIssue, updateMember,
+    sites, members, engineers, inspections, issues, templates, loading, reload,
+    enriched, adhoc, alerts, nameOf, engineerName, isLead: me?.role === "lead" && !!me?.approved,
+    addSite, addAdhoc, addIssue, markDone, advanceIssue, updateMember, addEngineer, removeEngineer,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
