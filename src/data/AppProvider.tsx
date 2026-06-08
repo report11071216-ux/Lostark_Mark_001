@@ -31,6 +31,8 @@ interface AppCtx {
   isLead: boolean;
   // 뮤테이션 (Supabase 호출은 전부 여기 모음)
   addSite: (p: Partial<Site>) => Promise<string | null>;
+  updateSite: (id: string, patch: Partial<Site>) => Promise<string | null>;
+  removeSite: (id: string) => Promise<string | null>;
   addAdhoc: (p: { site_id: string; scheduled_for: string; notes?: string | null }) => Promise<string | null>;
   addIssue: (p: Partial<Issue>) => Promise<string | null>;
   markDone: (site: Site, checklist?: ChecklistEntry[]) => Promise<string | null>;
@@ -159,6 +161,18 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     return error?.message ?? null;
   }, [reload]);
 
+  const updateSite = useCallback(async (id: string, patch: Partial<Site>) => {
+    const { error } = await supabase.from("sites").update(patch).eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+
+  const removeSite = useCallback(async (id: string) => {
+    const { error } = await supabase.from("sites").update({ active: false }).eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+
   const addAdhoc = useCallback(async (p: { site_id: string; scheduled_for: string; notes?: string | null }) => {
     const { error } = await supabase.from("inspections").insert({ ...p, kind: "adhoc", status: "scheduled" });
     if (!error) await reload();
@@ -215,6 +229,7 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     sites, members, engineers, inspections, issues, templates, loading, reload,
     enriched, adhoc, alerts, nameOf, engineerName, isLead: me?.role === "lead" && !!me?.approved,
     addSite, addAdhoc, addIssue, markDone, advanceIssue, updateMember, addEngineer, removeEngineer,
+    updateSite, removeSite,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
