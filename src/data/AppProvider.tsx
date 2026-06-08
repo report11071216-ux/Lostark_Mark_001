@@ -3,7 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase, envMissing } from "../lib/supabase";
 import { cmp, dayDiff, iso, nextRoutine, parse, prevRoutine } from "../lib/date";
 import type {
-  AlertItem, ChecklistEntry, ChecklistTemplate, Engineer, EnrichedSite, Inspection, Issue, IssueState, Site, TeamMember, TeamRole, WorkOrder,
+  AlertItem, ChecklistEntry, ChecklistTemplate, Device, Engineer, EnrichedSite, Inspection, Issue, IssueState, Site, TeamMember, TeamRole, Vendor, WorkOrder,
 } from "../types/db";
 
 interface AppCtx {
@@ -21,6 +21,8 @@ interface AppCtx {
   issues: Issue[];
   templates: ChecklistTemplate[];
   workOrders: WorkOrder[];
+  devices: Device[];
+  vendors: Vendor[];
   loading: boolean;
   reload: () => Promise<void>;
   // 파생
@@ -42,6 +44,12 @@ interface AppCtx {
   addWorkOrder: (p: Partial<WorkOrder>) => Promise<string | null>;
   updateWorkOrder: (id: string, patch: Partial<WorkOrder>) => Promise<string | null>;
   removeWorkOrder: (id: string) => Promise<string | null>;
+  addDevice: (p: Partial<Device>) => Promise<string | null>;
+  updateDevice: (id: string, patch: Partial<Device>) => Promise<string | null>;
+  removeDevice: (id: string) => Promise<string | null>;
+  addVendor: (p: Partial<Vendor>) => Promise<string | null>;
+  updateVendor: (id: string, patch: Partial<Vendor>) => Promise<string | null>;
+  removeVendor: (id: string) => Promise<string | null>;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -62,6 +70,8 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const [issues, setIssues] = useState<Issue[]>([]);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 세션
@@ -82,7 +92,7 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const reload = useCallback(async () => {
     if (envMissing || !me?.approved) return;
     setLoading(true);
-    const [s, m, ins, iss, tpl, eng, wo] = await Promise.all([
+    const [s, m, ins, iss, tpl, eng, wo, dev, ven] = await Promise.all([
       supabase.from("sites").select("*").eq("active", true).order("created_at"),
       supabase.from("team_members").select("id,name,email,role,approved"),
       supabase.from("inspections").select("*"),
@@ -90,6 +100,8 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
       supabase.from("checklist_templates").select("*").eq("active", true).order("sort_order"),
       supabase.from("engineers").select("*").eq("active", true).order("name"),
       supabase.from("work_orders").select("*").order("scheduled_at"),
+      supabase.from("devices").select("*").order("created_at"),
+      supabase.from("vendors").select("*").order("created_at"),
     ]);
     setSites((s.data as Site[]) || []);
     setMembers((m.data as TeamMember[]) || []);
@@ -98,6 +110,8 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     setTemplates((tpl.data as ChecklistTemplate[]) || []);
     setEngineers((eng.data as Engineer[]) || []);
     setWorkOrders((wo.data as WorkOrder[]) || []);
+    setDevices((dev.data as Device[]) || []);
+    setVendors((ven.data as Vendor[]) || []);
     setLoading(false);
   }, [me]);
   useEffect(() => { reload(); }, [reload]);
@@ -193,6 +207,38 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     return error?.message ?? null;
   }, [reload]);
 
+  const addDevice = useCallback(async (p: Partial<Device>) => {
+    const { error } = await supabase.from("devices").insert(p);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+  const updateDevice = useCallback(async (id: string, patch: Partial<Device>) => {
+    const { error } = await supabase.from("devices").update(patch).eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+  const removeDevice = useCallback(async (id: string) => {
+    const { error } = await supabase.from("devices").delete().eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+
+  const addVendor = useCallback(async (p: Partial<Vendor>) => {
+    const { error } = await supabase.from("vendors").insert(p);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+  const updateVendor = useCallback(async (id: string, patch: Partial<Vendor>) => {
+    const { error } = await supabase.from("vendors").update(patch).eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+  const removeVendor = useCallback(async (id: string) => {
+    const { error } = await supabase.from("vendors").delete().eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+
   const addIssue = useCallback(async (p: Partial<Issue>) => {
     const { error } = await supabase.from("issues").insert({ state: "open", ...p });
     if (!error) await reload();
@@ -240,11 +286,12 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
 
   const value: AppCtx = {
     session, me, authReady, envMissing, signOut,
-    sites, members, engineers, inspections, issues, templates, workOrders, loading, reload,
+    sites, members, engineers, inspections, issues, templates, workOrders, devices, vendors, loading, reload,
     enriched, alerts, nameOf, engineerName, isLead: me?.role === "lead" && !!me?.approved,
     addSite, updateSite, removeSite, addIssue, markDone, advanceIssue,
     updateMember, addEngineer, removeEngineer,
     addWorkOrder, updateWorkOrder, removeWorkOrder,
+    addDevice, updateDevice, removeDevice, addVendor, updateVendor, removeVendor,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
