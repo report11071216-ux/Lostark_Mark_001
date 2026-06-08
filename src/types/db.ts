@@ -76,6 +76,36 @@ export interface AlertItem {
   msg: string;
 }
 
+// 장비 (사이트 소속)
+export type DeviceCategory = "security" | "server" | "network" | "software" | "etc";
+export type NetZone = "work" | "internet";
+export interface Device {
+  id: string;
+  site_id: string;
+  category: DeviceCategory;
+  net_zone: NetZone | null;
+  managed: boolean;          // 관리대상 O/X
+  system_name: string;
+  model: string | null;
+  serial: string | null;
+  os: string | null;
+  introduced_on: string | null; // YYYY-MM
+  ip: string | null;
+  vendor_name: string | null;
+  created_at: string;
+}
+
+// 타사 제품 (업체 연락처, 사이트 소속)
+export interface Vendor {
+  id: string;
+  site_id: string;
+  vendor_name: string;
+  contact: string | null;
+  phone: string | null;
+  email: string | null;
+  created_at: string;
+}
+
 // 작업/일정 (work_orders)
 export type WorkType = "policy" | "install" | "relocate" | "inspect" | "meeting" | "etc";
 export type WorkStatus = "planned" | "in_progress" | "done";
