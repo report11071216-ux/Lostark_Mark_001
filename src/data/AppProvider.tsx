@@ -3,7 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase, envMissing } from "../lib/supabase";
 import { cmp, dayDiff, iso, nextRoutine, parse, prevRoutine } from "../lib/date";
 import type {
-  AlertItem, ChecklistEntry, ChecklistTemplate, Engineer, EnrichedSite, Inspection, Issue, IssueState, Site, TeamMember, TeamRole,
+  AlertItem, ChecklistEntry, ChecklistTemplate, Engineer, EnrichedSite, Inspection, Issue, IssueState, Site, TeamMember, TeamRole, WorkOrder,
 } from "../types/db";
 
 interface AppCtx {
@@ -20,11 +20,11 @@ interface AppCtx {
   inspections: Inspection[];
   issues: Issue[];
   templates: ChecklistTemplate[];
+  workOrders: WorkOrder[];
   loading: boolean;
   reload: () => Promise<void>;
   // 파생
   enriched: EnrichedSite[];
-  adhoc: Inspection[];
   alerts: AlertItem[];
   nameOf: (id: string | null) => string;
   engineerName: (id: string | null) => string;
@@ -33,13 +33,15 @@ interface AppCtx {
   addSite: (p: Partial<Site>) => Promise<string | null>;
   updateSite: (id: string, patch: Partial<Site>) => Promise<string | null>;
   removeSite: (id: string) => Promise<string | null>;
-  addAdhoc: (p: { site_id: string; scheduled_for: string; notes?: string | null }) => Promise<string | null>;
   addIssue: (p: Partial<Issue>) => Promise<string | null>;
   markDone: (site: Site, checklist?: ChecklistEntry[]) => Promise<string | null>;
   advanceIssue: (issue: Issue) => Promise<void>;
   updateMember: (id: string, patch: { approved?: boolean; role?: TeamRole; name?: string }) => Promise<string | null>;
   addEngineer: (p: { name: string; rank?: string; dept?: string }) => Promise<string | null>;
   removeEngineer: (id: string) => Promise<string | null>;
+  addWorkOrder: (p: Partial<WorkOrder>) => Promise<string | null>;
+  updateWorkOrder: (id: string, patch: Partial<WorkOrder>) => Promise<string | null>;
+  removeWorkOrder: (id: string) => Promise<string | null>;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -59,6 +61,7 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [issues, setIssues] = useState<Issue[]>([]);
   const [templates, setTemplates] = useState<ChecklistTemplate[]>([]);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 세션
@@ -79,13 +82,14 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const reload = useCallback(async () => {
     if (envMissing || !me?.approved) return;
     setLoading(true);
-    const [s, m, ins, iss, tpl, eng] = await Promise.all([
+    const [s, m, ins, iss, tpl, eng, wo] = await Promise.all([
       supabase.from("sites").select("*").eq("active", true).order("created_at"),
       supabase.from("team_members").select("id,name,email,role,approved"),
       supabase.from("inspections").select("*"),
       supabase.from("issues").select("*").order("created_at", { ascending: false }),
       supabase.from("checklist_templates").select("*").eq("active", true).order("sort_order"),
       supabase.from("engineers").select("*").eq("active", true).order("name"),
+      supabase.from("work_orders").select("*").order("scheduled_at"),
     ]);
     setSites((s.data as Site[]) || []);
     setMembers((m.data as TeamMember[]) || []);
@@ -93,6 +97,7 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     setIssues((iss.data as Issue[]) || []);
     setTemplates((tpl.data as ChecklistTemplate[]) || []);
     setEngineers((eng.data as Engineer[]) || []);
+    setWorkOrders((wo.data as WorkOrder[]) || []);
     setLoading(false);
   }, [me]);
   useEffect(() => { reload(); }, [reload]);
@@ -106,8 +111,6 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     (id: string | null) => engineers.find((e) => e.id === id)?.name || "—",
     [engineers]
   );
-
-  const adhoc = useMemo(() => inspections.filter((i) => i.kind === "adhoc"), [inspections]);
 
   const doneBySite = useMemo(() => {
     const map: Record<string, string> = {};
@@ -137,14 +140,13 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
       if (s.status === "late") out.push({ name: s.name, level: "late", kind: "routine", msg: `정기점검 ${-s.gap > 0 ? -s.gap + "일 지연" : "지연"}` });
       else if (s.status === "soon") out.push({ name: s.name, level: "soon", kind: "routine", msg: `정기점검 ${s.gap === 0 ? "오늘" : "D-" + s.gap}` });
     });
-    adhoc.filter((a) => a.status === "scheduled").forEach((a) => {
-      const g = dayDiff(parse(a.scheduled_for), today);
-      const nm = sites.find((x) => x.id === a.site_id)?.name || "임시";
-      if (g < 0) out.push({ name: nm, level: "late", kind: "adhoc", msg: `임시점검 ${-g}일 지연` });
-      else if (g <= 3) out.push({ name: nm, level: "soon", kind: "adhoc", msg: `임시점검 ${g === 0 ? "오늘" : "D-" + g}` });
+    workOrders.filter((w) => w.status !== "done").forEach((w) => {
+      const g = dayDiff(new Date(w.scheduled_at), today);
+      if (g < 0) out.push({ name: w.title, level: "late", kind: "adhoc", msg: `작업 ${-g}일 경과` });
+      else if (g <= 3) out.push({ name: w.title, level: "soon", kind: "adhoc", msg: `작업 ${g === 0 ? "오늘" : "D-" + g}` });
     });
     return out.sort((a, b) => (a.level === "late" ? 0 : 1) - (b.level === "late" ? 0 : 1));
-  }, [enriched, adhoc, sites]);
+  }, [enriched, workOrders]);
 
   // 브라우저 알림(권한 있을 때만)
   useEffect(() => {
@@ -173,8 +175,20 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     return error?.message ?? null;
   }, [reload]);
 
-  const addAdhoc = useCallback(async (p: { site_id: string; scheduled_for: string; notes?: string | null }) => {
-    const { error } = await supabase.from("inspections").insert({ ...p, kind: "adhoc", status: "scheduled" });
+  const addWorkOrder = useCallback(async (p: Partial<WorkOrder>) => {
+    const { error } = await supabase.from("work_orders").insert({ ...p, created_by: session?.user.id ?? null });
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload, session]);
+
+  const updateWorkOrder = useCallback(async (id: string, patch: Partial<WorkOrder>) => {
+    const { error } = await supabase.from("work_orders").update(patch).eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+
+  const removeWorkOrder = useCallback(async (id: string) => {
+    const { error } = await supabase.from("work_orders").delete().eq("id", id);
     if (!error) await reload();
     return error?.message ?? null;
   }, [reload]);
@@ -226,10 +240,11 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
 
   const value: AppCtx = {
     session, me, authReady, envMissing, signOut,
-    sites, members, engineers, inspections, issues, templates, loading, reload,
-    enriched, adhoc, alerts, nameOf, engineerName, isLead: me?.role === "lead" && !!me?.approved,
-    addSite, addAdhoc, addIssue, markDone, advanceIssue, updateMember, addEngineer, removeEngineer,
-    updateSite, removeSite,
+    sites, members, engineers, inspections, issues, templates, workOrders, loading, reload,
+    enriched, alerts, nameOf, engineerName, isLead: me?.role === "lead" && !!me?.approved,
+    addSite, updateSite, removeSite, addIssue, markDone, advanceIssue,
+    updateMember, addEngineer, removeEngineer,
+    addWorkOrder, updateWorkOrder, removeWorkOrder,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
