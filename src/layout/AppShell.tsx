@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Shield, LayoutDashboard, CalendarDays, AlertTriangle, RefreshCw, LogOut } from "lucide-react";
+import { Shield, LayoutDashboard, CalendarDays, AlertTriangle, FileText, Users, RefreshCw, LogOut } from "lucide-react";
 import { C } from "../lib/constants";
 import { useApp } from "../data/AppProvider";
 import { AlertsBell, AlertBanner } from "../features/alerts/AlertsBell";
@@ -9,10 +9,12 @@ const TABS = [
   { to: "/dashboard", label: "대시보드", icon: LayoutDashboard },
   { to: "/schedule", label: "점검 일정", icon: CalendarDays },
   { to: "/issues", label: "이슈 로그", icon: AlertTriangle },
+  { to: "/report", label: "보고서", icon: FileText },
 ];
 
 export const AppShell: React.FC = () => {
-  const { me, alerts, loading, reload, signOut } = useApp();
+  const { me, alerts, loading, reload, signOut, isLead } = useApp();
+  const tabs = isLead ? [...TABS, { to: "/team", label: "팀원 관리", icon: Users }] : TABS;
   return (
     <div className="min-h-screen" style={{ background: C.bgGrad, color: C.text }}>
       <header className="flex items-center gap-4 px-6 py-3.5 sticky top-0 z-40"
@@ -24,7 +26,7 @@ export const AppShell: React.FC = () => {
           <span className="font-mono font-bold text-sm">ops.console</span>
         </div>
         <nav className="flex items-center gap-1 ml-4">
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const Icon = t.icon;
             return (
               <NavLink key={t.to} to={t.to}
