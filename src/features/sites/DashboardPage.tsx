@@ -1,17 +1,19 @@
 import React, { useState } from "react";
-import { Server, AlertTriangle, Clock, Bell, Activity, Plus } from "lucide-react";
+import { Server, AlertTriangle, Clock, Bell, Activity, Plus, Pencil, Trash2 } from "lucide-react";
 import { C, CYCLE, btnPrimary } from "../../lib/constants";
 import { iso } from "../../lib/date";
 import { Panel, StatusPill } from "../../components/ui";
 import { useApp } from "../../data/AppProvider";
 import { AddSiteModal } from "./AddSiteModal";
+import { EditSiteModal } from "./EditSiteModal";
 import { ChecklistModal } from "./ChecklistModal";
 import type { Site } from "../../types/db";
 
 export const DashboardPage: React.FC = () => {
-  const { enriched, issues, engineerName } = useApp();
+  const { enriched, issues, engineerName, removeSite } = useApp();
   const [modal, setModal] = useState(false);
   const [checkSite, setCheckSite] = useState<Site | null>(null);
+  const [editSite, setEditSite] = useState<Site | null>(null);
 
   const late = enriched.filter((s) => s.status === "late").length;
   const soon = enriched.filter((s) => s.status === "soon").length;
@@ -86,7 +88,11 @@ export const DashboardPage: React.FC = () => {
                   </td>
                   <td className="px-5 py-3.5"><StatusPill status={s.status} /></td>
                   <td className="px-5 py-3.5">
-                    <button onClick={() => setCheckSite(s)} className="rounded-lg px-2.5 py-1.5 text-xs font-medium" style={{ border: `1px solid ${C.line}`, color: C.ok }}>✓ 점검 완료</button>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => setCheckSite(s)} className="rounded-lg px-2.5 py-1.5 text-xs font-medium" style={{ border: `1px solid ${C.line}`, color: C.ok }}>✓ 점검 완료</button>
+                      <button onClick={() => setEditSite(s)} className="h-7 w-7 rounded-lg flex items-center justify-center" style={{ border: `1px solid ${C.line}`, color: C.sub }} title="수정"><Pencil size={13} /></button>
+                      <button onClick={() => { if (confirm(`${s.name} 사이트를 목록에서 삭제할까요? (점검 이력은 보존됩니다)`)) removeSite(s.id); }} className="h-7 w-7 rounded-lg flex items-center justify-center" style={{ border: `1px solid ${C.line}`, color: C.faint }} title="삭제"><Trash2 size={13} /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -96,6 +102,7 @@ export const DashboardPage: React.FC = () => {
       </Panel>
 
       {modal && <AddSiteModal onClose={() => setModal(false)} />}
+      {editSite && <EditSiteModal site={editSite} onClose={() => setEditSite(null)} />}
       {checkSite && <ChecklistModal site={checkSite} onClose={() => setCheckSite(null)} />}
     </div>
   );
