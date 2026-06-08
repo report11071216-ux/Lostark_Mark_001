@@ -5,11 +5,13 @@ import { iso } from "../../lib/date";
 import { Panel, StatusPill } from "../../components/ui";
 import { useApp } from "../../data/AppProvider";
 import { AddSiteModal } from "./AddSiteModal";
+import { ChecklistModal } from "./ChecklistModal";
 import type { Site } from "../../types/db";
 
 export const DashboardPage: React.FC = () => {
-  const { enriched, issues, nameOf, markDone } = useApp();
+  const { enriched, issues, nameOf } = useApp();
   const [modal, setModal] = useState(false);
+  const [checkSite, setCheckSite] = useState<Site | null>(null);
 
   const late = enriched.filter((s) => s.status === "late").length;
   const soon = enriched.filter((s) => s.status === "soon").length;
@@ -20,8 +22,6 @@ export const DashboardPage: React.FC = () => {
     { label: "점검 임박", value: soon, color: C.soon, icon: Clock },
     { label: "미해결 이슈", value: openIssues, color: C.running, icon: Bell },
   ];
-
-  const onMarkDone = async (s: Site) => { const err = await markDone(s); if (err) alert("기록 실패: " + err); };
 
   return (
     <div className="space-y-5">
@@ -86,7 +86,7 @@ export const DashboardPage: React.FC = () => {
                   </td>
                   <td className="px-5 py-3.5"><StatusPill status={s.status} /></td>
                   <td className="px-5 py-3.5">
-                    <button onClick={() => onMarkDone(s)} className="rounded-lg px-2.5 py-1.5 text-xs font-medium" style={{ border: `1px solid ${C.line}`, color: C.ok }}>✓ 점검 완료</button>
+                    <button onClick={() => setCheckSite(s)} className="rounded-lg px-2.5 py-1.5 text-xs font-medium" style={{ border: `1px solid ${C.line}`, color: C.ok }}>✓ 점검 완료</button>
                   </td>
                 </tr>
               ))}
@@ -96,6 +96,7 @@ export const DashboardPage: React.FC = () => {
       </Panel>
 
       {modal && <AddSiteModal onClose={() => setModal(false)} />}
+      {checkSite && <ChecklistModal site={checkSite} onClose={() => setCheckSite(null)} />}
     </div>
   );
 };
