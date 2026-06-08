@@ -9,7 +9,7 @@ import { ChecklistModal } from "./ChecklistModal";
 import type { Site } from "../../types/db";
 
 export const DashboardPage: React.FC = () => {
-  const { enriched, issues, nameOf } = useApp();
+  const { enriched, issues, engineerName } = useApp();
   const [modal, setModal] = useState(false);
   const [checkSite, setCheckSite] = useState<Site | null>(null);
 
@@ -73,11 +73,11 @@ export const DashboardPage: React.FC = () => {
                   <td className="px-5 py-3.5 text-xs">
                     <div className="flex items-center gap-1.5">
                       <span className="rounded px-1.5 py-0.5 text-[10px] font-bold" style={{ background: `${C.accent}1a`, color: C.accent }}>정</span>
-                      <span style={{ color: C.text }}>{nameOf(s.owner_primary_id)}</span>
+                      <span style={{ color: C.text }}>{engineerName(s.owner_primary_id)}</span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="rounded px-1.5 py-0.5 text-[10px] font-bold" style={{ background: C.panel2, color: C.faint, border: `1px solid ${C.line}` }}>부</span>
-                      <span style={{ color: C.sub }}>{nameOf(s.owner_secondary_id)}</span>
+                      <span style={{ color: C.sub }}>{engineerName(s.owner_secondary_id)}</span>
                     </div>
                   </td>
                   <td className="px-5 py-3.5 font-mono text-xs">
