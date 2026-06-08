@@ -76,6 +76,22 @@ export interface AlertItem {
   msg: string;
 }
 
+// 작업/일정 (work_orders)
+export type WorkType = "policy" | "install" | "relocate" | "inspect" | "meeting" | "etc";
+export type WorkStatus = "planned" | "in_progress" | "done";
+export interface WorkOrder {
+  id: string;
+  title: string;
+  type: WorkType;
+  status: WorkStatus;
+  site_id: string | null;
+  assignee_id: string | null;
+  scheduled_at: string; // ISO timestamp
+  detail: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 // 체크리스트 템플릿 (lead 가 관리하는 점검 항목 정의)
 export interface ChecklistTemplate {
   id: string;
