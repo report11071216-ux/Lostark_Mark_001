@@ -7,6 +7,15 @@ export type IssueSeverity = "critical" | "major" | "minor";
 export type IssueState = "open" | "in_progress" | "resolved";
 
 // ── 테이블 행 타입 ──
+export interface Engineer {
+  id: string;
+  name: string;
+  rank: string | null;   // 직급
+  dept: string | null;   // 부서
+  active: boolean;
+  created_at: string;
+}
+
 export interface TeamMember {
   id: string;
   email: string | null;
