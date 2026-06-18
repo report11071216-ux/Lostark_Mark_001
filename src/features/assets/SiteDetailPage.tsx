@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Server, Plus, Monitor, Store, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Server, Plus, Monitor, Store, Pencil, Trash2, Share2 } from "lucide-react";
 import { C, DEVICE_CATEGORY, NET_ZONE } from "../../lib/constants";
 import { Panel } from "../../components/ui";
 import { useApp } from "../../data/AppProvider";
@@ -37,6 +37,9 @@ export const SiteDetailPage: React.FC = () => {
           <span className="text-lg font-bold" style={{ color: C.text }}>{site.name}</span>
           <span className="text-xs" style={{ color: C.sub }}>{site.url || ""}</span>
           <span className="ml-auto text-xs px-2.5 py-1 rounded-lg" style={{ background: C.panel2, color: C.sub }}>장비 {devList.length} · 타사 {venList.length}</span>
+          <Link to={`/sites/${siteId}/topology`} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: C.accent, color: "#06241f", textDecoration: "none" }}>
+            <Share2 size={13} /> 구성도
+          </Link>
         </div>
       </div>
 
