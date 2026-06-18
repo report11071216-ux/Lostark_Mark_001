@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNodesState, useEdgesState, type Node, type Edge } from "@xyflow/react";
 import { supabase } from "../../lib/supabase";
 import { DEVICE_CATEGORY } from "../../lib/constants";
@@ -19,30 +19,37 @@ export function useTopology(siteId: string, devices: Device[]) {
   const [legends, setLegends] = useState<TopoLegend[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const devMap = useMemo(() => Object.fromEntries(devices.map((d) => [d.id, d])), [devices]);
+  // devices를 ref에 담아 toNode가 항상 최신을 보되 재생성되지 않게 함
+  const devMapRef = useRef<Record<string, Device>>({});
+  devMapRef.current = useMemo(() => Object.fromEntries(devices.map((d) => [d.id, d])), [devices]);
 
-  // DB 노드 → 카드 노드 (장비 연동 시 아이콘/IP/상태 자동)
   const toNode = useCallback((n: TopoNode): Node => {
-    const dev = n.device_id ? devMap[n.device_id] : null;
+    const dev = n.device_id ? devMapRef.current[n.device_id] : null;
     const data = dev
       ? { device_id: n.device_id, label: n.label, icon: iconForCategory(dev.category), ip: dev.ip || undefined, sub: DEVICE_CATEGORY[dev.category]?.label, status: dev.managed ? "ok" : undefined }
       : { device_id: null, label: n.label, icon: n.kind, status: n.kind === "internet" || n.kind === "cloud" ? "ext" : undefined };
     return { id: n.id, type: "card", position: { x: n.x, y: n.y }, data };
-  }, [devMap]);
+  }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const [n, e, l] = await Promise.all([
-      supabase.from("topo_nodes").select("*").eq("site_id", siteId),
-      supabase.from("topo_edges").select("*").eq("site_id", siteId),
-      supabase.from("topo_legends").select("*").eq("site_id", siteId).order("sort_order"),
-    ]);
-    setNodes(((n.data as TopoNode[]) || []).map(toNode));
-    setEdges(((e.data as TopoEdge[]) || []).map(toEdge));
-    setLegends((l.data as TopoLegend[]) || []);
-    setLoading(false);
-  }, [siteId, toNode, setNodes, setEdges]);
-  useEffect(() => { load(); }, [load]);
+  // 최초 1회만 로드 (siteId 바뀔 때만)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      const [n, e, l] = await Promise.all([
+        supabase.from("topo_nodes").select("*").eq("site_id", siteId),
+        supabase.from("topo_edges").select("*").eq("site_id", siteId),
+        supabase.from("topo_legends").select("*").eq("site_id", siteId).order("sort_order"),
+      ]);
+      if (!alive) return;
+      setNodes(((n.data as TopoNode[]) || []).map(toNode));
+      setEdges(((e.data as TopoEdge[]) || []).map(toEdge));
+      setLegends((l.data as TopoLegend[]) || []);
+      setLoading(false);
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteId]);
 
   const addNode = useCallback(async (p: { label: string; kind: string; device_id?: string | null }) => {
     const { data, error } = await supabase.from("topo_nodes")
