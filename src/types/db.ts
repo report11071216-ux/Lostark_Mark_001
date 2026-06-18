@@ -139,3 +139,33 @@ export interface ChecklistEntry {
   result: CheckResult;
   note?: string;
 }
+
+// ── 네트워크 구성도(토폴로지) ──
+export interface TopoNode {
+  id: string;
+  site_id: string;
+  device_id: string | null;
+  label: string;
+  kind: string;   // device / cloud / internet / custom
+  x: number;
+  y: number;
+  created_at: string;
+}
+export interface TopoEdge {
+  id: string;
+  site_id: string;
+  source_id: string;
+  target_id: string;
+  label: string | null;
+  color: string;
+  dashed: boolean;
+  created_at: string;
+}
+export interface TopoLegend {
+  id: string;
+  site_id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  created_at: string;
+}
