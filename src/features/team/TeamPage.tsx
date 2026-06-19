@@ -9,7 +9,7 @@ import type { TeamRole } from "../../types/db";
 const ROLE_LABEL: Record<TeamRole, string> = { lead: "Lead", engineer: "Engineer", viewer: "Viewer" };
 
 export const TeamPage: React.FC = () => {
-  const { members, engineers, isLead, updateMember, addEngineer, removeEngineer } = useApp();
+  const { me, members, engineers, isLead, updateMember, addEngineer, removeEngineer } = useApp();
   const [editing, setEditing] = useState<string | null>(null);
   const [nameDraft, setNameDraft] = useState("");
   const [eng, setEng] = useState({ name: "", rank: "", dept: "" });
@@ -29,41 +29,57 @@ export const TeamPage: React.FC = () => {
     if (err) alert("등록 실패: " + err); else setEng({ name: "", rank: "", dept: "" });
   };
 
-  const MemberRow = ({ m }: { m: typeof members[number] }) => (
-    <div className="flex items-center gap-3 px-5 py-3" style={{ borderTop: `1px solid ${C.line2}` }}>
-      <div className="flex-1 min-w-0">
-        {editing === m.id ? (
-          <div className="flex items-center gap-2">
-            <input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} autoFocus
-              className="rounded-md px-2 py-1 text-sm outline-none" style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.text }} />
-            <button onClick={() => saveName(m.id)} className="text-xs" style={{ color: C.accent }}>저장</button>
-            <button onClick={() => setEditing(null)} className="text-xs" style={{ color: C.faint }}>취소</button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-medium" style={{ color: C.text }}>{m.name || "(이름 없음)"}</span>
-            <button onClick={() => { setEditing(m.id); setNameDraft(m.name || ""); }} style={{ color: C.faint }}><Pencil size={12} /></button>
-          </div>
-        )}
-        <div className="font-mono text-xs" style={{ color: C.faint }}>{m.email}</div>
+  const MemberRow = ({ m }: { m: typeof members[number] }) => {
+    const isSelf = m.id === me?.id;   // 본인 계정이면 잠금
+    return (
+      <div className="flex items-center gap-3 px-5 py-3" style={{ borderTop: `1px solid ${C.line2}` }}>
+        <div className="flex-1 min-w-0">
+          {editing === m.id ? (
+            <div className="flex items-center gap-2">
+              <input value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} autoFocus
+                className="rounded-md px-2 py-1 text-sm outline-none w-full" style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.text }} />
+              <button onClick={() => saveName(m.id)} className="text-xs shrink-0" style={{ color: C.accent }}>저장</button>
+              <button onClick={() => setEditing(null)} className="text-xs shrink-0" style={{ color: C.faint }}>취소</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-medium truncate" style={{ color: C.text }}>{m.name || "(이름 없음)"}</span>
+              {isSelf && <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: `${C.accent}1a`, color: C.accent }}>나</span>}
+              <button onClick={() => { setEditing(m.id); setNameDraft(m.name || ""); }} className="shrink-0" style={{ color: C.faint }}><Pencil size={12} /></button>
+            </div>
+          )}
+          <div className="font-mono text-xs truncate" style={{ color: C.faint }}>{m.email}</div>
+        </div>
+
+        {/* 역할 드롭다운 — 고정폭, 본인이면 비활성화 */}
+        <div className="shrink-0" style={{ width: 116 }}>
+          <Select value={m.role} disabled={isSelf}
+            onChange={(e) => updateMember(m.id, { role: e.target.value as TeamRole })}
+            style={isSelf ? { opacity: 0.5, cursor: "not-allowed" } : undefined}>
+            {(["lead", "engineer", "viewer"] as TeamRole[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+          </Select>
+        </div>
+
+        {/* 승인 버튼 — 본인이면 숨김(자기 잠금 방지) */}
+        <div className="shrink-0" style={{ width: 72 }}>
+          {isSelf ? (
+            <span className="block text-center text-[11px]" style={{ color: C.faint }}>—</span>
+          ) : m.approved ? (
+            <button onClick={() => updateMember(m.id, { approved: false })} className="w-full rounded-lg px-2 py-1.5 text-xs font-medium" style={{ border: `1px solid ${C.line}`, color: C.sub }}>해제</button>
+          ) : (
+            <button onClick={() => updateMember(m.id, { approved: true })} className="w-full rounded-lg px-2 py-1.5 text-xs font-semibold flex items-center justify-center gap-1" style={{ background: `${C.ok}1a`, color: C.ok, border: `1px solid ${C.ok}40` }}>
+              <Check size={12} /> 승인
+            </button>
+          )}
+        </div>
       </div>
-      <Select value={m.role} onChange={(e) => updateMember(m.id, { role: e.target.value as TeamRole })}>
-        {(["lead", "engineer", "viewer"] as TeamRole[]).map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-      </Select>
-      {m.approved ? (
-        <button onClick={() => updateMember(m.id, { approved: false })} className="rounded-lg px-2.5 py-1.5 text-xs font-medium" style={{ border: `1px solid ${C.line}`, color: C.sub }}>승인 취소</button>
-      ) : (
-        <button onClick={() => updateMember(m.id, { approved: true })} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold flex items-center gap-1" style={{ background: `${C.ok}1a`, color: C.ok, border: `1px solid ${C.ok}40` }}>
-          <Check size={12} /> 승인
-        </button>
-      )}
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-5">
 
-      {/* 엔지니어 명부 — 사이트 정/부 담당 후보 (로그인 계정과 무관) */}
+      {/* 엔지니어 명부 */}
       <Panel>
         <div className="flex items-center gap-2 px-5 py-3.5" style={{ borderBottom: `1px solid ${C.line2}` }}>
           <IdCard size={15} style={{ color: C.accent }} />
@@ -71,7 +87,6 @@ export const TeamPage: React.FC = () => {
           <span className="text-xs" style={{ color: C.faint }}>사이트 정/부 담당 후보</span>
         </div>
 
-        {/* 등록 폼 */}
         <div className="flex flex-wrap items-end gap-2 px-5 py-3" style={{ borderBottom: `1px solid ${C.line2}` }}>
           <div style={{ flex: "2 1 140px" }}>
             <label className="text-xs" style={{ color: C.sub }}>이름</label>
@@ -90,7 +105,6 @@ export const TeamPage: React.FC = () => {
           </button>
         </div>
 
-        {/* 목록 */}
         {engineers.length === 0 && <div className="text-center py-6 text-sm" style={{ color: C.faint }}>등록된 엔지니어가 없습니다.</div>}
         {engineers.map((e) => (
           <div key={e.id} className="flex items-center gap-3 px-5 py-3" style={{ borderTop: `1px solid ${C.line2}` }}>
