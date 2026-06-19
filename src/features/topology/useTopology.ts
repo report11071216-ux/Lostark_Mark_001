@@ -1,18 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNodesState, useEdgesState, type Node, type Edge } from "@xyflow/react";
 import { supabase } from "../../lib/supabase";
-import { DEVICE_CATEGORY } from "../../lib/constants";
+import { DEVICE_CATEGORY, NET_ZONE } from "../../lib/constants";
 import type { Device, TopoEdge, TopoLegend, TopoNode } from "../../types/db";
 import { iconForCategory } from "./TopoCardNode";
 
 const toEdge = (e: TopoEdge): Edge => ({
   id: e.id, source: e.source_id, target: e.target_id,
+  sourceHandle: e.source_handle || undefined,
+  targetHandle: e.target_handle || undefined,
   type: e.edge_type || "default",
-  label: e.label || undefined,
   style: { stroke: e.color, strokeWidth: 2.5, strokeDasharray: e.dashed ? "6 8" : undefined },
   animated: e.dashed,
-  labelStyle: { fill: "#e2e8f0", fontSize: 11 }, labelBgStyle: { fill: "#161b24" },
-  // 양 끝 포트 라벨 + 원본 데이터 보관
   data: { src_port: e.src_port || "", dst_port: e.dst_port || "", color: e.color, dashed: e.dashed, label: e.label || "", edge_type: e.edge_type || "default" },
 });
 
@@ -27,9 +26,25 @@ export function useTopology(siteId: string, devices: Device[]) {
 
   const toNode = useCallback((n: TopoNode): Node => {
     const dev = n.device_id ? devMapRef.current[n.device_id] : null;
-    const data = dev
-      ? { device_id: n.device_id, label: n.label, icon: iconForCategory(dev.category), ip: dev.ip || undefined, sub: DEVICE_CATEGORY[dev.category]?.label, status: dev.managed ? "ok" : undefined }
-      : { device_id: null, label: n.label, icon: n.kind, status: n.kind === "internet" || n.kind === "cloud" ? "ext" : undefined };
+    let data: Record<string, unknown>;
+    if (dev) {
+      // 장비 연동: icon_type 우선, 없으면 구분 자동
+      const icon = dev.icon_type || iconForCategory(dev.category);
+      data = {
+        device_id: n.device_id, label: n.label, icon,
+        badge: dev.icon_type === "security" ? (dev.icon_badge || undefined) : undefined,
+        ip: dev.ip || undefined,
+        sub: DEVICE_CATEGORY[dev.category]?.label,
+        status: dev.managed ? "ok" : undefined,
+        detail: {
+          model: dev.model || undefined, serial: dev.serial || undefined, os: dev.os || undefined,
+          vendor: dev.vendor_name || undefined, netZone: dev.net_zone ? NET_ZONE[dev.net_zone] : undefined, managed: dev.managed,
+        },
+      };
+    } else {
+      // 임의 노드: kind를 아이콘으로
+      data = { device_id: null, label: n.label, icon: n.kind, status: n.kind === "internet" || n.kind === "cloud" ? "ext" : undefined };
+    }
     return { id: n.id, type: "card", position: { x: n.x, y: n.y }, data };
   }, []);
 
@@ -70,13 +85,13 @@ export function useTopology(siteId: string, devices: Device[]) {
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
   }, [setNodes, setEdges]);
 
-  // 연결: 포트·선모양까지 받음
   const addEdge = useCallback(async (p: {
     source: string; target: string; color: string; label: string; dashed: boolean;
     src_port: string; dst_port: string; edge_type: string;
+    source_handle?: string | null; target_handle?: string | null;
   }) => {
     const { data, error } = await supabase.from("topo_edges")
-      .insert({ site_id: siteId, source_id: p.source, target_id: p.target, color: p.color, label: p.label || null, dashed: p.dashed, src_port: p.src_port || null, dst_port: p.dst_port || null, edge_type: p.edge_type })
+      .insert({ site_id: siteId, source_id: p.source, target_id: p.target, color: p.color, label: p.label || null, dashed: p.dashed, src_port: p.src_port || null, dst_port: p.dst_port || null, edge_type: p.edge_type, source_handle: p.source_handle ?? null, target_handle: p.target_handle ?? null })
       .select().single();
     if (error) { alert("연결 실패: " + error.message); return; }
     setEdges((eds) => [...eds, toEdge(data as TopoEdge)]);
