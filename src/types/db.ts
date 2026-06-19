@@ -230,15 +230,15 @@ export interface InsHeaderField {
 // 템플릿
 export interface InspectionTemplate {
   id: string;
-  name: string;             // 템플릿 이름 (목록용)
-  title: string | null;     // 출력 제목
+  name: string;
+  title: string | null;
   subtitle: string | null;
   sections: InsSection[];
   header_fields: InsHeaderField[];
+  folder_id: string | null;
   created_by: string | null;
   created_at: string;
 }
-
 // 점검 기록
 export interface InspectionRecord {
   id: string;
@@ -251,5 +251,13 @@ export interface InspectionRecord {
   header_values: Record<string, string>;
   sections: InsSection[];   // 값이 채워진 섹션
   created_by: string | null;
+  created_at: string;
+}
+
+// 점검표 템플릿 폴더
+export interface TemplateFolder {
+  id: string;
+  name: string;
+  sort_order: number;
   created_at: string;
 }
