@@ -17,9 +17,9 @@ const ICONS: Record<string, { color: string; path: React.ReactNode }> = {
 
 export interface TopoNodeData {
   label: string;
-  icon?: string;     // ICONS 키
+  icon?: string;
   ip?: string;
-  sub?: string;      // 부가 텍스트 (구분·OS 등)
+  sub?: string;
   status?: "ok" | "warn" | "ext";
   [key: string]: unknown;
 }
@@ -34,6 +34,16 @@ export const TopoCardNode: React.FC<NodeProps> = ({ data, selected }) => {
   const d = data as TopoNodeData;
   const ic = ICONS[d.icon || "custom"] || ICONS.custom;
   const st = d.status ? STATUS[d.status] : null;
+
+  const hStyle = { background: ic.color, width: 9, height: 9, border: "1.5px solid #0a0e16" } as React.CSSProperties;
+  // 상하좌우 4방향, 각 위치마다 source+target 둘 다 둠 (어느 점에서든 양방향 연결)
+  const handles = [
+    { pos: Position.Top, id: "t" },
+    { pos: Position.Bottom, id: "b" },
+    { pos: Position.Left, id: "l" },
+    { pos: Position.Right, id: "r" },
+  ];
+
   return (
     <div style={{
       width: 158,
@@ -43,7 +53,13 @@ export const TopoCardNode: React.FC<NodeProps> = ({ data, selected }) => {
       boxShadow: `0 8px 28px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.05)`,
       position: "relative",
     }}>
-      <Handle type="target" position={Position.Top} style={{ background: ic.color, width: 8, height: 8 }} />
+      {handles.map((h) => (
+        <React.Fragment key={h.id}>
+          <Handle type="source" id={`s-${h.id}`} position={h.pos} style={hStyle} />
+          <Handle type="target" id={`t-${h.id}`} position={h.pos} style={hStyle} />
+        </React.Fragment>
+      ))}
+
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: ic.color, borderRadius: "12px 0 0 12px" }} />
       <div style={{ display: "flex", gap: 9, alignItems: "center" }}>
         <div style={{ width: 34, height: 34, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", background: `${ic.color}26`, boxShadow: `0 0 14px ${ic.color}80`, color: ic.color }}>
@@ -60,12 +76,10 @@ export const TopoCardNode: React.FC<NodeProps> = ({ data, selected }) => {
           {st && <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: `${st.color}29`, color: st.color }}>{st.label}</span>}
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} style={{ background: ic.color, width: 8, height: 8 }} />
     </div>
   );
 };
 
-// 장비 구분(devices.category) → 아이콘 키 매핑
 export function iconForCategory(category?: string | null): string {
   switch (category) {
     case "security": return "firewall";
