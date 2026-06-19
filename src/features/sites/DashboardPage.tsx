@@ -78,14 +78,25 @@ export const DashboardPage: React.FC = () => {
             linear-gradient(180deg,#0c1018,#0a0e16)`,
         }}
       >
-        {/* 아이소 격자 바닥 */}
-        <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", opacity: 0.5 }}>
+       {/* 아이소메트릭 입체 지면 */}
+        <svg viewBox="0 0 860 560" preserveAspectRatio="xMidYMid slice" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}>
           <defs>
-            <pattern id="isoGrid" width="64" height="32" patternUnits="userSpaceOnUse" patternTransform="skewY(-12)">
-              <path d="M0 0H64M0 0V32" fill="none" stroke="rgba(120,180,200,0.10)" strokeWidth="1" />
-            </pattern>
+            <linearGradient id="isoTop" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#16242f" /><stop offset="100%" stopColor="#0d1822" />
+            </linearGradient>
           </defs>
-          <rect width="100%" height="100%" fill="url(#isoGrid)" />
+          {/* 지면 다이아몬드 윗면 */}
+          <polygon points="430,40 830,300 430,540 30,300" fill="url(#isoTop)" stroke="rgba(45,212,191,0.22)" strokeWidth="1.5" />
+          {/* 다이아몬드 옆 두께(입체) */}
+          <polygon points="30,300 430,540 430,556 30,316" fill="#0a121a" stroke="rgba(45,212,191,0.12)" strokeWidth="1" />
+          <polygon points="830,300 430,540 430,556 830,316" fill="#070e15" stroke="rgba(45,212,191,0.12)" strokeWidth="1" />
+          {/* 아이소 격자선 */}
+          <g stroke="rgba(120,180,200,0.10)" strokeWidth="1">
+            <line x1="130" y1="105" x2="530" y2="365" /><line x1="230" y1="105" x2="630" y2="365" />
+            <line x1="330" y1="105" x2="730" y2="365" /><line x1="180" y1="170" x2="580" y2="430" />
+            <line x1="730" y1="105" x2="330" y2="365" /><line x1="630" y1="105" x2="230" y2="365" />
+            <line x1="530" y1="105" x2="130" y2="365" /><line x1="680" y1="170" x2="280" y2="430" />
+          </g>
         </svg>
 
         {enriched.length === 0 && (
