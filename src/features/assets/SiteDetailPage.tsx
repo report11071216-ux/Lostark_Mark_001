@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Server, Plus, Monitor, Store, Pencil, Trash2, Share2 } from "lucide-react";
+import { ArrowLeft, Server, Plus, Monitor, Store, Pencil, Trash2, Share2, ClipboardCheck } from "lucide-react";
 import { C, DEVICE_CATEGORY, NET_ZONE } from "../../lib/constants";
 import { Panel } from "../../components/ui";
 import { useApp } from "../../data/AppProvider";
 import { DeviceModal } from "./DeviceModal";
 import { VendorModal } from "./VendorModal";
+import { InspectionBuilder } from "./InspectionBuilder";
 import type { Device, Vendor } from "../../types/db";
 
 export const SiteDetailPage: React.FC = () => {
@@ -15,6 +16,7 @@ export const SiteDetailPage: React.FC = () => {
   const [editDev, setEditDev] = useState<Device | null>(null);
   const [addVen, setAddVen] = useState(false);
   const [editVen, setEditVen] = useState<Vendor | null>(null);
+  const [inspectDev, setInspectDev] = useState<Device | null>(null);
 
   const site = sites.find((s) => s.id === siteId);
   const devList = devices.filter((d) => d.site_id === siteId);
@@ -53,7 +55,7 @@ export const SiteDetailPage: React.FC = () => {
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs" style={{ color: C.text, minWidth: 820 }}>
+          <table className="w-full text-xs" style={{ color: C.text, minWidth: 880 }}>
             <thead><tr style={{ color: C.faint }}>{cols.map((h, i) => <th key={i} className="text-left font-medium px-3 py-2.5 whitespace-nowrap">{h}</th>)}</tr></thead>
             <tbody>
               {devList.length === 0 && <tr><td colSpan={cols.length} className="text-center py-8" style={{ color: C.faint }}>등록된 장비가 없습니다.</td></tr>}
@@ -72,7 +74,10 @@ export const SiteDetailPage: React.FC = () => {
                     <td className="px-3 py-2.5 font-mono whitespace-nowrap" style={{ color: C.sub }}>{d.ip || "—"}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.sub }}>{d.vendor_name || "—"}</td>
                     <td className="px-3 py-2.5">
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5 items-center">
+                        <button onClick={() => setInspectDev(d)} className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold whitespace-nowrap" style={{ background: `${C.accent}1a`, color: C.accent, border: `1px solid ${C.accent}40` }} title="정기점검">
+                          <ClipboardCheck size={12} /> 점검
+                        </button>
                         <button onClick={() => setEditDev(d)} style={{ color: C.faint }} title="수정"><Pencil size={13} /></button>
                         <button onClick={() => { if (confirm(`${d.system_name} 장비를 삭제할까요?`)) removeDevice(d.id); }} style={{ color: C.faint }} title="삭제"><Trash2 size={13} /></button>
                       </div>
@@ -121,6 +126,7 @@ export const SiteDetailPage: React.FC = () => {
       {editDev && <DeviceModal siteId={siteId} existing={editDev} onClose={() => setEditDev(null)} />}
       {addVen && <VendorModal siteId={siteId} onClose={() => setAddVen(false)} />}
       {editVen && <VendorModal siteId={siteId} existing={editVen} onClose={() => setEditVen(null)} />}
+      {inspectDev && <InspectionBuilder device={inspectDev} onClose={() => setInspectDev(null)} />}
     </div>
   );
 };
