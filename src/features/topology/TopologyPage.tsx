@@ -60,13 +60,9 @@ export const TopologyPage: React.FC = () => {
 
   const styledEdges: Edge[] = T.edges.map((e) => ({ ...e, label: undefined }));
 
-  // 핸들 짝: 누른 핸들 기준으로 예비회선용 "다른 핸들" 고르기
-  const altHandles = (h?: string | null): { s: string; t: string } => {
-    // h 예: "s-r"(source right) → 예비는 아래(b)로
-    const side = (h || "s-r").slice(-1);
-    const alt: Record<string, string> = { r: "b", l: "t", t: "l", b: "r" };
-    const a = alt[side] || "b";
-    return { s: `s-${a}`, t: `t-${a}` };
+ // 예비 회선도 주 회선과 같은 방향 핸들에 붙여 가운데로 모음
+  const altHandles = (sh?: string | null, th?: string | null): { s: string; t: string } => {
+    return { s: sh || "s-r", t: th || "t-l" };
   };
 
   const onConnect = useCallback((c: Connection) => {
@@ -97,7 +93,7 @@ export const TopologyPage: React.FC = () => {
       T.addEdge({ source: d.source, target: d.target, src_port: d.src_port, dst_port: d.dst_port, color: d.color, label: d.label, dashed: d.dashed, edge_type: d.edge_type, source_handle: edgeModal?.sh, target_handle: edgeModal?.th });
       // 예비 회선 (이중화 체크 시) — 다른 핸들에 붙여 두 줄로
       if (d.ha) {
-        const alt = altHandles(edgeModal?.sh);
+        const alt = altHandles(edgeModal?.sh, edgeModal?.th);
         T.addEdge({ source: d.source, target: d.target, src_port: d.src_port2 || "", dst_port: d.dst_port2 || "", color: d.color2 || "#fbbf24", label: "", dashed: d.dashed, edge_type: d.edge_type, source_handle: alt.s, target_handle: alt.t });
       }
     }
