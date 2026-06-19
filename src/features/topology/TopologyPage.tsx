@@ -12,9 +12,11 @@ import { C } from "../../lib/constants";
 import { useApp } from "../../data/AppProvider";
 import { useTopology } from "./useTopology";
 import { TopoCardNode } from "./TopoCardNode";
+import { TopoEdge } from "./TopoEdge";
 import { EdgeModal, type EdgeDraft } from "./EdgeModal";
 
 const nodeTypes = { card: TopoCardNode };
+const edgeTypes = { default: TopoEdge, smoothstep: TopoEdge, straight: TopoEdge };
 
 const KIND_OPTIONS = [
   { kind: "internet", label: "인터넷" },
@@ -36,8 +38,6 @@ export const TopologyPage: React.FC = () => {
 
   const [panel, setPanel] = useState<"node" | "legend" | null>("node");
   const [saved, setSaved] = useState(true);
-
-  // 연결 모달 상태: 신규 연결(draft) 또는 기존 선(editing)
   const [edgeModal, setEdgeModal] = useState<{ draft: EdgeDraft; editId: string | null } | null>(null);
 
   const [customLabel, setCustomLabel] = useState("");
@@ -52,17 +52,9 @@ export const TopologyPage: React.FC = () => {
     return (n?.data as { label?: string })?.label || "노드";
   }, [T.nodes]);
 
-  // 양 끝 포트를 라벨로 입힌 엣지
-  const styledEdges: Edge[] = T.edges.map((e) => {
-    const d = (e.data || {}) as { src_port?: string; dst_port?: string };
-    return {
-      ...e,
-      // React Flow는 한 엣지에 하나의 label만 → 양끝 포트는 label에 합쳐 표시
-      label: [d.src_port, e.label as string, d.dst_port].filter(Boolean).join("  ·  ") || undefined,
-    };
-  });
+  // 커스텀 엣지가 data로 포트/라벨을 직접 그리므로, 기본 label은 비워둠
+  const styledEdges: Edge[] = T.edges.map((e) => ({ ...e, label: undefined }));
 
-  // 두 노드 연결 시 → 모달 강제
   const onConnect = useCallback((c: Connection) => {
     if (!c.source || !c.target) return;
     setEdgeModal({
@@ -71,7 +63,6 @@ export const TopologyPage: React.FC = () => {
     });
   }, []);
 
-  // 기존 선 클릭 → 같은 모달로 수정
   const onEdgeClick = useCallback((_: React.MouseEvent, e: Edge) => {
     const d = (e.data || {}) as Partial<EdgeDraft>;
     setEdgeModal({
@@ -123,7 +114,6 @@ export const TopologyPage: React.FC = () => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 130px)" }}>
-      {/* 툴바 */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: "8px 12px", marginBottom: 10, flexWrap: "wrap" }}>
         <Link to={`/sites/${siteId}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: C.faint, textDecoration: "none" }}>
           <ArrowLeft size={13} /> {site.name}
@@ -132,7 +122,6 @@ export const TopologyPage: React.FC = () => {
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: saved ? "#34d399" : C.soon }}>
           {saved ? <><Check size={12} /> 자동 저장됨</> : "저장 중…"}
         </span>
-
         <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
           <button onClick={exportPng} style={topBtn}><Download size={13} /> PNG</button>
           <button onClick={() => setPanel(panel === "node" ? null : "node")} style={topBtn2(panel === "node")}><Plus size={13} /> 노드</button>
@@ -143,7 +132,7 @@ export const TopologyPage: React.FC = () => {
       <div style={{ display: "flex", gap: 12, flex: 1, minHeight: 0 }}>
         <div style={{ flex: 1, borderRadius: 14, overflow: "hidden", border: `1px solid ${C.line}`, position: "relative", background: "#0a0e16" }}>
           <ReactFlow
-            nodes={T.nodes} edges={styledEdges} nodeTypes={nodeTypes}
+            nodes={T.nodes} edges={styledEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             onNodesChange={T.onNodesChange} onEdgesChange={T.onEdgesChange}
             onConnect={onConnect} onNodeDragStop={onNodeDragStop}
             onNodesDelete={onNodesDelete} onEdgesDelete={onEdgesDelete}
@@ -229,4 +218,3 @@ const topBtn2 = (on: boolean): React.CSSProperties => ({ display: "flex", alignI
 const sectTitle: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: C.text, marginBottom: 8 };
 const inp: React.CSSProperties = { width: "100%", boxSizing: "border-box", background: C.panel2, border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "7px 9px", fontSize: 12.5, marginBottom: 8, outline: "none" };
 const primaryBtn: React.CSSProperties = { width: "100%", background: C.accent, color: "#06241f", border: "none", borderRadius: 8, padding: "8px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" };
-const listItem: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, width: "100%", textAlign: "left", background: C.panel2, border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "7px 9px", fontSize: 12, marginBottom: 6, cursor: "pointer" };
