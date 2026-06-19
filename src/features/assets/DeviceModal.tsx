@@ -4,6 +4,25 @@ import { Field, Input, Modal, Select } from "../../components/ui";
 import { useApp } from "../../data/AppProvider";
 import type { Device, DeviceCategory, NetZone } from "../../types/db";
 
+// 토폴로지 아이콘 종류
+const ICON_OPTIONS: { key: string; label: string }[] = [
+  { key: "", label: "자동 (구분 따라)" },
+  { key: "backbone", label: "백본" },
+  { key: "switch", label: "스위치" },
+  { key: "router", label: "라우터" },
+  { key: "firewall", label: "방화벽" },
+  { key: "security", label: "보안(방패+배지)" },
+  { key: "server", label: "서버" },
+  { key: "storage", label: "스토리지/NAS" },
+  { key: "db", label: "DB" },
+  { key: "ap", label: "무선 AP" },
+  { key: "lb", label: "부하분산" },
+  { key: "vm", label: "가상화" },
+  { key: "cloud", label: "클라우드" },
+  { key: "internet", label: "인터넷" },
+  { key: "custom", label: "기타" },
+];
+
 export const DeviceModal: React.FC<{ siteId: string; existing?: Device; onClose: () => void }> = ({ siteId, existing, onClose }) => {
   const { addDevice, updateDevice } = useApp();
   const [f, setF] = useState({
@@ -17,6 +36,8 @@ export const DeviceModal: React.FC<{ siteId: string; existing?: Device; onClose:
     introduced_on: existing?.introduced_on || "",
     ip: existing?.ip || "",
     vendor_name: existing?.vendor_name || "",
+    icon_type: existing?.icon_type || "",
+    icon_badge: existing?.icon_badge || "",
   });
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -29,6 +50,7 @@ export const DeviceModal: React.FC<{ siteId: string; existing?: Device; onClose:
       site_id: siteId, category: f.category, net_zone: f.net_zone, managed: f.managed,
       system_name: f.system_name, model: f.model || null, serial: f.serial || null,
       os: f.os || null, introduced_on: f.introduced_on || null, ip: f.ip || null, vendor_name: f.vendor_name || null,
+      icon_type: f.icon_type || null, icon_badge: f.icon_type === "security" ? (f.icon_badge || null) : null,
     };
     const err = existing ? await updateDevice(existing.id, payload) : await addDevice(payload);
     setBusy(false);
@@ -49,6 +71,21 @@ export const DeviceModal: React.FC<{ siteId: string; existing?: Device; onClose:
           </Select>
         </Field>
       </div>
+
+      {/* 토폴로지 아이콘 */}
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="구성도 아이콘">
+          <Select value={f.icon_type} onChange={set("icon_type")}>
+            {ICON_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </Select>
+        </Field>
+        {f.icon_type === "security" && (
+          <Field label="배지 글자 (IPS·NAC 등)">
+            <Input value={f.icon_badge} onChange={set("icon_badge")} placeholder="IPS" maxLength={5} />
+          </Field>
+        )}
+      </div>
+
       <Field label="관리대상">
         <div className="flex gap-1.5">
           {[["true", "O (관리)"], ["false", "X (비관리)"]].map(([v, l]) => (
@@ -71,11 +108,4 @@ export const DeviceModal: React.FC<{ siteId: string; existing?: Device; onClose:
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label="장비 IP"><Input value={f.ip} onChange={set("ip")} placeholder="10.0.0.1" /></Field>
-        <Field label="업체명"><Input value={f.vendor_name} onChange={set("vendor_name")} placeholder="팔로알토" /></Field>
-      </div>
-      <button onClick={save} disabled={busy} className="w-full rounded-lg py-2.5 text-sm font-semibold mt-1" style={btnPrimary}>
-        {busy ? "저장 중…" : existing ? "저장" : "등록"}
-      </button>
-    </Modal>
-  );
-};
+        <Field label="업체명"><Input value={f.vendor_name} onChange={set("vendor_name")}
