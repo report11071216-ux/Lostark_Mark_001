@@ -10,8 +10,19 @@ function lerp(ax: number, ay: number, bx: number, by: number, t: number) {
 
 export const TopoEdge: React.FC<EdgeProps> = (props) => {
   const { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, style, data, type } = props;
+  const d = (data || {}) as { src_port?: string; dst_port?: string; label?: string; parallel?: number };
+  const par = d.parallel || 0;
 
-  const params = { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition };
+  // 선 방향에 수직인 단위벡터로 평행 이동 (이중화 두 줄 벌리기)
+  const dx = targetX - sourceX, dy = targetY - sourceY;
+  const len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;  // 수직 단위벡터
+  const ox = nx * par, oy = ny * par;
+
+  const sX = sourceX + ox, sY = sourceY + oy;
+  const tX = targetX + ox, tY = targetY + oy;
+
+  const params = { sourceX: sX, sourceY: sY, targetX: tX, targetY: tY, sourcePosition, targetPosition };
   let edgePath: string, labelX: number, labelY: number;
   if (type === "straight") {
     [edgePath, labelX, labelY] = getStraightPath(params);
@@ -21,9 +32,8 @@ export const TopoEdge: React.FC<EdgeProps> = (props) => {
     [edgePath, labelX, labelY] = getBezierPath(params);
   }
 
-  const d = (data || {}) as { src_port?: string; dst_port?: string; label?: string };
-  const srcPos = lerp(sourceX, sourceY, targetX, targetY, 0.16);
-  const dstPos = lerp(sourceX, sourceY, targetX, targetY, 0.84);
+  const srcPos = lerp(sX, sY, tX, tY, 0.16);
+  const dstPos = lerp(sX, sY, tX, tY, 0.84);
 
   const chip: React.CSSProperties = {
     position: "absolute", transform: "translate(-50%, -50%)",
