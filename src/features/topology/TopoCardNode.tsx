@@ -48,7 +48,7 @@ export const TopoCardNode: React.FC<NodeProps> = ({ data, selected }) => {
   const ic = ICONS[d.icon || "custom"] || ICONS.custom;
   const st = d.status ? STATUS[d.status] : null;
   const [hover, setHover] = useState(false);
-  const hStyle = { background: ic.color, width: 9, height: 9, border: "1.5px solid #0a0e16" } as React.CSSProperties;
+  const hStyle = { background: ic.color, width: 9, height: 9, border: "1.5px solid #0a0e16", opacity: hover ? 1 : 0, transition: "opacity .16s" } as React.CSSProperties;
 
   return (
     <div style={{ position: "relative", width: 96, textAlign: "center", cursor: "pointer", transform: hover ? "translateY(-3px)" : "none", transition: "transform .16s" }}
