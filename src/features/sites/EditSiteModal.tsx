@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { C, CYCLE, btnPrimary } from "../../lib/constants";
 import { Field, Input, Modal, Select } from "../../components/ui";
 import { useApp } from "../../data/AppProvider";
+import { BUILDING_TYPES } from "./BuildingNode";
 import type { CheckCycle, Site } from "../../types/db";
 
 export const EditSiteModal: React.FC<{ site: Site; onClose: () => void }> = ({ site, onClose }) => {
@@ -9,22 +10,22 @@ export const EditSiteModal: React.FC<{ site: Site; onClose: () => void }> = ({ s
   const [f, setF] = useState({
     name: site.name, url: site.url || "", cycle: site.cycle as CheckCycle, start_date: site.start_date,
     owner_primary_id: site.owner_primary_id || "", owner_secondary_id: site.owner_secondary_id || "",
+    building_type: site.building_type || "office",
   });
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF({ ...f, [k]: e.target.value });
-
   const save = async () => {
     if (!f.name) return;
     setBusy(true);
     const err = await updateSite(site.id, {
       name: f.name, url: f.url || null, cycle: f.cycle, start_date: f.start_date,
       owner_primary_id: f.owner_primary_id || null, owner_secondary_id: f.owner_secondary_id || null,
+      building_type: f.building_type,
     });
     setBusy(false);
     if (err) alert("수정 실패: " + err); else onClose();
   };
-
   return (
     <Modal title="사이트 수정" onClose={onClose}>
       <Field label="사이트 이름"><Input value={f.name} onChange={set("name")} /></Field>
@@ -40,6 +41,11 @@ export const EditSiteModal: React.FC<{ site: Site; onClose: () => void }> = ({ s
       <div className="text-[11px]" style={{ color: C.faint }}>
         다음 점검일은 기준일 + 주기로 계산됩니다. 다음 점검을 특정 날짜로 맞추려면 기준일을 그 날짜로 설정하세요.
       </div>
+      <Field label="건물 모양 (대시보드 맵)">
+        <Select value={f.building_type} onChange={set("building_type")}>
+          {BUILDING_TYPES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
+        </Select>
+      </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="정 담당">
           <Select value={f.owner_primary_id} onChange={set("owner_primary_id")}>
