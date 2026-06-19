@@ -1,12 +1,13 @@
 import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { Shield, LayoutDashboard, CalendarDays, AlertTriangle, FileText, Users, Server, RefreshCw, LogOut } from "lucide-react";
+iimport { Shield, LayoutDashboard, CalendarDays, AlertTriangle, FileText, Users, Server, RefreshCw, LogOut, Activity } from "lucide-react";
 import { C } from "../lib/constants";
 import { useApp } from "../data/AppProvider";
 import { AlertsBell, AlertBanner } from "../features/alerts/AlertsBell";
 
 const TABS = [
   { to: "/dashboard", label: "대시보드", icon: LayoutDashboard },
+  { to: "/inspections", label: "점검 현황", icon: Activity },
   { to: "/schedule", label: "점검 일정", icon: CalendarDays },
   { to: "/sites", label: "사이트", icon: Server },
   { to: "/issues", label: "이슈 로그", icon: AlertTriangle },
