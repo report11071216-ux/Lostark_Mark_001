@@ -7,10 +7,13 @@ import { iconForCategory } from "./TopoCardNode";
 
 const toEdge = (e: TopoEdge): Edge => ({
   id: e.id, source: e.source_id, target: e.target_id,
+  type: e.edge_type || "default",
   label: e.label || undefined,
   style: { stroke: e.color, strokeWidth: 2.5, strokeDasharray: e.dashed ? "6 8" : undefined },
   animated: e.dashed,
   labelStyle: { fill: "#e2e8f0", fontSize: 11 }, labelBgStyle: { fill: "#161b24" },
+  // 양 끝 포트 라벨 + 원본 데이터 보관
+  data: { src_port: e.src_port || "", dst_port: e.dst_port || "", color: e.color, dashed: e.dashed, label: e.label || "", edge_type: e.edge_type || "default" },
 });
 
 export function useTopology(siteId: string, devices: Device[]) {
@@ -19,7 +22,6 @@ export function useTopology(siteId: string, devices: Device[]) {
   const [legends, setLegends] = useState<TopoLegend[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // devices를 ref에 담아 toNode가 항상 최신을 보되 재생성되지 않게 함
   const devMapRef = useRef<Record<string, Device>>({});
   devMapRef.current = useMemo(() => Object.fromEntries(devices.map((d) => [d.id, d])), [devices]);
 
@@ -31,7 +33,6 @@ export function useTopology(siteId: string, devices: Device[]) {
     return { id: n.id, type: "card", position: { x: n.x, y: n.y }, data };
   }, []);
 
-  // 최초 1회만 로드 (siteId 바뀔 때만)
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -69,15 +70,21 @@ export function useTopology(siteId: string, devices: Device[]) {
     setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
   }, [setNodes, setEdges]);
 
-  const addEdge = useCallback(async (source: string, target: string, color: string, label: string, dashed: boolean) => {
+  // 연결: 포트·선모양까지 받음
+  const addEdge = useCallback(async (p: {
+    source: string; target: string; color: string; label: string; dashed: boolean;
+    src_port: string; dst_port: string; edge_type: string;
+  }) => {
     const { data, error } = await supabase.from("topo_edges")
-      .insert({ site_id: siteId, source_id: source, target_id: target, color, label: label || null, dashed })
+      .insert({ site_id: siteId, source_id: p.source, target_id: p.target, color: p.color, label: p.label || null, dashed: p.dashed, src_port: p.src_port || null, dst_port: p.dst_port || null, edge_type: p.edge_type })
       .select().single();
     if (error) { alert("연결 실패: " + error.message); return; }
     setEdges((eds) => [...eds, toEdge(data as TopoEdge)]);
   }, [siteId, setEdges]);
 
-  const updateEdge = useCallback(async (id: string, patch: { label?: string; color?: string; dashed?: boolean }) => {
+  const updateEdge = useCallback(async (id: string, patch: {
+    label?: string; color?: string; dashed?: boolean; src_port?: string; dst_port?: string; edge_type?: string;
+  }) => {
     const { data } = await supabase.from("topo_edges").update(patch).eq("id", id).select().single();
     if (data) setEdges((eds) => eds.map((e) => (e.id === id ? toEdge(data as TopoEdge) : e)));
   }, [setEdges]);
