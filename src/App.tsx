@@ -5,6 +5,7 @@ import { AuthGate } from "./features/auth/AuthGate";
 import { Signup } from "./features/auth/Signup";
 import { AppShell } from "./layout/AppShell";
 import { DashboardPage } from "./features/sites/DashboardPage";
+import { InspectionsPage } from "./features/sites/InspectionsPage";
 import { SchedulePage } from "./features/schedule/SchedulePage";
 import { IssuesPage } from "./features/issues/IssuesPage";
 import { TeamPage } from "./features/team/TeamPage";
@@ -22,6 +23,7 @@ export default function App() {
           <Route element={<AppShell />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/inspections" element={<InspectionsPage />} />
             <Route path="/schedule" element={<SchedulePage />} />
             <Route path="/sites" element={<SitesPage />} />
             <Route path="/sites/:siteId" element={<SiteDetailPage />} />
