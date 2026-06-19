@@ -7,7 +7,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { toPng } from "html-to-image";
-import { ArrowLeft, Plus, Cable, Server, Download, Check } from "lucide-react";
+import { ArrowLeft, Plus, Cable, Server, Download, Check, X } from "lucide-react";
 import { C } from "../../lib/constants";
 import { useApp } from "../../data/AppProvider";
 import { useTopology } from "./useTopology";
@@ -21,10 +21,15 @@ const edgeTypes = { default: TopoEdge, smoothstep: TopoEdge, straight: TopoEdge 
 const KIND_OPTIONS = [
   { kind: "internet", label: "인터넷" },
   { kind: "cloud", label: "클라우드" },
+  { kind: "backbone", label: "백본" },
   { kind: "switch", label: "스위치" },
-  { kind: "lb", label: "부하분산(L4/L7)" },
+  { kind: "router", label: "라우터" },
+  { kind: "firewall", label: "방화벽" },
+  { kind: "security", label: "보안" },
+  { kind: "lb", label: "부하분산" },
   { kind: "ap", label: "무선 AP" },
-  { kind: "db", label: "DB/스토리지" },
+  { kind: "db", label: "DB" },
+  { kind: "storage", label: "스토리지" },
   { kind: "vm", label: "가상화" },
   { kind: "custom", label: "기타" },
 ];
@@ -38,7 +43,8 @@ export const TopologyPage: React.FC = () => {
 
   const [panel, setPanel] = useState<"node" | "legend" | null>("node");
   const [saved, setSaved] = useState(true);
-  const [edgeModal, setEdgeModal] = useState<{ draft: EdgeDraft; editId: string | null } | null>(null);
+  const [edgeModal, setEdgeModal] = useState<{ draft: EdgeDraft; editId: string | null; sh?: string | null; th?: string | null } | null>(null);
+  const [infoNode, setInfoNode] = useState<Node | null>(null);
 
   const [customLabel, setCustomLabel] = useState("");
   const [customKind, setCustomKind] = useState("internet");
@@ -52,13 +58,13 @@ export const TopologyPage: React.FC = () => {
     return (n?.data as { label?: string })?.label || "노드";
   }, [T.nodes]);
 
-  // 커스텀 엣지가 data로 포트/라벨을 직접 그리므로, 기본 label은 비워둠
   const styledEdges: Edge[] = T.edges.map((e) => ({ ...e, label: undefined }));
 
+  // 연결 시 핸들 위치까지 기억 → 모달
   const onConnect = useCallback((c: Connection) => {
     if (!c.source || !c.target) return;
     setEdgeModal({
-      editId: null,
+      editId: null, sh: c.sourceHandle, th: c.targetHandle,
       draft: { source: c.source, target: c.target, src_port: "", dst_port: "", color: "#34d399", label: "", dashed: false, edge_type: "default" },
     });
   }, []);
@@ -79,7 +85,7 @@ export const TopologyPage: React.FC = () => {
     if (edgeModal?.editId) {
       T.updateEdge(edgeModal.editId, { src_port: d.src_port, dst_port: d.dst_port, color: d.color, label: d.label, dashed: d.dashed, edge_type: d.edge_type });
     } else {
-      T.addEdge({ source: d.source, target: d.target, src_port: d.src_port, dst_port: d.dst_port, color: d.color, label: d.label, dashed: d.dashed, edge_type: d.edge_type });
+      T.addEdge({ source: d.source, target: d.target, src_port: d.src_port, dst_port: d.dst_port, color: d.color, label: d.label, dashed: d.dashed, edge_type: d.edge_type, source_handle: edgeModal?.sh, target_handle: edgeModal?.th });
     }
     setEdgeModal(null); flash();
   }, [edgeModal, T, flash]);
@@ -87,6 +93,8 @@ export const TopologyPage: React.FC = () => {
   const onNodeDragStop = useCallback((_: React.MouseEvent, node: Node) => {
     T.saveNodePos(node.id, node.position.x, node.position.y); flash();
   }, [T, flash]);
+
+  const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => setInfoNode(node), []);
 
   const onNodesDelete = useCallback((deleted: Node[]) => { deleted.forEach((n) => T.deleteNode(n.id)); flash(); }, [T, flash]);
   const onEdgesDelete = useCallback((deleted: Edge[]) => { deleted.forEach((e) => T.deleteEdge(e.id)); flash(); }, [T, flash]);
@@ -97,20 +105,16 @@ export const TopologyPage: React.FC = () => {
     const bounds = getNodesBounds(T.nodes);
     const w = 1400, h = 900;
     const tf = getViewportForBounds(bounds, w, h, 0.5, 2, 0.15);
-    toPng(vp, {
-      backgroundColor: "#0a0e16", width: w, height: h,
-      style: { width: `${w}px`, height: `${h}px`, transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.zoom})` },
-    }).then((url) => {
-      const a = document.createElement("a");
-      a.download = `${site?.name || "topology"}_구성도.png`;
-      a.href = url; a.click();
-    }).catch(() => alert("이미지 생성에 실패했습니다."));
+    toPng(vp, { backgroundColor: "#0a0e16", width: w, height: h, style: { width: `${w}px`, height: `${h}px`, transform: `translate(${tf.x}px, ${tf.y}px) scale(${tf.zoom})` } })
+      .then((url) => { const a = document.createElement("a"); a.download = `${site?.name || "topology"}_구성도.png`; a.href = url; a.click(); })
+      .catch(() => alert("이미지 생성에 실패했습니다."));
   }, [T.nodes, site]);
 
   if (!site) return <div style={{ color: C.faint, padding: 40, textAlign: "center" }}>사이트를 찾을 수 없습니다. <Link to="/sites" style={{ color: C.accent }}>목록으로</Link></div>;
 
   const devicesOnCanvas = new Set(T.nodes.map((n) => (n.data as { device_id?: string }).device_id).filter(Boolean));
   const availableDevices = siteDevices.filter((d) => !devicesOnCanvas.has(d.id));
+  const info = infoNode?.data as { label?: string; ip?: string; sub?: string; detail?: { model?: string; serial?: string; os?: string; vendor?: string; netZone?: string; managed?: boolean } } | undefined;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 130px)" }}>
@@ -134,9 +138,8 @@ export const TopologyPage: React.FC = () => {
           <ReactFlow
             nodes={T.nodes} edges={styledEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
             onNodesChange={T.onNodesChange} onEdgesChange={T.onEdgesChange}
-            onConnect={onConnect} onNodeDragStop={onNodeDragStop}
-            onNodesDelete={onNodesDelete} onEdgesDelete={onEdgesDelete}
-            onEdgeClick={onEdgeClick}
+            onConnect={onConnect} onNodeDragStop={onNodeDragStop} onNodeClick={onNodeClick}
+            onNodesDelete={onNodesDelete} onEdgesDelete={onEdgesDelete} onEdgeClick={onEdgeClick}
             deleteKeyCode={["Delete", "Backspace"]}
             fitView proOptions={{ hideAttribution: true }}
           >
@@ -144,6 +147,25 @@ export const TopologyPage: React.FC = () => {
             <Controls style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 8, boxShadow: "none" }} />
             <MiniMap pannable zoomable style={{ background: C.panel, border: `1px solid ${C.line}` }} maskColor="rgba(0,0,0,0.65)" nodeColor={() => C.accent} />
           </ReactFlow>
+
+          {/* 노드 전체정보 패널 */}
+          {infoNode && info && (
+            <div style={{ position: "absolute", right: 12, top: 12, width: 230, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, zIndex: 20, boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
+              <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{info.label}</span>
+                <button onClick={() => setInfoNode(null)} style={{ marginLeft: "auto", color: C.faint }}><X size={14} /></button>
+              </div>
+              <InfoRow k="IP" v={info.ip} mono />
+              <InfoRow k="구분" v={info.sub} />
+              <InfoRow k="망" v={info.detail?.netZone} />
+              <InfoRow k="관리대상" v={info.detail?.managed === undefined ? undefined : info.detail.managed ? "O" : "X"} />
+              <InfoRow k="모델" v={info.detail?.model} />
+              <InfoRow k="시리얼" v={info.detail?.serial} mono />
+              <InfoRow k="OS" v={info.detail?.os} />
+              <InfoRow k="업체" v={info.detail?.vendor} />
+              {!info.detail && <div style={{ fontSize: 11, color: C.faint, marginTop: 4 }}>임의 노드 (장비 미연동)</div>}
+            </div>
+          )}
         </div>
 
         {panel && (
@@ -158,24 +180,19 @@ export const TopologyPage: React.FC = () => {
                     <Plus size={12} /> {d.system_name}
                   </button>
                 ))}
-
                 <div style={{ ...sectTitle, marginTop: 16 }}><Plus size={13} /> 임의 노드</div>
-                <div style={{ fontSize: 11, color: C.faint, marginBottom: 6 }}>인터넷·클라우드 등</div>
                 <select value={customKind} onChange={(e) => setCustomKind(e.target.value)} style={inp}>
                   {KIND_OPTIONS.map((k) => <option key={k.kind} value={k.kind}>{k.label}</option>)}
                 </select>
                 <input value={customLabel} onChange={(e) => setCustomLabel(e.target.value)} placeholder="이름 (예: 외부 인터넷)" style={inp} />
                 <button onClick={() => { if (!customLabel.trim()) return; T.addNode({ label: customLabel.trim(), kind: customKind }); setCustomLabel(""); flash(); }} style={{ ...primaryBtn, marginTop: 4 }}>추가</button>
-
                 <div style={{ fontSize: 11, color: C.faint, marginTop: 16, lineHeight: 1.6 }}>
-                  · 노드 아래 점 → 다른 노드로 드래그하면 <b style={{ color: C.text }}>포트 입력창</b>이 떠요<br />
-                  · 선 클릭 → 포트·색·모양 수정<br />
-                  · 노드/선 선택 후 <b style={{ color: C.text }}>Delete</b> 키로 삭제<br />
-                  · 위치·연결은 자동 저장
+                  · 노드 옆 점 → 다른 노드로 드래그 → <b style={{ color: C.text }}>포트 입력창</b><br />
+                  · 노드 클릭 → 전체 정보<br />
+                  · 노드/선 선택 후 <b style={{ color: C.text }}>Delete</b> 키로 삭제
                 </div>
               </>
             )}
-
             {panel === "legend" && (
               <>
                 <div style={sectTitle}><Cable size={13} /> 색상 범례 관리</div>
@@ -200,18 +217,23 @@ export const TopologyPage: React.FC = () => {
 
       {edgeModal && (
         <EdgeModal
-          initial={edgeModal.draft}
-          legends={T.legends}
-          sourceName={nodeName(edgeModal.draft.source)}
-          targetName={nodeName(edgeModal.draft.target)}
-          onSave={saveEdge}
-          onClose={() => setEdgeModal(null)}
+          initial={edgeModal.draft} legends={T.legends}
+          sourceName={nodeName(edgeModal.draft.source)} targetName={nodeName(edgeModal.draft.target)}
+          onSave={saveEdge} onClose={() => setEdgeModal(null)}
           onDelete={edgeModal.editId ? () => { T.deleteEdge(edgeModal.editId!); setEdgeModal(null); flash(); } : undefined}
         />
       )}
     </div>
   );
 };
+
+const InfoRow: React.FC<{ k: string; v?: string; mono?: boolean }> = ({ k, v, mono }) =>
+  v ? (
+    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, padding: "3px 0", borderTop: `1px solid ${C.line2}` }}>
+      <span style={{ color: C.faint }}>{k}</span>
+      <span style={{ color: C.text, fontFamily: mono ? "monospace" : "inherit", textAlign: "right", maxWidth: 140, wordBreak: "break-all" }}>{v}</span>
+    </div>
+  ) : null;
 
 const topBtn: React.CSSProperties = { display: "flex", alignItems: "center", gap: 5, fontSize: 11, padding: "6px 11px", borderRadius: 8, border: `1px solid ${C.line}`, background: "transparent", color: C.text, cursor: "pointer" };
 const topBtn2 = (on: boolean): React.CSSProperties => ({ display: "flex", alignItems: "center", gap: 5, fontSize: 11, padding: "6px 11px", borderRadius: 8, border: `1px solid ${on ? C.accent : C.line}`, background: on ? `${C.accent}14` : "transparent", color: on ? C.accent : C.sub, cursor: "pointer" });
