@@ -191,3 +191,65 @@ export interface MapZone {
   sort_order: number;
   created_at: string;
 }
+
+// ── 장비별 정기점검표 ──
+
+// 섹션 타입: 2열 값형 / 반복 표형 / 자유 텍스트
+export type InsSectionKind = "kv" | "table" | "text";
+
+// 2열 값형의 한 행 (항목 + 값들)
+export interface InsKvRow {
+  label: string;            // 항목명
+  values: string[];         // 열별 값 (1열 또는 2열: [업무망, 인터넷망])
+}
+
+// 반복 표형의 한 행 (셀 값 배열)
+export type InsTableRow = string[];
+
+// 섹션 하나
+export interface InsSection {
+  id: string;               // 클라이언트 생성 uid
+  kind: InsSectionKind;
+  title: string;            // 섹션 제목 (예: "시스템 점검")
+  // kv 형
+  columns?: string[];       // 값 열 이름 (예: ["업무망","인터넷망"] 또는 ["값"])
+  rows?: InsKvRow[];
+  // table 형
+  tableColumns?: string[];  // 컬럼명 (예: ["위치","Hostname","모델명","Version"])
+  tableRows?: InsTableRow[];
+  // text 형
+  text?: string;
+}
+
+// 헤더 필드 정의 (예: 고객명, 장비용도, IP …)
+export interface InsHeaderField {
+  key: string;              // 식별자
+  label: string;            // 표시명
+}
+
+// 템플릿
+export interface InspectionTemplate {
+  id: string;
+  name: string;             // 템플릿 이름 (목록용)
+  title: string | null;     // 출력 제목
+  subtitle: string | null;
+  sections: InsSection[];
+  header_fields: InsHeaderField[];
+  created_by: string | null;
+  created_at: string;
+}
+
+// 점검 기록
+export interface InspectionRecord {
+  id: string;
+  device_id: string | null;
+  site_id: string | null;
+  title: string | null;
+  subtitle: string | null;
+  inspected_on: string;     // YYYY-MM-DD
+  inspector: string | null;
+  header_values: Record<string, string>;
+  sections: InsSection[];   // 값이 채워진 섹션
+  created_by: string | null;
+  created_at: string;
+}
