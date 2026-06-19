@@ -155,6 +155,7 @@ export const TopologyPage: React.FC = () => {
             onConnect={onConnect} onNodeDragStop={onNodeDragStop} onNodeClick={onNodeClick}
             onNodesDelete={onNodesDelete} onEdgesDelete={onEdgesDelete} onEdgeClick={onEdgeClick}
             deleteKeyCode={["Delete", "Backspace"]}
+            snapToGrid snapGrid={[16, 16]}
             fitView proOptions={{ hideAttribution: true }}
           >
             <Background variant={BackgroundVariant.Lines} gap={28} color="rgba(120,160,220,0.05)" />
