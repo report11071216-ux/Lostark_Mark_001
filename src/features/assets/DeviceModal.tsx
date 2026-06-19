@@ -108,4 +108,11 @@ export const DeviceModal: React.FC<{ siteId: string; existing?: Device; onClose:
       </div>
       <div className="grid grid-cols-2 gap-3">
         <Field label="장비 IP"><Input value={f.ip} onChange={set("ip")} placeholder="10.0.0.1" /></Field>
-        <Field label="업체명"><Input value={f.vendor_name} onChange={set("vendor_name")}
+        <Field label="업체명"><Input value={f.vendor_name} onChange={set("vendor_name")} placeholder="팔로알토" /></Field>
+        </div>
+        <button onClick={save} disabled={busy} className="w-full rounded-lg py-2.5 text-sm font-semibold mt-1" style={btnPrimary}>
+          {busy ? "저장 중…" : existing ? "저장" : "등록"}
+        </button>
+      </Modal>
+    );
+  };
