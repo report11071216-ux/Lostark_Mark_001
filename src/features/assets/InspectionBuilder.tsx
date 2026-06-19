@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { C } from "../../lib/constants";
-import { X, Plus, Trash2, ChevronUp, ChevronDown, Save, FolderOpen, FileDown, Folder, FolderPlus, Pencil } from "lucide-react";
+import { X, Plus, Trash2, ChevronUp, ChevronDown, Save, FolderOpen, FileDown, FolderPlus, Pencil, History } from "lucide-react";
 import { useApp } from "../../data/AppProvider";
-import { useInspections, saveInspectionRecord } from "./useInspections";
+import { useInspections, useDeviceRecords, saveInspectionRecord } from "./useInspections";
 import { InspectionPrint } from "./InspectionPrint";
-import type { Device, InsSection, InsHeaderField, InspectionTemplate } from "../../types/db";
+import type { Device, InsSection, InsHeaderField, InspectionTemplate, InspectionRecord } from "../../types/db";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -17,6 +17,7 @@ const blankSection = (kind: InsSection["kind"]): InsSection => {
 export const InspectionBuilder: React.FC<{ device: Device; onClose: () => void }> = ({ device, onClose }) => {
   const { me } = useApp();
   const I = useInspections();
+  const REC = useDeviceRecords(device.id);
 
   const [title, setTitle] = useState("정기점검표");
   const [subtitle, setSubtitle] = useState("");
@@ -29,6 +30,7 @@ export const InspectionBuilder: React.FC<{ device: Device; onClose: () => void }
   const [sections, setSections] = useState<InsSection[]>([blankSection("kv")]);
 
   const [showLoad, setShowLoad] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [showSaveTpl, setShowSaveTpl] = useState(false);
   const [tplName, setTplName] = useState("");
   const [tplFolder, setTplFolder] = useState<string | null>(null);
@@ -48,12 +50,22 @@ export const InspectionBuilder: React.FC<{ device: Device; onClose: () => void }
   const updateHeaderField = (key: string, label: string) => setHeaderFields((h) => h.map((f) => (f.key === key ? { ...f, label } : f)));
   const removeHeaderField = (key: string) => setHeaderFields((h) => h.filter((f) => f.key !== key));
 
+  // 빈 양식(템플릿) 불러오기 — 항목만, 값은 비움
   const loadTemplate = (t: InspectionTemplate) => {
     setTitle(t.title || "정기점검표"); setSubtitle(t.subtitle || "");
     setHeaderFields(t.header_fields || []);
     setSections((t.sections || []).map((s) => ({ ...s, id: uid() })));
     setShowLoad(false);
   };
+
+  // 지난 점검 불러오기 — 값까지 그대로
+  const loadRecord = (r: InspectionRecord) => {
+    setTitle(r.title || "정기점검표"); setSubtitle(r.subtitle || "");
+    setHeaderValues(r.header_values || {});
+    setSections((r.sections || []).map((s) => ({ ...s, id: uid() })));
+    setShowHistory(false);
+  };
+
   const doSaveTemplate = async () => {
     if (!tplName.trim()) return;
     await I.saveTemplate({ name: tplName.trim(), title, subtitle, sections, header_fields: headerFields, folder_id: tplFolder });
@@ -86,6 +98,7 @@ export const InspectionBuilder: React.FC<{ device: Device; onClose: () => void }
           <span style={{ fontSize: 15, fontWeight: 700, color: C.text }}>정기점검 작성</span>
           <span style={{ fontSize: 11, color: C.sub }}>{device.system_name}{device.model ? ` · ${device.model}` : ""}</span>
           <div style={{ marginLeft: "auto", display: "flex", gap: 7, flexWrap: "wrap" }}>
+            <button onClick={() => setShowHistory(true)} style={{ ...barBtn, color: "#60a5fa", borderColor: "#60a5fa66" }}><History size={13} /> 지난 점검 불러오기</button>
             <button onClick={() => setShowLoad(true)} style={barBtn}><FolderOpen size={13} /> 템플릿 불러오기</button>
             <button onClick={() => setShowSaveTpl(true)} style={barBtn}><Save size={13} /> 템플릿 저장</button>
             <button onClick={() => setPreview(true)} style={{ ...barBtn, color: C.accent, borderColor: `${C.accent}66` }}><FileDown size={13} /> 미리보기·출력</button>
@@ -146,6 +159,20 @@ export const InspectionBuilder: React.FC<{ device: Device; onClose: () => void }
 
       {showLoad && <LoadDialog I={I} onPick={loadTemplate} onClose={() => setShowLoad(false)} />}
 
+      {showHistory && (
+        <Popup title="지난 점검 불러오기" onClose={() => setShowHistory(false)}>
+          <div style={{ fontSize: 11, color: C.faint, marginBottom: 10 }}>지난 점검을 고르면 값까지 그대로 불러옵니다. 점검일자만 이번으로 바꾸고 변한 값만 수정하세요.</div>
+          {REC.loading && <div style={{ fontSize: 12, color: C.faint, padding: "10px 0" }}>불러오는 중…</div>}
+          {!REC.loading && REC.records.length === 0 && <div style={{ fontSize: 12, color: C.faint, padding: "10px 0" }}>이 장비의 지난 점검 기록이 없습니다.</div>}
+          {REC.records.map((r) => (
+            <button key={r.id} onClick={() => loadRecord(r)} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", borderRadius: 8, border: `1px solid ${C.line}`, background: C.panel2, color: C.text, marginBottom: 6, cursor: "pointer" }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{r.title || "점검표"}</div>
+              <div style={{ fontSize: 11, color: C.faint }}>{r.inspected_on} · {r.inspector || "—"} · 섹션 {(r.sections || []).length}개</div>
+            </button>
+          ))}
+        </Popup>
+      )}
+
       {showSaveTpl && (
         <Popup title="현재 양식을 템플릿으로 저장" onClose={() => setShowSaveTpl(false)}>
           <label style={lbl}>템플릿 이름</label>
@@ -182,7 +209,6 @@ const LoadDialog: React.FC<{ I: ReturnType<typeof useInspections>; onPick: (t: I
         </div>
 
         <div style={{ display: "flex", gap: 12, flex: 1, minHeight: 0 }}>
-          {/* 폴더 목록 */}
           <div style={{ width: 168, flexShrink: 0, overflowY: "auto" }}>
             <FolderRow active={activeFolder === "all"} onClick={() => setActiveFolder("all")} icon="📂" name="전체" count={I.templates.length} />
             {I.folders.map((f) => (
@@ -203,7 +229,6 @@ const LoadDialog: React.FC<{ I: ReturnType<typeof useInspections>; onPick: (t: I
             )}
           </div>
 
-          {/* 템플릿 카드 */}
           <div style={{ flex: 1, overflowY: "auto" }}>
             <div style={{ fontSize: 11, color: C.faint, marginBottom: 8 }}>{folderName} · {shown.length}개</div>
             {shown.length === 0 && <div style={{ fontSize: 12, color: C.faint, padding: "20px 0", textAlign: "center" }}>템플릿이 없습니다.</div>}
@@ -327,7 +352,7 @@ const TableEditor: React.FC<{ s: InsSection; onChange: (p: Partial<InsSection>) 
 
 const Popup: React.FC<{ title: string; onClose: () => void; children: React.ReactNode }> = ({ title, onClose, children }) => (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={onClose}>
-    <div onClick={(e) => e.stopPropagation()} style={{ width: 340, maxWidth: "90vw", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 }}>
+    <div onClick={(e) => e.stopPropagation()} style={{ width: 360, maxWidth: "90vw", maxHeight: "80vh", overflowY: "auto", background: C.panel, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{title}</span>
         <button onClick={onClose} style={{ marginLeft: "auto", color: C.faint }}><X size={15} /></button>
