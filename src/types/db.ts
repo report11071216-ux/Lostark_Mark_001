@@ -159,6 +159,9 @@ export interface TopoEdge {
   label: string | null;
   color: string;
   dashed: boolean;
+  src_port: string | null;
+  dst_port: string | null;
+  edge_type: string;
   created_at: string;
 }
 export interface TopoLegend {
