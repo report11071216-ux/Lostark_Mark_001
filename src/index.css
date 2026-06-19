@@ -90,3 +90,26 @@ select option {
   background-color: rgba(139, 92, 246, 0.4);
   color: #ffffff;
 }
+
+/* React Flow 컨트롤(확대/축소/맞춤) 다크 테마 */
+.react-flow__controls {
+  background: #11151c !important;
+  border: 1px solid rgba(148,163,184,0.18) !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: #11151c !important;
+  border-bottom: 1px solid rgba(148,163,184,0.12) !important;
+  color: #e2e8f0 !important;
+}
+.react-flow__controls-button:hover {
+  background: #1b212b !important;
+}
+.react-flow__controls-button svg {
+  fill: #e2e8f0 !important;
+}
+.react-flow__attribution {
+  display: none !important;
+}
