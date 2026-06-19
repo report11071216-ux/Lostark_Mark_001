@@ -218,3 +218,4 @@ const topBtn2 = (on: boolean): React.CSSProperties => ({ display: "flex", alignI
 const sectTitle: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: C.text, marginBottom: 8 };
 const inp: React.CSSProperties = { width: "100%", boxSizing: "border-box", background: C.panel2, border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "7px 9px", fontSize: 12.5, marginBottom: 8, outline: "none" };
 const primaryBtn: React.CSSProperties = { width: "100%", background: C.accent, color: "#06241f", border: "none", borderRadius: 8, padding: "8px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" };
+const listItem: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, width: "100%", textAlign: "left", background: C.panel2, border: `1px solid ${C.line}`, color: C.text, borderRadius: 8, padding: "7px 9px", fontSize: 12, marginBottom: 6, cursor: "pointer" };
