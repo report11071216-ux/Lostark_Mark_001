@@ -93,7 +93,7 @@ export interface Device {
   serial: string | null;
   os: string | null;
   introduced_on: string | null; // YYYY-MM
- ip: string | null;
+  ip: string | null;
   vendor_name: string | null;
   icon_type: string | null;
   icon_badge: string | null;
@@ -175,6 +175,19 @@ export interface TopoLegend {
   site_id: string;
   name: string;
   color: string;
+  sort_order: number;
+  created_at: string;
+}
+
+// ── 대시보드 지역 구역 (아이소 마름모) ──
+export interface MapZone {
+  id: string;
+  name: string;
+  color: string;
+  cx: number;
+  cy: number;
+  w: number;
+  h: number;
   sort_order: number;
   created_at: string;
 }
