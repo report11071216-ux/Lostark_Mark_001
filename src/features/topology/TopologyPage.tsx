@@ -60,7 +60,15 @@ export const TopologyPage: React.FC = () => {
 
   const styledEdges: Edge[] = T.edges.map((e) => ({ ...e, label: undefined }));
 
-  // 연결 시 핸들 위치까지 기억 → 모달
+  // 핸들 짝: 누른 핸들 기준으로 예비회선용 "다른 핸들" 고르기
+  const altHandles = (h?: string | null): { s: string; t: string } => {
+    // h 예: "s-r"(source right) → 예비는 아래(b)로
+    const side = (h || "s-r").slice(-1);
+    const alt: Record<string, string> = { r: "b", l: "t", t: "l", b: "r" };
+    const a = alt[side] || "b";
+    return { s: `s-${a}`, t: `t-${a}` };
+  };
+
   const onConnect = useCallback((c: Connection) => {
     if (!c.source || !c.target) return;
     setEdgeModal({
@@ -85,7 +93,13 @@ export const TopologyPage: React.FC = () => {
     if (edgeModal?.editId) {
       T.updateEdge(edgeModal.editId, { src_port: d.src_port, dst_port: d.dst_port, color: d.color, label: d.label, dashed: d.dashed, edge_type: d.edge_type });
     } else {
+      // 주 회선
       T.addEdge({ source: d.source, target: d.target, src_port: d.src_port, dst_port: d.dst_port, color: d.color, label: d.label, dashed: d.dashed, edge_type: d.edge_type, source_handle: edgeModal?.sh, target_handle: edgeModal?.th });
+      // 예비 회선 (이중화 체크 시) — 다른 핸들에 붙여 두 줄로
+      if (d.ha) {
+        const alt = altHandles(edgeModal?.sh);
+        T.addEdge({ source: d.source, target: d.target, src_port: d.src_port2 || "", dst_port: d.dst_port2 || "", color: d.color2 || "#fbbf24", label: "", dashed: d.dashed, edge_type: d.edge_type, source_handle: alt.s, target_handle: alt.t });
+      }
     }
     setEdgeModal(null); flash();
   }, [edgeModal, T, flash]);
@@ -148,7 +162,6 @@ export const TopologyPage: React.FC = () => {
             <MiniMap pannable zoomable style={{ background: C.panel, border: `1px solid ${C.line}` }} maskColor="rgba(0,0,0,0.65)" nodeColor={() => C.accent} />
           </ReactFlow>
 
-          {/* 노드 전체정보 패널 */}
           {infoNode && info && (
             <div style={{ position: "absolute", right: 12, top: 12, width: 230, background: C.panel, border: `1px solid ${C.line}`, borderRadius: 12, padding: 14, zIndex: 20, boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
               <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
@@ -188,8 +201,9 @@ export const TopologyPage: React.FC = () => {
                 <button onClick={() => { if (!customLabel.trim()) return; T.addNode({ label: customLabel.trim(), kind: customKind }); setCustomLabel(""); flash(); }} style={{ ...primaryBtn, marginTop: 4 }}>추가</button>
                 <div style={{ fontSize: 11, color: C.faint, marginTop: 16, lineHeight: 1.6 }}>
                   · 노드 옆 점 → 다른 노드로 드래그 → <b style={{ color: C.text }}>포트 입력창</b><br />
+                  · 이중화는 연결창에서 <b style={{ color: C.text }}>이중화 체크</b><br />
                   · 노드 클릭 → 전체 정보<br />
-                  · 노드/선 선택 후 <b style={{ color: C.text }}>Delete</b> 키로 삭제
+                  · Delete 키로 삭제
                 </div>
               </>
             )}
