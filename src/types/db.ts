@@ -29,11 +29,14 @@ export interface Site {
   id: string;
   name: string;
   url: string | null;
-  cycle: CheckCycle;
+  cycle: SiteCycle;
+  start_date: string | null;
   owner_primary_id: string | null;
   owner_secondary_id: string | null;
-  start_date: string; // YYYY-MM-DD
   active: boolean;
+  building_type: string | null;
+  map_x: number | null;
+  map_y: number | null;
   created_at: string;
 }
 
