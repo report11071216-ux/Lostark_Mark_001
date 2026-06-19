@@ -90,11 +90,12 @@ export interface Device {
   serial: string | null;
   os: string | null;
   introduced_on: string | null; // YYYY-MM
-  ip: string | null;
+ ip: string | null;
   vendor_name: string | null;
+  icon_type: string | null;
+  icon_badge: string | null;
   created_at: string;
 }
-
 // 타사 제품 (업체 연락처, 사이트 소속)
 export interface Vendor {
   id: string;
@@ -162,6 +163,8 @@ export interface TopoEdge {
   src_port: string | null;
   dst_port: string | null;
   edge_type: string;
+  source_handle: string | null;
+  target_handle: string | null;
   created_at: string;
 }
 export interface TopoLegend {
