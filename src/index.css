@@ -113,3 +113,5 @@ select option {
 .react-flow__attribution {
   display: none !important;
 }
+
+@keyframes bldgblink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
