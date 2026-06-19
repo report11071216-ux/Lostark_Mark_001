@@ -1,34 +1,69 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import type { InspectionTemplate, InspectionRecord, InsSection, InsHeaderField } from "../../types/db";
+import type { InspectionTemplate, InspectionRecord, InsSection, InsHeaderField, TemplateFolder } from "../../types/db";
 
 export function useInspections() {
   const [templates, setTemplates] = useState<InspectionTemplate[]>([]);
+  const [folders, setFolders] = useState<TemplateFolder[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 템플릿 목록 로드
   useEffect(() => {
     let alive = true;
     (async () => {
-      const { data } = await supabase.from("inspection_templates").select("*").order("created_at", { ascending: false });
+      const [t, f] = await Promise.all([
+        supabase.from("inspection_templates").select("*").order("created_at", { ascending: false }),
+        supabase.from("template_folders").select("*").order("sort_order"),
+      ]);
       if (!alive) return;
-      setTemplates((data as InspectionTemplate[]) || []);
+      setTemplates((t.data as InspectionTemplate[]) || []);
+      setFolders((f.data as TemplateFolder[]) || []);
       setLoading(false);
     })();
     return () => { alive = false; };
   }, []);
 
-  // 템플릿 저장 (새로 만들기)
+  // ── 폴더 ──
+  const addFolder = useCallback(async (name: string) => {
+    const { data, error } = await supabase.from("template_folders")
+      .insert({ name, sort_order: folders.length }).select().single();
+    if (error) { alert("폴더 추가 실패: " + error.message); return null; }
+    setFolders((fs) => [...fs, data as TemplateFolder]);
+    return data as TemplateFolder;
+  }, [folders.length]);
+
+  const renameFolder = useCallback(async (id: string, name: string) => {
+    setFolders((fs) => fs.map((f) => (f.id === id ? { ...f, name } : f)));
+    await supabase.from("template_folders").update({ name }).eq("id", id);
+  }, []);
+
+  const deleteFolder = useCallback(async (id: string) => {
+    await supabase.from("template_folders").delete().eq("id", id);
+    setFolders((fs) => fs.filter((f) => f.id !== id));
+    // 폴더 안 템플릿은 미분류로 (DB는 on delete set null, 화면도 반영)
+    setTemplates((ts) => ts.map((t) => (t.folder_id === id ? { ...t, folder_id: null } : t)));
+  }, []);
+
+  // ── 템플릿 ──
   const saveTemplate = useCallback(async (p: {
     name: string; title: string; subtitle: string;
-    sections: InsSection[]; header_fields: InsHeaderField[];
+    sections: InsSection[]; header_fields: InsHeaderField[]; folder_id: string | null;
   }) => {
     const { data, error } = await supabase.from("inspection_templates")
-      .insert({ name: p.name, title: p.title || null, subtitle: p.subtitle || null, sections: p.sections, header_fields: p.header_fields })
+      .insert({ name: p.name, title: p.title || null, subtitle: p.subtitle || null, sections: p.sections, header_fields: p.header_fields, folder_id: p.folder_id })
       .select().single();
     if (error) { alert("템플릿 저장 실패: " + error.message); return null; }
     setTemplates((ts) => [data as InspectionTemplate, ...ts]);
     return data as InspectionTemplate;
+  }, []);
+
+  const moveTemplate = useCallback(async (id: string, folder_id: string | null) => {
+    setTemplates((ts) => ts.map((t) => (t.id === id ? { ...t, folder_id } : t)));
+    await supabase.from("inspection_templates").update({ folder_id }).eq("id", id);
+  }, []);
+
+  const renameTemplate = useCallback(async (id: string, name: string) => {
+    setTemplates((ts) => ts.map((t) => (t.id === id ? { ...t, name } : t)));
+    await supabase.from("inspection_templates").update({ name }).eq("id", id);
   }, []);
 
   const deleteTemplate = useCallback(async (id: string) => {
@@ -36,7 +71,7 @@ export function useInspections() {
     setTemplates((ts) => ts.filter((t) => t.id !== id));
   }, []);
 
-  return { templates, loading, saveTemplate, deleteTemplate };
+  return { templates, folders, loading, addFolder, renameFolder, deleteFolder, saveTemplate, moveTemplate, renameTemplate, deleteTemplate };
 }
 
 // 특정 장비의 점검 기록 목록
