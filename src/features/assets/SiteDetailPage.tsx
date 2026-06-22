@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Server, Plus, Monitor, Store, Pencil, Trash2, Share2, ClipboardCheck, Star, Folder, Search, X } from "lucide-react";
 import { C, DEVICE_CATEGORY, NET_ZONE } from "../../lib/constants";
-import { Panel } from "../../components/ui";
+import { Panel, Modal, Input } from "../../components/ui";
 import { useApp } from "../../data/AppProvider";
 import { DeviceModal } from "./DeviceModal";
 import { VendorModal } from "./VendorModal";
@@ -18,12 +18,48 @@ const GROUP_OPTS: { key: GroupBy; label: string }[] = [
   { key: "loc", label: "위치" },
 ];
 
+// ③ 위치 폴더 관리 모달
+const FolderManager: React.FC<{ siteId: string; onClose: () => void }> = ({ siteId, onClose }) => {
+  const { siteLocations, addLocation, updateLocation, removeLocation } = useApp();
+  const folders = siteLocations.filter((l) => l.site_id === siteId);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const add = async () => {
+    const n = name.trim();
+    if (!n) return;
+    setBusy(true);
+    await addLocation({ site_id: siteId, name: n, sort_order: folders.length });
+    setBusy(false);
+    setName("");
+  };
+  return (
+    <Modal title="위치 폴더 관리" onClose={onClose}>
+      <div className="flex gap-2 mb-3">
+        <div className="flex-1"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="새 폴더 이름 (예: 1층A동)" /></div>
+        <button onClick={add} disabled={busy} className="rounded-lg px-4 text-sm font-semibold whitespace-nowrap" style={{ background: C.accent, color: "#06241f" }}>
+          {busy ? "추가 중…" : "추가"}
+        </button>
+      </div>
+      <div className="space-y-1.5" style={{ maxHeight: 360, overflowY: "auto" }}>
+        {folders.length === 0 && <div className="text-center py-6 text-sm" style={{ color: C.faint }}>아직 폴더가 없습니다. 위에서 추가하세요.</div>}
+        {folders.map((l) => (
+          <div key={l.id} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: C.panel2, border: `1px solid ${C.line2}` }}>
+            <Folder size={13} style={{ color: C.accent }} />
+            <span className="text-sm" style={{ color: C.text }}>{l.name}</span>
+            <div className="ml-auto flex gap-2.5">
+              <button onClick={() => { const n = prompt("폴더 이름", l.name); if (n && n.trim()) updateLocation(l.id, { name: n.trim() }); }} style={{ color: C.faint }} title="이름변경"><Pencil size={13} /></button>
+              <button onClick={() => { if (confirm(`'${l.name}' 폴더를 삭제할까요?\n(폴더 안 장비는 삭제되지 않고 '미지정'으로 이동합니다)`)) removeLocation(l.id); }} style={{ color: C.faint }} title="삭제"><Trash2 size={13} /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Modal>
+  );
+};
+
 export const SiteDetailPage: React.FC = () => {
   const { siteId = "" } = useParams();
-  const {
-    sites, devices, vendors, siteLocations,
-    removeDevice, removeVendor, toggleBookmark, addLocation, updateLocation, removeLocation,
-  } = useApp();
+  const { sites, devices, vendors, siteLocations, removeDevice, removeVendor, toggleBookmark } = useApp();
   const [addDev, setAddDev] = useState(false);
   const [editDev, setEditDev] = useState<Device | null>(null);
   const [addVen, setAddVen] = useState(false);
@@ -32,6 +68,7 @@ export const SiteDetailPage: React.FC = () => {
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
   const [onlyBookmarked, setOnlyBookmarked] = useState(false);
   const [q, setQ] = useState("");
+  const [mgrOpen, setMgrOpen] = useState(false);
 
   const site = sites.find((s) => s.id === siteId);
   const devList = devices.filter((d) => d.site_id === siteId);
@@ -156,7 +193,7 @@ export const SiteDetailPage: React.FC = () => {
             </button>
           </div>
 
-          {/* ②① 컨트롤: 그룹핑 + 북마크 필터 + 검색 */}
+          {/* ②① 컨트롤: 그룹핑 + 북마크 필터 + 검색 + 폴더관리 */}
           <div className="flex flex-wrap items-center gap-1.5 mt-3">
             <span className="text-[11px] mr-0.5" style={{ color: C.faint }}>그룹</span>
             {GROUP_OPTS.map((o) => (
@@ -168,6 +205,9 @@ export const SiteDetailPage: React.FC = () => {
               style={onlyBookmarked ? { background: `${GOLD}26`, color: GOLD, border: `1px solid ${GOLD}66` } : { background: "transparent", color: C.faint, border: `1px solid ${C.line}` }}>
               <Star size={12} fill={onlyBookmarked ? GOLD : "none"} /> 북마크만
             </button>
+            <button onClick={() => setMgrOpen(true)} className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium" style={{ background: C.panel2, border: `1px solid ${C.line2}`, color: C.sub }} title="위치 폴더 관리">
+              <Folder size={12} /> 폴더 {folders.length}
+            </button>
             <div className="ml-auto relative">
               <Search size={13} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: C.faint }} />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="장비 검색 (이름·IP·모델·시리얼…)"
@@ -178,21 +218,6 @@ export const SiteDetailPage: React.FC = () => {
                 </button>
               )}
             </div>
-          </div>
-
-          {/* ③ 위치 폴더 관리 */}
-          <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-            <span className="inline-flex items-center gap-1 text-[11px] mr-0.5" style={{ color: C.faint }}><Folder size={12} /> 위치 폴더</span>
-            {folders.map((l) => (
-              <span key={l.id} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px]" style={{ background: C.panel2, border: `1px solid ${C.line2}`, color: C.sub }}>
-                {l.name}
-                <button onClick={() => { const n = prompt("폴더 이름", l.name); if (n && n.trim()) updateLocation(l.id, { name: n.trim() }); }} style={{ color: C.faint }} title="이름변경"><Pencil size={11} /></button>
-                <button onClick={() => { if (confirm(`'${l.name}' 폴더를 삭제할까요?\n(폴더 안 장비는 삭제되지 않고 '미지정'으로 이동합니다)`)) removeLocation(l.id); }} style={{ color: C.faint }} title="삭제"><Trash2 size={11} /></button>
-              </span>
-            ))}
-            <button onClick={() => { const n = prompt("새 위치 폴더 이름 (예: 1층A동)"); if (n && n.trim()) addLocation({ site_id: siteId, name: n.trim(), sort_order: folders.length }); }} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold" style={{ border: `1px dashed ${C.line}`, color: C.accent }}>
-              <Plus size={11} /> 폴더
-            </button>
           </div>
         </div>
 
@@ -246,6 +271,7 @@ export const SiteDetailPage: React.FC = () => {
         </div>
       </Panel>
 
+      {mgrOpen && <FolderManager siteId={siteId} onClose={() => setMgrOpen(false)} />}
       {addDev && <DeviceModal siteId={siteId} onClose={() => setAddDev(false)} />}
       {editDev && <DeviceModal siteId={siteId} existing={editDev} onClose={() => setEditDev(null)} />}
       {addVen && <VendorModal siteId={siteId} onClose={() => setAddVen(false)} />}
