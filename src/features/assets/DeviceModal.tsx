@@ -24,7 +24,8 @@ const ICON_OPTIONS: { key: string; label: string }[] = [
 ];
 
 export const DeviceModal: React.FC<{ siteId: string; existing?: Device; onClose: () => void }> = ({ siteId, existing, onClose }) => {
-  const { addDevice, updateDevice } = useApp();
+  const { addDevice, updateDevice, siteLocations } = useApp();
+  const folders = siteLocations.filter((l) => l.site_id === siteId);
   const [f, setF] = useState({
     category: (existing?.category || "server") as DeviceCategory,
     net_zone: (existing?.net_zone || "work") as NetZone,
@@ -38,6 +39,7 @@ export const DeviceModal: React.FC<{ siteId: string; existing?: Device; onClose:
     vendor_name: existing?.vendor_name || "",
     icon_type: existing?.icon_type || "",
     icon_badge: existing?.icon_badge || "",
+    location_id: existing?.location_id || "",
   });
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -51,6 +53,7 @@ export const DeviceModal: React.FC<{ siteId: string; existing?: Device; onClose:
       system_name: f.system_name, model: f.model || null, serial: f.serial || null,
       os: f.os || null, introduced_on: f.introduced_on || null, ip: f.ip || null, vendor_name: f.vendor_name || null,
       icon_type: f.icon_type || null, icon_badge: f.icon_type === "security" ? (f.icon_badge || null) : null,
+      location_id: f.location_id || null,
     };
     const err = existing ? await updateDevice(existing.id, payload) : await addDevice(payload);
     setBusy(false);
@@ -86,17 +89,25 @@ export const DeviceModal: React.FC<{ siteId: string; existing?: Device; onClose:
         )}
       </div>
 
-      <Field label="관리대상">
-        <div className="flex gap-1.5">
-          {[["true", "O (관리)"], ["false", "X (비관리)"]].map(([v, l]) => (
-            <button key={v} onClick={() => setF({ ...f, managed: v === "true" })}
-              className="rounded-md px-3 py-1.5 text-xs font-medium"
-              style={f.managed === (v === "true") ? { background: `${C.accent}26`, color: C.accent, border: `1px solid ${C.accent}66` } : { background: "transparent", color: C.faint, border: `1px solid ${C.line}` }}>
-              {l}
-            </button>
-          ))}
-        </div>
-      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="관리대상">
+          <div className="flex gap-1.5">
+            {[["true", "O (관리)"], ["false", "X (비관리)"]].map(([v, l]) => (
+              <button key={v} onClick={() => setF({ ...f, managed: v === "true" })}
+                className="rounded-md px-3 py-1.5 text-xs font-medium"
+                style={f.managed === (v === "true") ? { background: `${C.accent}26`, color: C.accent, border: `1px solid ${C.accent}66` } : { background: "transparent", color: C.faint, border: `1px solid ${C.line}` }}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="위치 폴더">
+          <Select value={f.location_id} onChange={set("location_id")}>
+            <option value="">미지정</option>
+            {folders.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          </Select>
+        </Field>
+      </div>
       <Field label="시스템명"><Input value={f.system_name} onChange={set("system_name")} placeholder="메인 방화벽" /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="장비 모델명"><Input value={f.model} onChange={set("model")} placeholder="PA-3220" /></Field>
