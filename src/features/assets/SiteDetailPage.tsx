@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Server, Plus, Monitor, Store, Pencil, Trash2, Share2, ClipboardCheck, Star, Folder } from "lucide-react";
+import { ArrowLeft, Server, Plus, Monitor, Store, Pencil, Trash2, Share2, ClipboardCheck, Star, Folder, Search, X } from "lucide-react";
 import { C, DEVICE_CATEGORY, NET_ZONE } from "../../lib/constants";
 import { Panel } from "../../components/ui";
 import { useApp } from "../../data/AppProvider";
@@ -31,6 +31,7 @@ export const SiteDetailPage: React.FC = () => {
   const [inspectDev, setInspectDev] = useState<Device | null>(null);
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
   const [onlyBookmarked, setOnlyBookmarked] = useState(false);
+  const [q, setQ] = useState("");
 
   const site = sites.find((s) => s.id === siteId);
   const devList = devices.filter((d) => d.site_id === siteId);
@@ -45,9 +46,21 @@ export const SiteDetailPage: React.FC = () => {
   const folderName = (id: string | null) => folders.find((l) => l.id === id)?.name || "—";
   const byName = (a: Device, b: Device) => a.system_name.localeCompare(b.system_name, "ko");
 
-  // ① 북마크 필터 적용된 기본 목록
-  const base = devList.filter((d) => !onlyBookmarked || d.bookmarked);
+  // 검색: 여러 필드를 한 문자열로 합쳐 키워드 포함 검사
+  const kw = q.trim().toLowerCase();
+  const matchKw = (d: Device) => {
+    const hay = [
+      d.system_name, d.model, d.serial, d.os, d.ip, d.vendor_name,
+      folderName(d.location_id), DEVICE_CATEGORY[d.category]?.label,
+      d.net_zone ? NET_ZONE[d.net_zone] : "",
+    ].filter(Boolean).join(" ").toLowerCase();
+    return hay.includes(kw);
+  };
+
+  // ① 북마크 + 🔍 검색 적용된 기본 목록
+  const base = devList.filter((d) => (!onlyBookmarked || d.bookmarked) && (!kw || matchKw(d)));
   const shownFlat = [...base].sort(byName);
+  const filtered = !!kw || onlyBookmarked;
 
   // ② 그룹핑
   type Grp = { key: string; label: string; color?: string; list: Device[]; isFolder?: boolean };
@@ -65,14 +78,14 @@ export const SiteDetailPage: React.FC = () => {
       { key: "none", label: "미지정", list: base.filter((d) => !d.location_id).sort(byName) },
     ];
   }
-  const visibleGroups = groups.filter((g) => g.list.length > 0 || g.isFolder);
+  const visibleGroups = groups.filter((g) => g.list.length > 0 || (g.isFolder && !kw));
 
   const renderTable = (list: Device[]) => (
     <div className="overflow-x-auto">
       <table className="w-full text-xs" style={{ color: C.text, minWidth: 940 }}>
         <thead><tr style={{ color: C.faint }}>{cols.map((h, i) => <th key={i} className="text-left font-medium px-3 py-2.5 whitespace-nowrap">{h}</th>)}</tr></thead>
         <tbody>
-          {list.length === 0 && <tr><td colSpan={cols.length} className="text-center py-8" style={{ color: C.faint }}>등록된 장비가 없습니다.</td></tr>}
+          {list.length === 0 && <tr><td colSpan={cols.length} className="text-center py-8" style={{ color: C.faint }}>{kw ? "검색 결과가 없습니다." : "등록된 장비가 없습니다."}</td></tr>}
           {list.map((d) => {
             const cat = DEVICE_CATEGORY[d.category];
             return (
@@ -137,13 +150,13 @@ export const SiteDetailPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <Monitor size={15} style={{ color: C.accent }} />
             <span className="text-sm font-semibold" style={{ color: C.text }}>장비 현황</span>
-            <span className="text-xs" style={{ color: C.faint }}>{base.length}{onlyBookmarked ? `/${devList.length}` : ""}대</span>
+            <span className="text-xs" style={{ color: C.faint }}>{base.length}{filtered ? `/${devList.length}` : ""}대</span>
             <button onClick={() => setAddDev(true)} className="ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: C.accent, color: "#06241f" }}>
               <Plus size={13} /> 장비 등록
             </button>
           </div>
 
-          {/* ②① 컨트롤: 그룹핑 + 북마크 필터 */}
+          {/* ②① 컨트롤: 그룹핑 + 북마크 필터 + 검색 */}
           <div className="flex flex-wrap items-center gap-1.5 mt-3">
             <span className="text-[11px] mr-0.5" style={{ color: C.faint }}>그룹</span>
             {GROUP_OPTS.map((o) => (
@@ -155,6 +168,16 @@ export const SiteDetailPage: React.FC = () => {
               style={onlyBookmarked ? { background: `${GOLD}26`, color: GOLD, border: `1px solid ${GOLD}66` } : { background: "transparent", color: C.faint, border: `1px solid ${C.line}` }}>
               <Star size={12} fill={onlyBookmarked ? GOLD : "none"} /> 북마크만
             </button>
+            <div className="ml-auto relative">
+              <Search size={13} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: C.faint }} />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="장비 검색 (이름·IP·모델·시리얼…)"
+                className="rounded-md text-[11px] py-1 pl-7 pr-7" style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.text, width: 240, outline: "none" }} />
+              {q && (
+                <button onClick={() => setQ("")} style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", color: C.faint }} title="지우기">
+                  <X size={12} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* ③ 위치 폴더 관리 */}
@@ -176,7 +199,7 @@ export const SiteDetailPage: React.FC = () => {
         {/* 본문: 그룹 없음 = 단일 표 / 그룹 지정 = 그룹별 표 */}
         {groupBy === "none" ? renderTable(shownFlat) : (
           <div>
-            {visibleGroups.length === 0 && <div className="text-center py-8 text-sm" style={{ color: C.faint }}>표시할 장비가 없습니다.</div>}
+            {visibleGroups.length === 0 && <div className="text-center py-8 text-sm" style={{ color: C.faint }}>{kw ? "검색 결과가 없습니다." : "표시할 장비가 없습니다."}</div>}
             {visibleGroups.map((g) => (
               <div key={g.key}>
                 <div className="flex items-center gap-2 px-5 py-2" style={{ background: C.panel2, borderTop: `1px solid ${C.line2}` }}>
