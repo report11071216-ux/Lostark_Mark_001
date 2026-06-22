@@ -13,12 +13,13 @@ export const WorkOrderModal: React.FC<{
   existing?: WorkOrder;      // 수정 시
   onClose: () => void;
 }> = ({ defaultDate, existing, onClose }) => {
-  const { sites, engineers, addWorkOrder, updateWorkOrder, removeWorkOrder } = useApp();
+  const { sites, devices, engineers, addWorkOrder, updateWorkOrder, removeWorkOrder } = useApp();
   const [f, setF] = useState({
     title: existing?.title || "",
     type: (existing?.type || "policy") as WorkType,
     status: (existing?.status || "planned") as WorkStatus,
     site_id: existing?.site_id || "",
+    device_id: existing?.device_id || "",
     assignee_id: existing?.assignee_id || "",
     date: existing ? toDate(existing.scheduled_at) : (defaultDate || ""),
     time: existing ? toTime(existing.scheduled_at) : "09:00",
@@ -28,13 +29,17 @@ export const WorkOrderModal: React.FC<{
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setF({ ...f, [k]: e.target.value });
 
+  // 사이트 변경 시 장비 선택 초기화 (장비는 사이트 소속이라)
+  const onSite = (e: React.ChangeEvent<HTMLSelectElement>) => setF({ ...f, site_id: e.target.value, device_id: "" });
+  const siteDevices = devices.filter((d) => d.site_id === f.site_id);
+
   const save = async () => {
     if (!f.title || !f.date) { alert("제목과 날짜는 필수입니다."); return; }
     setBusy(true);
     const scheduled_at = new Date(`${f.date}T${f.time || "00:00"}`).toISOString();
     const payload = {
       title: f.title, type: f.type, status: f.status,
-      site_id: f.site_id || null, assignee_id: f.assignee_id || null,
+      site_id: f.site_id || null, device_id: f.device_id || null, assignee_id: f.assignee_id || null,
       scheduled_at, detail: f.detail || null,
     };
     const err = existing ? await updateWorkOrder(existing.id, payload) : await addWorkOrder(payload);
@@ -70,25 +75,34 @@ export const WorkOrderModal: React.FC<{
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="대상 자산 (선택)">
-          <Select value={f.site_id} onChange={set("site_id")}>
+          <Select value={f.site_id} onChange={onSite}>
             <option value="">없음</option>{sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         </Field>
+        <Field label="대상 장비 (선택)">
+          <Select value={f.device_id} onChange={set("device_id")} disabled={!f.site_id}>
+            <option value="">{f.site_id ? "없음" : "사이트 먼저 선택"}</option>
+            {siteDevices.map((d) => <option key={d.id} value={d.id}>{d.system_name}{d.ip ? ` (${d.ip})` : ""}</option>)}
+          </Select>
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
         <Field label="담당">
           <Select value={f.assignee_id} onChange={set("assignee_id")}>
             <option value="">선택</option>{engineers.map((e) => <option key={e.id} value={e.id}>{e.name}{e.rank ? ` ${e.rank}` : ""}</option>)}
           </Select>
         </Field>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <Field label="날짜"><Input type="date" value={f.date} onChange={set("date")} /></Field>
-        <Field label="시간"><Input type="time" value={f.time} onChange={set("time")} /></Field>
         <Field label="상태">
           <Select value={f.status} onChange={set("status")}>
             {Object.entries(WORK_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </Select>
         </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="날짜"><Input type="date" value={f.date} onChange={set("date")} /></Field>
+        <Field label="시간"><Input type="time" value={f.time} onChange={set("time")} /></Field>
       </div>
 
       <Field label="상세 내용">
