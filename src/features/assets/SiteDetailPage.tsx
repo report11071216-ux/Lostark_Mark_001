@@ -79,15 +79,15 @@ export const SiteDetailPage: React.FC = () => {
     <Panel><div className="text-center py-10 text-sm" style={{ color: C.faint }}>사이트를 찾을 수 없습니다. <Link to="/sites" style={{ color: C.accent }}>목록으로</Link></div></Panel>
   );
 
-  const cols = ["", "구분", "망", "관리", "위치", "시스템명", "모델명", "시리얼", "OS", "도입", "IP", "업체", ""];
+  const cols = ["", "구분", "망", "관리", "위치", "시스템명", "모델명", "OS", "IP", "업체", ""];
   const folderName = (id: string | null) => folders.find((l) => l.id === id)?.name || "—";
   const byName = (a: Device, b: Device) => a.system_name.localeCompare(b.system_name, "ko");
 
-  // 검색: 여러 필드를 한 문자열로 합쳐 키워드 포함 검사
+  // 검색: 여러 필드를 한 문자열로 합쳐 키워드 포함 검사 (표에서 숨긴 시리얼·도입도 검색은 가능)
   const kw = q.trim().toLowerCase();
   const matchKw = (d: Device) => {
     const hay = [
-      d.system_name, d.model, d.serial, d.os, d.ip, d.vendor_name,
+      d.system_name, d.model, d.serial, d.os, d.ip, d.vendor_name, d.introduced_on,
       folderName(d.location_id), DEVICE_CATEGORY[d.category]?.label,
       d.net_zone ? NET_ZONE[d.net_zone] : "",
     ].filter(Boolean).join(" ").toLowerCase();
@@ -119,7 +119,7 @@ export const SiteDetailPage: React.FC = () => {
 
   const renderTable = (list: Device[]) => (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs" style={{ color: C.text, minWidth: 940 }}>
+      <table className="w-full text-xs" style={{ color: C.text, minWidth: 820 }}>
         <thead><tr style={{ color: C.faint }}>{cols.map((h, i) => <th key={i} className="text-left font-medium px-3 py-2.5 whitespace-nowrap">{h}</th>)}</tr></thead>
         <tbody>
           {list.length === 0 && <tr><td colSpan={cols.length} className="text-center py-8" style={{ color: C.faint }}>{kw ? "검색 결과가 없습니다." : "등록된 장비가 없습니다."}</td></tr>}
@@ -138,9 +138,7 @@ export const SiteDetailPage: React.FC = () => {
                 <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: d.location_id ? C.sub : C.faint }}>{folderName(d.location_id)}</td>
                 <td className="px-3 py-2.5 font-medium whitespace-nowrap">{d.system_name}</td>
                 <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.sub }}>{d.model || "—"}</td>
-                <td className="px-3 py-2.5 font-mono whitespace-nowrap" style={{ color: C.sub }}>{d.serial || "—"}</td>
                 <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.sub }}>{d.os || "—"}</td>
-                <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.sub }}>{d.introduced_on || "—"}</td>
                 <td className="px-3 py-2.5 font-mono whitespace-nowrap" style={{ color: C.sub }}>{d.ip || "—"}</td>
                 <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.sub }}>{d.vendor_name || "—"}</td>
                 <td className="px-3 py-2.5">
