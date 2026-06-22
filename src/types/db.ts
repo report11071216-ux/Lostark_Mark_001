@@ -97,6 +97,8 @@ export interface Device {
   vendor_name: string | null;
   icon_type: string | null;
   icon_badge: string | null;
+  bookmarked: boolean;          // ① 점검 대상 북마크 (팀 공용 별표)
+  location_id: string | null;   // ③ 위치 폴더 (site_locations.id, 미지정이면 null)
   created_at: string;
 }
 // 타사 제품 (업체 연락처, 사이트 소속)
@@ -107,6 +109,15 @@ export interface Vendor {
   contact: string | null;
   phone: string | null;
   email: string | null;
+  created_at: string;
+}
+
+// 위치 폴더 (사이트 소속) — 장비를 위치별로 묶는 폴더 (예: 본원, 1층A동)
+export interface SiteLocation {
+  id: string;
+  site_id: string;
+  name: string;
+  sort_order: number;
   created_at: string;
 }
 
