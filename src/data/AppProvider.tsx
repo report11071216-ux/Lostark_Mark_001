@@ -3,7 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase, envMissing } from "../lib/supabase";
 import { cmp, dayDiff, iso, nextRoutine, parse, prevRoutine } from "../lib/date";
 import type {
-  AlertItem, ChecklistEntry, ChecklistTemplate, Device, Engineer, EnrichedSite, Inspection, Issue, IssueState, Site, TeamMember, TeamRole, Vendor, WorkOrder,
+  AlertItem, ChecklistEntry, ChecklistTemplate, Device, Engineer, EnrichedSite, Inspection, Issue, IssueState, Site, SiteLocation, TeamMember, TeamRole, Vendor, WorkOrder,
 } from "../types/db";
 
 interface AppCtx {
@@ -23,6 +23,7 @@ interface AppCtx {
   workOrders: WorkOrder[];
   devices: Device[];
   vendors: Vendor[];
+  siteLocations: SiteLocation[];
   loading: boolean;
   reload: () => Promise<void>;
   // 파생
@@ -50,6 +51,10 @@ interface AppCtx {
   addVendor: (p: Partial<Vendor>) => Promise<string | null>;
   updateVendor: (id: string, patch: Partial<Vendor>) => Promise<string | null>;
   removeVendor: (id: string) => Promise<string | null>;
+  toggleBookmark: (d: Device) => Promise<string | null>;
+  addLocation: (p: { site_id: string; name: string; sort_order?: number }) => Promise<string | null>;
+  updateLocation: (id: string, patch: Partial<SiteLocation>) => Promise<string | null>;
+  removeLocation: (id: string) => Promise<string | null>;
 }
 
 const Ctx = createContext<AppCtx | null>(null);
@@ -72,6 +77,7 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [siteLocations, setSiteLocations] = useState<SiteLocation[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 세션
@@ -92,7 +98,7 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   const reload = useCallback(async () => {
     if (envMissing || !me?.approved) return;
     setLoading(true);
-    const [s, m, ins, iss, tpl, eng, wo, dev, ven] = await Promise.all([
+    const [s, m, ins, iss, tpl, eng, wo, dev, ven, loc] = await Promise.all([
       supabase.from("sites").select("*").eq("active", true).order("created_at"),
       supabase.from("team_members").select("id,name,email,role,approved"),
       supabase.from("inspections").select("*"),
@@ -102,6 +108,7 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
       supabase.from("work_orders").select("*").order("scheduled_at"),
       supabase.from("devices").select("*").order("created_at"),
       supabase.from("vendors").select("*").order("created_at"),
+      supabase.from("site_locations").select("*").order("sort_order"),
     ]);
     setSites((s.data as Site[]) || []);
     setMembers((m.data as TeamMember[]) || []);
@@ -112,6 +119,7 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     setWorkOrders((wo.data as WorkOrder[]) || []);
     setDevices((dev.data as Device[]) || []);
     setVendors((ven.data as Vendor[]) || []);
+    setSiteLocations((loc.data as SiteLocation[]) || []);
     setLoading(false);
   }, [me]);
   useEffect(() => { reload(); }, [reload]);
@@ -222,6 +230,12 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
     if (!error) await reload();
     return error?.message ?? null;
   }, [reload]);
+  // ① 점검 대상 북마크 토글 (팀 공용 별표)
+  const toggleBookmark = useCallback(async (d: Device) => {
+    const { error } = await supabase.from("devices").update({ bookmarked: !d.bookmarked }).eq("id", d.id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
 
   const addVendor = useCallback(async (p: Partial<Vendor>) => {
     const { error } = await supabase.from("vendors").insert(p);
@@ -235,6 +249,23 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
   }, [reload]);
   const removeVendor = useCallback(async (id: string) => {
     const { error } = await supabase.from("vendors").delete().eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+
+  // ③ 위치 폴더 (사이트별) — 폴더 삭제 시 소속 장비는 location_id=null(미지정)로 자동 정리(on delete set null)
+  const addLocation = useCallback(async (p: { site_id: string; name: string; sort_order?: number }) => {
+    const { error } = await supabase.from("site_locations").insert({ site_id: p.site_id, name: p.name, sort_order: p.sort_order ?? 0 });
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+  const updateLocation = useCallback(async (id: string, patch: Partial<SiteLocation>) => {
+    const { error } = await supabase.from("site_locations").update(patch).eq("id", id);
+    if (!error) await reload();
+    return error?.message ?? null;
+  }, [reload]);
+  const removeLocation = useCallback(async (id: string) => {
+    const { error } = await supabase.from("site_locations").delete().eq("id", id);
     if (!error) await reload();
     return error?.message ?? null;
   }, [reload]);
@@ -286,12 +317,13 @@ export const AppProvider: React.FC<React.PropsWithChildren> = ({ children }) => 
 
   const value: AppCtx = {
     session, me, authReady, envMissing, signOut,
-    sites, members, engineers, inspections, issues, templates, workOrders, devices, vendors, loading, reload,
+    sites, members, engineers, inspections, issues, templates, workOrders, devices, vendors, siteLocations, loading, reload,
     enriched, alerts, nameOf, engineerName, isLead: me?.role === "lead" && !!me?.approved,
     addSite, updateSite, removeSite, addIssue, markDone, advanceIssue,
     updateMember, addEngineer, removeEngineer,
     addWorkOrder, updateWorkOrder, removeWorkOrder,
     addDevice, updateDevice, removeDevice, addVendor, updateVendor, removeVendor,
+    toggleBookmark, addLocation, updateLocation, removeLocation,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 };
