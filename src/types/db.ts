@@ -130,6 +130,7 @@ export interface WorkOrder {
   type: WorkType;
   status: WorkStatus;
   site_id: string | null;
+  device_id: string | null;   // 작업 대상 장비 (devices.id, 없으면 null)
   assignee_id: string | null;
   scheduled_at: string; // ISO timestamp
   detail: string | null;
