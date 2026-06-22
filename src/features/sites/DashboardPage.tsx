@@ -86,6 +86,23 @@ export const DashboardPage: React.FC = () => {
   const devCount = (id: string) => devices.filter((d) => d.site_id === id).length;
   const venCount = (id: string) => vendors.filter((v) => v.site_id === id).length;
 
+  // 좌표가 있는 사이트만 맵에 표시 / 좌표 없는 건 "미배치" 트레이로
+  const placed = enriched.filter((s) => s.map_x != null && s.map_y != null);
+  const unplaced = enriched.filter((s) => s.map_x == null || s.map_y == null);
+
+  // 미배치 → 빈 자리에 올리기
+  const placeSite = (id: string) => {
+    const n = placed.length;
+    updateSite(id, { map_x: 80 + (n % 4) * 160, map_y: 70 + Math.floor(n / 4) * 130 });
+  };
+  // 지도에서 빼기 (사이트는 유지, 좌표만 비움 → 미배치)
+  const unplaceSite = (id: string, name: string) => {
+    if (confirm(`'${name}' 사이트를 지도에서 뺄까요?\n사이트는 삭제되지 않고 위 '미배치'로 이동합니다.`)) {
+      updateSite(id, { map_x: null, map_y: null });
+      setSel(null);
+    }
+  };
+
   const submitZone = () => {
     if (!zName.trim()) return;
     Z.addZone(zName.trim(), zColor);
@@ -122,6 +139,18 @@ export const DashboardPage: React.FC = () => {
             className="rounded-lg px-3 py-2 text-sm outline-none" style={{ background: C.panel2, border: `1px solid ${C.line}`, color: C.text, width: 240 }} />
           <button onClick={submitZone} className="rounded-lg px-3 py-2 text-xs font-semibold" style={{ background: C.accent, color: "#06241f" }}>추가</button>
           <button onClick={() => setNewZone(false)} className="rounded-lg px-3 py-2 text-xs" style={{ border: `1px solid ${C.line}`, color: C.sub }}>취소</button>
+        </div>
+      )}
+
+      {/* 미배치 사이트 트레이 */}
+      {unplaced.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap p-2.5 rounded-xl" style={{ background: C.panel, border: `1px dashed ${C.line}` }}>
+          <span className="text-[11px] mr-1" style={{ color: C.faint }}>미배치 {unplaced.length}</span>
+          {unplaced.map((s) => (
+            <button key={s.id} onClick={() => placeSite(s.id)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px]" style={{ background: C.panel2, border: `1px solid ${C.line2}`, color: C.sub }} title="지도에 올리기">
+              <Plus size={11} /> {s.name}
+            </button>
+          ))}
         </div>
       )}
 
@@ -165,14 +194,16 @@ export const DashboardPage: React.FC = () => {
           ))}
         </svg>
 
-        {enriched.length === 0 && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: C.faint, fontSize: 14 }}>
-            등록된 사이트가 없습니다. "점검 현황"에서 사이트를 등록하세요.
+        {placed.length === 0 && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: C.faint, fontSize: 14, textAlign: "center", padding: 20 }}>
+            {enriched.length === 0
+              ? '등록된 사이트가 없습니다. "점검 현황"에서 사이트를 등록하세요.'
+              : "위 '미배치'에서 사이트를 클릭해 지도에 올리세요."}
           </div>
         )}
 
-        {/* 건물 */}
-        {enriched.map((s, idx) => {
+        {/* 건물 (좌표 있는 사이트만) */}
+        {placed.map((s, idx) => {
           const pos = posOf(s, idx);
           const blink = s.status === "late" || s.status === "soon";
           return (
@@ -208,6 +239,10 @@ export const DashboardPage: React.FC = () => {
                 <Share2 size={13} />
               </button>
             </div>
+            <button onClick={() => unplaceSite(selSite.id, selSite.name)}
+              style={{ width: "100%", marginTop: 8, padding: "7px", borderRadius: 9, background: "transparent", color: C.sub, fontSize: 12, fontWeight: 600, border: `1px solid ${C.line}`, cursor: "pointer" }}>
+              지도에서 빼기
+            </button>
           </div>
         )}
 
