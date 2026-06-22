@@ -7,6 +7,7 @@ import { useApp } from "../../data/AppProvider";
 import { DeviceModal } from "./DeviceModal";
 import { VendorModal } from "./VendorModal";
 import { InspectionBuilder } from "./InspectionBuilder";
+import { DeviceExcel } from "./DeviceExcel";
 import type { Device, Vendor } from "../../types/db";
 
 const GOLD = "#fbbf24";
@@ -183,9 +184,12 @@ export const SiteDetailPage: React.FC = () => {
             <Monitor size={15} style={{ color: C.accent }} />
             <span className="text-sm font-semibold" style={{ color: C.text }}>장비 현황</span>
             <span className="text-xs" style={{ color: C.faint }}>{base.length}{filtered ? `/${devList.length}` : ""}대</span>
-            <button onClick={() => setAddDev(true)} className="ml-auto flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: C.accent, color: "#06241f" }}>
-              <Plus size={13} /> 장비 등록
-            </button>
+            <div className="ml-auto flex items-center gap-1.5">
+              <DeviceExcel siteId={siteId} siteName={site.name} />
+              <button onClick={() => setAddDev(true)} className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold" style={{ background: C.accent, color: "#06241f" }}>
+                <Plus size={13} /> 장비 등록
+              </button>
+            </div>
           </div>
 
           {/* ②① 컨트롤: 그룹핑 + 북마크 필터 + 검색 + 폴더관리 */}
