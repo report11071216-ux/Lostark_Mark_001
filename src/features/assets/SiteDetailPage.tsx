@@ -79,11 +79,11 @@ export const SiteDetailPage: React.FC = () => {
     <Panel><div className="text-center py-10 text-sm" style={{ color: C.faint }}>사이트를 찾을 수 없습니다. <Link to="/sites" style={{ color: C.accent }}>목록으로</Link></div></Panel>
   );
 
-  const cols = ["", "구분", "망", "관리", "위치", "시스템명", "모델명", "OS", "IP", "업체", ""];
+  const cols = ["", "구분", "망", "관리", "위치", "시스템명", "모델명", "IP", "업체", ""];
   const folderName = (id: string | null) => folders.find((l) => l.id === id)?.name || "—";
   const byName = (a: Device, b: Device) => a.system_name.localeCompare(b.system_name, "ko");
 
-  // 검색: 여러 필드를 한 문자열로 합쳐 키워드 포함 검사 (표에서 숨긴 시리얼·도입도 검색은 가능)
+  // 검색: 여러 필드를 한 문자열로 합쳐 키워드 포함 검사 (표에서 숨긴 시리얼·OS·도입도 검색은 가능)
   const kw = q.trim().toLowerCase();
   const matchKw = (d: Device) => {
     const hay = [
@@ -119,8 +119,8 @@ export const SiteDetailPage: React.FC = () => {
 
   const renderTable = (list: Device[]) => (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs" style={{ color: C.text, minWidth: 820 }}>
-        <thead><tr style={{ color: C.faint }}>{cols.map((h, i) => <th key={i} className="text-left font-medium px-3 py-2.5 whitespace-nowrap">{h}</th>)}</tr></thead>
+      <table className="w-full text-xs" style={{ color: C.text, minWidth: 720 }}>
+        <thead><tr style={{ color: C.faint }}>{cols.map((h, i) => <th key={i} className="text-left font-medium px-2.5 py-2.5 whitespace-nowrap">{h}</th>)}</tr></thead>
         <tbody>
           {list.length === 0 && <tr><td colSpan={cols.length} className="text-center py-8" style={{ color: C.faint }}>{kw ? "검색 결과가 없습니다." : "등록된 장비가 없습니다."}</td></tr>}
           {list.map((d) => {
@@ -132,20 +132,17 @@ export const SiteDetailPage: React.FC = () => {
                     <Star size={14} fill={d.bookmarked ? GOLD : "none"} style={{ color: d.bookmarked ? GOLD : C.faint }} />
                   </button>
                 </td>
-                <td className="px-3 py-2.5"><span className="rounded px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap" style={{ background: `${cat.color}1a`, color: cat.color }}>{cat.label}</span></td>
-                <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.sub }}>{d.net_zone ? NET_ZONE[d.net_zone] : "—"}</td>
-                <td className="px-3 py-2.5" style={{ color: d.managed ? C.ok : C.faint }}>{d.managed ? "O" : "X"}</td>
-                <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: d.location_id ? C.sub : C.faint }}>{folderName(d.location_id)}</td>
-                <td className="px-3 py-2.5 font-medium whitespace-nowrap">{d.system_name}</td>
-                <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.sub }}>{d.model || "—"}</td>
-                <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.sub }}>{d.os || "—"}</td>
-                <td className="px-3 py-2.5 font-mono whitespace-nowrap" style={{ color: C.sub }}>{d.ip || "—"}</td>
-                <td className="px-3 py-2.5 whitespace-nowrap" style={{ color: C.sub }}>{d.vendor_name || "—"}</td>
-                <td className="px-3 py-2.5">
-                  <div className="flex gap-1.5 items-center">
-                    <button onClick={() => setInspectDev(d)} className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold whitespace-nowrap" style={{ background: `${C.accent}1a`, color: C.accent, border: `1px solid ${C.accent}40` }} title="정기점검">
-                      <ClipboardCheck size={12} /> 점검
-                    </button>
+                <td className="px-2.5 py-2.5"><span className="rounded px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap" style={{ background: `${cat.color}1a`, color: cat.color }}>{cat.label}</span></td>
+                <td className="px-2.5 py-2.5 whitespace-nowrap" style={{ color: C.sub }}>{d.net_zone ? NET_ZONE[d.net_zone] : "—"}</td>
+                <td className="px-2.5 py-2.5" style={{ color: d.managed ? C.ok : C.faint }}>{d.managed ? "O" : "X"}</td>
+                <td className="px-2.5 py-2.5"><div className="truncate" style={{ maxWidth: 100, color: d.location_id ? C.sub : C.faint }} title={folderName(d.location_id)}>{folderName(d.location_id)}</div></td>
+                <td className="px-2.5 py-2.5"><div className="truncate font-medium" style={{ maxWidth: 160 }} title={d.system_name}>{d.system_name}</div></td>
+                <td className="px-2.5 py-2.5"><div className="truncate" style={{ maxWidth: 130, color: C.sub }} title={d.model || ""}>{d.model || "—"}</div></td>
+                <td className="px-2.5 py-2.5 font-mono whitespace-nowrap" style={{ color: C.sub }}>{d.ip || "—"}</td>
+                <td className="px-2.5 py-2.5"><div className="truncate" style={{ maxWidth: 100, color: C.sub }} title={d.vendor_name || ""}>{d.vendor_name || "—"}</div></td>
+                <td className="px-2.5 py-2.5">
+                  <div className="flex gap-1 items-center">
+                    <button onClick={() => setInspectDev(d)} className="flex items-center justify-center rounded-md p-1.5" style={{ background: `${C.accent}1a`, color: C.accent, border: `1px solid ${C.accent}40` }} title="정기점검"><ClipboardCheck size={13} /></button>
                     <button onClick={() => setEditDev(d)} style={{ color: C.faint }} title="수정"><Pencil size={13} /></button>
                     <button onClick={() => { if (confirm(`${d.system_name} 장비를 삭제할까요?`)) removeDevice(d.id); }} style={{ color: C.faint }} title="삭제"><Trash2 size={13} /></button>
                   </div>
